@@ -144,13 +144,7 @@ struct RootTabView: View {
                 NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
             }
         }
-        .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
-        .onChange(of: settings.intervalColorBlind) { _, _ in model.pushSettingsContext() }
-        .onChange(of: settings.restSeconds) { _, _ in model.pushSettingsContext() }
-        .onChange(of: settings.warmupMinutes) { _, _ in model.pushSettingsContext() }
-        .onChange(of: settings.cooldownMinutes) { _, _ in model.pushSettingsContext() }
-        .onChange(of: settings.workoutSounds) { _, _ in model.pushSettingsContext() }
-        .onChange(of: settings.spokenCues) { _, _ in model.pushSettingsContext() }
+        .modifier(WatchSettingsContextSync(settings: settings, model: model))
         .onChange(of: model.watchSyncState) { _, state in
             showWatchSyncToast(for: state)
         }
@@ -253,28 +247,52 @@ private struct LiveWorkoutTabAccessory: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
+        if #available(iOS 26.1, *) {
             let enabled = active.isActive && active.strengthSession != nil
             content.tabViewBottomAccessory(isEnabled: enabled) {
-                if let session = active.strengthSession, enabled {
-                    Button { active.present() } label: {
-                        HStack(spacing: 10) {
-                            Image(systemName: "figure.strengthtraining.traditional")
-                            Text(session.title.isEmpty ? String(localized: "Workout in progress") : session.title)
-                                .lineLimit(1)
-                            Spacer()
-                            Image(systemName: "chevron.up")
-                        }
-                        .padding(.horizontal, 14)
-                        .frame(minHeight: 44)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("tab.liveWorkoutAccessory")
-                }
+                if let session = active.strengthSession, enabled { accessory(session) }
+            }
+        } else if #available(iOS 26.0, *) {
+            content.tabViewBottomAccessory {
+                if active.isActive, let session = active.strengthSession { accessory(session) }
             }
         } else {
             content
         }
+    }
+
+    private func accessory(_ session: WorkoutSession) -> some View {
+        Button { active.present() } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "figure.strengthtraining.traditional")
+                Text(session.title.isEmpty ? String(localized: "Workout in progress") : session.title)
+                    .lineLimit(1)
+                Spacer()
+                Image(systemName: "chevron.up")
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: 44)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("tab.liveWorkoutAccessory")
+    }
+}
+
+/// Pushes the Watch-facing settings context whenever one of its inputs changes.
+/// Split out of `RootTabView.body` so the modifier chain stays type-checkable.
+private struct WatchSettingsContextSync: ViewModifier {
+    let settings: AppSettings
+    let model: AppModel
+
+    func body(content: Content) -> some View {
+        content
+            .onChange(of: settings.unit) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.intervalColorBlind) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.restSeconds) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.warmupMinutes) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.cooldownMinutes) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.workoutSounds) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.spokenCues) { _, _ in model.pushSettingsContext() }
     }
 }
 

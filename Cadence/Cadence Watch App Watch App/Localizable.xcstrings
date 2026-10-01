@@ -2,10 +2,12 @@
   "sourceLanguage" : "en",
   "strings" : {
     "" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift); Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "%@ %@" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift); Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "%@ beats per minute" : {
       "localizations" : {
@@ -13,6 +15,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%@ Schläge pro Minute"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ beats per minute"
           }
         },
         "es" : {
@@ -50,21 +58,23 @@
             "state" : "needs_review",
             "value" : "每分鐘 %@ 下"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%@ beats per minute"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio (Cadence/Cadence Watch App Watch App/WatchCardioView.swift)"
     },
     "%lld" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "%lld BPM" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld BPM"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%lld BPM"
@@ -105,14 +115,9 @@
             "state" : "needs_review",
             "value" : "%lld 下/分"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld BPM"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift); Watch Rest (Cadence/Cadence Watch App Watch App/WatchRestView.swift)"
     },
     "%lld min" : {
       "localizations" : {
@@ -120,6 +125,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%lld Min."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld min"
           }
         },
         "es" : {
@@ -157,14 +168,9 @@
             "state" : "needs_review",
             "value" : "%lld 分鐘"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld min"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "%lld sec" : {
       "localizations" : {
@@ -172,6 +178,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%lld Sek."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld sec"
           }
         },
         "es" : {
@@ -209,17 +221,30 @@
             "state" : "needs_review",
             "value" : "%lld 秒"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "%lld sec"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "%lld sets" : {
       "localizations" : {
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld Satz"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "needs_review",
+                  "value" : "%lld Sätze"
+                }
+              }
+            }
+          }
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -238,19 +263,19 @@
             }
           }
         },
-        "de" : {
+        "en-GB" : {
           "variations" : {
             "plural" : {
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld Satz"
+                  "value" : "%lld set"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld Sätze"
+                  "value" : "%lld sets"
                 }
               }
             }
@@ -351,29 +376,30 @@
               }
             }
           }
-        },
-        "en-GB" : {
+        }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
+    },
+    "%lld sets logged" : {
+      "localizations" : {
+        "de" : {
           "variations" : {
             "plural" : {
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld set"
+                  "value" : "%lld Satz protokolliert"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld sets"
+                  "value" : "%lld Sätze protokolliert"
                 }
               }
             }
           }
-        }
-      }
-    },
-    "%lld sets logged" : {
-      "localizations" : {
+        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -392,19 +418,19 @@
             }
           }
         },
-        "de" : {
+        "en-GB" : {
           "variations" : {
             "plural" : {
               "one" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld Satz protokolliert"
+                  "value" : "%lld set logged"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "needs_review",
-                  "value" : "%lld Sätze protokolliert"
+                  "value" : "%lld sets logged"
                 }
               }
             }
@@ -505,32 +531,17 @@
               }
             }
           }
-        },
-        "en-GB" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld set logged"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "needs_review",
-                  "value" : "%lld sets logged"
-                }
-              }
-            }
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "%lld. %@" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Exercise Detail Content (Cadence/Cadence Watch App Watch App/WatchExerciseDetailContent.swift)"
     },
     "+1" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "+1m" : {
       "localizations" : {
@@ -538,6 +549,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "+1 Min."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+1m"
           }
         },
         "es" : {
@@ -575,14 +592,9 @@
             "state" : "needs_review",
             "value" : "+1 分"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "+1m"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cool Down (Cadence/Cadence Watch App Watch App/WatchCoolDownView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "+30s" : {
       "localizations" : {
@@ -590,6 +602,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "+30 s"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "+30s"
           }
         },
         "es" : {
@@ -627,21 +645,23 @@
             "state" : "needs_review",
             "value" : "+30 秒"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "+30s"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Rest (Cadence/Cadence Watch App Watch App/WatchRestView.swift)"
     },
     "--" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "-- BPM" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "-- BPM"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "-- BPM"
@@ -682,17 +702,13 @@
             "state" : "needs_review",
             "value" : "-- 下/分"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "-- BPM"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Rest (Cadence/Cadence Watch App Watch App/WatchRestView.swift)"
     },
     "-1" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "About" : {
       "localizations" : {
@@ -700,6 +716,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Info"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "About"
           }
         },
         "es" : {
@@ -737,14 +759,9 @@
             "state" : "needs_review",
             "value" : "關於"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "About"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift); Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Access is ready. Continue when you are ready to open Cladiron." : {
       "localizations" : {
@@ -752,6 +769,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Zugriff ist bereit. Fahre fort, wenn du Cladiron öffnen möchtest."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Access is ready. Continue when you are ready to open Cladiron."
           }
         },
         "es" : {
@@ -789,14 +812,9 @@
             "state" : "needs_review",
             "value" : "權限已就緒。準備好後繼續即可開啟 Cladiron。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Access is ready. Continue when you are ready to open Cladiron."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Access was not granted. You can retry or continue without heart rate." : {
       "localizations" : {
@@ -804,6 +822,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Zugriff wurde nicht erteilt. Du kannst es erneut versuchen oder ohne Herzfrequenz fortfahren."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Access was not granted. You can retry or continue without heart rate."
           }
         },
         "es" : {
@@ -841,14 +865,9 @@
             "state" : "needs_review",
             "value" : "未獲授權。你可以重試，或在沒有心率的情況下繼續。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Access was not granted. You can retry or continue without heart rate."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Access was not granted. You can try again or continue without heart rate." : {
       "localizations" : {
@@ -856,6 +875,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Zugriff wurde nicht erteilt. Du kannst es noch einmal versuchen oder ohne Herzfrequenz fortfahren."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Access was not granted. You can try again or continue without heart rate."
           }
         },
         "es" : {
@@ -893,14 +918,9 @@
             "state" : "needs_review",
             "value" : "未獲授權。你可以再試一次，或在沒有心率的情況下繼續。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Access was not granted. You can try again or continue without heart rate."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Activated" : {
       "localizations" : {
@@ -908,6 +928,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Aktiviert"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Activated"
           }
         },
         "es" : {
@@ -945,14 +971,9 @@
             "state" : "needs_review",
             "value" : "已啟用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Activated"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Add" : {
       "localizations" : {
@@ -960,6 +981,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Hinzufügen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add"
           }
         },
         "es" : {
@@ -997,27 +1024,28 @@
             "state" : "needs_review",
             "value" : "新增"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Add %@ %@" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ %@ hinzufügen"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Add %1$@ %2$@"
           }
         },
-        "de" : {
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "%@ %@ hinzufügen"
+            "value" : "Add %@ %@"
           }
         },
         "es" : {
@@ -1055,14 +1083,9 @@
             "state" : "needs_review",
             "value" : "新增%@ %@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add %@ %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Add Custom Exercise" : {
       "localizations" : {
@@ -1070,6 +1093,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Eigene Übung hinzufügen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add Custom Exercise"
           }
         },
         "es" : {
@@ -1107,14 +1136,9 @@
             "state" : "needs_review",
             "value" : "新增自訂動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add Custom Exercise"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Add Custom “%@”" : {
       "localizations" : {
@@ -1122,6 +1146,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Eigene Übung „%@“ hinzufügen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add Custom “%@”"
           }
         },
         "es" : {
@@ -1159,14 +1189,9 @@
             "state" : "needs_review",
             "value" : "新增自訂動作「%@」"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add Custom “%@”"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Add Exercise" : {
       "localizations" : {
@@ -1176,6 +1201,12 @@
             "value" : "Übung hinzufügen"
           }
         },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add Exercise"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
@@ -1211,14 +1242,9 @@
             "state" : "needs_review",
             "value" : "新增動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add Exercise"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Add exercise" : {
       "localizations" : {
@@ -1228,6 +1254,12 @@
             "value" : "Übung hinzufügen"
           }
         },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add exercise"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
@@ -1263,14 +1295,9 @@
             "state" : "needs_review",
             "value" : "新增動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add exercise"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "Add one minute" : {
       "localizations" : {
@@ -1278,6 +1305,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Eine Minute hinzufügen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add one minute"
           }
         },
         "es" : {
@@ -1315,14 +1348,9 @@
             "state" : "needs_review",
             "value" : "增加一分鐘"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add one minute"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Add partner..." : {
       "localizations" : {
@@ -1330,6 +1358,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Partner hinzufügen …"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add partner..."
           }
         },
         "es" : {
@@ -1367,14 +1401,9 @@
             "state" : "needs_review",
             "value" : "新增夥伴…"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Add partner..."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Partners (Cadence/Cadence Watch App Watch App/WatchPartnersView.swift)"
     },
     "Allow Heart Rate Access" : {
       "localizations" : {
@@ -1382,6 +1411,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenz-Zugriff erlauben"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Allow Heart Rate Access"
           }
         },
         "es" : {
@@ -1419,14 +1454,9 @@
             "state" : "needs_review",
             "value" : "允許取用心率"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Allow Heart Rate Access"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Allow access first so Cladiron can show live heart rate and save cardio workouts." : {
       "localizations" : {
@@ -1434,6 +1464,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Erlaube zuerst den Zugriff, damit Cladiron die Live-Herzfrequenz anzeigen und Cardio-Trainings speichern kann."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Allow access first so Cladiron can show live heart rate and save cardio workouts."
           }
         },
         "es" : {
@@ -1471,14 +1507,9 @@
             "state" : "needs_review",
             "value" : "請先允許取用，以便 Cladiron 顯示即時心率並儲存有氧訓練。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Allow access first so Cladiron can show live heart rate and save cardio workouts."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Avg HR" : {
       "localizations" : {
@@ -1486,6 +1517,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Ø HF"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Avg HR"
           }
         },
         "es" : {
@@ -1523,18 +1560,19 @@
             "state" : "needs_review",
             "value" : "平均心率"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Avg HR"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "BPM" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "BPM"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "BPM"
@@ -1575,14 +1613,9 @@
             "state" : "needs_review",
             "value" : "下/分"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "BPM"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Back" : {
       "localizations" : {
@@ -1590,6 +1623,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Rücken"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Back"
           }
         },
         "es" : {
@@ -1627,14 +1666,9 @@
             "state" : "needs_review",
             "value" : "背部"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Back"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Battery: %lld%%" : {
       "localizations" : {
@@ -1642,6 +1676,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Akku: %lld %%"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Battery: %lld%%"
           }
         },
         "es" : {
@@ -1679,14 +1719,9 @@
             "state" : "needs_review",
             "value" : "電量：%lld%%"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Battery: %lld%%"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Boxing" : {
       "localizations" : {
@@ -1694,6 +1729,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Boxen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Boxing"
           }
         },
         "es" : {
@@ -1731,14 +1772,9 @@
             "state" : "needs_review",
             "value" : "拳擊"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Boxing"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Build" : {
       "localizations" : {
@@ -1746,6 +1782,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Aufbau"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Build"
           }
         },
         "es" : {
@@ -1783,14 +1825,9 @@
             "state" : "needs_review",
             "value" : "建立"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Build"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Bundle ID" : {
       "localizations" : {
@@ -1798,6 +1835,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Bundle-ID"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Bundle ID"
           }
         },
         "es" : {
@@ -1835,14 +1878,9 @@
             "state" : "needs_review",
             "value" : "Bundle ID"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Bundle ID"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "COOL-DOWN" : {
       "localizations" : {
@@ -1850,6 +1888,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "ABWÄRMEN"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "COOL-DOWN"
           }
         },
         "es" : {
@@ -1887,14 +1931,9 @@
             "state" : "needs_review",
             "value" : "緩和"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "COOL-DOWN"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cool Down (Cadence/Cadence Watch App Watch App/WatchCoolDownView.swift)"
     },
     "Cancel" : {
       "localizations" : {
@@ -1902,6 +1941,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Abbrechen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cancel"
           }
         },
         "es" : {
@@ -1939,14 +1984,62 @@
             "state" : "needs_review",
             "value" : "取消"
           }
+        }
+      },
+      "comment" : "UI text shown in: Watch Cardio Session (Cadence/Cadence Watch App Watch App/WatchCardioSessionView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
+    },
+    "Cardio" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "有氧"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "有氧"
+          }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cancel"
+            "value" : "Cardio"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Categories" : {
       "localizations" : {
@@ -1954,6 +2047,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Kategorien"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Categories"
           }
         },
         "es" : {
@@ -1991,14 +2090,9 @@
             "state" : "needs_review",
             "value" : "類別"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Categories"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Chest Strap Status" : {
       "localizations" : {
@@ -2006,6 +2100,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Brustgurt-Status"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Chest Strap Status"
           }
         },
         "es" : {
@@ -2043,18 +2143,19 @@
             "state" : "needs_review",
             "value" : "胸帶狀態"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Chest Strap Status"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Cladiron" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Cladiron"
@@ -2095,14 +2196,9 @@
             "state" : "needs_review",
             "value" : "Cladiron"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Cladiron"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Complete" : {
       "localizations" : {
@@ -2110,6 +2206,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Abgeschlossen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Complete"
           }
         },
         "es" : {
@@ -2147,14 +2249,9 @@
             "state" : "needs_review",
             "value" : "已完成"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Complete"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Connected" : {
       "localizations" : {
@@ -2162,6 +2259,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Verbunden"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Connected"
           }
         },
         "es" : {
@@ -2199,14 +2302,9 @@
             "state" : "needs_review",
             "value" : "已連線"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Connected"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Continue" : {
       "localizations" : {
@@ -2214,6 +2312,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Weiter"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Continue"
           }
         },
         "es" : {
@@ -2251,14 +2355,9 @@
             "state" : "needs_review",
             "value" : "繼續"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Continue"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Continue without heart rate" : {
       "localizations" : {
@@ -2266,6 +2365,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Ohne Herzfrequenz fortfahren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Continue without heart rate"
           }
         },
         "es" : {
@@ -2303,14 +2408,9 @@
             "state" : "needs_review",
             "value" : "不使用心率繼續"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Continue without heart rate"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Cool-down" : {
       "localizations" : {
@@ -2320,6 +2420,12 @@
             "value" : "Abwärmen"
           }
         },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cool-down"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
@@ -2355,14 +2461,9 @@
             "state" : "needs_review",
             "value" : "緩和"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Cool-down"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Cooldown" : {
       "localizations" : {
@@ -2372,6 +2473,12 @@
             "value" : "Abwärmen"
           }
         },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cooldown"
+          }
+        },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
@@ -2407,14 +2514,9 @@
             "state" : "needs_review",
             "value" : "緩和"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Cooldown"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Create & Add" : {
       "localizations" : {
@@ -2422,6 +2524,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Erstellen & hinzufügen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Create & Add"
           }
         },
         "es" : {
@@ -2459,27 +2567,28 @@
             "state" : "needs_review",
             "value" : "建立並加入"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Create & Add"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Current weight %@ %@" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aktuelles Gewicht %@ %@"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Current weight %1$@ %2$@"
           }
         },
-        "de" : {
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Aktuelles Gewicht %@ %@"
+            "value" : "Current weight %@ %@"
           }
         },
         "es" : {
@@ -2517,14 +2626,9 @@
             "state" : "needs_review",
             "value" : "目前重量 %@ %@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Current weight %@ %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Custom" : {
       "localizations" : {
@@ -2532,6 +2636,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Eigene"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Custom"
           }
         },
         "es" : {
@@ -2569,14 +2679,9 @@
             "state" : "needs_review",
             "value" : "自訂"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Custom"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Custom Exercise" : {
       "localizations" : {
@@ -2584,6 +2689,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Eigene Übung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Custom Exercise"
           }
         },
         "es" : {
@@ -2621,14 +2732,9 @@
             "state" : "needs_review",
             "value" : "自訂動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Custom Exercise"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Cycle" : {
       "localizations" : {
@@ -2636,6 +2742,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Radfahren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cycle"
           }
         },
         "es" : {
@@ -2673,14 +2785,9 @@
             "state" : "needs_review",
             "value" : "騎車"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Cycle"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Decrease %@" : {
       "localizations" : {
@@ -2688,6 +2795,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%@ verringern"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Decrease %@"
           }
         },
         "es" : {
@@ -2725,14 +2838,9 @@
             "state" : "needs_review",
             "value" : "減少%@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Decrease %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Delete" : {
       "localizations" : {
@@ -2740,6 +2848,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Löschen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Delete"
           }
         },
         "es" : {
@@ -2777,14 +2891,9 @@
             "state" : "needs_review",
             "value" : "刪除"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Delete"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift); Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "Delete Exercise" : {
       "localizations" : {
@@ -2792,6 +2901,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Übung löschen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Delete Exercise"
           }
         },
         "es" : {
@@ -2829,14 +2944,9 @@
             "state" : "needs_review",
             "value" : "刪除動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Delete Exercise"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Delete Workout" : {
       "localizations" : {
@@ -2844,6 +2954,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training löschen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Delete Workout"
           }
         },
         "es" : {
@@ -2881,14 +2997,9 @@
             "state" : "needs_review",
             "value" : "刪除訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Delete Workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "Delete Workout?" : {
       "localizations" : {
@@ -2896,6 +3007,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training löschen?"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Delete Workout?"
           }
         },
         "es" : {
@@ -2933,14 +3050,9 @@
             "state" : "needs_review",
             "value" : "刪除訓練？"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Delete Workout?"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "Discard" : {
       "localizations" : {
@@ -2948,6 +3060,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Verwerfen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Discard"
           }
         },
         "es" : {
@@ -2985,14 +3103,9 @@
             "state" : "needs_review",
             "value" : "放棄"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Discard"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Discard workout" : {
       "localizations" : {
@@ -3000,6 +3113,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training verwerfen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Discard workout"
           }
         },
         "es" : {
@@ -3037,14 +3156,9 @@
             "state" : "needs_review",
             "value" : "放棄訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Discard workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Disconnected" : {
       "localizations" : {
@@ -3052,6 +3166,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Getrennt"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Disconnected"
           }
         },
         "es" : {
@@ -3089,14 +3209,9 @@
             "state" : "needs_review",
             "value" : "已中斷連線"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Disconnected"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Distance" : {
       "localizations" : {
@@ -3104,6 +3219,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Distanz"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Distance"
           }
         },
         "es" : {
@@ -3141,14 +3262,9 @@
             "state" : "needs_review",
             "value" : "距離"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Distance"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift); Watch Units (Cadence/Cadence Watch App Watch App/WatchUnitsView.swift)"
     },
     "Distance %@" : {
       "localizations" : {
@@ -3156,6 +3272,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Distanz %@"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Distance %@"
           }
         },
         "es" : {
@@ -3193,14 +3315,9 @@
             "state" : "needs_review",
             "value" : "距離 %@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Distance %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio (Cadence/Cadence Watch App Watch App/WatchCardioView.swift)"
     },
     "Done" : {
       "localizations" : {
@@ -3208,6 +3325,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Fertig"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Done"
           }
         },
         "es" : {
@@ -3245,14 +3368,9 @@
             "state" : "needs_review",
             "value" : "完成"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Done"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Summary (Cadence/Cadence Watch App Watch App/WatchStrengthSummaryView.swift)"
     },
     "Duration" : {
       "localizations" : {
@@ -3260,6 +3378,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Dauer"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Duration"
           }
         },
         "es" : {
@@ -3297,14 +3421,9 @@
             "state" : "needs_review",
             "value" : "時長"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Duration"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift); Watch Strength Summary (Cadence/Cadence Watch App Watch App/WatchStrengthSummaryView.swift)"
     },
     "Elapsed" : {
       "localizations" : {
@@ -3312,6 +3431,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Verstrichen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Elapsed"
           }
         },
         "es" : {
@@ -3349,14 +3474,9 @@
             "state" : "needs_review",
             "value" : "已過時間"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Elapsed"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Elapsed time %@" : {
       "localizations" : {
@@ -3364,6 +3484,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Verstrichene Zeit %@"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Elapsed time %@"
           }
         },
         "es" : {
@@ -3401,14 +3527,9 @@
             "state" : "needs_review",
             "value" : "已過時間 %@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Elapsed time %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio (Cadence/Cadence Watch App Watch App/WatchCardioView.swift)"
     },
     "End" : {
       "localizations" : {
@@ -3416,6 +3537,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Ende"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "End"
           }
         },
         "es" : {
@@ -3453,14 +3580,9 @@
             "state" : "needs_review",
             "value" : "結束"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "End"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Session (Cadence/Cadence Watch App Watch App/WatchCardioSessionView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "End Workout?" : {
       "localizations" : {
@@ -3468,6 +3590,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training beenden?"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "End Workout?"
           }
         },
         "es" : {
@@ -3505,14 +3633,9 @@
             "state" : "needs_review",
             "value" : "結束訓練？"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "End Workout?"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Session (Cadence/Cadence Watch App Watch App/WatchCardioSessionView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "End workout" : {
       "localizations" : {
@@ -3520,6 +3643,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training beenden"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "End workout"
           }
         },
         "es" : {
@@ -3557,14 +3686,9 @@
             "state" : "needs_review",
             "value" : "結束訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "End workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Exercise name" : {
       "localizations" : {
@@ -3572,6 +3696,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Name der Übung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Exercise name"
           }
         },
         "es" : {
@@ -3609,14 +3739,9 @@
             "state" : "needs_review",
             "value" : "動作名稱"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Exercise name"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Finish & Save" : {
       "localizations" : {
@@ -3624,6 +3749,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Beenden & sichern"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Finish & Save"
           }
         },
         "es" : {
@@ -3661,18 +3792,19 @@
             "state" : "needs_review",
             "value" : "完成並儲存"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Finish & Save"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "GPS" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "GPS"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "GPS"
@@ -3713,14 +3845,9 @@
             "state" : "needs_review",
             "value" : "GPS"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "GPS"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Health access needed. Tap to enable." : {
       "localizations" : {
@@ -3728,6 +3855,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Health-Zugriff erforderlich. Zum Aktivieren tippen."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Health access needed. Tap to enable."
           }
         },
         "es" : {
@@ -3765,14 +3898,9 @@
             "state" : "needs_review",
             "value" : "需要健康權限。點一下以開啟。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Health access needed. Tap to enable."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Heart Rate" : {
       "localizations" : {
@@ -3780,6 +3908,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenz"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Heart Rate"
           }
         },
         "es" : {
@@ -3817,14 +3951,9 @@
             "state" : "needs_review",
             "value" : "心率"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Heart Rate"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Heart Rate Access" : {
       "localizations" : {
@@ -3832,6 +3961,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenz-Zugriff"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Heart Rate Access"
           }
         },
         "es" : {
@@ -3869,14 +4004,9 @@
             "state" : "needs_review",
             "value" : "心率取用權限"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Heart Rate Access"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Heart Rate Source" : {
       "localizations" : {
@@ -3884,6 +4014,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenzquelle"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Heart Rate Source"
           }
         },
         "es" : {
@@ -3921,14 +4057,9 @@
             "state" : "needs_review",
             "value" : "心率來源"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Heart Rate Source"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Heart rate graph" : {
       "localizations" : {
@@ -3936,6 +4067,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenzdiagramm"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Heart rate graph"
           }
         },
         "es" : {
@@ -3973,14 +4110,9 @@
             "state" : "needs_review",
             "value" : "心率圖表"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Heart rate graph"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Heart rate unavailable" : {
       "localizations" : {
@@ -3988,6 +4120,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenz nicht verfügbar"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Heart rate unavailable"
           }
         },
         "es" : {
@@ -4025,14 +4163,9 @@
             "state" : "needs_review",
             "value" : "心率無法使用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Heart rate unavailable"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Heart-rate source" : {
       "localizations" : {
@@ -4040,6 +4173,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Herzfrequenzquelle"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Heart-rate source"
           }
         },
         "es" : {
@@ -4077,14 +4216,9 @@
             "state" : "needs_review",
             "value" : "心率來源"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Heart-rate source"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Inactive" : {
       "localizations" : {
@@ -4092,6 +4226,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Inaktiv"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Inactive"
           }
         },
         "es" : {
@@ -4129,14 +4269,9 @@
             "state" : "needs_review",
             "value" : "未啟用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Inactive"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Increase %@" : {
       "localizations" : {
@@ -4144,6 +4279,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%@ erhöhen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Increase %@"
           }
         },
         "es" : {
@@ -4181,14 +4322,9 @@
             "state" : "needs_review",
             "value" : "增加%@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Increase %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Installed Watch App" : {
       "localizations" : {
@@ -4196,6 +4332,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Installierte Watch-App"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Installed Watch App"
           }
         },
         "es" : {
@@ -4233,14 +4375,9 @@
             "state" : "needs_review",
             "value" : "已安裝的手錶 App"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Installed Watch App"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Keep Workout" : {
       "localizations" : {
@@ -4248,6 +4385,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training behalten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Keep Workout"
           }
         },
         "es" : {
@@ -4285,14 +4428,9 @@
             "state" : "needs_review",
             "value" : "保留訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Keep Workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "Laps" : {
       "localizations" : {
@@ -4300,6 +4438,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Bahnen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Laps"
           }
         },
         "es" : {
@@ -4337,14 +4481,9 @@
             "state" : "needs_review",
             "value" : "趟數"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Laps"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Last Set" : {
       "localizations" : {
@@ -4352,6 +4491,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Letzter Satz"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Last Set"
           }
         },
         "es" : {
@@ -4389,14 +4534,9 @@
             "state" : "needs_review",
             "value" : "上一組"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Last Set"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Last Time" : {
       "localizations" : {
@@ -4404,6 +4544,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Letztes Mal"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Last Time"
           }
         },
         "es" : {
@@ -4441,14 +4587,9 @@
             "state" : "needs_review",
             "value" : "上次"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Last Time"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Last successful sync" : {
       "localizations" : {
@@ -4456,6 +4597,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Letzte erfolgreiche Synchronisierung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Last successful sync"
           }
         },
         "es" : {
@@ -4493,14 +4640,9 @@
             "state" : "needs_review",
             "value" : "上次成功同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Last successful sync"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Last sync" : {
       "localizations" : {
@@ -4508,6 +4650,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Letzte Synchronisierung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Last sync"
           }
         },
         "es" : {
@@ -4545,14 +4693,9 @@
             "state" : "needs_review",
             "value" : "上次同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Last sync"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Last sync error" : {
       "localizations" : {
@@ -4560,6 +4703,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Letzter Synchronisierungsfehler"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Last sync error"
           }
         },
         "es" : {
@@ -4597,14 +4746,9 @@
             "state" : "needs_review",
             "value" : "上次同步錯誤"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Last sync error"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Lifter" : {
       "localizations" : {
@@ -4612,6 +4756,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Trainierende Person"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Lifter"
           }
         },
         "es" : {
@@ -4649,14 +4799,9 @@
             "state" : "needs_review",
             "value" : "訓練者"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Lifter"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Partners (Cadence/Cadence Watch App Watch App/WatchPartnersView.swift); Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Lifting" : {
       "localizations" : {
@@ -4664,6 +4809,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Krafttraining"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Lifting"
           }
         },
         "es" : {
@@ -4701,14 +4852,9 @@
             "state" : "needs_review",
             "value" : "力量訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Lifting"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Partners (Cadence/Cadence Watch App Watch App/WatchPartnersView.swift)"
     },
     "Live HR" : {
       "localizations" : {
@@ -4716,6 +4862,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Live-HF"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Live HR"
           }
         },
         "es" : {
@@ -4753,14 +4905,9 @@
             "state" : "needs_review",
             "value" : "即時心率"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Live HR"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift); Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Loading exercises" : {
       "localizations" : {
@@ -4768,6 +4915,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Übungen werden geladen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Loading exercises"
           }
         },
         "es" : {
@@ -4805,14 +4958,9 @@
             "state" : "needs_review",
             "value" : "正在載入動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Loading exercises"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Loading..." : {
       "localizations" : {
@@ -4820,6 +4968,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wird geladen …"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Loading..."
           }
         },
         "es" : {
@@ -4857,14 +5011,9 @@
             "state" : "needs_review",
             "value" : "正在載入…"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Loading..."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength (Cadence/Cadence Watch App Watch App/WatchStrengthView.swift)"
     },
     "Lock" : {
       "localizations" : {
@@ -4872,6 +5021,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Sperren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Lock"
           }
         },
         "es" : {
@@ -4909,14 +5064,9 @@
             "state" : "needs_review",
             "value" : "鎖定"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Lock"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Controls (Cadence/Cadence Watch App Watch App/WatchCardioControlsView.swift)"
     },
     "Log Set" : {
       "localizations" : {
@@ -4924,6 +5074,12 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Satz protokollieren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Log Set"
           }
         },
         "es" : {
@@ -4961,14 +5117,9 @@
             "state" : "translated",
             "value" : "記錄組"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Log Set"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Logging" : {
       "localizations" : {
@@ -4976,6 +5127,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Protokoll"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Logging"
           }
         },
         "es" : {
@@ -5013,14 +5170,9 @@
             "state" : "needs_review",
             "value" : "記錄"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Logging"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Matches" : {
       "localizations" : {
@@ -5028,6 +5180,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Treffer"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Matches"
           }
         },
         "es" : {
@@ -5065,14 +5223,9 @@
             "state" : "needs_review",
             "value" : "符合項目"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Matches"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Max HR" : {
       "localizations" : {
@@ -5080,6 +5233,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Max. HF"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Max HR"
           }
         },
         "es" : {
@@ -5117,14 +5276,9 @@
             "state" : "needs_review",
             "value" : "最大心率"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Max HR"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "More muscles" : {
       "localizations" : {
@@ -5132,6 +5286,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Mehr Muskeln"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "More muscles"
           }
         },
         "es" : {
@@ -5169,14 +5329,9 @@
             "state" : "needs_review",
             "value" : "更多肌群"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "More muscles"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Muscle groups" : {
       "localizations" : {
@@ -5184,6 +5339,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Muskelgruppen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Muscle groups"
           }
         },
         "es" : {
@@ -5221,14 +5382,9 @@
             "state" : "needs_review",
             "value" : "肌群"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Muscle groups"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "My Last Exercises" : {
       "localizations" : {
@@ -5236,6 +5392,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Meine letzten Übungen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "My Last Exercises"
           }
         },
         "es" : {
@@ -5273,14 +5435,9 @@
             "state" : "needs_review",
             "value" : "我最近的動作"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "My Last Exercises"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Never" : {
       "localizations" : {
@@ -5288,6 +5445,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nie"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Never"
           }
         },
         "es" : {
@@ -5325,14 +5488,9 @@
             "state" : "needs_review",
             "value" : "從不"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Never"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Next Set" : {
       "localizations" : {
@@ -5340,6 +5498,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nächster Satz"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Next Set"
           }
         },
         "es" : {
@@ -5377,14 +5541,9 @@
             "state" : "needs_review",
             "value" : "下一組"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Next Set"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Rest (Cadence/Cadence Watch App Watch App/WatchRestView.swift)"
     },
     "No matches" : {
       "localizations" : {
@@ -5392,6 +5551,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Keine Treffer"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No matches"
           }
         },
         "es" : {
@@ -5429,14 +5594,9 @@
             "state" : "needs_review",
             "value" : "無符合結果"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "No matches"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "No partner" : {
       "localizations" : {
@@ -5444,6 +5604,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Kein Partner"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "No partner"
           }
         },
         "es" : {
@@ -5481,14 +5647,9 @@
             "state" : "needs_review",
             "value" : "無夥伴"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "No partner"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "None" : {
       "localizations" : {
@@ -5496,6 +5657,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Keine"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "None"
           }
         },
         "es" : {
@@ -5533,14 +5700,9 @@
             "state" : "needs_review",
             "value" : "無"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "None"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Not activated" : {
       "localizations" : {
@@ -5548,6 +5710,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nicht aktiviert"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Not activated"
           }
         },
         "es" : {
@@ -5585,14 +5753,9 @@
             "state" : "needs_review",
             "value" : "未啟用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Not activated"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Not active" : {
       "localizations" : {
@@ -5600,6 +5763,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nicht aktiv"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Not active"
           }
         },
         "es" : {
@@ -5637,14 +5806,9 @@
             "state" : "needs_review",
             "value" : "未啟用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Not active"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Not reachable" : {
       "localizations" : {
@@ -5652,6 +5816,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nicht erreichbar"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Not reachable"
           }
         },
         "es" : {
@@ -5689,14 +5859,9 @@
             "state" : "needs_review",
             "value" : "無法連線"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Not reachable"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Open Cladiron on iPhone" : {
       "localizations" : {
@@ -5704,6 +5869,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Cladiron auf dem iPhone öffnen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Open Cladiron on iPhone"
           }
         },
         "es" : {
@@ -5741,14 +5912,9 @@
             "state" : "needs_review",
             "value" : "在 iPhone 上打開 Cladiron"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Open Cladiron on iPhone"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Workout Manager Sync (Cadence/Cadence Watch App Watch App/WatchWorkoutManagerSync.swift)"
     },
     "Open Cladiron on iPhone to sync today." : {
       "localizations" : {
@@ -5756,6 +5922,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Öffne Cladiron auf dem iPhone, um heute zu synchronisieren."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Open Cladiron on iPhone to sync today."
           }
         },
         "es" : {
@@ -5793,14 +5965,9 @@
             "state" : "needs_review",
             "value" : "在 iPhone 上打開 Cladiron 以同步今天的資料。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Open Cladiron on iPhone to sync today."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Other" : {
       "localizations" : {
@@ -5808,6 +5975,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Andere"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Other"
           }
         },
         "es" : {
@@ -5845,14 +6018,9 @@
             "state" : "needs_review",
             "value" : "其他"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Other"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Partners" : {
       "localizations" : {
@@ -5860,6 +6028,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Partner"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Partners"
           }
         },
         "es" : {
@@ -5897,14 +6071,9 @@
             "state" : "needs_review",
             "value" : "夥伴"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Partners"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Partners (Cadence/Cadence Watch App Watch App/WatchPartnersView.swift); Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift); Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Pause" : {
       "localizations" : {
@@ -5912,6 +6081,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Pausieren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pause"
           }
         },
         "es" : {
@@ -5949,14 +6124,9 @@
             "state" : "needs_review",
             "value" : "暫停"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Pause"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Controls (Cadence/Cadence Watch App Watch App/WatchCardioControlsView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift); Watch Strength (Cadence/Cadence Watch App Watch App/WatchStrengthView.swift)"
     },
     "Phone Connection" : {
       "localizations" : {
@@ -5964,6 +6134,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "iPhone-Verbindung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Phone Connection"
           }
         },
         "es" : {
@@ -6001,14 +6177,9 @@
             "state" : "needs_review",
             "value" : "iPhone 連線"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Phone Connection"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Phone Sync" : {
       "localizations" : {
@@ -6016,6 +6187,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "iPhone-Synchronisierung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Phone Sync"
           }
         },
         "es" : {
@@ -6053,14 +6230,9 @@
             "state" : "needs_review",
             "value" : "iPhone 同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Phone Sync"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Phone reachability" : {
       "localizations" : {
@@ -6068,6 +6240,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "iPhone-Erreichbarkeit"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Phone reachability"
           }
         },
         "es" : {
@@ -6105,14 +6283,9 @@
             "state" : "needs_review",
             "value" : "iPhone 可連線性"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Phone reachability"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Phone unavailable" : {
       "localizations" : {
@@ -6120,6 +6293,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "iPhone nicht verfügbar"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Phone unavailable"
           }
         },
         "es" : {
@@ -6157,14 +6336,9 @@
             "state" : "needs_review",
             "value" : "iPhone 無法使用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Phone unavailable"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Workout Manager Sync (Cadence/Cadence Watch App Watch App/WatchWorkoutManagerSync.swift)"
     },
     "Plate" : {
       "localizations" : {
@@ -6172,6 +6346,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Hantelscheibe"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Plate"
           }
         },
         "es" : {
@@ -6209,14 +6389,9 @@
             "state" : "needs_review",
             "value" : "槓片"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Plate"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Prescriptions" : {
       "localizations" : {
@@ -6224,6 +6399,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Vorgaben"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Prescriptions"
           }
         },
         "es" : {
@@ -6261,14 +6442,9 @@
             "state" : "needs_review",
             "value" : "訓練處方"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Prescriptions"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Previous Watch data was recovered to %@." : {
       "localizations" : {
@@ -6276,6 +6452,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Frühere Watch-Daten wurden in %@ wiederhergestellt."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Previous Watch data was recovered to %@."
           }
         },
         "es" : {
@@ -6313,14 +6495,9 @@
             "state" : "needs_review",
             "value" : "之前的手錶資料已復原到 %@。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Previous Watch data was recovered to %@."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence_Watch_App App (Cadence/Cadence Watch App Watch App/Cadence_Watch_AppApp.swift)"
     },
     "Protocol" : {
       "localizations" : {
@@ -6328,6 +6505,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Protokoll"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Protocol"
           }
         },
         "es" : {
@@ -6365,14 +6548,9 @@
             "state" : "needs_review",
             "value" : "測驗方案"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Protocol"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "REST" : {
       "localizations" : {
@@ -6380,6 +6558,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "PAUSE"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "REST"
           }
         },
         "es" : {
@@ -6417,18 +6601,19 @@
             "state" : "needs_review",
             "value" : "休息"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "REST"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Rest (Cadence/Cadence Watch App Watch App/WatchRestView.swift)"
     },
     "RPE %lld" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "RPE %lld"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "RPE %lld"
@@ -6469,14 +6654,9 @@
             "state" : "needs_review",
             "value" : "RPE %lld"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "RPE %lld"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Reachable" : {
       "localizations" : {
@@ -6484,6 +6664,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Erreichbar"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Reachable"
           }
         },
         "es" : {
@@ -6521,14 +6707,9 @@
             "state" : "needs_review",
             "value" : "可連線"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Reachable"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Rep Pattern" : {
       "localizations" : {
@@ -6536,6 +6717,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wiederholungsmuster"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Rep Pattern"
           }
         },
         "es" : {
@@ -6573,14 +6760,9 @@
             "state" : "needs_review",
             "value" : "次數模式"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rep Pattern"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Rep Scheme" : {
       "localizations" : {
@@ -6588,6 +6770,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wiederholungsschema"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Rep Scheme"
           }
         },
         "es" : {
@@ -6625,14 +6813,9 @@
             "state" : "needs_review",
             "value" : "次數方案"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rep Scheme"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Reps" : {
       "localizations" : {
@@ -6640,6 +6823,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wdh."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Reps"
           }
         },
         "es" : {
@@ -6677,14 +6866,9 @@
             "state" : "needs_review",
             "value" : "次數"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Reps"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Request HealthKit Access" : {
       "localizations" : {
@@ -6692,6 +6876,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "HealthKit-Zugriff anfordern"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Request HealthKit Access"
           }
         },
         "es" : {
@@ -6729,14 +6919,9 @@
             "state" : "needs_review",
             "value" : "請求 HealthKit 取用權限"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Request HealthKit Access"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Requesting…" : {
       "localizations" : {
@@ -6744,6 +6929,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wird angefordert …"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Requesting…"
           }
         },
         "es" : {
@@ -6781,14 +6972,9 @@
             "state" : "needs_review",
             "value" : "正在請求…"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Requesting…"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Rest" : {
       "localizations" : {
@@ -6796,6 +6982,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Pause"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Rest"
           }
         },
         "es" : {
@@ -6833,27 +7025,28 @@
             "state" : "needs_review",
             "value" : "休息"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rest"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift); Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift); Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Rest (%lld/%lld)" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Pause (%lld/%lld)"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Rest (%1$lld/%2$lld)"
           }
         },
-        "de" : {
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Pause (%lld/%lld)"
+            "value" : "Rest (%lld/%lld)"
           }
         },
         "es" : {
@@ -6891,14 +7084,9 @@
             "state" : "needs_review",
             "value" : "休息（%lld/%lld）"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rest (%lld/%lld)"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Resume" : {
       "localizations" : {
@@ -6906,6 +7094,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Fortsetzen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Resume"
           }
         },
         "es" : {
@@ -6943,14 +7137,9 @@
             "state" : "needs_review",
             "value" : "繼續"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Resume"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Controls (Cadence/Cadence Watch App Watch App/WatchCardioControlsView.swift); Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Resume %@" : {
       "localizations" : {
@@ -6958,6 +7147,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "%@ fortsetzen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Resume %@"
           }
         },
         "es" : {
@@ -6995,14 +7190,9 @@
             "state" : "needs_review",
             "value" : "繼續%@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Resume %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Retry sync" : {
       "localizations" : {
@@ -7010,6 +7200,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Synchronisierung erneut versuchen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Retry sync"
           }
         },
         "es" : {
@@ -7047,14 +7243,9 @@
             "state" : "needs_review",
             "value" : "重試同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Retry sync"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Round" : {
       "localizations" : {
@@ -7062,6 +7253,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Runde"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Round"
           }
         },
         "es" : {
@@ -7099,27 +7296,28 @@
             "state" : "needs_review",
             "value" : "輪"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Round"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Round %lld/%lld" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Runde %lld/%lld"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Round %1$lld/%2$lld"
           }
         },
-        "de" : {
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Runde %lld/%lld"
+            "value" : "Round %lld/%lld"
           }
         },
         "es" : {
@@ -7157,14 +7355,9 @@
             "state" : "needs_review",
             "value" : "第 %lld/%lld 輪"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Round %lld/%lld"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Rounds" : {
       "localizations" : {
@@ -7172,6 +7365,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Runden"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Rounds"
           }
         },
         "es" : {
@@ -7209,14 +7408,9 @@
             "state" : "needs_review",
             "value" : "輪數"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rounds"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Rowing" : {
       "localizations" : {
@@ -7224,6 +7418,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Rudern"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Rowing"
           }
         },
         "es" : {
@@ -7261,14 +7461,9 @@
             "state" : "needs_review",
             "value" : "划船"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Rowing"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Run" : {
       "localizations" : {
@@ -7276,6 +7471,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Laufen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Run"
           }
         },
         "es" : {
@@ -7313,14 +7514,9 @@
             "state" : "needs_review",
             "value" : "跑步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Run"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Save" : {
       "localizations" : {
@@ -7328,6 +7524,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Sichern"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Save"
           }
         },
         "es" : {
@@ -7365,14 +7567,9 @@
             "state" : "needs_review",
             "value" : "儲存"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Save"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Save workout" : {
       "localizations" : {
@@ -7380,6 +7577,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training sichern"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Save workout"
           }
         },
         "es" : {
@@ -7417,14 +7620,9 @@
             "state" : "needs_review",
             "value" : "儲存訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Save workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Saved" : {
       "localizations" : {
@@ -7432,6 +7630,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gesichert"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Saved"
           }
         },
         "es" : {
@@ -7469,14 +7673,9 @@
             "state" : "needs_review",
             "value" : "已儲存"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Saved"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Summary (Cadence/Cadence Watch App Watch App/WatchStrengthSummaryView.swift)"
     },
     "Scanning..." : {
       "localizations" : {
@@ -7484,6 +7683,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Suche läuft …"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Scanning..."
           }
         },
         "es" : {
@@ -7521,14 +7726,9 @@
             "state" : "needs_review",
             "value" : "正在掃描…"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Scanning..."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Search" : {
       "localizations" : {
@@ -7536,6 +7736,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Suchen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Search"
           }
         },
         "es" : {
@@ -7573,14 +7779,9 @@
             "state" : "needs_review",
             "value" : "搜尋"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Search"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Searching" : {
       "localizations" : {
@@ -7588,6 +7789,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Suche läuft"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Searching"
           }
         },
         "es" : {
@@ -7625,14 +7832,9 @@
             "state" : "needs_review",
             "value" : "正在搜尋"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Searching"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Set %lld" : {
       "localizations" : {
@@ -7640,6 +7842,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Satz %lld"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Set %lld"
           }
         },
         "es" : {
@@ -7677,14 +7885,9 @@
             "state" : "needs_review",
             "value" : "第 %lld 組"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Set %lld"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Settings" : {
       "localizations" : {
@@ -7692,6 +7895,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Einstellungen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Settings"
           }
         },
         "es" : {
@@ -7729,14 +7938,9 @@
             "state" : "needs_review",
             "value" : "設定"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Settings"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Setup" : {
       "localizations" : {
@@ -7744,6 +7948,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Einrichtung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Setup"
           }
         },
         "es" : {
@@ -7781,14 +7991,9 @@
             "state" : "needs_review",
             "value" : "設定"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Setup"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Show Detail" : {
       "localizations" : {
@@ -7796,6 +8001,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Details anzeigen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Show Detail"
           }
         },
         "es" : {
@@ -7833,14 +8044,9 @@
             "state" : "needs_review",
             "value" : "顯示詳細資料"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Show Detail"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift)"
     },
     "Skip" : {
       "localizations" : {
@@ -7848,6 +8054,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Überspringen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Skip"
           }
         },
         "es" : {
@@ -7885,14 +8097,9 @@
             "state" : "needs_review",
             "value" : "略過"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Skip"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cool Down (Cadence/Cadence Watch App Watch App/WatchCoolDownView.swift)"
     },
     "Skip phase" : {
       "localizations" : {
@@ -7900,6 +8107,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Phase überspringen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Skip phase"
           }
         },
         "es" : {
@@ -7937,14 +8150,62 @@
             "state" : "needs_review",
             "value" : "略過階段"
           }
+        }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
+    },
+    "Spoken workout cues" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gesprochene Trainingshinweise"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Indicaciones habladas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Consignes vocales"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gesproken trainingsaanwijzingen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Dicas faladas de treino"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "语音训练提示"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "語音訓練提示"
+          }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Skip phase"
+            "value" : "Spoken workout cues"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Start" : {
       "localizations" : {
@@ -7952,6 +8213,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start"
           }
         },
         "es" : {
@@ -7989,14 +8256,9 @@
             "state" : "needs_review",
             "value" : "開始"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift); Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift); Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Start cycle" : {
       "localizations" : {
@@ -8004,6 +8266,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Radfahren starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start cycle"
           }
         },
         "es" : {
@@ -8041,14 +8309,9 @@
             "state" : "needs_review",
             "value" : "開始騎車"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start cycle"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Start monitoring" : {
       "localizations" : {
@@ -8056,6 +8319,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Überwachung starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start monitoring"
           }
         },
         "es" : {
@@ -8093,14 +8362,9 @@
             "state" : "needs_review",
             "value" : "開始監測"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start monitoring"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Start other" : {
       "localizations" : {
@@ -8108,6 +8372,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Anderes starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start other"
           }
         },
         "es" : {
@@ -8145,14 +8415,9 @@
             "state" : "needs_review",
             "value" : "開始其他"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start other"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Start row" : {
       "localizations" : {
@@ -8160,6 +8425,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Rudern starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start row"
           }
         },
         "es" : {
@@ -8197,14 +8468,9 @@
             "state" : "needs_review",
             "value" : "開始划船"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start row"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Start run" : {
       "localizations" : {
@@ -8212,6 +8478,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Lauf starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start run"
           }
         },
         "es" : {
@@ -8249,14 +8521,9 @@
             "state" : "needs_review",
             "value" : "開始跑步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start run"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Start swim" : {
       "localizations" : {
@@ -8264,6 +8531,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Schwimmen starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start swim"
           }
         },
         "es" : {
@@ -8301,14 +8574,9 @@
             "state" : "needs_review",
             "value" : "開始游泳"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start swim"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Start walk" : {
       "localizations" : {
@@ -8316,6 +8584,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gehen starten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Start walk"
           }
         },
         "es" : {
@@ -8353,18 +8627,19 @@
             "state" : "needs_review",
             "value" : "開始步行"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Start walk"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Status" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Status"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Status"
@@ -8405,14 +8680,9 @@
             "state" : "needs_review",
             "value" : "狀態"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Status"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Stop" : {
       "localizations" : {
@@ -8420,6 +8690,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Stoppen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Stop"
           }
         },
         "es" : {
@@ -8457,14 +8733,9 @@
             "state" : "needs_review",
             "value" : "停止"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Stop"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Lives (Cadence/Cadence Watch App Watch App/WatchLiveViews.swift)"
     },
     "Strength" : {
       "localizations" : {
@@ -8472,6 +8743,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Kraft"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Strength"
           }
         },
         "es" : {
@@ -8509,14 +8786,9 @@
             "state" : "needs_review",
             "value" : "力量"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Strength"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift); Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift); Watch Strength Start (Cadence/Cadence Watch App Watch App/WatchStrengthStartView.swift)"
     },
     "Strength Workout" : {
       "localizations" : {
@@ -8524,6 +8796,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Krafttraining"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Strength Workout"
           }
         },
         "es" : {
@@ -8561,27 +8839,28 @@
             "state" : "needs_review",
             "value" : "力量訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Strength Workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Subtract %@ %@" : {
       "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%@ %@ abziehen"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Subtract %1$@ %2$@"
           }
         },
-        "de" : {
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "%@ %@ abziehen"
+            "value" : "Subtract %@ %@"
           }
         },
         "es" : {
@@ -8619,14 +8898,9 @@
             "state" : "needs_review",
             "value" : "減去 %@ %@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Subtract %@ %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Swim" : {
       "localizations" : {
@@ -8634,6 +8908,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Schwimmen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Swim"
           }
         },
         "es" : {
@@ -8671,14 +8951,9 @@
             "state" : "needs_review",
             "value" : "游泳"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Swim"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Sync from iPhone" : {
       "localizations" : {
@@ -8686,6 +8961,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Vom iPhone synchronisieren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sync from iPhone"
           }
         },
         "es" : {
@@ -8723,14 +9004,9 @@
             "state" : "needs_review",
             "value" : "從 iPhone 同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sync from iPhone"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence_Watch_App App (Cadence/Cadence Watch App Watch App/Cadence_Watch_AppApp.swift)"
     },
     "Sync now" : {
       "localizations" : {
@@ -8738,6 +9014,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Jetzt synchronisieren"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sync now"
           }
         },
         "es" : {
@@ -8775,14 +9057,9 @@
             "state" : "needs_review",
             "value" : "立即同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sync now"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Sync status" : {
       "localizations" : {
@@ -8790,6 +9067,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Synchronisierungsstatus"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Sync status"
           }
         },
         "es" : {
@@ -8827,14 +9110,9 @@
             "state" : "needs_review",
             "value" : "同步狀態"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Sync status"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Syncing to iPhone…" : {
       "localizations" : {
@@ -8842,6 +9120,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Synchronisierung mit iPhone …"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Syncing to iPhone…"
           }
         },
         "es" : {
@@ -8879,14 +9163,9 @@
             "state" : "needs_review",
             "value" : "正在同步到 iPhone…"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Syncing to iPhone…"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "The version and build above identify the Watch binary currently installed. Phone reachability must say Reachable before Sync now can send a live request." : {
       "localizations" : {
@@ -8894,6 +9173,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Version und Build oben kennzeichnen die aktuell installierte Watch-App. „iPhone-Erreichbarkeit“ muss „Erreichbar“ anzeigen, bevor „Jetzt synchronisieren“ eine Live-Anfrage senden kann."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "The version and build above identify the Watch binary currently installed. Phone reachability must say Reachable before Sync now can send a live request."
           }
         },
         "es" : {
@@ -8931,14 +9216,9 @@
             "state" : "needs_review",
             "value" : "上方的版本和建置編號標識目前安裝的手錶 App。「iPhone 可連線性」須顯示「可連線」，「立即同步」才能傳送即時請求。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "The version and build above identify the Watch binary currently installed. Phone reachability must say Reachable before Sync now can send a live request."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "This Workout" : {
       "localizations" : {
@@ -8946,6 +9226,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Dieses Training"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "This Workout"
           }
         },
         "es" : {
@@ -8983,14 +9269,9 @@
             "state" : "needs_review",
             "value" : "本次訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "This Workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "This removes the workout and all sets logged on the watch." : {
       "localizations" : {
@@ -8998,6 +9279,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Dadurch werden das Training und alle auf der Watch protokollierten Sätze entfernt."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "This removes the workout and all sets logged on the watch."
           }
         },
         "es" : {
@@ -9035,14 +9322,9 @@
             "state" : "needs_review",
             "value" : "這將移除此訓練以及在手錶上記錄的所有組。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "This removes the workout and all sets logged on the watch."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Strength Home (Cadence/Cadence Watch App Watch App/WatchStrengthHomeView.swift)"
     },
     "Tot %@" : {
       "localizations" : {
@@ -9050,6 +9332,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Ges. %@"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Tot %@"
           }
         },
         "es" : {
@@ -9087,14 +9375,9 @@
             "state" : "needs_review",
             "value" : "總計 %@"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Tot %@"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift)"
     },
     "Total" : {
       "localizations" : {
@@ -9102,6 +9385,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gesamt"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Total"
           }
         },
         "es" : {
@@ -9139,14 +9428,9 @@
             "state" : "needs_review",
             "value" : "總計"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Total"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Try Again" : {
       "localizations" : {
@@ -9154,6 +9438,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Erneut versuchen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Try Again"
           }
         },
         "es" : {
@@ -9191,14 +9481,9 @@
             "state" : "needs_review",
             "value" : "重試"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Try Again"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence_Watch_App App (Cadence/Cadence Watch App Watch App/Cadence_Watch_AppApp.swift); Watch Health Authorization (Cadence/Cadence Watch App Watch App/WatchHealthAuthorizationView.swift)"
     },
     "Unavailable" : {
       "localizations" : {
@@ -9206,6 +9491,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nicht verfügbar"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Unavailable"
           }
         },
         "es" : {
@@ -9243,14 +9534,9 @@
             "state" : "needs_review",
             "value" : "無法使用"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unavailable"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Units" : {
       "localizations" : {
@@ -9258,6 +9544,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Einheiten"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Units"
           }
         },
         "es" : {
@@ -9295,14 +9587,9 @@
             "state" : "needs_review",
             "value" : "單位"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Units"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift); Watch Units (Cadence/Cadence Watch App Watch App/WatchUnitsView.swift)"
     },
     "Unknown" : {
       "localizations" : {
@@ -9310,6 +9597,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Unbekannt"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Unknown"
           }
         },
         "es" : {
@@ -9347,14 +9640,9 @@
             "state" : "needs_review",
             "value" : "未知"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unknown"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Unsupported" : {
       "localizations" : {
@@ -9362,6 +9650,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Nicht unterstützt"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Unsupported"
           }
         },
         "es" : {
@@ -9399,14 +9693,9 @@
             "state" : "needs_review",
             "value" : "不支援"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Unsupported"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch About (Cadence/Cadence Watch App Watch App/WatchAboutView.swift)"
     },
     "Up next" : {
       "localizations" : {
@@ -9414,6 +9703,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Als Nächstes"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Up next"
           }
         },
         "es" : {
@@ -9451,14 +9746,9 @@
             "state" : "needs_review",
             "value" : "接下來"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Up next"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Partners (Cadence/Cadence Watch App Watch App/WatchPartnersView.swift)"
     },
     "Walk" : {
       "localizations" : {
@@ -9466,6 +9756,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gehen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Walk"
           }
         },
         "es" : {
@@ -9503,14 +9799,9 @@
             "state" : "needs_review",
             "value" : "步行"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Walk"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Setup (Cadence/Cadence Watch App Watch App/WatchCardioSetupView.swift)"
     },
     "Warm-up" : {
       "localizations" : {
@@ -9518,6 +9809,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Aufwärmen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Warm-up"
           }
         },
         "es" : {
@@ -9555,14 +9852,9 @@
             "state" : "needs_review",
             "value" : "暖身"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Warm-up"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval (Cadence/Cadence Watch App Watch App/WatchIntervalView.swift); Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Warm-up off" : {
       "localizations" : {
@@ -9570,6 +9862,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Aufwärmen aus"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Warm-up off"
           }
         },
         "es" : {
@@ -9607,14 +9905,9 @@
             "state" : "needs_review",
             "value" : "暖身關"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Warm-up off"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Warm-up on" : {
       "localizations" : {
@@ -9622,6 +9915,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Aufwärmen ein"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Warm-up on"
           }
         },
         "es" : {
@@ -9659,14 +9958,9 @@
             "state" : "needs_review",
             "value" : "暖身開"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Warm-up on"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Warmup" : {
       "localizations" : {
@@ -9674,6 +9968,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Aufwärmen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Warmup"
           }
         },
         "es" : {
@@ -9711,14 +10011,9 @@
             "state" : "needs_review",
             "value" : "暖身"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Warmup"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Watch storage needs attention" : {
       "localizations" : {
@@ -9726,6 +10021,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Watch-Speicher braucht Aufmerksamkeit"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Watch storage needs attention"
           }
         },
         "es" : {
@@ -9763,14 +10064,9 @@
             "state" : "needs_review",
             "value" : "手錶儲存空間需要處理"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Watch storage needs attention"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence_Watch_App App (Cadence/Cadence Watch App Watch App/Cadence_Watch_AppApp.swift)"
     },
     "Weight" : {
       "localizations" : {
@@ -9778,6 +10074,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gewicht"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Weight"
           }
         },
         "es" : {
@@ -9815,14 +10117,9 @@
             "state" : "needs_review",
             "value" : "重量"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Weight"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Units (Cadence/Cadence Watch App Watch App/WatchUnitsView.swift)"
     },
     "Weight (%@)" : {
       "localizations" : {
@@ -9830,6 +10127,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gewicht (%@)"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Weight (%@)"
           }
         },
         "es" : {
@@ -9867,14 +10170,9 @@
             "state" : "needs_review",
             "value" : "重量（%@）"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Weight (%@)"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Weight adjustment" : {
       "localizations" : {
@@ -9882,6 +10180,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Gewichtsanpassung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Weight adjustment"
           }
         },
         "es" : {
@@ -9919,14 +10223,9 @@
             "state" : "needs_review",
             "value" : "重量調整"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Weight adjustment"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     },
     "Will sync when iPhone is available" : {
       "localizations" : {
@@ -9934,6 +10233,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Wird synchronisiert, sobald das iPhone verfügbar ist"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Will sync when iPhone is available"
           }
         },
         "es" : {
@@ -9971,14 +10276,9 @@
             "state" : "needs_review",
             "value" : "iPhone 可用時將同步"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Will sync when iPhone is available"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Cardio Summary (Cadence/Cadence Watch App Watch App/WatchCardioSummaryView.swift)"
     },
     "Work" : {
       "localizations" : {
@@ -9986,6 +10286,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Belastung"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Work"
           }
         },
         "es" : {
@@ -10023,14 +10329,9 @@
             "state" : "needs_review",
             "value" : "訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Work"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Interval Setup (Cadence/Cadence Watch App Watch App/WatchIntervalSetupView.swift)"
     },
     "Workout" : {
       "localizations" : {
@@ -10038,6 +10339,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Training"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Workout"
           }
         },
         "es" : {
@@ -10075,14 +10382,9 @@
             "state" : "needs_review",
             "value" : "訓練"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Workout"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Rest (Cadence/Cadence Watch App Watch App/WatchRestView.swift)"
     },
     "Your Plan" : {
       "localizations" : {
@@ -10090,6 +10392,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Dein Plan"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Your Plan"
           }
         },
         "es" : {
@@ -10127,14 +10435,9 @@
             "state" : "needs_review",
             "value" : "你的計畫"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Your Plan"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Root (Cadence/Cadence Watch App Watch App/WatchRootView.swift)"
     },
     "Your iPhone data is unaffected. The Watch is using a temporary store until it can try again." : {
       "localizations" : {
@@ -10142,6 +10445,12 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Deine iPhone-Daten sind nicht betroffen. Die Watch nutzt einen vorübergehenden Speicher, bis sie es erneut versuchen kann."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Your iPhone data is unaffected. The Watch is using a temporary store until it can try again."
           }
         },
         "es" : {
@@ -10179,18 +10488,19 @@
             "state" : "needs_review",
             "value" : "你的 iPhone 資料不受影響。手錶會使用暫存空間，直到可以重試。"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "Your iPhone data is unaffected. The Watch is using a temporary store until it can try again."
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence_Watch_App App (Cadence/Cadence Watch App Watch App/Cadence_Watch_AppApp.swift)"
     },
     "x%lld" : {
       "localizations" : {
         "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "x%lld"
+          }
+        },
+        "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "x%lld"
@@ -10231,14 +10541,9 @@
             "state" : "needs_review",
             "value" : "x%lld"
           }
-        },
-        "en-GB" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "x%lld"
-          }
         }
-      }
+      },
+      "comment" : "UI text shown in: Watch Set Keypad (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     }
   },
   "version" : "1.0"

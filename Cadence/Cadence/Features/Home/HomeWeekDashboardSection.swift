@@ -56,20 +56,20 @@ struct HomeWeekDashboardSection: View {
                 }
             }
             sectionCard {
-                disclosureRow(title: "Strength", value: dashboard.strength.displayText,
+                disclosureRow(title: String(localized: "Strength"), value: dashboard.strength.displayText,
                               progress: dashboard.strength.normalized,
                               tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
                               mode: .strength, identifier: "home.week.strength") {
-                    workoutGroup(title: "Strength", entries: strengthEntries)
+                    workoutGroup(title: String(localized: "Strength"), entries: strengthEntries)
                 }
             }
             sectionCard {
-                disclosureRow(title: "Cardio", value: dashboard.cardio.displayText,
+                disclosureRow(title: String(localized: "Cardio"), value: dashboard.cardio.displayText,
                               progress: dashboard.cardio.normalized,
                               tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
                               mode: .cardio, identifier: "home.week.cardio") {
                     VStack(alignment: .leading, spacing: 10) {
-                        workoutGroup(title: "Cardio", entries: cardioEntries)
+                        workoutGroup(title: String(localized: "Cardio"), entries: cardioEntries)
                         cardioMinutes
                         if let dose = dashboard.activityDose { activityDose(dose) }
                     }

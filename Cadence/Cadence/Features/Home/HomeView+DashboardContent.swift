@@ -102,7 +102,7 @@ extension HomeView {
                              title: session.title,
                              estimatedMinutes: session.durationMinutes,
                              exercises: Array(lines),
-                             reason: session.subtitle.isEmpty ? reason : "Why today: \(session.subtitle)",
+                             reason: session.subtitle.isEmpty ? reason : String(localized: "Why today: \(session.subtitle)"),
                              citationIDs: session.citationIds)
         }()
         let scheduled = todayScheduled.map {

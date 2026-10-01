@@ -246,7 +246,7 @@ struct WatchRootView: View {
         HStack {
             Image(systemName: "checklist.checked").foregroundStyle(.green)
             VStack(alignment: .leading, spacing: 2) {
-                Text(session.label.isEmpty ? "Strength" : session.label)
+                Text(session.label.isEmpty ? String(localized: "Strength") : session.label)
                     .fontWeight(.semibold)
                 if !session.exerciseNames.isEmpty {
                     Text(session.exerciseNames.prefix(3).joined(separator: ", "))
@@ -262,7 +262,7 @@ struct WatchRootView: View {
         HStack {
             Image(systemName: cardioType(from: session.cardioType).symbol).foregroundStyle(.teal)
             VStack(alignment: .leading, spacing: 2) {
-                Text(session.label.isEmpty ? "Cardio" : session.label)
+                Text(session.label.isEmpty ? String(localized: "Cardio") : session.label)
                     .fontWeight(.semibold)
                 let detail = plannedCardioDetail(session)
                 if !detail.isEmpty {

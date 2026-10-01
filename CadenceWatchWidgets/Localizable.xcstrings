@@ -51,7 +51,8 @@
             "value" : "Open Cladiron"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
     "Rest" : {
       "localizations" : {
@@ -103,7 +104,8 @@
             "value" : "Rest"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
     "See today's workout or the active rest timer." : {
       "localizations" : {
@@ -155,7 +157,8 @@
             "value" : "See today's workout or the active rest timer."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
     "Strength session" : {
       "localizations" : {
@@ -207,7 +210,8 @@
             "value" : "Strength session"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
     "Today" : {
       "localizations" : {
@@ -259,7 +263,8 @@
             "value" : "Today"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
     "Upper strength" : {
       "localizations" : {
@@ -311,7 +316,8 @@
             "value" : "Upper strength"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     },
     "Workout" : {
       "localizations" : {
@@ -363,7 +369,8 @@
             "value" : "Workout"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Watch Widgets (CadenceWatchWidgets/CadenceWatchWidgets.swift)"
     }
   },
   "version" : "1.0"

@@ -2,10 +2,12 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ %@/%@" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "%@/%@" : {
-      "shouldTranslate" : false
+      "shouldTranslate" : false,
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "+30s" : {
       "localizations" : {
@@ -57,7 +59,8 @@
             "value" : "+30s"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "About %lld min" : {
       "localizations" : {
@@ -109,7 +112,8 @@
             "value" : "About %lld min"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Add 30 seconds" : {
       "localizations" : {
@@ -161,7 +165,8 @@
             "value" : "Add 30 seconds"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Log" : {
       "localizations" : {
@@ -213,7 +218,8 @@
             "value" : "Log"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Log planned set" : {
       "localizations" : {
@@ -265,7 +271,8 @@
             "value" : "Log planned set"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Log set" : {
       "localizations" : {
@@ -317,7 +324,8 @@
             "value" : "Log set"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Log the next planned set in an active workout." : {
       "localizations" : {
@@ -369,7 +377,8 @@
             "value" : "Log the next planned set in an active workout."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Mobility" : {
       "localizations" : {
@@ -421,7 +430,8 @@
             "value" : "Mobility"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Next" : {
       "localizations" : {
@@ -473,7 +483,8 @@
             "value" : "Next"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Open Cladiron and start today's workout." : {
       "localizations" : {
@@ -525,7 +536,8 @@
             "value" : "Open Cladiron and start today's workout."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Open Cladiron to load this week's coverage" : {
       "localizations" : {
@@ -577,7 +589,8 @@
             "value" : "Open Cladiron to load this week's coverage"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Open Cladiron to load today's plan" : {
       "localizations" : {
@@ -629,7 +642,8 @@
             "value" : "Open Cladiron to load today's plan"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Open Cladiron to start today's workout." : {
       "localizations" : {
@@ -681,7 +695,8 @@
             "value" : "Open Cladiron to start today's workout."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Open Quick Talk for hands-free logging." : {
       "localizations" : {
@@ -733,7 +748,8 @@
             "value" : "Open Quick Talk for hands-free logging."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Open Quick Talk in the active workout." : {
       "localizations" : {
@@ -785,7 +801,8 @@
             "value" : "Open Quick Talk in the active workout."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Pending set token" : {
       "localizations" : {
@@ -837,7 +854,8 @@
             "value" : "Pending set token"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Recovery looks good" : {
       "localizations" : {
@@ -889,7 +907,8 @@
             "value" : "Recovery looks good"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Rest" : {
       "localizations" : {
@@ -941,7 +960,8 @@
             "value" : "Rest"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Rest or add a session" : {
       "localizations" : {
@@ -993,7 +1013,8 @@
             "value" : "Rest or add a session"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "See today's plan and readiness at a glance." : {
       "localizations" : {
@@ -1045,7 +1066,8 @@
             "value" : "See today's plan and readiness at a glance."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "See weekly muscle coverage at a glance." : {
       "localizations" : {
@@ -1097,7 +1119,8 @@
             "value" : "See weekly muscle coverage at a glance."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Sessions" : {
       "localizations" : {
@@ -1149,7 +1172,8 @@
             "value" : "Sessions"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Sets" : {
       "localizations" : {
@@ -1201,7 +1225,8 @@
             "value" : "Sets"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Skip" : {
       "localizations" : {
@@ -1253,7 +1278,8 @@
             "value" : "Skip"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Skip rest" : {
       "localizations" : {
@@ -1305,7 +1331,8 @@
             "value" : "Skip rest"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Start" : {
       "localizations" : {
@@ -1357,7 +1384,8 @@
             "value" : "Start"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Start workout" : {
       "localizations" : {
@@ -1409,7 +1437,8 @@
             "value" : "Start workout"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Strength session" : {
       "localizations" : {
@@ -1461,7 +1490,8 @@
             "value" : "Strength session"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Talk" : {
       "localizations" : {
@@ -1513,7 +1543,8 @@
             "value" : "Talk"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Talk to log" : {
       "localizations" : {
@@ -1565,7 +1596,8 @@
             "value" : "Talk to log"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Talk to log a set" : {
       "localizations" : {
@@ -1617,7 +1649,8 @@
             "value" : "Talk to log a set"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "This Week" : {
       "localizations" : {
@@ -1669,7 +1702,8 @@
             "value" : "This Week"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Today" : {
       "localizations" : {
@@ -1721,7 +1755,8 @@
             "value" : "Today"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Today's plan" : {
       "localizations" : {
@@ -1773,7 +1808,8 @@
             "value" : "Today's plan"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Today's plan: %@. %@." : {
       "localizations" : {
@@ -1831,7 +1867,8 @@
             "value" : "Today's plan: %@. %@."
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     },
     "Today's workout" : {
       "localizations" : {
@@ -1883,7 +1920,8 @@
             "value" : "Today's workout"
           }
         }
-      }
+      },
+      "comment" : "UI text shown in: Cadence Widgets (CadenceWidgets/CadenceWidgets.swift)"
     }
   },
   "version" : "1.0"

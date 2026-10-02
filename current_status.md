@@ -1,6 +1,45 @@
 # Current Status
 
-Updated: 2026-10-01
+Updated: 2026-10-02
+
+## Latest implementation — Muscle Map colours every tracked muscle completely (2026-10-02)
+
+Field report: on the Home muscle map some muscles were not coloured at all and
+others only partly. Audit of the 25 previous masks against the artwork (all
+groups forced to "on target"): only ~76% of the torso/limb muscle fill was
+coloured at all, and much of that by the wrong group. Front: forearms coloured the upper outer thigh instead of the
+forearm; abdominals missed most of the rectus segments; biceps covered only the
+upper arm's outer strip; quadriceps/adductors/abductors were horizontal bands
+cut through the thigh; tibialis/calves were mixed up on the right leg; neck
+covered one side. Back: mirrored seeds used x=0.5 while the back art's midline
+is x=0.547, so traps, lats, mid back and lower back were lopsided bands; most
+of both hamstrings, both calves except one gastrocnemius head and the right
+forearm were uncoloured, and the right glute was coloured as abductors.
+
+- `scripts/generate-muscle-masks.py` now segments by the artwork's own
+  outlines: it labels the connected red regions, assigns each to a group from a
+  hand-checked seed point (left and right halves seeded separately because one
+  side is the superficial layer and the other the deep layer), splits the few
+  shapes anatomy treats as two muscles (trapezius → neck/traps/mid back,
+  TFL → IT-band/vastus lateralis, glute max/medius, lumbar erectors under the
+  lats, medial triceps at the armpit), excludes head/hands/feet, floods
+  linework and slivers from the nearest region, fills enclosed specks, and
+  leaves the dark outline strokes uncoloured so the muscles stay legible.
+- Five new masks colour muscles that are visible on a panel without having a
+  callout there: front traps and triceps, back abdominals (obliques), back
+  adductors (gracilis) and back quadriceps (vastus lateralis).
+  `MuscleMapLayout.maskGroups(for:)` lists the masks per panel and
+  `HomeMuscleMapView` draws masks from it (still filtered by the volume scope).
+- Eleven callout anchors that sat off their muscle were moved onto it.
+- `MuscleFocusThumbnail` used the front mask for every group, so back-only
+  groups (glutes, hamstrings, lats, …) showed an empty thumbnail; it now uses
+  `MuscleMapLayout.primaryPanel(for:)`.
+- `MuscleMapMaskAssetTests` (swift test) fails if any `MuscleGroup` has no
+  mask, a callout has no mask or sits off its muscle, a mask asset is missing,
+  undersized or empty, any red muscle pixel of the torso/limbs is uncoloured,
+  or two masks overlap.
+
+Before/after renders: `/tmp/muscle-map/` (`before-*`, `after-*`).
 
 ## Latest implementation — field-test batch: Watch cardio/voice, This Week deep links, Total, muscle masks (2026-10-01)
 

@@ -61,6 +61,7 @@ struct HomeMuscleMapView: View {
         let panel = selectedPanel == .front ? MuscleMapPanel.front : .back
         let visibleGroups = Set(rows.map(\.group))
         let callouts = MuscleMapLayout.callouts(for: panel, visibleGroups: visibleGroups)
+        let maskGroups = MuscleMapLayout.maskGroups(for: panel, visibleGroups: visibleGroups)
         return GeometryReader { proxy in
             let imageSize = anatomyImageSize(in: proxy.size)
             let imageOrigin = CGPoint(x: (proxy.size.width - imageSize.width) / 2,
@@ -71,10 +72,12 @@ struct HomeMuscleMapView: View {
                     .frame(width: imageSize.width, height: imageSize.height)
                     .allowsHitTesting(false)
                     .accessibilityLabel("\(panel == .front ? "Front" : "Back") muscle heat map")
-                ForEach(callouts) { callout in
-                    muscleRegion(for: callout, imageSize: imageSize)
+                ForEach(maskGroups) { group in
+                    muscleRegion(for: group, panel: panel, imageSize: imageSize)
                         .position(x: imageOrigin.x + imageSize.width / 2,
                                   y: imageOrigin.y + imageSize.height / 2)
+                }
+                ForEach(callouts) { callout in
                     heatButton(for: callout)
                         .position(x: imageOrigin.x + CGFloat(callout.anchorX) * imageSize.width,
                                   y: imageOrigin.y + CGFloat(callout.anchorY) * imageSize.height)
@@ -97,10 +100,10 @@ struct HomeMuscleMapView: View {
         return CGSize(width: height * ratio, height: height)
     }
 
-    private func muscleRegion(for callout: MuscleMapCallout, imageSize: CGSize) -> some View {
-        let row = rows.first { $0.group == callout.group }
+    private func muscleRegion(for group: MuscleGroup, panel: MuscleMapPanel, imageSize: CGSize) -> some View {
+        let row = rows.first { $0.group == group }
         let level = MuscleHeatPresenter.level(sets: row?.sets ?? 0, target: 12)
-        let mask = Image("MuscleMask-\(callout.panel.rawValue)-\(callout.group.rawValue)")
+        let mask = Image(MuscleMapLayout.maskAssetName(for: group, panel: panel))
             .renderingMode(.template)
             .resizable()
             .scaledToFit()

@@ -13,7 +13,8 @@ struct MuscleFocusThumbnail: View {
     var body: some View {
         ZStack {
             Circle().fill(CadenceTheme.accent.opacity(0.14))
-            Image("MuscleMask-front-\(group.rawValue)")
+            Image(MuscleMapLayout.maskAssetName(for: group,
+                                                panel: MuscleMapLayout.primaryPanel(for: group)))
                 .resizable()
                 .scaledToFit()
                 .padding(8)

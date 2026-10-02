@@ -55,6 +55,7 @@ struct HomeWeekDashboardSection: View {
                     fillGapsButton
                 }
             }
+            .id(WeeklyDetailMode.muscleMap)
             sectionCard {
                 disclosureRow(title: String(localized: "Strength"), value: dashboard.strength.displayText,
                               progress: dashboard.strength.normalized,
@@ -63,6 +64,7 @@ struct HomeWeekDashboardSection: View {
                     workoutGroup(title: String(localized: "Strength"), entries: strengthEntries)
                 }
             }
+            .id(WeeklyDetailMode.strength)
             sectionCard {
                 disclosureRow(title: String(localized: "Cardio"), value: dashboard.cardio.displayText,
                               progress: dashboard.cardio.normalized,
@@ -75,6 +77,7 @@ struct HomeWeekDashboardSection: View {
                     }
                 }
             }
+            .id(WeeklyDetailMode.cardio)
         }
         .alert("Volume warning", isPresented: Binding(
             get: { volumeWarningMessage != nil },

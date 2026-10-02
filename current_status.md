@@ -1,6 +1,55 @@
 # Current Status
 
-Updated: 2026-09-30
+Updated: 2026-10-01
+
+## Latest implementation — field-test batch: Watch cardio/voice, This Week deep links, Total, muscle masks (2026-10-01)
+
+A field-testing batch. Six fixes, all headlessly tested where logic exists:
+
+- **Watch HIIT duration bug.** A phone-started strength workout opens the
+  Watch's single `HKWorkoutSession` for live HR. Starting an 8-minute HIIT on
+  the Watch mid-strength left `startWorkout` returning `false` without touching
+  the shared `sessionStart`, so the HIIT completion borrowed the strength start
+  and recorded 34 minutes. Cardio now has its own clock (`cardioSessionStart`),
+  and the new pure `WatchCardioTiming` (CadenceFeatures) resolves the completion
+  span from it; ending a layered cardio no longer tears down the strength
+  session. `WatchCardioTimingTests` reproduces the 26+8 = 34-minute field bug.
+- **Watch spoken cues silent.** Beeps (`workoutSounds`) played but speech
+  (`spokenCues`, confirmed on) did not. `AVSpeechSynthesizer` now uses a
+  system-managed session instead of sharing the bell player's repeatedly
+  reconfigured session, the stop-before-speak race is removed, and the
+  `workoutStarted` phrase no longer says "(trimmed)".
+- **Progress question bar scroll reset.** The horizontal question picker now
+  binds `.scrollPosition(id:)`, so selecting Tests (or any question) no longer
+  snaps the bar back to the start.
+- **Settings tab removed.** Today owns a top-right gear (`home.settings`) that
+  pushes the same `HomeRoute.settings`; the bottom bar is Today/This Week/
+  Progress/Search. UI test helpers updated.
+- **Strength over time Total.** "Combined" is renamed "Total" and is now
+  recomputed from only the currently charted lifts (pure
+  `StrengthProgress.totalSeries(from:)`), not every lift with history. Persisted
+  `"Combined"` selections migrate to `"Total"`.
+- **This Week deep links.** Today's weekly rings now deep-link per ring — sets →
+  muscle coverage, cardio minutes → Cardio, sessions → Strength — expanding the
+  section and scrolling to it (`ThisWeekDestination`,
+  `CadencePlatformRequestStore.requestThisWeekSection`, `ScrollViewReader`
+  anchors).
+- **Muscle-map mask audit.** The generator previously assigned each anchor to
+  the nearest connected red component, so several muscles shared one region
+  (forearms == abductors, adductors == quadriceps, glutes == abductors) and
+  others landed on the wrong side. Rewritten as a geodesic watershed with blob
+  seeding; all 25 masks now audit clean (no duplicates; every front/back side's
+  centroid within 0.10 of its anchor).
+- **Search Browse layout.** Browse/Recents/Popular moved into the List so it
+  shares the rows' margins, and the browse-mode control plus chip rows are one
+  row to remove the extra vertical gap.
+
+Verification: full `swift test --parallel` package suite (2,043 tests) passes;
+generic iPhone→embedded Watch build succeeds with signing disabled; all
+repository guardrails pass (test-pyramid, design-tokens, localization, citations,
+engine boundary, history safety, accessibility, Watch AppIcon/background modes,
+xcodebuild platform, release safety). The Search Browse and This Week deep-link
+changes are layout/behavioral and still want device visual confirmation.
 
 ## Latest implementation — field fixes and custom-lift Combined strength (2026-09-30)
 

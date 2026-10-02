@@ -179,9 +179,6 @@ struct RootTabView: View {
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
                     AdaptiveProgressRoot()
                 }
-                SwiftUI.Tab("Settings", systemImage: "gearshape", value: .settings) {
-                    AdaptiveSettingsRoot()
-                }
                 SwiftUI.Tab(value: .search, role: .search) { ExercisePickerView(action: .use) { _ in } }
             }
             .modifier(MinimizeTabBarOnScrollDown())
@@ -191,9 +188,6 @@ struct RootTabView: View {
                 HomeView().tabItem { Label("Today", systemImage: "house") }.tag(Tab.home)
                 ThisWeekView().tabItem { Label("This Week", systemImage: "calendar") }.tag(Tab.thisWeek)
                 AdaptiveProgressRoot().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)
-                AdaptiveSettingsRoot()
-                    .tabItem { Label("Settings", systemImage: "gearshape") }
-                    .tag(Tab.settings)
             }
         }
     }

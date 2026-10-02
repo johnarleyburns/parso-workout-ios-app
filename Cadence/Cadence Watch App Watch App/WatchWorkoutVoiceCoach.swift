@@ -2,21 +2,23 @@ import AVFoundation
 import CadenceCore
 import CadenceFeatures
 
-/// Short, interruptible workout announcements spoken by the Watch. The
-/// workout audio session lets watchOS route these cues to connected Bluetooth
-/// headphones when they are the active route.
+/// Short, interruptible workout announcements spoken by the Watch.
+///
+/// Speech uses a system-managed audio session (`usesApplicationAudioSession`
+/// is false) rather than the shared workout cue session. The bell player
+/// reconfigures that shared session on every beep, which can leave an
+/// `AVSpeechSynthesizer` sharing it silent on watchOS. Letting the system own
+/// speech keeps the cues audible and still mixes and ducks them with music.
 @MainActor
 final class WatchWorkoutVoiceCoach {
     static let shared = WatchWorkoutVoiceCoach()
 
     private let synthesizer = AVSpeechSynthesizer()
-    private let audioSession: WatchWorkoutAudioSession
     private var lastEventID: String?
     private var lastSpokenAt = Date.distantPast
 
-    init(audioSession: WatchWorkoutAudioSession = .shared) {
-        self.audioSession = audioSession
-        synthesizer.usesApplicationAudioSession = true
+    init() {
+        synthesizer.usesApplicationAudioSession = false
     }
 
     func speak(_ cue: WatchVoiceCue, enabled: Bool) {
@@ -26,19 +28,22 @@ final class WatchWorkoutVoiceCoach {
         guard cue.eventID != lastEventID || now.timeIntervalSince(lastSpokenAt) > 1 else { return }
         lastEventID = cue.eventID
         lastSpokenAt = now
-        audioSession.activateForCues()
-        synthesizer.stopSpeaking(at: .immediate)
+        // Only interrupt a cue that is actually still speaking; stopping an
+        // idle synthesizer immediately before speaking drops the new utterance
+        // on watchOS.
+        if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
         let utterance = AVSpeechUtterance(string: cue.speechText)
         utterance.rate = 0.48
         utterance.volume = 1
-        utterance.voice = AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier
-                                                  ?? "en-US")
+        if let voice = AVSpeechSynthesisVoice(language: Locale.current.identifier)
+            ?? AVSpeechSynthesisVoice(language: Locale.current.language.languageCode?.identifier ?? "en-US") {
+            utterance.voice = voice
+        }
         synthesizer.speak(utterance)
     }
 
     func stop() {
-        synthesizer.stopSpeaking(at: .immediate)
-        audioSession.deactivate()
+        if synthesizer.isSpeaking { synthesizer.stopSpeaking(at: .immediate) }
         lastEventID = nil
     }
 }

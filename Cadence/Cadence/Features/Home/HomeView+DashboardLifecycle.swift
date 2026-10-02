@@ -5,6 +5,7 @@ import CadenceFeatures
 extension HomeView {
     var body: some View {
         dashboardContent
+            .onAppear { applyThisWeekSectionIfNeeded() }
             .onChange(of: scenePhase) { _, newPhase in
                 guard newPhase == .active else { return }
                 let today = Self.dayString()
@@ -19,6 +20,7 @@ extension HomeView {
                 if let request = CadencePlatformRequestStore.consumeLogSet() {
                     NotificationCenter.default.post(name: .cadenceLogSetRequested, object: request)
                 }
+                applyThisWeekSectionIfNeeded()
             }
             .onChange(of: weeklyDetailSelection) { _, next in
                 // This is page UI state, not workout data. Persist only the
@@ -145,5 +147,16 @@ extension HomeView {
                 pending: $pendingAddGapsDeficits,
                 guardrails: { CoachOverrideGuardrails.describe(from: coachSnapshot.optimizedPlan.diagnostics) },
                 onConfirm: { confirmAddGaps() })
+    }
+
+    /// Applies a Today → This Week ring tap: expand the requested section and
+    /// hand the scroll target to the dashboard's `ScrollViewReader`.
+    func applyThisWeekSectionIfNeeded() {
+        guard surface == .thisWeek,
+              let destination = CadencePlatformRequestStore.consumeThisWeekSection() else { return }
+        withAnimation(.easeInOut(duration: 0.18)) {
+            weeklyDetailSelection.select(destination.detailMode)
+        }
+        weekScrollTarget = destination.detailMode
     }
 }

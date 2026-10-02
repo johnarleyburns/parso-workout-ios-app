@@ -4,13 +4,38 @@ import CadenceCore
 import CadenceFeatures
 
 extension ExercisePickerView {
+    /// Browse / Recents / Popular, as a List row so it shares the exercise rows'
+    /// horizontal margins instead of spanning wider than them.
+    var tabPicker: some View {
+        Picker("Tab", selection: $selectedTab) {
+            Text("Browse").tag(PickerTab.browse)
+            Text("Recents").tag(PickerTab.recents)
+            Text("Popular").tag(PickerTab.popular)
+        }
+        .pickerStyle(.segmented)
+        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
+    /// The browse-mode control and its chip rows in one List row, so there is no
+    /// section gap above or below the muscle/equipment controls.
+    var browseControls: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            browseModePicker
+            filterChips
+            if showsSubFilter { equipmentChips }
+            if showsSubFilterInverted { muscleGroupSubChips }
+        }
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+        .listRowBackground(Color.clear)
+    }
+
     var browseModePicker: some View {
         Picker("Browse by", selection: $browseMode) {
             Text("By Muscle Group").tag(BrowseMode.byMuscleGroup)
             Text("By Equipment").tag(BrowseMode.byEquipment)
         }
         .pickerStyle(.segmented)
-        .listRowInsets(EdgeInsets(top: 6, leading: 12, bottom: 6, trailing: 12))
     }
 
     // MARK: Filter chips

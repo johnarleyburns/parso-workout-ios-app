@@ -1,6 +1,7 @@
 import Foundation
 import WatchConnectivity
 import CadenceCore
+import CadenceFeatures
 
 extension WatchWorkoutManager {
     private static let pendingCardioKey = "watch.pendingCardioCompletions"
@@ -13,9 +14,11 @@ extension WatchWorkoutManager {
 
     func enqueueCardioCompletion(type: CardioType, title: String? = nil,
                                  summary: SavedWorkoutSummary) {
+        let timing = WatchCardioTiming(cardioSessionStart: cardioSessionStart,
+                                       measuredDuration: summary.duration, endedAt: Date())
         let completion = WatchCardioCompletion(
-            type: type, title: title, start: sessionStart ?? Date().addingTimeInterval(-summary.duration),
-            end: Date(), distanceMeters: summary.distanceMeters,
+            type: type, title: title, start: timing.start,
+            end: timing.end, distanceMeters: summary.distanceMeters,
             hrSamples: summary.hrSamples,
             avgHeartRate: summary.avgHR, maxHeartRate: summary.maxHR,
             gpsEnabled: isOutdoorSession)

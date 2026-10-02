@@ -58,6 +58,27 @@ final class WeeklyDetailSelectionTests: XCTestCase {
         XCTAssertEqual(WeeklyDetailSelection.persisted(defaults: defaults), original)
     }
 
+    func testRingTapsMapToTheMatchingThisWeekSection() {
+        XCTAssertEqual(ThisWeekDestination.forRing(.sets), .muscleCoverage)
+        XCTAssertEqual(ThisWeekDestination.forRing(.sessions), .strength)
+        XCTAssertEqual(ThisWeekDestination.forRing(.cardioMinutes), .cardio)
+
+        XCTAssertEqual(ThisWeekDestination.muscleCoverage.detailMode, .muscleMap)
+        XCTAssertEqual(ThisWeekDestination.strength.detailMode, .strength)
+        XCTAssertEqual(ThisWeekDestination.cardio.detailMode, .cardio)
+    }
+
+    func testThisWeekSectionRequestRoundTripsAndClears() {
+        let suiteName = "ThisWeekDestinationTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        XCTAssertNil(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults))
+        CadencePlatformRequestStore.requestThisWeekSection(.cardio, defaults: defaults)
+        XCTAssertEqual(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults), .cardio)
+        XCTAssertNil(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults))
+    }
+
     func testPersistedSelectionIgnoresUnknownModes() {
         let suiteName = "WeeklyDetailSelectionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!

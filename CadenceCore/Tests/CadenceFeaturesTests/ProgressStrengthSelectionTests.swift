@@ -2,9 +2,9 @@ import XCTest
 @testable import CadenceFeatures
 
 final class ProgressStrengthSelectionTests: XCTestCase {
-    func testDefaultsUseCanonicalPowerLiftsAndCombined() {
+    func testDefaultsUseCanonicalPowerLiftsAndTotal() {
         XCTAssertEqual(ProgressStrengthSelection().selectedNames,
-                       ["Bench Press", "Barbell Squat", "Deadlift", "Combined"])
+                       ["Bench Press", "Barbell Squat", "Deadlift", "Total"])
     }
 
     func testCustomSelectionPersistsAndRoundTrips() {
@@ -22,5 +22,14 @@ final class ProgressStrengthSelectionTests: XCTestCase {
 
         XCTAssertEqual(ProgressStrengthSelection.persisted(defaults: defaults).selectedNames,
                        ["Barbell Squat", "Deadlift"])
+    }
+
+    func testLegacyCombinedPreferenceMigratesToTotal() {
+        let defaults = UserDefaults(suiteName: "ProgressStrengthSelectionTests.\(UUID().uuidString)")!
+        defaults.set(try! JSONEncoder().encode(["Bench Press", "Combined"]),
+                     forKey: ProgressStrengthSelection.persistenceKey)
+
+        XCTAssertEqual(ProgressStrengthSelection.persisted(defaults: defaults).selectedNames,
+                       ["Bench Press", "Total"])
     }
 }

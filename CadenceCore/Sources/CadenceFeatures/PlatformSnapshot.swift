@@ -82,6 +82,7 @@ public enum CadencePlatformRequestStore {
     private static let logKey = "cadence.platform.logSet.request"
     private static let quickTalkKey = "cadence.platform.quickTalk.requestedAt"
     private static let liveActivityActionKey = "cadence.platform.liveActivity.action"
+    private static let thisWeekSectionKey = "cadence.platform.thisWeek.section"
 
     /// Actions are written by a Live Activity or Control Center extension and
     /// consumed by the foreground workout surface. They are intentionally
@@ -142,6 +143,21 @@ public enum CadencePlatformRequestStore {
     /// Requests that an active workout present the in-app Quick Talk recorder.
     /// The iOS 18 AudioRecordingIntent uses this handoff and never writes
     /// workout data or accesses the microphone while the app is locked.
+    /// Records which This Week section a Today tap should open. Written by the
+    /// weekly rings and consumed by the This Week surface as it appears, so the
+    /// tab switch and the scroll/expand land together.
+    public static func requestThisWeekSection(_ destination: ThisWeekDestination,
+                                              defaults: UserDefaults? = nil) {
+        store(defaults).set(destination.rawValue, forKey: thisWeekSectionKey)
+    }
+
+    public static func consumeThisWeekSection(defaults: UserDefaults? = nil) -> ThisWeekDestination? {
+        let defaults = store(defaults)
+        guard let raw = defaults.string(forKey: thisWeekSectionKey) else { return nil }
+        defaults.removeObject(forKey: thisWeekSectionKey)
+        return ThisWeekDestination(rawValue: raw)
+    }
+
     public static func requestQuickTalk(defaults: UserDefaults? = nil) {
         store(defaults).set(Date(), forKey: quickTalkKey)
     }

@@ -46,14 +46,15 @@ struct WatchIntervalView: View {
         }
         .onAppear {
             watchManager.resetSavedSummary()
-            watchManager.startWorkout(type: kind.lowercased(), cardioType: kind == "HIIT" ? .hiit : .boxing)
+            watchManager.beginCardioWorkout(type: kind.lowercased(),
+                                            cardioType: kind == "HIIT" ? .hiit : .boxing)
             watchManager.startHeartRatePolling()
             WatchWorkoutVoiceCoach.shared.speak(
                 .workoutStarted(title: kind), enabled: watchAppSettings.spokenCues)
         }
         .onDisappear {
-            if scenePhase != .background, watchManager.isActive {
-                watchManager.stopWorkout(save: false)
+            if scenePhase != .background {
+                watchManager.finishCardioSession(save: false)
             }
             haptics.stop()
         }
@@ -202,7 +203,7 @@ struct WatchIntervalView: View {
                 if let s = watchManager.savedSummary {
                     watchManager.enqueueCardioCompletion(type: intervalCardioType, summary: s)
                 }
-                watchManager.stopWorkout(save: true)
+                watchManager.finishCardioSession(save: true)
                 onDone()
             }
             .buttonStyle(.borderedProminent)
@@ -210,7 +211,7 @@ struct WatchIntervalView: View {
             .accessibilityLabel("Save workout")
 
             Button("Discard") {
-                watchManager.stopWorkout(save: false)
+                watchManager.finishCardioSession(save: false)
                 onDone()
             }
             .buttonStyle(.plain)

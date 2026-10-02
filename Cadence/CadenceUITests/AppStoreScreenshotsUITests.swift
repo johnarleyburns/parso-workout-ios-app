@@ -62,7 +62,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
         try capture("07-home-planning-retired", app: plannedApp)
 
         let settingsApp = launchSeededApp(["coachCyclePreference"])
-        XCTAssertTrue(settingsApp.buttons["tab.settings"].waitTap(timeout: 10), "open Settings")
+        XCTAssertTrue(settingsApp.buttons["home.settings"].waitTap(timeout: 10), "open Settings")
         XCTAssertTrue(settingsApp.scrollToHittableAndTap("settings.export"), "open Export")
         XCTAssertTrue(settingsApp.navigationBars["Export"].waitForExistence(timeout: 10),
                       "Export screen")
@@ -70,7 +70,7 @@ final class AppStoreScreenshotsUITests: CadenceUITestCase {
         try capture("08-backup-export", app: settingsApp)
 
         settingsApp.popToHome()
-        XCTAssertTrue(settingsApp.buttons["tab.settings"].waitTap(timeout: 10), "open Settings again")
+        XCTAssertTrue(settingsApp.buttons["home.settings"].waitTap(timeout: 10), "open Settings again")
         XCTAssertTrue(settingsApp.scrollToAndTapButton("settings.support", maxSwipes: 10), "open Support")
         XCTAssertTrue(settingsApp.navigationBars["Support Cladiron"].waitForExistence(timeout: 10),
                       "Support screen")

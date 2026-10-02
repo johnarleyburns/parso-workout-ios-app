@@ -186,16 +186,12 @@ struct ExercisePickerView: View {
     private var standardBody: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Tab", selection: $selectedTab) {
-                    Text("Browse").tag(PickerTab.browse)
-                    Text("Recents").tag(PickerTab.recents)
-                    Text("Popular").tag(PickerTab.popular)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-
                 List {
+                    // The tab and browse-mode segmented controls live in the
+                    // List so they share the rows' horizontal margins; outside
+                    // it they spanned wider than the exercise rows.
+                    tabPicker
+
                     if !catalog.isLoaded {
                         Section {
                             HStack(spacing: 8) {
@@ -207,10 +203,7 @@ struct ExercisePickerView: View {
                         }
                     }
                     if showsFilterChips {
-                        browseModePicker
-                        filterChips
-                        if showsSubFilter { equipmentChips }
-                        if showsSubFilterInverted { muscleGroupSubChips }
+                        browseControls
                     }
 
                     if !trimmedQuery.isEmpty && !exactMatchExists {

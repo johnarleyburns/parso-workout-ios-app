@@ -2,10 +2,16 @@
 """Derive per-muscle alpha masks from the bundled anatomy artwork.
 
 The source illustration is a raster export without semantic muscle IDs. This
-keeps the artwork intact and uses its dark internal separations as boundaries:
-red muscle pixels are grouped from the existing MuscleMapLayout callout
-anchors, with mirrored seeds for bilateral muscles. The output is intentionally
-small, transparent PNGs consumed as SwiftUI template images.
+keeps the artwork intact and segments its red muscle fill with a **geodesic
+watershed**: every red pixel is flooded outward from the muscle callout anchors
+at once, so each pixel belongs to the anchor that reaches it first through
+connected muscle. Unlike a per-anchor nearest-component lookup, this cannot let
+two muscles claim the same region (which left several groups identical and
+mis-highlighted), and it splits a connected shape — e.g. an arm that is one red
+region — at the midpoint between the biceps and forearm anchors.
+
+The output is intentionally small, transparent PNGs consumed as SwiftUI
+template images.
 """
 
 from collections import deque
@@ -75,79 +81,95 @@ def is_muscle(pixel):
     )
 
 
-def components(image):
+def muscle_pixels(image):
     width, height = image.size
-    seen = set()
-    found = []
-    for y in range(height):
-        for x in range(width):
-            if (x, y) in seen or not is_muscle(image.getpixel((x, y))):
-                continue
-            queue = deque([(x, y)])
-            seen.add((x, y))
-            pixels = []
-            while queue:
-                px, py = queue.popleft()
-                pixels.append((px, py))
-                for nx, ny in ((px + 1, py), (px - 1, py), (px, py + 1), (px, py - 1)):
-                    if (
-                        0 <= nx < width
-                        and 0 <= ny < height
-                        and (nx, ny) not in seen
-                        and is_muscle(image.getpixel((nx, ny)))
-                    ):
-                        seen.add((nx, ny))
-                        queue.append((nx, ny))
-            if len(pixels) >= 100:
-                found.append(pixels)
-    return found
+    pixels = image.load()
+    return {(x, y) for y in range(height) for x in range(width) if is_muscle(pixels[x, y])}
 
 
-def nearest_component(all_components, x, y):
-    candidates = []
-    for pixels in all_components:
-        distance, px, py = min((abs(px - x) + abs(py - y), px, py) for px, py in pixels)
-        if distance <= 100:
-            candidates.append((distance, len(pixels), pixels))
-    if not candidates:
-        raise RuntimeError(f"No anatomy region near ({x}, {y})")
-    # Distance wins so a nearby named region is never replaced by a larger,
-    # unrelated muscle. Tiny anti-alias fragments were removed above.
-    return min(candidates, key=lambda item: (item[0], -item[1]))[2]
+SEED_RADIUS = 30
 
 
-def make_mask(panel, group, anchor, image, all_components):
+def nearest_red(pixels, x, y, max_distance=260):
+    best, best_distance = None, 10 ** 9
+    for px, py in pixels:
+        distance = abs(px - x) + abs(py - y)
+        if distance < best_distance:
+            best, best_distance = (px, py), distance
+            if distance == 0:
+                break
+    if best is None or best_distance > max_distance:
+        return None
+    return best
+
+
+def seed_blob(pixels, x, y):
+    """A small disk of red pixels around the nearest red pixel to the anchor.
+
+    A single edge pixel is not enough: a thin arm can be flooded by the muscle
+    above it before the seed propagates, leaving the forearm nearly empty. A
+    small blob anchors each region to its own part of the shape.
+    """
+    seed = nearest_red(pixels, x, y)
+    if seed is None:
+        return []
+    sx, sy = seed
+    return [p for p in pixels if abs(p[0] - sx) + abs(p[1] - sy) <= SEED_RADIUS]
+
+
+def watershed(pixels, image, seeds):
+    """Multi-source BFS over connected red pixels. Each pixel takes the label of
+    the seed it is reached from first, which is the geodesic-nearest anchor."""
     width, height = image.size
-    anchors = [anchor]
-    if group in BILATERAL:
-        anchors.append((1.0 - anchor[0], anchor[1]))
-
-    pixels = set()
-    for normalized_x, normalized_y in anchors:
-        x = round(normalized_x * width)
-        y = round(normalized_y * height)
-        pixels.update(nearest_component(all_components, x, y))
-
-    alpha = Image.new("L", image.size, 0)
-    alpha_pixels = alpha.load()
-    for x, y in pixels:
-        alpha_pixels[x, y] = 255
-
-    name = f"MuscleMask-{panel}-{group}"
-    output = ASSETS / f"{name}.imageset" / f"{name}.png"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    rgba = Image.new("RGBA", image.size, (255, 255, 255, 0))
-    rgba.putalpha(alpha)
-    rgba.save(output, optimize=True)
+    source = image.load()
+    label = {}
+    queue = deque()
+    for group, points in seeds.items():
+        for point in points:
+            if point in pixels and point not in label:
+                label[point] = group
+                queue.append(point)
+    while queue:
+        x, y = queue.popleft()
+        group = label[(x, y)]
+        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+            if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in label and (nx, ny) in pixels:
+                label[(nx, ny)] = group
+                queue.append((nx, ny))
+    return label
 
 
 def main():
     for panel, groups in CALLOUTS.items():
         source_name = f"MuscleMap{panel.title()}"
-        source = Image.open(ASSETS / f"{source_name}.imageset/{source_name}.png").convert("RGBA")
-        all_components = components(source)
+        image = Image.open(ASSETS / f"{source_name}.imageset/{source_name}.png").convert("RGBA")
+        pixels = muscle_pixels(image)
+
+        seeds = {}
         for group, anchor in groups.items():
-            make_mask(panel, group, anchor, source, all_components)
+            anchors = [anchor]
+            if group in BILATERAL:
+                anchors.append((1.0 - anchor[0], anchor[1]))
+            points = set()
+            for normalized_x, normalized_y in anchors:
+                points.update(seed_blob(pixels, round(normalized_x * image.width),
+                                        round(normalized_y * image.height)))
+            seeds[group] = list(points)
+
+        label = watershed(pixels, image, seeds)
+
+        for group in groups:
+            alpha = Image.new("L", image.size, 0)
+            alpha_pixels = alpha.load()
+            for (x, y), assigned in label.items():
+                if assigned == group:
+                    alpha_pixels[x, y] = 255
+            name = f"MuscleMask-{panel}-{group}"
+            output = ASSETS / f"{name}.imageset" / f"{name}.png"
+            output.parent.mkdir(parents=True, exist_ok=True)
+            rgba = Image.new("RGBA", image.size, (255, 255, 255, 0))
+            rgba.putalpha(alpha)
+            rgba.save(output, optimize=True)
 
 
 if __name__ == "__main__":

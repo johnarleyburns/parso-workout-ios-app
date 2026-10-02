@@ -43,8 +43,8 @@ struct WatchCardioSessionView: View {
         }
         .onDisappear {
             WatchWorkoutVoiceCoach.shared.stop()
-            if case nil = pendingSummary, watchManager.isActive {
-                watchManager.stopWorkout(save: false)
+            if case nil = pendingSummary {
+                watchManager.finishCardioSession(save: false)
             }
         }
         .alert("End Workout?", isPresented: $isShowingConfirmEnd) {
@@ -112,7 +112,7 @@ struct WatchCardioSessionView: View {
         if let summary = pendingSummary {
             watchManager.enqueueCardioCompletion(type: cardioType, summary: summary)
         }
-        watchManager.stopWorkout(save: true)
+        watchManager.finishCardioSession(save: true)
         onDone()
     }
 
@@ -132,7 +132,7 @@ struct WatchCardioSessionView: View {
 
     private func discard() {
         WatchWorkoutVoiceCoach.shared.stop()
-        watchManager.stopWorkout(save: false)
+        watchManager.finishCardioSession(save: false)
         onDone()
     }
 

@@ -113,7 +113,8 @@ extension XCUIApplication {
         case "More":
             XCTFail("More was retired; use Settings or the dedicated Today surface")
         case "Settings":
-            XCTAssertTrue(buttons["tab.settings"].waitTap(timeout: 10), "Settings tab not found")
+            XCTAssertTrue(buttons["tab.today"].waitTap(timeout: 10), "Today tab not found")
+            XCTAssertTrue(buttons["home.settings"].waitTap(timeout: 10), "Settings gear not found")
         case "History":
             XCTAssertTrue(buttons["tab.progress"].waitTap(timeout: 10), "Progress tab not found")
             XCTAssertTrue(scrollToHittableAndTap("progress.question.workoutHistory"), "Progress History not found")

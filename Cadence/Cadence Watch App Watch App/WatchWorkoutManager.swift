@@ -86,6 +86,14 @@ final class WatchWorkoutManager: NSObject {
     @ObservationIgnored var recoveryInFlight = false
     private var ble: WatchHeartRateBLE?
     var sessionStart: Date?
+    /// Wall-clock start of the cardio session the user began on the Watch. Kept
+    /// separate from `sessionStart`, which can belong to a phone-started
+    /// strength workout that shares the single `HKWorkoutSession` for live HR.
+    var cardioSessionStart: Date?
+    /// True when the active `HKWorkoutSession` was started by this cardio
+    /// session; false when the cardio is layered over another workout, so
+    /// ending it must not tear that session down.
+    var cardioOwnsSession = false
     var phoneRequestID: String?
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
@@ -156,6 +164,15 @@ final class WatchWorkoutManager: NSObject {
         }
         return true
     }
+
+    /// Starts the cardio timing clock and clears heart-rate accounting so the
+    /// cardio summary carries only its own samples, not the strength session's.
+    func beginCardioSession(ownsSession: Bool) {
+        cardioSessionStart = Date()
+        cardioOwnsSession = ownsSession
+        accumulatedHR = 0; hrCount = 0; recordedHRSamples = []; maxHeartRate = nil
+    }
+
     func startMonitoringSession() {
         guard !isActive, !isMonitoring else { return }
         phoneRequestID = nil
@@ -203,7 +220,8 @@ final class WatchWorkoutManager: NSObject {
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
         phoneRequestID = nil
-        sessionStart = nil; accumulatedHR = 0; hrCount = 0
+        sessionStart = nil; cardioSessionStart = nil; cardioOwnsSession = false
+        accumulatedHR = 0; hrCount = 0
         recordedHRSamples = []
         isSwimSession = false; isOutdoorSession = false
         heartRateEnabled = true; gpsEnabled = false
@@ -217,7 +235,7 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func liveSummary() -> (duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double) {
-        elapsed = effectiveElapsed
+        elapsed = cardioSessionStart != nil ? cardioElapsed : effectiveElapsed
         let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
         return (elapsed, avg, maxHeartRate, distanceMeters)
     }
@@ -258,7 +276,7 @@ final class WatchWorkoutManager: NSObject {
                     self.currentBPM = value
                     self.accumulatedHR += value
                     self.hrCount += 1
-                    self.recordedHRSamples.append(HRSamplePoint(t: self.effectiveElapsed, bpm: value))
+                    self.recordedHRSamples.append(HRSamplePoint(t: self.sampleTimestamp, bpm: value))
                     if self.maxHeartRate == nil || value > (self.maxHeartRate ?? 0) {
                         self.maxHeartRate = value
                     }
@@ -300,6 +318,17 @@ final class WatchWorkoutManager: NSObject {
         guard let sessionStart else { return 0 }
         return elapsedTracker.elapsed(since: sessionStart)
     }
+    /// Elapsed time of the cardio session the user is running, independent of
+    /// the shared `HKWorkoutSession` start used for strength heart-rate relay.
+    var cardioElapsed: TimeInterval {
+        guard let cardioSessionStart else { return effectiveElapsed }
+        return max(0, Date().timeIntervalSince(cardioSessionStart))
+    }
+    /// Heart-rate samples belong to the cardio session when one is running;
+    /// otherwise they belong to the shared (strength) session.
+    private var sampleTimestamp: TimeInterval {
+        cardioSessionStart != nil ? cardioElapsed : effectiveElapsed
+    }
 
     /// A poll refreshes the display/relay but deliberately does not add another
     /// aggregate sample; the builder delegate owns avg/max accounting.
@@ -326,7 +355,7 @@ final class WatchWorkoutManager: NSObject {
             currentBPM = bpm
             accumulatedHR += bpm
             hrCount += 1
-            recordedHRSamples.append(HRSamplePoint(t: effectiveElapsed, bpm: bpm))
+            recordedHRSamples.append(HRSamplePoint(t: sampleTimestamp, bpm: bpm))
             if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
             if hrSource == .appleWatch { relayReading(bpm, endingAt: sample.bpmSampleEnd) }
         }

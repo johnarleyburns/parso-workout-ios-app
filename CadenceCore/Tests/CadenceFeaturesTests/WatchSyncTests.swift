@@ -72,6 +72,13 @@ final class WatchSyncTests: XCTestCase {
         XCTAssertEqual(WatchVoiceCue.phase(kind: "rest", round: 2).speechText, "Rest")
     }
 
+    func testWorkoutStartedCueSpeaksTheWorkoutName() {
+        XCTAssertEqual(WatchVoiceCue.workoutStarted(title: "HIIT").speechText,
+                       "Workout started. HIIT")
+        XCTAssertEqual(WatchVoiceCue.workoutStarted(title: "  ").speechText,
+                       "Workout started")
+    }
+
     func testContextAppliesDistanceUnit() {
         var prefs = WatchSync.Preferences(distanceUnit: .kilometers)
         prefs = prefs.applying(context: ["settings.distanceUnit": "miles"])

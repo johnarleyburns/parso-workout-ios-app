@@ -6,6 +6,10 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
     @Binding var selection: ProgressQuestionSelection
     let sessions: [WorkoutSession]
     @ViewBuilder let detailContent: (ProgressQuestion) -> DetailContent
+    /// Persisted scroll anchor for the horizontal question bar. Selecting a
+    /// question re-renders the parent; binding the scroll position keeps the bar
+    /// exactly where the user left it instead of snapping back to the start.
+    @State private var scrolledQuestion: ProgressQuestion?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -42,10 +46,13 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("progress.question.\(question.rawValue)")
                     .accessibilityAddTraits(isSelected ? .isSelected : [])
+                    .id(question)
                 }
             }
             .padding(.vertical, 2)
+            .scrollTargetLayout()
         }
+        .scrollPosition(id: $scrolledQuestion, anchor: .leading)
         .accessibilityIdentifier("progress.question")
     }
 

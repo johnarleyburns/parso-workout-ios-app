@@ -6,7 +6,7 @@ import Foundation
 public struct ProgressStrengthSelection: Equatable, Sendable {
     public static let persistenceKey = "progress.selectedStrengthLifts.v1"
     public static let defaultNames: Set<String> = [
-        "Bench Press", "Barbell Squat", "Deadlift", "Combined"
+        "Bench Press", "Barbell Squat", "Deadlift", "Total"
     ]
 
     public private(set) var selectedNames: Set<String>
@@ -39,6 +39,10 @@ public struct ProgressStrengthSelection: Equatable, Sendable {
     }
 
     private static func migratedName(_ name: String) -> String {
-        name == "Squat" ? "Barbell Squat" : name
+        switch name {
+        case "Squat": return "Barbell Squat"
+        case "Combined": return "Total"
+        default: return name
+        }
     }
 }

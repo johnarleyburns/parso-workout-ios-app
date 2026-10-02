@@ -16,30 +16,48 @@ struct HomeWeekRingsCard: View {
     }
 
     var body: some View {
-        Button {
-            Haptics.selection()
-            NotificationCenter.default.post(name: .cadenceShowThisWeek, object: nil)
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                open(.muscleCoverage)
+            } label: {
                 HStack {
                     Text("This week").font(.headline)
                     Spacer()
                     Image(systemName: "chevron.right").font(.caption.weight(.bold))
                         .foregroundStyle(.secondary)
                 }
-                HStack(spacing: 6) {
-                    ring(rings[0], tint: CadenceTheme.accent)
-                    ring(rings[1], tint: CadenceTheme.link)
-                    ring(rings[2], tint: CadenceTheme.attention)
-                }
-                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open This Week")
+            HStack(spacing: 6) {
+                ringButton(rings[0], tint: CadenceTheme.accent)
+                ringButton(rings[1], tint: CadenceTheme.link)
+                ringButton(rings[2], tint: CadenceTheme.attention)
+            }
+            .frame(maxWidth: .infinity)
         }
-        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceCard()
         .accessibilityIdentifier("home.weekRings")
-        .accessibilityLabel("This week. Open weekly muscle coverage")
+    }
+
+    /// Each ring deep-links to the This Week section it summarizes: sets to
+    /// muscle coverage, cardio minutes to Cardio, sessions to Strength.
+    private func ringButton(_ value: WeekRing, tint: Color) -> some View {
+        let destination = ThisWeekDestination.forRing(value.kind)
+        return Button {
+            open(destination)
+        } label: {
+            ring(value, tint: tint)
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.weekRing.\(destination.rawValue)")
+    }
+
+    private func open(_ destination: ThisWeekDestination) {
+        Haptics.selection()
+        CadencePlatformRequestStore.requestThisWeekSection(destination)
+        NotificationCenter.default.post(name: .cadenceShowThisWeek, object: destination.rawValue)
     }
 
     private func ring(_ value: WeekRing, tint: Color) -> some View {

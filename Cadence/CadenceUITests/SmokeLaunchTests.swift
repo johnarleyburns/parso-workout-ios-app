@@ -38,8 +38,10 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "This Week is not exposed as a primary review tab")
         XCTAssertTrue(app.buttons["tab.progress"].exists,
                       "Progress is not exposed as a primary tab")
-        XCTAssertTrue(app.buttons["tab.settings"].exists,
-                      "Settings is not exposed as a primary tab")
+        XCTAssertFalse(app.buttons["tab.settings"].exists,
+                       "Settings is still exposed as a primary tab")
+        XCTAssertTrue(app.buttons["home.settings"].exists,
+                      "Today does not expose the Settings gear")
         XCTAssertFalse(app.buttons["tab.home"].exists,
                        "The retired Home tab label is still exposed")
         XCTAssertFalse(app.buttons["tab.tests"].exists,
@@ -53,8 +55,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         if UIDevice.current.userInterfaceIdiom == .pad {
             XCTAssertFalse(app.buttons["tab.plan"].exists,
                            "Retired Plan tab is still exposed on iPad")
-            XCTAssertTrue(app.buttons["tab.settings"].waitTap(timeout: 10),
-                          "iPad Home did not expose Settings tab")
+            XCTAssertTrue(app.buttons["home.settings"].waitTap(timeout: 10),
+                          "iPad Today did not expose the Settings gear")
             // Settings is a lazy Form on iPad; use the helper that swipes before
             // resolving the row so the identifier can materialize off-screen.
             XCTAssertTrue(app.scrollToAndTapButton("settings.section.transparency", maxSwipes: 20),
@@ -66,8 +68,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
             return
         }
 
-        XCTAssertTrue(app.buttons["tab.settings"].waitTap(timeout: 10),
-                      "Settings tab did not open")
+        XCTAssertTrue(app.buttons["home.settings"].waitTap(timeout: 10),
+                      "Settings gear did not open")
         for section in ["settings.section.coach", "settings.section.exercises",
                         "settings.section.data", "settings.section.transparency",
                         "settings.section.support"] {

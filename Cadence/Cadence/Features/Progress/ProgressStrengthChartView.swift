@@ -14,8 +14,21 @@ struct ProgressStrengthChartView: View {
     let onAddLift: (String) -> Void
     @State private var selectedDate: Date?
 
+    /// The individual lifts the user has charted. The aggregate total is never
+    /// taken from the precomputed data; it is recomputed from exactly these.
+    private var chartedLiftSeries: [E1RMSeries] {
+        data.allSeries.filter {
+            $0.exercise != StrengthProgress.totalSeriesName && selectedNames.contains($0.exercise)
+        }
+    }
+
     private var selectedSeries: [E1RMSeries] {
-        data.allSeries.filter { selectedNames.contains($0.exercise) }
+        var series = chartedLiftSeries
+        if selectedNames.contains(StrengthProgress.totalSeriesName) {
+            let total = StrengthProgress.totalSeries(from: chartedLiftSeries)
+            if !total.points.isEmpty { series.append(total) }
+        }
+        return series
     }
 
     private var defaultNames: Set<String> { ProgressStrengthSelection.defaultNames }

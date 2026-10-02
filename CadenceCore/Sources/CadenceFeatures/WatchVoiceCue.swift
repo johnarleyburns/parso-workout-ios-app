@@ -16,7 +16,7 @@ public enum WatchVoiceCue: Equatable, Sendable {
         switch self {
         case .workoutStarted(let title):
             let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-            return trimmed.isEmpty ? "Workout started" : "Workout started. (trimmed)"
+            return trimmed.isEmpty ? "Workout started" : "Workout started. \(trimmed)"
         case .paused:
             return "Workout paused"
         case .resumed:

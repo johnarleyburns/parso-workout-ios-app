@@ -104,10 +104,9 @@ struct HomeView: View {
     /// push against the nested Start Workout navigation stack.
     @State var suggestedWorkoutPlan: EditablePlan?
     @State var todaySuggestedPlan: EditablePlan?
-    /// All other Home entry points use the same direct sheet presentation. A
-    /// value navigation push can lose its destination when the originating
-    /// sheet is still dismissing, which surfaced as the generic warning page
-    /// for both planning and scheduled workouts.
+    /// All other Home entry points use the same direct sheet presentation: a
+    /// value push can lose its destination while the originating sheet
+    /// dismisses, which surfaced as the generic warning page.
     @State var workoutEditorPlan: EditablePlan?
     /// Holds a request until the start sheet that launched it has finished
     /// dismissing, then opens the generated Personalized plan directly.
@@ -115,6 +114,7 @@ struct HomeView: View {
     @State var pendingSuggestedCardioInput: CardioSuggestionInput?
     @State var weeklyDetailSelection = WeeklyDetailSelection.persisted()
     @State var weeklyMuscleMapPanel: MuscleMapPanel = .front
+    @State var weekScrollTarget: WeeklyDetailMode?
     @State var showWorkoutConflict = false
     @State var scheduledWorkoutBeingStarted: UUID?
     @State var routeFailure: HomeRouteFailure?

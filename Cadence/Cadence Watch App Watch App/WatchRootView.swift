@@ -302,7 +302,7 @@ struct WatchRootView: View {
                 for: ct.rawValue,
                 plannedDurationSeconds: duration,
                 targetZone: zone)
-            watchManager.startWorkout(type: ct.rawValue, spec: spec)
+            watchManager.beginCardioWorkout(type: ct.rawValue, spec: spec)
             activeCardioKind = kind
             activeCardioSpec = spec
         }
@@ -317,7 +317,7 @@ struct WatchRootView: View {
             }
         } else {
             WatchCardioSetupView(kind: kind, location: $cardioLocation, lapLength: $cardioLapLength, unit: watchAppSettings.unit) { spec in
-                watchManager.startWorkout(type: ct.rawValue, spec: spec)
+                watchManager.beginCardioWorkout(type: ct.rawValue, spec: spec)
                 activeCardioKind = kind
                 activeCardioSpec = spec
             }

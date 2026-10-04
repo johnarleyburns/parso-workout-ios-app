@@ -30,7 +30,8 @@ extension WatchWorkoutManager {
     /// answers.
     func recoverActiveWorkoutIfNeeded() {
         guard !uiTestMode, !isActive, !isMonitoring, !recoveryInFlight else { return }
-        guard UserDefaults.standard.bool(forKey: PersistedWorkoutKey.active) else { return }
+        // Always ask HealthKit, even without our saved metadata: a session whose metadata was
+        // cleared while it kept running is exactly the one that recorded for 27 hours.
         recoveryInFlight = true
         store.recoverActiveWorkoutSession { [weak self] recovered, _ in
             guard let recovered else {
@@ -87,7 +88,13 @@ extension WatchWorkoutManager {
 
     private func attachRecoveredWorkout(_ recovered: HKWorkoutSession) {
         guard !isActive, !isMonitoring else { return }
-        guard recovered.state != .ended, recovered.state != .stopped else {
+        guard recovered.state != .ended else {
+            clearPersistedWorkoutMetadata()
+            return
+        }
+        guard recovered.state != .stopped else {
+            // Stopped but never ended: finish ending it rather than leave it pending.
+            recovered.end()
             clearPersistedWorkoutMetadata()
             return
         }
@@ -113,6 +120,11 @@ extension WatchWorkoutManager {
         heartRateEnabled = true
         gpsEnabled = recovered.workoutConfiguration.locationType == .outdoor
         sessionStart = recovered.startDate ?? Date()
+        if case .endNow(let startedAt) = WatchSessionOwnership.backgroundVerdict(
+            startedAt: sessionStart, ownedByPhone: phoneRequestID != nil) {
+            endAbandonedSession(startedAt: startedAt)
+            return
+        }
         if recovered.state == .running {
             startHeartRatePolling()
             sendHeartRateToPhoneSoon()
@@ -152,4 +164,28 @@ extension WatchWorkoutManager {
         default: return "strength"
         }
     }
+}
+
+// MARK: - Sessions nobody owns (field test 2026-10-03)
+
+extension WatchWorkoutManager {
+    /// Whether the running session belongs to something the user can see.
+    func sessionOwnership(hasResumableStrength: Bool, now: Date = Date()) -> WatchSessionOwnership.Verdict {
+        WatchSessionOwnership.verdict(.init(
+            isRunning: isActive || isMonitoring,
+            startedAt: sessionStart,
+            workoutType: workoutType,
+            workoutScreenVisible: workoutScreensVisible > 0 || cardioSessionStart != nil,
+            ownedByPhone: phoneRequestID != nil || phoneLaunchPendingSince != nil,
+            hasResumableStrength: hasResumableStrength), now: now)
+    }
+
+    /// Ends a session left recording for no one, and leaves a notice for Today.
+    func endAbandonedSession(startedAt: Date) {
+        abandonedSessionNotice = startedAt
+        stopWorkout(save: false)
+    }
+
+    func workoutScreenAppeared() { workoutScreensVisible += 1 }
+    func workoutScreenDisappeared() { workoutScreensVisible = max(0, workoutScreensVisible - 1) }
 }

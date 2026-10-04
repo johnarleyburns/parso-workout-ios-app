@@ -95,6 +95,13 @@ final class WatchWorkoutManager: NSObject {
     /// ending it must not tear that session down.
     var cardioOwnsSession = false
     var phoneRequestID: String?
+    /// Workout screens on show (strength, cardio, intervals). A running session with none of these,
+    /// no phone workout and no resumable lift is recording for no one; see `WatchSessionOwnership`.
+    var workoutScreensVisible = 0
+    /// When a session left recording since this date was ended automatically; Today says so once.
+    var abandonedSessionNotice: Date? = UserDefaults.standard.object(forKey: "watch.abandonedSessionNotice") as? Date {
+        didSet { UserDefaults.standard.set(abandonedSessionNotice, forKey: "watch.abandonedSessionNotice") }
+    }
     private var accumulatedHR: Double = 0
     private var hrCount: Int = 0
     private var recordedHRSamples: [HRSamplePoint] = []
@@ -202,6 +209,12 @@ final class WatchWorkoutManager: NSObject {
         guard isActive || isMonitoring else {
             phoneRequestID = nil
             clearPersistedWorkoutMetadata()
+            // Never leave a session HealthKit is still running just because our flags say idle.
+            if let s = session {
+                builder?.discardWorkout()
+                s.end()
+                session = nil; builder = nil
+            }
             return
         }
         clearPersistedWorkoutMetadata()
@@ -228,10 +241,11 @@ final class WatchWorkoutManager: NSObject {
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
-        if let b, let s {
+        if let b {
             b.endCollection(withEnd: Date()) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
-            s.end()
         }
+        // End the session even when its builder is gone, or it records indefinitely.
+        s?.end()
     }
 
     func liveSummary() -> (duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double) {

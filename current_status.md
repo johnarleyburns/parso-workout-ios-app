@@ -1,6 +1,40 @@
 # Current Status
 
-Updated: 2026-10-02
+Updated: 2026-10-04
+
+## Latest implementation — Watch workout session left recording for 27 hours (2026-10-04)
+
+Field report: the Watch showed a workout recording for 27 hours although the
+watch workout had ended long before, and neither app showed an active or paused
+workout. watchOS keeps an `HKWorkoutSession` alive across app relaunches. After
+a relaunch, recovery reattached it with nothing on screen owning it, so nothing
+ever ended it. Other paths that kept a session running: finishing a watch lift
+and never tapping Done on its summary, discarding an unfinished lift from Today,
+and a session whose saved metadata had been cleared (recovery skipped it).
+
+- New pure `WatchSessionOwnership` (CadenceFeatures) decides whether the running
+  session is owned: by a workout screen on show, by the iPhone workout that
+  started it (up to 6 h), or by a resumable watch lift. An unowned session
+  shows a "Still recording · End session" card on Today. One left more than
+  4 h is ended automatically, and Today says so once ("Ended a forgotten
+  session").
+- Recovery always asks HealthKit for a running session (not only when our
+  metadata flag is set), ends a stopped-but-not-ended one, and ends abandoned
+  ones even on a background relaunch.
+- `stopWorkout` ends the session even when the builder is gone or the manager's
+  flags already say idle.
+- A watch lift stops recording when its summary appears; discarding an
+  unfinished lift from Today also ends its session. Workout screens register as
+  session owners (`ownsWatchWorkoutSession()`).
+- `WatchSessionOwnershipTests` reproduces the 27-hour field case.
+
+Verification: `swift test --parallel` 2058/2058 passed (see note below), watch
+scheme generic build succeeded. Device check by the owner: start a watch
+lift, finish it, leave the summary, relaunch; the workout indicator must be gone.
+
+Local build note: a freshly cleaned `.build` needs `scripts/patch-dbpp-healthinterop.sh`
+before `swift test` (the pre-commit hook runs it); DB++ 1.17.0's HealthInterop doesn't
+build for macOS unpatched.
 
 ## Latest implementation — Muscle Map colours every tracked muscle completely (2026-10-02)
 

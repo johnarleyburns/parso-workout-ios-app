@@ -51,6 +51,7 @@ struct WatchCardioSessionView: View {
             Button("End", role: .destructive) { prepareSummary() }
             Button("Cancel", role: .cancel) {}
         }
+        .ownsWatchWorkoutSession()
     }
 
     private func activePages(_ metrics: CardioMetricsModel) -> some View {

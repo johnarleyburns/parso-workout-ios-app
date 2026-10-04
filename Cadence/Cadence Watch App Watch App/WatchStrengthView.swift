@@ -76,6 +76,12 @@ struct WatchStrengthView: View {
                 shouldStopWorkoutOnDisappear = true
                 watchManager.stopWorkout(save: false)
                 dismiss()
+            case .summary:
+                // The workout is over; stop recording now rather than when Done is tapped, which
+                // the user may never do (field test 2026-10-03: a session ran for 27 hours).
+                if watchManager.isActive, watchManager.phoneRequestID == nil {
+                    watchManager.stopWorkout(save: false)
+                }
             case .home:
                 // Last set of an exercise (or nothing planned yet) → the Plan page.
                 if old != .home { page = .plan }
@@ -102,6 +108,7 @@ struct WatchStrengthView: View {
             talk.startListening()
         }
         .navigationBarBackButtonHidden(true)
+        .ownsWatchWorkoutSession()
     }
 
     @ViewBuilder

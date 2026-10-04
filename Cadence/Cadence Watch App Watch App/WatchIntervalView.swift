@@ -58,6 +58,7 @@ struct WatchIntervalView: View {
             }
             haptics.stop()
         }
+        .ownsWatchWorkoutSession()
     }
 
     // MARK: - Pager (I1: Controls ◂ Interval ▸ Heart, like strength and steady cardio)

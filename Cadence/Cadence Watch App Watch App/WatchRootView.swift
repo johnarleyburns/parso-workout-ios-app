@@ -107,6 +107,9 @@ struct WatchRootView: View {
                     .listRowBackground(Color.clear)
                     .accessibilityIdentifier("healthWarningRow")
                 }
+                WatchSessionOwnershipCard(verdict: sessionOwnership)
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
                 heroCard
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
@@ -129,6 +132,11 @@ struct WatchRootView: View {
             }
             .listStyle(.plain)
             .navigationTitle("Cladiron")
+            .task(id: sessionOwnership) {
+                if case .endNow(let startedAt) = sessionOwnership {
+                    watchManager.endAbandonedSession(startedAt: startedAt)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink { WatchSettingsView() } label: { Image(systemName: "gearshape") }
@@ -152,6 +160,10 @@ struct WatchRootView: View {
                 Text("The sets logged on this watch are removed.")
             }
         }
+    }
+
+    private var sessionOwnership: WatchSessionOwnership.Verdict {
+        watchManager.sessionOwnership(hasResumableStrength: resumableStrengthSession != nil)
     }
 
     private var needsHealthAccess: Bool { !watchManager.workoutShareAuthorized && !watchManager.isActive }
@@ -277,6 +289,10 @@ struct WatchRootView: View {
     /// drop its copy, without opening the workout.
     private func discardResumable(_ session: WorkoutSession) {
         WatchHaptics.tap()
+        // The discarded lift's session must stop too, or it keeps recording with nothing to resume.
+        if watchManager.isActive, watchManager.workoutType == "strength", watchManager.phoneRequestID == nil {
+            watchManager.stopWorkout(save: false)
+        }
         guard let payload = WatchResumableSession.discard(session, in: context) else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)

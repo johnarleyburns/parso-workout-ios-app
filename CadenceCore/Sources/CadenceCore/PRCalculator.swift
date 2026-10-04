@@ -58,4 +58,20 @@ public enum PRCalculator {
         guard let prior = best(previous, rule: rule, formula: formula) else { return true }
         return candidateValue > prior + 1e-9
     }
+
+    /// PR markers for a session are progressive: a later set is compared with
+    /// both historical records and earlier working sets from this same session.
+    public static func progressivePRIndices(_ samples: [SetSample],
+                                            prior: [SetSample], rule: PRRule,
+                                            formula: OneRepMaxFormula) -> Set<Int> {
+        var seen = prior
+        var result = Set<Int>()
+        for (index, sample) in samples.enumerated() {
+            if !sample.isWarmup && isNewPR(candidate: sample, previous: seen, rule: rule, formula: formula) {
+                result.insert(index)
+            }
+            if !sample.isWarmup { seen.append(sample) }
+        }
+        return result
+    }
 }

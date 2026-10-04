@@ -129,6 +129,7 @@ extension SessionView {
             isInlineActive: isActive,
             inlineEditingSetID: inlineEditingSetID,
             inlineConfig: isActive ? inlineEditorConfig() : nil,
+            isNonWeighted: exercise.map(SessionViewModel.isNonWeighted) ?? false,
             wouldBePR: { [cache] kg, reps in
                 cache.state.wouldBePR(weightKg: kg, reps: reps, isWarmup: false,
                                       rule: settings.prRule, formula: settings.formula,

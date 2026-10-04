@@ -200,7 +200,10 @@ extension HomeView {
             weeklyVolumePerformers: cachedWeeklyVolumePerformers,
             totalVolumeKg: weeklyVolumeKg,
             unit: settings.unit,
-            onOpenWorkout: openWeekWorkout)
+            onOpenWorkout: openWeekWorkout,
+            onStartWorkout: { session in
+                _ = active.startStrength(session)
+            })
     }
 
     @ViewBuilder

@@ -210,7 +210,8 @@ struct CadenceThisWeekWidgetView: View {
 struct CadenceWorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutLiveActivityAttributes.self) { context in
-            HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+              HStack(spacing: 12) {
                 Image(systemName: context.state.restEndsAt == nil ? "figure.strengthtraining.traditional" : "timer")
                     .foregroundStyle(.green)
                 VStack(alignment: .leading, spacing: 2) {
@@ -233,8 +234,8 @@ struct CadenceWorkoutLiveActivity: Widget {
                         Text(next).font(.caption).foregroundStyle(.white).lineLimit(1)
                     }
                 }
-            }
-            HStack(spacing: 8) {
+              }
+              HStack(spacing: 8) {
                 if context.state.restEndsAt != nil {
                     Button(intent: AddRestFromLiveActivityIntent()) {
                         Label("+30s", systemImage: "plus")
@@ -248,9 +249,11 @@ struct CadenceWorkoutLiveActivity: Widget {
                         Label("Log", systemImage: "checkmark")
                     }
                 }
+              }
             }
             .font(.caption.weight(.semibold))
             .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
             .widgetURL(URL(string: "cladiron://workout"))
             .activityBackgroundTint(.black)
             .activitySystemActionForegroundColor(.green)

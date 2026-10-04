@@ -31,4 +31,12 @@ final class QuickTalkContractsTests: XCTestCase {
         XCTAssertTrue(window.accepts(start.addingTimeInterval(8)))
         XCTAssertFalse(window.accepts(start.addingTimeInterval(8.001)))
     }
+
+    func testVoiceCaptureStartGateRejectsConcurrentStarts() {
+        var gate = VoiceCaptureStartGate()
+        XCTAssertTrue(gate.begin())
+        XCTAssertFalse(gate.begin())
+        gate.finish()
+        XCTAssertTrue(gate.begin())
+    }
 }

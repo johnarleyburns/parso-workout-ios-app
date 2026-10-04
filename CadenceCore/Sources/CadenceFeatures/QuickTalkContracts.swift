@@ -74,3 +74,16 @@ public struct QuickTalkFollowUpWindow: Equatable, Sendable {
     public var expiresAt: Date { startedAt.addingTimeInterval(Self.duration) }
     public func accepts(_ date: Date) -> Bool { date <= expiresAt }
 }
+
+/// Serializes microphone starts. Permission callbacks are asynchronous and a
+/// double tap used to install two AVAudioEngine taps on the same input node.
+public struct VoiceCaptureStartGate: Equatable, Sendable {
+    private var started = false
+    public init() {}
+    public mutating func begin() -> Bool {
+        guard !started else { return false }
+        started = true
+        return true
+    }
+    public mutating func finish() { started = false }
+}

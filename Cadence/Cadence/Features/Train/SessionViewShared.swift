@@ -20,6 +20,7 @@ struct InlineEditorConfig: Equatable {
     var reps: Int
     var rpe: Int?
     var bodyweight: Bool
+    var nonWeighted: Bool
     var performerID: UUID?
     var roster: [RosterEntry]
     var hasPartners: Bool

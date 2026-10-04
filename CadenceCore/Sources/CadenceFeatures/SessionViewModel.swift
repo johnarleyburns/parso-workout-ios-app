@@ -13,6 +13,14 @@ public enum SessionViewModel {
         exercise.equipmentValue == .bodyweight
     }
 
+    /// Movements whose load is not a meaningful input. These are separate from
+    /// bodyweight movements, where an added load may still be logged.
+    public static func isNonWeighted(_ exercise: Exercise) -> Bool {
+        let name = exercise.name.lowercased()
+        return name.contains("battling rope") || name.contains("glute ham raise")
+            || name.contains("glute-ham raise") || exercise.volumeEligible == false
+    }
+
     /// Whether a set belongs to the given performer (nil ⇒ the owner / "Me").
     public static func setPerformedBy(_ set: SetEntry, performerID: UUID?) -> Bool {
         guard let performerID else { return set.isOwnerSet }

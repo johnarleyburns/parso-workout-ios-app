@@ -105,6 +105,7 @@ extension SessionView {
         }
         let rpe: Int? = isEditing ? editingSet?.rpe.map { Int($0.rounded()) } : nil
         let bodyweight = isEditing ? (editingSet?.usesBodyweight ?? false) : isBodyweight(exercise)
+        let nonWeighted = SessionViewModel.isNonWeighted(exercise)
         let workingSets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
         let number = isEditing ? (workingSets.firstIndex(where: { $0.id == editingSet?.id }).map { $0 + 1 } ?? workingSets.count + 1) : workingSets.count + 1
         return InlineEditorConfig(
@@ -114,6 +115,7 @@ extension SessionView {
             reps: reps,
             rpe: rpe,
             bodyweight: bodyweight,
+            nonWeighted: nonWeighted,
             performerID: performerID,
             roster: rosterEntries,
             hasPartners: hasPartners,

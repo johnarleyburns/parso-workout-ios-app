@@ -62,7 +62,15 @@ struct InlineSetEditorView: View {
                     headerContext
                     performerSection
                     historySection
-                    weightSection
+                    if config.nonWeighted {
+                        Label("Non-weighted movement · no load entry", systemImage: "figure.strengthtraining.traditional")
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(16)
+                            .background(.background, in: RoundedRectangle(cornerRadius: 16))
+                    } else {
+                        weightSection
+                    }
                     repsSection
                     effortSection
                 }
@@ -253,7 +261,7 @@ struct InlineSetEditorView: View {
     }
 
     private var footer: some View {
-        Button(action: { guard let result = draft.submit() else { return }; Haptics.setLogged(); onSave(SetDraft(weightString: weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID)) }) {
+        Button(action: { guard let result = draft.submit() else { return }; Haptics.setLogged(); onSave(SetDraft(weightString: config.nonWeighted ? "0" : weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID)) }) {
             Text("Log Set").frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)

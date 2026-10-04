@@ -51,7 +51,7 @@ public extension ExerciseLibrary {
         var remaining = Set(missing)
         var chosen: [ExerciseTemplate] = []
         // Candidate pool: compounds first (cover more per movement), then isolations.
-        let pool = starter.sorted {
+        let pool = starter.filter(\.volumeEligible).sorted {
             ($0.mechanics == .compound ? 0 : 1, $0.name) < ($1.mechanics == .compound ? 0 : 1, $1.name)
         }
         while !remaining.isEmpty && chosen.count < limit {

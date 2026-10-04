@@ -43,6 +43,7 @@ struct WorkoutElapsedHeader: View {
                 if isPaused {
                     Text("Paused")
                         .font(.caption.weight(.semibold))
+            .fixedSize(horizontal: true, vertical: true)
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(.orange.opacity(0.18), in: Capsule())

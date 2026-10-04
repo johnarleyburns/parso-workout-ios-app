@@ -48,9 +48,21 @@ final class ExerciseDiscoveryTests: XCTestCase {
         for t in picks { covered.formUnion(ExerciseLibrary.muscleGroups(of: t)) }
         XCTAssertTrue(Set(missing).isSubset(of: covered), "suggestions should cover all the missing parts")
         XCTAssertLessThanOrEqual(picks.count, 6)
+        XCTAssertTrue(picks.allSatisfy(\.volumeEligible), "gap filling must never recommend non-volume movements")
+        XCTAssertFalse(picks.contains { $0.name == "90/90 Hamstring" })
     }
 
     func testSuggestionsEmptyWhenNothingMissing() {
         XCTAssertTrue(ExerciseLibrary.suggestions(forMissing: []).isEmpty)
+    }
+
+    func testProgressivePRDoesNotMarkSameOrLowerSetAgain() {
+        let samples = [SetSample(weight: 100, reps: 12),
+                       SetSample(weight: 100, reps: 12),
+                       SetSample(weight: 100, reps: 10),
+                       SetSample(weight: 105, reps: 12)]
+        let indices = PRCalculator.progressivePRIndices(samples, prior: [], rule: .topWeight,
+                                                         formula: .epley)
+        XCTAssertEqual(indices, Set([0, 3]))
     }
 }

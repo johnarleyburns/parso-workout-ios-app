@@ -348,13 +348,14 @@ public enum SessionRenderModel {
 
             // Build completed set displays + detect all-time PRs
             var displayedSets: [SetDisplay] = []
+            let ownerSamples = exerciseSets.filter(\.isOwnerSet).map { SetSample.from($0) }
+            let ownerHistory = excludingCurrent.filter(\.isOwnerSet).map { SetSample.from($0) }
+            let progressivePRs = PRCalculator.progressivePRIndices(ownerSamples, prior: ownerHistory,
+                                                                    rule: prRule, formula: formula)
+            var ownerSampleIndex = 0
             for set in exerciseSets {
-                let isPR = !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 &&
-                    PRCalculator.isNewPR(
-                        candidate: SetSample.from(set),
-                        previous: excludingCurrent.filter { $0.isOwnerSet }.map { SetSample.from($0) },
-                        rule: prRule, formula: formula
-                    )
+                let isPR = set.isOwnerSet && progressivePRs.contains(ownerSampleIndex)
+                if set.isOwnerSet { ownerSampleIndex += 1 }
                 if isPR { prSetIDs.insert(set.id) }
 
                 displayedSets.append(SetDisplay(
@@ -478,7 +479,7 @@ public enum SessionRenderModel {
             last = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
             pr = WorkoutRepository.currentPR(for: exercise, rule: prRule, formula: formula, excluding: session)
             samples = (exercise.sets ?? [])
-                .filter { $0.isOwnerSet && $0.session?.id != session?.id }
+                .filter { $0.isOwnerSet }
                 .map { SetSample.from($0) }
             firstWeight = WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: nil, excluding: session)
             ladders = WorkoutRepository.repLadderHistory(for: exercise, performedBy: nil, excluding: session)
@@ -491,7 +492,7 @@ public enum SessionRenderModel {
             // Partner PR not computed — only owner sets count
             pr = nil
             samples = (exercise.sets ?? [])
-                .filter { $0.performedBy?.id == performerID && $0.session?.id != session?.id }
+                .filter { $0.performedBy?.id == performerID }
                 .map { SetSample.from($0) }
             firstWeight = WorkoutRepository.firstWorkingSetWeight(for: exercise, performedBy: person, excluding: session)
             ladders = WorkoutRepository.repLadderHistory(for: exercise, performedBy: person, excluding: session)

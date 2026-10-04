@@ -16,6 +16,7 @@ struct HomeWeekDashboardSection: View {
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
+    let onStartWorkout: (WorkoutSession) -> Void
     @State var volumeWarningMessage: String?
     /// A fresh identity on every selection lets SwiftUI present the detail sheet
     /// again even when the user taps the same muscle after dismissing it.
@@ -108,7 +109,7 @@ struct HomeWeekDashboardSection: View {
                 : $0.normalized < $1.normalized }
             .prefix(3)
         return NavigationLink {
-            MuscleGroupQuickStartView(missing: behind.map(\.group), onStart: { _ in })
+            MuscleGroupQuickStartView(missing: behind.map(\.group), onStart: onStartWorkout)
         } label: {
             Label("Fill the gaps", systemImage: "plus.circle")
                 .frame(maxWidth: .infinity)

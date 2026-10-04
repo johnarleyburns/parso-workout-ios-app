@@ -22,6 +22,9 @@ final class VoiceCaptureController: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private var modernEngine: (any QuickTalkTranscriptionEngine)?
+    private var startTask: Task<Void, Never>?
+    private var tapInstalled = false
+    private var startGate = VoiceCaptureStartGate()
 
     func toggle() {
         if isRecording { stop() } else { start() }
@@ -33,14 +36,18 @@ final class VoiceCaptureController: ObservableObject {
     }
 
     func start() {
+        guard !isRecording, startTask == nil else { return }
         errorMessage = nil
         guard let recognizer, recognizer.isAvailable else {
             errorMessage = String(localized: "Speech recognition is unavailable right now.")
             return
         }
-        Task { [weak self] in
+        guard startGate.begin() else { return }
+        startTask = Task { [weak self] in
             guard let self else { return }
+            defer { startTask = nil; startGate.finish() }
             let allowed = await requestPermissions()
+            guard !Task.isCancelled else { return }
             guard allowed else {
                 errorMessage = String(localized: "Microphone and speech access are needed for voice logging.")
                 return
@@ -79,23 +86,21 @@ final class VoiceCaptureController: ObservableObject {
                 try? await engine.prepare(format: format)
             }
         }
-        cadenceInstallAudioTap(input, 1_024, format) { [weak self, weak request] buffer, _ in
-            if let engine = self?.modernEngine {
-                Task { @MainActor in engine.append(buffer) }
-            } else {
-                request?.append(buffer)
-            }
-            let level = buffer.floatChannelData?.pointee
-            _ = level // Keep the tap allocation-free; the transcript is the useful feedback.
-            _ = self
-        }
-
         let session = AVAudioSession.sharedInstance()
         do {
             try session.setCategory(.record, mode: .measurement,
                                     options: [.mixWithOthers, .allowBluetoothHFP])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
             audioEngine.prepare()
+            cadenceInstallAudioTap(input, 1_024, format) { [weak self, weak request] buffer, _ in
+                if let engine = self?.modernEngine {
+                    Task { @MainActor in engine.append(buffer) }
+                } else {
+                    request?.append(buffer)
+                }
+                _ = buffer.floatChannelData?.pointee
+            }
+            tapInstalled = true
             try audioEngine.start()
             isRecording = true
             if modernEngine == nil {
@@ -114,9 +119,12 @@ final class VoiceCaptureController: ObservableObject {
     }
 
     func stop() {
-        guard isRecording || request != nil || modernEngine != nil else { return }
+        startTask?.cancel()
+        startTask = nil
+        guard isRecording || request != nil || modernEngine != nil || tapInstalled else { return }
         audioEngine.stop()
-        audioEngine.inputNode.removeTap(onBus: 0)
+        if tapInstalled { audioEngine.inputNode.removeTap(onBus: 0) }
+        tapInstalled = false
         request?.endAudio()
         task?.cancel()
         task = nil
@@ -175,6 +183,7 @@ struct VoiceLoggingSheet: View {
                             capture.clear()
                         }
                         .buttonStyle(.bordered)
+                        .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     if capture.isRecording {
                         Label("Listening…", systemImage: "waveform")

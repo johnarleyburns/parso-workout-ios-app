@@ -19,6 +19,7 @@ struct ExerciseCardView: View {
     let isInlineActive: Bool
     let inlineEditingSetID: UUID?
     let inlineConfig: InlineEditorConfig?
+    let isNonWeighted: Bool
     let wouldBePR: ((Double, Int) -> Bool)?
 
     let onTapSet: (SessionRenderModel.SetDisplay) -> Void
@@ -189,7 +190,7 @@ struct ExerciseCardView: View {
         HStack(spacing: SetCol.gap) {
             Text(hasPartners ? "WHO" : "Set")
                 .frame(width: hasPartners ? 20 : SetCol.num, alignment: .center)
-            Text(unit.abbreviation)
+            Text(isNonWeighted ? "Non-weighted" : unit.abbreviation)
                 .frame(maxWidth: .infinity, alignment: .center)
                 .accessibilityLabel("Weight in \(unit.abbreviation)")
             Text("Reps")
@@ -232,7 +233,7 @@ struct ExerciseCardView: View {
                     Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
                 } else {
-                    Text(Format.weightValueQuarter(set.weight, unit: unit))
+                    Text(isNonWeighted ? "—" : Format.weightValueQuarter(set.weight, unit: unit))
                         .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
                         .frame(maxWidth: .infinity)
                 }

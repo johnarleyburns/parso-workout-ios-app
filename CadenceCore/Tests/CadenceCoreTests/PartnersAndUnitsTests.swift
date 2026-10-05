@@ -62,7 +62,9 @@ final class PartnersAndUnitsTests: XCTestCase {
     /// balance) must read 4, never 8.
     func testPartnerSetsExcludedFromCoachVolumeCounts() throws {
         let ctx = try makeContext()
-        let now = Date()
+        // A fixed Wednesday noon: with the real clock, a run just after midnight on Monday put the
+        // sets "30 minutes ago" in the previous week and the weekly counts read 0 (CI, 2026-10-05).
+        let now = Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 30, hour: 12))!
         let when = now.addingTimeInterval(-1800)
         let session = try WorkoutRepository.createSession(date: when, in: ctx)
         let hackSquat = try WorkoutRepository.findOrCreateExercise(

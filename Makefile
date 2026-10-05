@@ -4,7 +4,6 @@
 
 resolve-dbpp:
 	swift package resolve --package-path CadenceCore
-	bash scripts/patch-dbpp-healthinterop.sh
 
 build: resolve-dbpp
 	swift build --package-path CadenceCore

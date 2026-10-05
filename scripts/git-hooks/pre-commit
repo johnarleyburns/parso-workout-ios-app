@@ -10,8 +10,5 @@ if [[ "${SKIP_LOCAL_GUARDS:-}" == "1" ]]; then
 fi
 
 echo "pre-commit: running SwiftPM package tests only (no simulator)"
-# Same as `make resolve-dbpp`: a re-resolved DB++ 1.17.0 checkout needs the
-# HealthInterop compatibility patch before it compiles.
 swift package resolve --package-path CadenceCore
-bash scripts/patch-dbpp-healthinterop.sh
 swift test --package-path CadenceCore --parallel

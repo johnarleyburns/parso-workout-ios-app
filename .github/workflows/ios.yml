@@ -37,7 +37,6 @@ jobs:
         run: |
           set -eo pipefail
           swift package resolve --package-path CadenceCore
-          bash scripts/patch-dbpp-healthinterop.sh
           swift build --package-path CadenceCore 2>&1 | tee swift-build.log
           swift test --package-path CadenceCore 2>&1 | tee swift-test.log
 
@@ -134,12 +133,11 @@ jobs:
           key: spm-${{ hashFiles('CadenceCore/Package.resolved') }}
           restore-keys: spm-
 
-      - name: Resolve and patch Swift packages
+      - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
             -project Cadence/Cadence.xcodeproj \
             -scheme Cadence
-          bash scripts/patch-dbpp-healthinterop.sh
 
       - name: Set App/TestFlight Build Number
         run: |

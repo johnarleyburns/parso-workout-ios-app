@@ -32,9 +32,9 @@ Verification: `swift test --parallel` 2058/2058 passed (see note below), watch
 scheme generic build succeeded. Device check by the owner: start a watch
 lift, finish it, leave the summary, relaunch; the workout indicator must be gone.
 
-Local build note: a freshly cleaned `.build` needs `scripts/patch-dbpp-healthinterop.sh`
-before `swift test` (the pre-commit hook runs it); DB++ 1.17.0's HealthInterop doesn't
-build for macOS unpatched.
+Dependency: DB++ moved to 1.17.1 (its released HealthInterop fix), and the
+`patch-dbpp-healthinterop.sh` workaround was removed from the hook, Makefile,
+`xcodebuild-safe.sh` and CI.
 
 ## Latest implementation — Muscle Map colours every tracked muscle completely (2026-10-02)
 

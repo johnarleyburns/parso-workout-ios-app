@@ -13,10 +13,13 @@ region of red fill bounded by an outline. This script therefore:
    and a deeper layer on the other, so the two halves do not mirror);
 3. splits the few regions the artwork draws as one shape but anatomy treats as
    two muscles (`SPLITS`, e.g. the trapezius into neck/upper traps/mid back);
-4. excludes untracked anatomy (head, hands, feet) with `EXCLUDE` polygons; and
+4. excludes untracked anatomy (head, hands, feet) with `EXCLUDE` polygons;
 5. floods every remaining body pixel (tiny unlabelled slivers, pale or
    transparent deep-layer linework, antialiasing) from the nearest assigned
-   region, so a mask covers its whole muscle and never leaves a hole or gap.
+   region, so a mask covers its whole muscle and never leaves a hole or gap; and
+6. writes one `untracked` mask per panel covering every muscle pixel no group
+   claims (head, hands, feet), which the app draws white so the map never shows
+   red muscle that no workout can turn green.
 
 Bone, tendon and skin (large light areas) are never part of a mask, and the
 artwork's dark outline strokes are left out so the individual muscles remain
@@ -327,6 +330,7 @@ def segment(panel):
                     alpha[index] = 255
 
     groups = sorted({g for g in SEEDS[panel]} | {g for g, _, _ in SPLITS[panel]})
+    covered = bytearray(width * height)
     for group in groups:
         alpha = bytearray(255 if body[i] and assigned[i] == group else 0
                           for i in range(width * height))
@@ -334,21 +338,35 @@ def segment(panel):
         # Keep the artwork's own outlines visible over the colour so the
         # individual muscles still read when every group is on target.
         alpha = bytes(0 if outline[i] else alpha[i] for i in range(width * height))
-        mask = Image.frombytes("L", image.size, alpha)
-        name = f"MuscleMask-{panel}-{group}"
-        output = ASSETS / f"{name}.imageset" / f"{name}.png"
-        output.parent.mkdir(parents=True, exist_ok=True)
-        contents = output.parent / "Contents.json"
-        if not contents.exists():
-            contents.write_text(
-                '{\n  "images" : [\n    {\n      "filename" : "%s.png",\n'
-                '      "idiom" : "universal",\n      "scale" : "1x"\n    }\n  ],\n'
-                '  "info" : {\n    "author" : "xcode",\n    "version" : 1\n  }\n}\n'
-                % name)
-        rgba = Image.new("RGBA", image.size, (255, 255, 255, 0))
-        rgba.putalpha(mask)
-        rgba.save(output, optimize=True)
-        print(f"{name}: {sum(1 for value in alpha if value)} px")
+        for i in range(width * height):
+            if alpha[i]:
+                covered[i] = 1
+        write_mask(panel, group, alpha, image.size)
+
+    # Untracked anatomy (head, hands, feet and anything no group claims) is drawn
+    # white, so the map never shows red muscle that no workout can turn green.
+    untracked = bytearray(255 if (body[i] or red[i]) and not covered[i] and not outline[i] else 0
+                          for i in range(width * height))
+    write_mask(panel, "untracked", bytes(untracked), image.size)
+
+
+def write_mask(panel, group, alpha, size):
+    """Writes one alpha mask as a white RGBA PNG imageset."""
+    mask = Image.frombytes("L", size, alpha)
+    name = f"MuscleMask-{panel}-{group}"
+    output = ASSETS / f"{name}.imageset" / f"{name}.png"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    contents = output.parent / "Contents.json"
+    if not contents.exists():
+        contents.write_text(
+            '{\n  "images" : [\n    {\n      "filename" : "%s.png",\n'
+            '      "idiom" : "universal",\n      "scale" : "1x"\n    }\n  ],\n'
+            '  "info" : {\n    "author" : "xcode",\n    "version" : 1\n  }\n}\n'
+            % name)
+    rgba = Image.new("RGBA", size, (255, 255, 255, 0))
+    rgba.putalpha(mask)
+    rgba.save(output, optimize=True)
+    print(f"{name}: {sum(1 for value in alpha if value)} px")
 
 
 def main():

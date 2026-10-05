@@ -2,6 +2,30 @@
 
 Updated: 2026-10-04
 
+## Latest implementation — Muscle map: untracked muscle is white, never red (2026-10-04)
+
+Field report: with every muscle group green, the Home muscle map still showed
+red on the head, hands and feet, and on the neck/splenius, tibialis anterior and
+rhomboid area. The artwork is drawn red and the map only coloured masks of
+groups in the current volume scope, so the artwork's red showed through (1) on
+anatomy no group covers (head, hands, feet) and (2) on groups outside the scope
+(neck, tibialis, rotator cuff, hip flexors are not in `defaultTracked`).
+
+- `scripts/generate-muscle-masks.py` also writes one `MuscleMask-<panel>-untracked`
+  mask per panel: every muscle pixel no group claims (outline strokes excluded).
+  The 30 tracked masks regenerate byte-identical.
+- `MuscleMapLayout.neutralMaskAssetNames(for:visibleGroups:)` returns the
+  untracked mask plus every mask group outside the volume scope;
+  `HomeMuscleMapView` draws those solid white under the group colours.
+- `MuscleMapMaskAssetTests` now checks every red artwork pixel anywhere on both
+  panels (head, neck, hands and feet included) is covered by exactly one mask
+  (a group's or the untracked one), the catalog holds the untracked masks, and
+  the neutral list is exactly the untracked mask plus the hidden groups.
+
+Renders (all groups on target): `/tmp/muscle-map/before-default-scope-*.png`
+(43,783 / 62,641 red px) → `/tmp/muscle-map/after-default-scope-*.png` and
+`after-all-groups-*.png` (0 red px).
+
 ## Latest implementation — Watch workout session left recording for 27 hours (2026-10-04)
 
 Field report: the Watch showed a workout recording for 27 hours although the

@@ -34,6 +34,30 @@ final class MuscleMapMaskAssetTests: XCTestCase {
         XCTAssertTrue(visible.contains(.lats))
     }
 
+    /// Field report 2026-10-04: with every group on target, untracked muscle (head, hands, feet,
+    /// and groups outside the volume scope such as neck, tibialis and rotator cuff) still showed
+    /// the artwork's red. It is drawn white instead.
+    func testNeutralMasksAreTheUntrackedAnatomyPlusEveryHiddenGroup() {
+        let visible = MuscleGroup.defaultTracked
+        for panel in [MuscleMapPanel.front, .back] {
+            let names = MuscleMapLayout.neutralMaskAssetNames(for: panel, visibleGroups: visible)
+            XCTAssertEqual(names.first, MuscleMapLayout.untrackedMaskAssetName(for: panel))
+            let hidden = MuscleMapLayout.maskGroups(for: panel).filter { !visible.contains($0) }
+            XCTAssertEqual(Set(names.dropFirst()),
+                           Set(hidden.map { MuscleMapLayout.maskAssetName(for: $0, panel: panel) }))
+            let coloured = MuscleMapLayout.maskGroups(for: panel, visibleGroups: visible)
+            XCTAssertTrue(coloured.allSatisfy {
+                !names.contains(MuscleMapLayout.maskAssetName(for: $0, panel: panel))
+            }, "a group is never both coloured and neutral")
+        }
+        XCTAssertTrue(MuscleMapLayout.neutralMaskAssetNames(for: .back, visibleGroups: visible)
+            .contains(MuscleMapLayout.maskAssetName(for: .rotatorCuff, panel: .back)))
+        XCTAssertTrue(MuscleMapLayout.neutralMaskAssetNames(for: .front, visibleGroups: visible)
+            .contains(MuscleMapLayout.maskAssetName(for: .tibialis, panel: .front)))
+        XCTAssertEqual(MuscleMapLayout.neutralMaskAssetNames(for: .front, visibleGroups: Set(MuscleGroup.allCases)),
+                       [MuscleMapLayout.untrackedMaskAssetName(for: .front)])
+    }
+
     #if canImport(ImageIO)
     func testAssetCatalogHoldsExactlyTheListedMasks() throws {
         let names = try FileManager.default.contentsOfDirectory(atPath: Self.assetCatalog.path)
@@ -41,20 +65,21 @@ final class MuscleMapMaskAssetTests: XCTestCase {
             .map { String($0.dropLast(".imageset".count)) }
         let expected = [MuscleMapPanel.front, .back].flatMap { panel in
             MuscleMapLayout.maskGroups(for: panel).map { MuscleMapLayout.maskAssetName(for: $0, panel: panel) }
+                + [MuscleMapLayout.untrackedMaskAssetName(for: panel)]
         }
         XCTAssertEqual(Set(names), Set(expected))
     }
 
     /// Loads every mask once (decoding PNGs is the slow part) and checks that
     /// each one is a full-size, non-empty region; that each callout sits on
-    /// its own muscle; and that every red muscle pixel of the torso and limbs
-    /// belongs to exactly one group — so no tracked muscle is uncoloured or
-    /// only partially coloured, and no two groups colour the same muscle.
-    /// Head, hands and feet are untracked.
+    /// its own muscle; and that every red muscle pixel anywhere on the panel
+    /// (head, neck, hands and feet included) belongs to exactly one mask, a
+    /// group's or the white untracked mask, so with every group on target no
+    /// red remains, no tracked muscle is partly coloured, and no two masks
+    /// colour the same pixel.
     func testMasksAreCompleteAlignedAndDisjoint() throws {
         let width = Int(MuscleMapLayout.panelPixelWidth)
         let height = Int(MuscleMapLayout.panelPixelHeight)
-        let rows: [MuscleMapPanel: Range<Int>] = [.front: 300..<1500, .back: 240..<1580]
         for panel in [MuscleMapPanel.front, .back] {
             var owners = [UInt8](repeating: 0, count: width * height)
             var totalCovered = 0
@@ -79,18 +104,24 @@ final class MuscleMapMaskAssetTests: XCTestCase {
                 }
             }
 
+            let untrackedName = MuscleMapLayout.untrackedMaskAssetName(for: panel)
+            let untracked = try Self.render(untrackedName, alphaOnly: true)
+            XCTAssertEqual(untracked.bytes.count, width * height, untrackedName)
+            if untracked.bytes.count == width * height {
+                XCTAssertGreaterThan(Self.accumulate(untracked.bytes, into: &owners), 2_000,
+                                     "\(untrackedName) should cover the head, hands and feet")
+            }
+
             let art = try Self.render(panel == .front ? "MuscleMapFront" : "MuscleMapBack",
                                       alphaOnly: false)
-            let rowRange = rows[panel]!
             let (uncovered, overlapping) = art.bytes.withUnsafeBufferPointer { rgba in
                 owners.withUnsafeBufferPointer { owners in
                     var uncovered = 0, overlapping = 0
-                    for y in rowRange {
+                    for y in 0..<height {
                         for x in 0..<width {
                             let count = owners[y * width + x]
                             if count > 1 { overlapping += 1 }
-                            // Hands start at the wrists; they are not a tracked group.
-                            guard count == 0, !(y >= 860 && (x < 300 || x >= 780)) else { continue }
+                            guard count == 0 else { continue }
                             if Self.isMuscle(rgba, index: (y * width + x) * 4) { uncovered += 1 }
                         }
                     }
@@ -99,7 +130,7 @@ final class MuscleMapMaskAssetTests: XCTestCase {
             }
             XCTAssertEqual(art.bytes.count, width * height * 4, "\(panel) artwork did not load")
             XCTAssertGreaterThan(totalCovered, 200_000, "\(panel) masks colour too little of the body")
-            XCTAssertEqual(uncovered, 0, "\(panel): \(uncovered) muscle pixels are not coloured by any group")
+            XCTAssertEqual(uncovered, 0, "\(panel): \(uncovered) red muscle pixels are covered by no mask")
             XCTAssertEqual(overlapping, 0, "\(panel): \(overlapping) pixels are coloured by two groups")
         }
     }

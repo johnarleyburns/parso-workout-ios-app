@@ -103,6 +103,23 @@ public enum MuscleMapLayout {
         maskGroups(for: panel).filter { visibleGroups.contains($0) }
     }
 
+    /// Masks drawn solid white under the group colours, so the map never shows the artwork's red
+    /// on muscle that no workout can turn green: the panel's untracked anatomy (head, hands, feet)
+    /// and every mask group outside the current volume scope (e.g. neck, tibialis, rotator cuff
+    /// when they aren't tracked).
+    public static func neutralMaskAssetNames(for panel: MuscleMapPanel,
+                                             visibleGroups: Set<MuscleGroup>) -> [String] {
+        guard panel != .list else { return [] }
+        return [untrackedMaskAssetName(for: panel)]
+            + maskGroups(for: panel).filter { !visibleGroups.contains($0) }
+                .map { maskAssetName(for: $0, panel: panel) }
+    }
+
+    /// Asset-catalog name of a panel's untracked-anatomy mask.
+    public static func untrackedMaskAssetName(for panel: MuscleMapPanel) -> String {
+        "MuscleMask-\(panel.rawValue)-untracked"
+    }
+
     /// Asset-catalog name of a group's colour mask on a panel.
     public static func maskAssetName(for group: MuscleGroup, panel: MuscleMapPanel) -> String {
         "MuscleMask-\(panel.rawValue)-\(group.rawValue)"

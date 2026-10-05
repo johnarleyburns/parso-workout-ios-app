@@ -72,6 +72,13 @@ struct HomeMuscleMapView: View {
                     .frame(width: imageSize.width, height: imageSize.height)
                     .allowsHitTesting(false)
                     .accessibilityLabel("\(panel == .front ? "Front" : "Back") muscle heat map")
+                // Untracked muscle is white, never the artwork's red (field report 2026-10-04).
+                ForEach(MuscleMapLayout.neutralMaskAssetNames(for: panel, visibleGroups: visibleGroups),
+                        id: \.self) { name in
+                    neutralRegion(name, imageSize: imageSize)
+                        .position(x: imageOrigin.x + imageSize.width / 2,
+                                  y: imageOrigin.y + imageSize.height / 2)
+                }
                 ForEach(maskGroups) { group in
                     muscleRegion(for: group, panel: panel, imageSize: imageSize)
                         .position(x: imageOrigin.x + imageSize.width / 2,
@@ -98,6 +105,17 @@ struct HomeMuscleMapView: View {
         let ratio = MuscleMapLayout.panelRatio
         let height = min(container.height, container.width / ratio)
         return CGSize(width: height * ratio, height: height)
+    }
+
+    private func neutralRegion(_ assetName: String, imageSize: CGSize) -> some View {
+        Image(assetName)
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: imageSize.width, height: imageSize.height)
+            .foregroundStyle(.white)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private func muscleRegion(for group: MuscleGroup, panel: MuscleMapPanel, imageSize: CGSize) -> some View {

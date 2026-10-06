@@ -124,6 +124,17 @@ struct RootTabView: View {
             // surface. A workout is never auto-ended or discarded, no matter
             // how stale. Manual minimization remains a deliberate path to Home.
             recoverActiveSessionIfNeeded()
+            // Recovery can make the workout active before this view's
+            // `.onChange` observer is installed. Reconcile once after launch
+            // so a recovered workout always gets its Live Activity.
+            if active.isActive, let session = active.strengthSession {
+                WorkoutLiveActivityCoordinator.shared.start(
+                    title: session.title.isEmpty ? String(localized: "Workout") : session.title,
+                    restEndsAt: active.restEndsAt,
+                    nextExercise: active.nextExercise,
+                    nextSetSummary: active.nextSetSummary,
+                    nextSetToken: active.nextSetToken)
+            }
             // Clear the legacy weekly Today-plan projection from older builds.
             // Current Watch/widget projections are populated only from explicit
             // one-off scheduled workouts.

@@ -44,6 +44,7 @@ public struct WatchSetCardState: Equatable, Sendable {
     /// "RPE 9" / "RIR 2" when effort is set.
     public let effortText: String?
     public let isWarmup: Bool
+    public let isNonWeighted: Bool
 }
 
 /// Builds the Set Card from primitive inputs; host-tested.
@@ -72,12 +73,17 @@ public enum WatchSetCardBuilder {
                             lifter: String?,
                             nextLifter: String?,
                             effortText: String?,
-                            isWarmup: Bool) -> WatchSetCardState {
+                            isWarmup: Bool,
+                            isNonWeighted: Bool = false) -> WatchSetCardState {
         let dots = makeDots(planned: plannedWorkingSets.count, completed: completedWorkingSets)
-        let weightText = Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
-        let changed = abs(currentWeightKg - prefillWeightKg) > 0.001 || currentReps != prefillReps
+        let weightText = isNonWeighted ? "—" : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
+        let changed = isNonWeighted
+            ? currentReps != prefillReps
+            : abs(currentWeightKg - prefillWeightKg) > 0.001 || currentReps != prefillReps
         let logTitle = changed
-            ? String(localized: "Log \(weightText) × \(currentReps)", bundle: .module)
+            ? (isNonWeighted
+                ? String(localized: "Log \(currentReps) reps", bundle: .module)
+                : String(localized: "Log \(weightText) × \(currentReps)", bundle: .module))
             : String(localized: "Log set", bundle: .module)
         let last = lastTime.map { last -> String in
             let base = Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
@@ -107,7 +113,8 @@ public enum WatchSetCardBuilder {
                                unit: unit, isWarmup: isWarmup),
             lifterText: lifterText,
             effortText: effortText,
-            isWarmup: isWarmup)
+            isWarmup: isWarmup,
+            isNonWeighted: isNonWeighted)
     }
 
     /// Done / current / upcoming. Without a plan there is one dot per logged set plus the current one.
@@ -192,7 +199,8 @@ extension WatchStrengthFlowModel {
             lifter: lifter,
             nextLifter: options.count > 1 ? nextLifter : nil,
             effortText: effort,
-            isWarmup: isWarmupSet)
+            isWarmup: isWarmupSet,
+            isNonWeighted: SessionViewModel.isNonWeighted(exercise))
     }
 
     /// Cycles the effort chip: none → 6 → 7 → 8 → 9 → 10 → none (S2).

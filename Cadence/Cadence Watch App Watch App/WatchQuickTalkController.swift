@@ -32,6 +32,7 @@ final class WatchQuickTalkController {
     private var recorder: AVAudioRecorder?
     private var recordingURL: URL?
     private var meterTask: Task<Void, Never>?
+    private var replyTimeoutTask: Task<Void, Never>?
     private var undoSetID: UUID?
     private weak var model: WatchStrengthFlowModel?
     private var unit: MeasurementUnitPreference = .kilograms
@@ -101,6 +102,8 @@ final class WatchQuickTalkController {
     func finishListening() {
         guard case .listening = phase else { return }
         meterTask?.cancel()
+        replyTimeoutTask?.cancel()
+        replyTimeoutTask = nil
         recorder?.stop()
         recorder = nil
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -126,18 +129,35 @@ final class WatchQuickTalkController {
             let transcript = reply[WatchSync.Key.quickTalkTranscript] as? String
             let error = reply[WatchSync.Key.quickTalkError] as? String
             Task { @MainActor in
+                self?.replyTimeoutTask?.cancel()
+                self?.replyTimeoutTask = nil
                 if let transcript { self?.handle(transcript: transcript, source: .iPhone) }
                 else { self?.phase = .failed(code: error ?? "noTranscript") }
             }
         }, errorHandler: { [weak self] error in
             let ns = error as NSError
-            Task { @MainActor in self?.phase = .failed(code: "wc-\(ns.code)") }
+            Task { @MainActor in
+                self?.replyTimeoutTask?.cancel()
+                self?.replyTimeoutTask = nil
+                self?.phase = .failed(code: "wc-\(ns.code)")
+            }
         })
+        // sendMessage has no reply timeout. Without our own deadline the watch
+        // can remain on “Connecting to iPhone…” forever after a phone wake or
+        // SpeechAnalyzer failure.
+        replyTimeoutTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .seconds(15))
+            guard !Task.isCancelled, let self,
+                  case .transcribing(.iPhone) = self.phase else { return }
+            self.phase = .failed(code: "phoneReplyTimedOut")
+        }
     }
 
     /// Slide off the button: discard the clip, nothing is sent.
     func cancelListening() {
         meterTask?.cancel()
+        replyTimeoutTask?.cancel()
+        replyTimeoutTask = nil
         recorder?.stop()
         recorder?.deleteRecording()
         recorder = nil

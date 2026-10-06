@@ -321,6 +321,19 @@ public final class WatchStrengthFlowModel {
 
         do {
             let performer = currentPerformer
+            let priorOwnerSamples = (exercise.sets ?? [])
+                .filter { $0.session?.id != session.id && $0.isOwnerSet }
+                .map { SetSample.from($0) }
+            let earlierOwnerSamples = (exercise.sets ?? [])
+                .filter { $0.session?.id == session.id && $0.isOwnerSet }
+                .sorted { $0.order < $1.order }
+                .map { SetSample.from($0) }
+            let isOwnerBeforeSave = performer == nil || performer?.isMe == true
+            let isPRBeforeSave = isOwnerBeforeSave && !isWarmupSet && PRCalculator.isNewPR(
+                candidate: SetSample(weight: currentWeight, reps: Int(currentReps), isWarmup: false),
+                previous: priorOwnerSamples + earlierOwnerSamples,
+                rule: prRule, formula: prFormula)
+
             let set = try WorkoutRepository.addSet(
                 to: session, exercise: exercise, weightKg: currentWeight,
                 reps: Int(currentReps), rpe: resolvedEffortRPE, isWarmup: isWarmupSet,
@@ -330,9 +343,7 @@ public final class WatchStrengthFlowModel {
 
             let isOwner = set.isOwnerSet
             lastLoggedSetID = set.id
-            lastLoggedSetWasPR = isOwner && !isWarmupSet && WorkoutRepository.wouldBePR(
-                exercise: exercise, weightKg: set.effectiveLoadKg, reps: set.reps, isWarmup: false,
-                rule: prRule, formula: prFormula, excluding: session)
+            lastLoggedSetWasPR = isPRBeforeSave
             if lastLoggedSetWasPR { personalRecordCount += 1 }
             syncLogSet(session: session, exercise: exercise, set: set)
             if !partners.isEmpty { advancePerformer() }

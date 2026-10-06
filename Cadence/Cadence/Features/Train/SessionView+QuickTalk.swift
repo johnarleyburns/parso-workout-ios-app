@@ -21,12 +21,14 @@ extension SessionView {
         } else {
             quickTalkDelayTask?.cancel()
             guard quickTalkListening else { return }
-            quickTalkCapture.stop()
             quickTalkListening = false
-            // SpeechAnalyzer finalizes its last result asynchronously. Give it
-            // one main-actor turn before parsing, while retaining the visible
-            // transcript if no final result arrives.
-            DispatchQueue.main.async { finishQuickTalk() }
+            // SpeechAnalyzer finalizes its last result asynchronously. Wait for
+            // that flush before parsing, otherwise the final reps/weight can be
+            // missing and the release appears to do nothing.
+            Task { @MainActor in
+                await quickTalkCapture.stopAndWait()
+                finishQuickTalk()
+            }
         }
     }
 

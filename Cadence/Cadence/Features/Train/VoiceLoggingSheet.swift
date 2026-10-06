@@ -52,7 +52,7 @@ final class VoiceCaptureController: ObservableObject {
                 errorMessage = String(localized: "Microphone and speech access are needed for voice logging.")
                 return
             }
-        beginRecognition(with: recognizer)
+            await beginRecognition(with: recognizer)
         }
     }
 
@@ -68,8 +68,10 @@ final class VoiceCaptureController: ObservableObject {
         return speech == .authorized && microphone
     }
 
-    private func beginRecognition(with recognizer: SFSpeechRecognizer) {
-        stop()
+    private func beginRecognition(with recognizer: SFSpeechRecognizer) async {
+        // Permission startup can race with a previous capture teardown. Clean
+        // the audio objects without cancelling the task currently launching us.
+        stopCapture()
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
@@ -80,10 +82,15 @@ final class VoiceCaptureController: ObservableObject {
         if #available(iOS 26.0, *) {
             let engine = SpeechAnalyzerTranscriptionEngine()
             engine.onTranscript = { [weak self] value in self?.transcript = value }
-            modernEngine = engine
-            Task { [weak engine] in
-                guard let engine else { return }
-                try? await engine.prepare(format: format)
+            do {
+                // Do not install the tap until SpeechAnalyzer has accepted the
+                // audio format. The old code began recording while its input
+                // stream was still nil, dropping the utterance and making
+                // Listen appear to do nothing on newer OS versions.
+                try await engine.prepare(format: format)
+                modernEngine = engine
+            } catch {
+                modernEngine = nil
             }
         }
         let session = AVAudioSession.sharedInstance()
@@ -121,6 +128,10 @@ final class VoiceCaptureController: ObservableObject {
     func stop() {
         startTask?.cancel()
         startTask = nil
+        stopCapture()
+    }
+
+    private func stopCapture() {
         guard isRecording || request != nil || modernEngine != nil || tapInstalled else { return }
         audioEngine.stop()
         if tapInstalled { audioEngine.inputNode.removeTap(onBus: 0) }
@@ -129,10 +140,32 @@ final class VoiceCaptureController: ObservableObject {
         task?.cancel()
         task = nil
         request = nil
-        modernEngine?.finish()
+        let engine = modernEngine
         modernEngine = nil
         isRecording = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        Task { @MainActor in await engine?.finish() }
+    }
+
+    /// Stops capture and waits for SpeechAnalyzer to flush its final segment.
+    /// Quick Talk uses this path before parsing so the last spoken number cannot
+    /// arrive after the command has already been evaluated.
+    func stopAndWait() async {
+        startTask?.cancel()
+        startTask = nil
+        guard isRecording || request != nil || modernEngine != nil || tapInstalled else { return }
+        audioEngine.stop()
+        if tapInstalled { audioEngine.inputNode.removeTap(onBus: 0) }
+        tapInstalled = false
+        request?.endAudio()
+        task?.cancel()
+        task = nil
+        request = nil
+        let engine = modernEngine
+        modernEngine = nil
+        isRecording = false
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        await engine?.finish()
     }
 
 }
@@ -171,7 +204,8 @@ struct VoiceLoggingSheet: View {
                         } label: {
                             Label(capture.isRecording ? "Stop listening" : "Listen",
                                   systemImage: capture.isRecording ? "stop.circle.fill" : "mic.circle.fill")
-                                .frame(maxWidth: .infinity, minHeight: 48)
+                                .frame(maxWidth: .infinity, minHeight: 48, alignment: .center)
+                                .contentShape(RoundedRectangle(cornerRadius: 12))
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(capture.isRecording ? .red : CadenceTheme.accent)
@@ -183,7 +217,8 @@ struct VoiceLoggingSheet: View {
                             capture.clear()
                         }
                         .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .frame(maxWidth: .infinity, minHeight: 48, alignment: .center)
+                        .contentShape(RoundedRectangle(cornerRadius: 12))
                     }
                     if capture.isRecording {
                         Label("Listening…", systemImage: "waveform")

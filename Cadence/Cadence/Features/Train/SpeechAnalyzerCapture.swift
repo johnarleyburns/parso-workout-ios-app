@@ -6,7 +6,7 @@ protocol QuickTalkTranscriptionEngine: AnyObject {
     var onTranscript: ((String) -> Void)? { get set }
     func prepare(format: AVAudioFormat) async throws
     func append(_ buffer: AVAudioPCMBuffer)
-    func finish()
+    func finish() async
 }
 
 /// iOS 26's SpeechAnalyzer is the primary phone transcriber. The legacy
@@ -19,6 +19,7 @@ final class SpeechAnalyzerTranscriptionEngine: QuickTalkTranscriptionEngine {
     private let module: DictationTranscriber
     private var analyzer: SpeechAnalyzer?
     private var inputContinuation: AsyncStream<AnalyzerInput>.Continuation?
+    private var resultsTask: Task<Void, Never>?
 
     init(locale: Locale = .current) {
         module = DictationTranscriber(locale: locale, preset: .progressiveShortDictation)
@@ -40,7 +41,7 @@ final class SpeechAnalyzerTranscriptionEngine: QuickTalkTranscriptionEngine {
                 // still use the compatibility path on the next capture.
             }
         }
-        Task { [weak self] in
+        resultsTask = Task { [weak self] in
             guard let self else { return }
             do {
                 for try await result in module.results {
@@ -54,10 +55,12 @@ final class SpeechAnalyzerTranscriptionEngine: QuickTalkTranscriptionEngine {
         inputContinuation?.yield(AnalyzerInput(buffer: buffer))
     }
 
-    func finish() {
+    func finish() async {
         inputContinuation?.finish()
         inputContinuation = nil
-        let analyzer = analyzer
-        Task { try? await analyzer?.finalizeAndFinishThroughEndOfInput() }
+        try? await analyzer?.finalizeAndFinishThroughEndOfInput()
+        await resultsTask?.value
+        resultsTask = nil
+        analyzer = nil
     }
 }

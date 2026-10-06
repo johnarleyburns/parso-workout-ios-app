@@ -129,6 +129,7 @@ struct WatchAddExerciseView: View {
                 Section {
                     HStack(spacing: 6) {
                         TextField("Search", text: $query)
+                            .frame(maxWidth: .infinity, minHeight: 44)
                             .accessibilityIdentifier("watchAddExercise.search")
                         customExerciseButton
                     }
@@ -202,6 +203,8 @@ struct WatchAddExerciseView: View {
             }
         }
         .buttonStyle(.plain)
+        .frame(minWidth: 44, minHeight: 44)
+        .contentShape(Rectangle())
         .accessibilityLabel(customNameLabel)
         .accessibilityIdentifier("watchAddExercise.custom")
     }

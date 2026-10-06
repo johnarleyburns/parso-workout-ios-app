@@ -89,7 +89,7 @@ struct MuscleGroupQuickStartView: View {
 
     private func reuse(_ past: WorkoutSession) {
         guard let s = try? WorkoutRepository.reuseSession(from: past, in: context) else { return }
-        Haptics.selection(); dismiss(); onStart(s)
+        startAfterDismiss(s)
     }
 
     private func buildFromSuggestions() {
@@ -97,6 +97,19 @@ struct MuscleGroupQuickStartView: View {
         s.plannedExerciseNames = suggestions.map(\.name)
         for name in suggestions { _ = try? WorkoutRepository.findOrCreateExercise(named: name.name, in: context) }
         try? context.save()
-        Haptics.selection(); dismiss(); onStart(s)
+        startAfterDismiss(s)
+    }
+
+    /// The destination is inside a NavigationStack. Starting the root
+    /// full-screen cover in the same transaction as dismissing this destination
+    /// can leave the new session active but the cover unapplied; Home then only
+    /// shows it after a later navigation. Defer the start one main-actor turn.
+    private func startAfterDismiss(_ session: WorkoutSession) {
+        Haptics.selection()
+        dismiss()
+        Task { @MainActor in
+            await Task.yield()
+            onStart(session)
+        }
     }
 }

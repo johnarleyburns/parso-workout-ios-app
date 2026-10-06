@@ -1,6 +1,7 @@
 @preconcurrency import ActivityKit
 import Foundation
 import CadenceFeatures
+import OSLog
 
 /// Best-effort lock-screen status for an active iPhone workout. The embedded
 /// Watch app deliberately keeps using HKWorkoutSession, whose system workout
@@ -8,10 +9,15 @@ import CadenceFeatures
 @MainActor
 final class WorkoutLiveActivityCoordinator {
     static let shared = WorkoutLiveActivityCoordinator()
+    private let logger = Logger(subsystem: "guru.parso.ios-workout-app", category: "WorkoutLiveActivity")
     private var activity: Activity<WorkoutLiveActivityAttributes>?
 
     func start(title: String, restEndsAt: Date? = nil, nextExercise: String? = nil,
                nextSetSummary: String? = nil, nextSetToken: String? = nil) {
+        // Launch recovery and the active-state observer can both reconcile the
+        // same workout. Do not tear down a valid activity and recreate it in
+        // the same launch window.
+        guard activity == nil else { return }
         endAllStale()
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         let attributes = WorkoutLiveActivityAttributes(workoutTitle: title)
@@ -20,8 +26,15 @@ final class WorkoutLiveActivityCoordinator {
                                                                nextExercise: nextExercise,
                                                                nextSetSummary: nextSetSummary,
                                                                nextSetToken: nextSetToken)
-        activity = try? Activity.request(attributes: attributes,
-                                         content: ActivityContent(state: state, staleDate: nil))
+        do {
+            activity = try Activity.request(attributes: attributes,
+                                            content: ActivityContent(state: state, staleDate: nil))
+        } catch {
+            // A missing entitlement, disabled Live Activities setting, or a
+            // rejected ActivityKit request must be diagnosable instead of
+            // silently leaving the user with an apparently blank activity.
+            logger.error("Live Activity request failed: \(String(describing: error), privacy: .public)")
+        }
     }
 
     func update(elapsedSeconds: Int, status: String, isPaused: Bool,

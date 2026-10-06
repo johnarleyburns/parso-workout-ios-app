@@ -30,20 +30,25 @@ struct WorkoutElapsedHeader: View {
                 WallClockLabel()
                 Spacer()
             }
-            HStack(spacing: 12) {
+            HStack(spacing: 6) {
                 Image(systemName: "stopwatch")
                     .font(.title2)
                     .foregroundStyle(isPaused ? .secondary : .primary)
                 Text(time)
                     .scaledSystemFont(44, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                     .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                    .allowsTightening(true)
+                    .layoutPriority(1)
                     .foregroundStyle(isPaused ? .secondary : .primary)
                     .accessibilityIdentifier("session.elapsed")
                     .accessibilityLabel("Elapsed time \(time)\(isPaused ? ", paused" : "")")
                 if isPaused {
                     Text("Paused")
                         .font(.caption.weight(.semibold))
-            .fixedSize(horizontal: true, vertical: true)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(.orange.opacity(0.18), in: Capsule())

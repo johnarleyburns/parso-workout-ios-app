@@ -34,8 +34,11 @@ struct WatchMetricField: View {
                     .font(.system(.title, design: .rounded).weight(.bold))
                     .monospacedDigit()
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.42)
+                    .allowsTightening(true)
+                    .layoutPriority(1)
                 Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
             }
             .frame(maxWidth: .infinity, minHeight: 46)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)

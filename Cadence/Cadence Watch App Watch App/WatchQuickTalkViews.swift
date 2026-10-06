@@ -124,6 +124,10 @@ struct WatchQuickTalkOverlay: View {
                 Text(failureTitle(code)).font(.headline).multilineTextAlignment(.center)
                 Text(failureMessage(code)).font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 Text(code).font(.system(.caption2, design: .monospaced)).foregroundStyle(.secondary)
+                if code == "phoneReplyTimedOut" || code.hasPrefix("wc-") {
+                    Button("Try Again") { talk.dismiss(); talk.startListening() }
+                        .buttonStyle(WatchPillStyle(kind: .light, small: true))
+                }
                 Button("OK") { talk.dismiss() }.buttonStyle(WatchPillStyle(kind: .secondary, small: true))
             }
             .accessibilityIdentifier("watchTalk.failed")
@@ -170,6 +174,7 @@ struct WatchQuickTalkOverlay: View {
         case "iPhoneNotNearby": "iPhone not nearby"
         case "micDenied": "Microphone is off"
         case "speechAssetsMissing": "Set up Quick Talk on iPhone"
+        case "phoneReplyTimedOut": "iPhone did not respond"
         default: "Couldn't log by voice"
         }
     }
@@ -179,6 +184,7 @@ struct WatchQuickTalkOverlay: View {
         case "iPhoneNotNearby": "Voice is turned into text on your iPhone. Use Dictate in ⋯ instead."
         case "micDenied": "Allow the microphone for Cladiron in the Watch app on iPhone."
         case "speechAssetsMissing": "Open Cladiron on iPhone and use Quick Talk once to download the speech model."
+        case "phoneReplyTimedOut": "Keep Cladiron open on iPhone and try again. You can also use Dictate in ⋯."
         default: "Nothing was logged. Try again, or log with the buttons."
         }
     }

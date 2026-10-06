@@ -12,10 +12,18 @@ extension SessionView {
         let priorOwnerSamples = (exercise.sets ?? [])
             .filter { $0.session?.id != session.id && $0.isOwnerSet }
             .map { SetSample.from($0) }
+        // The current session is part of the comparison. The old repository
+        // query excluded the whole session, so equal/lower follow-up sets could
+        // announce the same PR repeatedly.
+        let earlierOwnerSamples = (exercise.sets ?? [])
+            .filter { $0.session?.id == session.id && $0.isOwnerSet }
+            .sorted { $0.order < $1.order }
+            .map { SetSample.from($0) }
         let priorPR = PRCalculator.best(priorOwnerSamples, rule: settings.prRule, formula: settings.formula)
         let priorPRSample = PRCalculator.bestSample(priorOwnerSamples, rule: settings.prRule, formula: settings.formula)
-        let isPR = person == nil && WorkoutRepository.wouldBePR(
-            exercise: exercise, weightKg: weightKg, reps: reps, isWarmup: isWarmup,
+        let isPR = person == nil && PRCalculator.isNewPR(
+            candidate: SetSample(weight: weightKg, reps: reps, isWarmup: isWarmup),
+            previous: priorOwnerSamples + earlierOwnerSamples,
             rule: settings.prRule, formula: settings.formula)
         let when = session.isLogged ? session.date : Date()
         if (try? WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg,

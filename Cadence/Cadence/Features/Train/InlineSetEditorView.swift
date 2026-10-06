@@ -17,8 +17,10 @@ struct InlineSetEditorView: View {
     @State private var draft: ExpandedSetDraftModel
     @State private var increment: Double
     @State private var typedWeight: String
+    @State private var typedReps: String
     @State private var hasExplicitWeightEntry: Bool
     @State private var keypadPresented = false
+    @State private var repsKeypadPresented = false
     @State private var keypadError: String?
     @State private var deletePresented = false
     @State private var performerID: UUID?
@@ -38,6 +40,7 @@ struct InlineSetEditorView: View {
                                                             effortMode: config.effortMode))
         _increment = State(initialValue: config.unit == .pounds ? 5 : 2.5)
         _typedWeight = State(initialValue: config.weight)
+        _typedReps = State(initialValue: "\(config.reps)")
         _hasExplicitWeightEntry = State(initialValue: !config.weight.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         _performerID = State(initialValue: config.performerID)
     }
@@ -87,6 +90,7 @@ struct InlineSetEditorView: View {
                 Button("Cancel", role: .cancel) { }
             } message: { Text("This set will be removed from the workout.") }
             .sheet(isPresented: $keypadPresented) { keypad }
+            .sheet(isPresented: $repsKeypadPresented) { repsKeypad }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -234,7 +238,20 @@ struct InlineSetEditorView: View {
             Text("Reps").font(.headline)
             HStack(spacing: 12) {
                 adjustmentButton("−") { draft.adjustReps(by: -1); Haptics.selection() }.accessibilityLabel("Decrease reps").accessibilityIdentifier("setEditor.reps.minus")
-                Text("\(draft.reps)").scaledSystemFont(42, relativeTo: .title, weight: .bold, design: .rounded).monospacedDigit().frame(maxWidth: .infinity).accessibilityLabel("\(draft.reps) reps").accessibilityIdentifier("setEditor.reps.value")
+                Button {
+                    typedReps = "\(draft.reps)"
+                    repsKeypadPresented = true
+                } label: {
+                    Text("\(draft.reps)")
+                        .scaledSystemFont(42, relativeTo: .title, weight: .bold, design: .rounded)
+                        .monospacedDigit()
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.plain)
+                .contentShape(Rectangle())
+                .accessibilityLabel("\(draft.reps) reps")
+                .accessibilityHint("Tap to enter a rep count")
+                .accessibilityIdentifier("setEditor.reps.value")
                 adjustmentButton("+") { draft.adjustReps(by: 1); Haptics.selection() }.accessibilityLabel("Increase reps").accessibilityIdentifier("setEditor.reps.plus")
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
@@ -281,5 +298,46 @@ struct InlineSetEditorView: View {
 
     private var keypad: some View {
         NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(CadenceTheme.attention) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { hasExplicitWeightEntry = true; draft.setWeight(value); keypadError = nil; keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }
+    }
+
+    private var repsKeypad: some View {
+        NavigationStack {
+            VStack(spacing: 12) {
+                Text(typedReps.isEmpty ? "0" : typedReps)
+                    .font(.largeTitle.monospacedDigit().bold())
+                    .frame(maxWidth: .infinity, minHeight: 56)
+                    .accessibilityIdentifier("setEditor.reps.typed")
+                ForEach([["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["", "0", "⌫"]], id: \.self) { row in
+                    HStack(spacing: 10) {
+                        ForEach(row, id: \.self) { key in
+                            Button(key.isEmpty ? " " : key) {
+                                if key == "⌫" {
+                                    if !typedReps.isEmpty { typedReps.removeLast() }
+                                } else if !key.isEmpty, typedReps.count < 3 {
+                                    if typedReps == "0" { typedReps = key } else { typedReps += key }
+                                }
+                            }
+                            .font(.title)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .buttonStyle(.bordered)
+                            .disabled(key.isEmpty)
+                        }
+                    }
+                }
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Enter reps")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        if let reps = Int(typedReps), (1...100).contains(reps) {
+                            draft.setReps(reps)
+                            repsKeypadPresented = false
+                        }
+                    }
+                }
+            }
+        }
     }
 }

@@ -15,10 +15,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select latest Xcode
+      - name: Select supported release Xcode
         run: |
-          XCODE=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1)
-          sudo xcode-select -s /Applications/$XCODE
+          # The runner image also contains beta builds. App Store Connect
+          # rejects archives made with a beta SDK (90534), so TestFlight and
+          # host tests must select the newest non-beta/non-RC installation.
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' \
+            ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
           xcodebuild -version
 
       - name: Accept Xcode License
@@ -77,10 +82,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Select latest Xcode
+      - name: Select supported release Xcode
         run: |
-          XCODE=$(ls /Applications/ | grep "^Xcode_" | sort -V | tail -1)
-          sudo xcode-select -s /Applications/$XCODE
+          # Never let a beta Xcode win merely because it sorts newest: App
+          # Store Connect rejects beta SDK archives with error 90534.
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' \
+            ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
           xcodebuild -version
 
       - name: Accept Xcode License

@@ -43,9 +43,9 @@ public enum WatchTodayHeroBuilder {
         }
     }
 
-    public static func make(resume: ResumeInput?, plan: WatchSync.TodayPlan?) -> WatchTodayHero {
+    public static func make(resume: ResumeInput?, plan: WatchSync.TodayPlan?, synced: Bool = false) -> WatchTodayHero {
         if let resume { return .resume(title: resume.title, detail: resumeDetail(resume), startedAt: resume.startedAt) }
-        guard let plan else { return .unplanned(synced: false) }
+        guard let plan else { return .unplanned(synced: synced) }
         if plan.isRestDay {
             return .restDay(advice: plan.sessions.lazy.compactMap(advice).first)
         }

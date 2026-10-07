@@ -214,9 +214,21 @@ extension SessionView {
             let performerID = entry.isMe ? nil : entry.personID
             let logged = loggedReps(for: exercise, performerID: performerID)
             let resolved = resolvedSet(for: exercise, setIndex: logged.count, performerID: performerID)
-            let weightKg = resolved.weightKg.map {
+            let person = performerID.flatMap(people(for:))
+            let repositoryHistory = WorkoutRepository.lastTimeSets(
+                for: exercise, performedBy: person, excluding: session).map(SetSample.from)
+            // The cache is an optimization, not an authority. Reconcile exact
+            // same-rep history with the repository before applying any estimate
+            // or plate rounding; this matters for cable stacks and machines
+            // whose loads are not plate increments.
+            let exactRepositoryWeight = SessionViewModel.exactHistoricalWeight(
+                targetReps: resolved.reps, history: repositoryHistory)
+            let defaultWeight = exactRepositoryWeight ?? resolved.weightKg
+            let weightBasis: PerformerSetPlanner.WeightBasis = exactRepositoryWeight != nil
+                ? .exactHistory : resolved.weightBasis
+            let weightKg = defaultWeight.map {
                 SessionViewModel.roundedInferredWeightKg($0, unit: settings.unit,
-                                                         basis: resolved.weightBasis)
+                                                         basis: weightBasis)
             }
             let pc = ctx?.performerContexts.first { $0.performerID == performerID }
             let cachedLastTime = pc.flatMap { SessionRenderModel.lastTimeSegment(label: $0.label, sets: $0.lastTimeSets, unit: settings.unit) }
@@ -237,7 +249,7 @@ extension SessionView {
             return InlineEditorConfig.PerformerDefault(
                 performerID: performerID, reps: resolved.reps, weightKg: weightKg,
                 weight: weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "",
-                weightSourceText: weightSourceText(for: resolved.weightBasis,
+                weightSourceText: weightSourceText(for: weightBasis,
                                                    performerID: performerID,
                                                    exerciseName: exercise.name),
                 lastTimeText: lastTime, lastSetThisSession: lastSet)

@@ -177,7 +177,10 @@ struct WatchRootView: View {
                 plannedSets: Dictionary(session.plannedPrescriptions.map {
                     ($0.exerciseName, $0.sets.filter { $0.kind != .warmup }.count) }, uniquingKeysWith: { a, _ in a }))
         }
-        return WatchTodayHeroBuilder.make(resume: resume, plan: watchManager.todayPlan)
+        return WatchTodayHeroBuilder.make(
+            resume: resume,
+            plan: watchManager.todayPlan,
+            synced: watchManager.lastPhoneSyncAt != nil)
     }
 
     private static func loggedPerExercise(_ session: WorkoutSession) -> [(name: String, sets: Int)] {
@@ -262,11 +265,15 @@ struct WatchRootView: View {
 
     private func tile(title: LocalizedStringKey, systemImage: String) -> some View {
         VStack(spacing: 3) {
-            Image(systemName: systemImage).font(.title3)
-            Text(title).font(.caption2.weight(.semibold))
+            Image(systemName: systemImage)
+                .font(.title3)
+                .frame(height: 22, alignment: .center)
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .frame(height: 16, alignment: .center)
         }
         .foregroundStyle(.primary)
-        .frame(maxWidth: .infinity, minHeight: 56)
+        .frame(maxWidth: .infinity, minHeight: 62, alignment: .center)
         .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surface))
     }
 

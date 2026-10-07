@@ -110,6 +110,15 @@ final class WatchRedesignTests: XCTestCase {
         XCTAssertTrue(detail.contains("4"))
     }
 
+    func testSyncedEmptyTodayPlanDoesNotAskToOpenThePhoneAgain() {
+        XCTAssertEqual(
+            WatchTodayHeroBuilder.make(resume: nil, plan: nil, synced: true),
+            .unplanned(synced: true))
+        XCTAssertEqual(
+            WatchTodayHeroBuilder.make(resume: nil, plan: nil, synced: false),
+            .unplanned(synced: false))
+    }
+
     func testPlannedStrengthEstimatesMinutesOnlyFromKnownSets() {
         let withSets = WatchSync.TodayPlan(sessions: [
             .init(id: "s", kind: .strength, label: "Push A", exerciseNames: ["Bench"],

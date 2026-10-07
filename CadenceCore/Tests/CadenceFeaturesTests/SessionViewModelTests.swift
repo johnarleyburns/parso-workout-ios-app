@@ -52,6 +52,26 @@ final class SessionViewModelTests: XCTestCase {
         XCTAssertEqual(SessionViewModel.canonicalKg(input: "abc", unit: .kilograms, plateRounding: false), 0)
     }
 
+    func testExactHistoricalWeightUsesMostRecentSameRepLoadWithoutRounding() {
+        let old = SetSample(weight: 77.1107, reps: 6,
+                            date: Date(timeIntervalSince1970: 100))
+        let latest = SetSample(weight: WorkoutMath.lbToKg(172), reps: 6,
+                               date: Date(timeIntervalSince1970: 200))
+        let otherReps = SetSample(weight: WorkoutMath.lbToKg(180), reps: 5,
+                                  date: Date(timeIntervalSince1970: 300))
+
+        XCTAssertEqual(
+            SessionViewModel.exactHistoricalWeight(targetReps: 6,
+                                                   history: [old, latest, otherReps]) ?? 0,
+            latest.weight,
+            accuracy: 0.0001)
+        XCTAssertEqual(
+            SessionViewModel.roundedInferredWeightKg(
+                latest.weight, unit: .pounds, basis: .exactHistory),
+            latest.weight,
+            accuracy: 0.0001)
+    }
+
     // MARK: Store-backed
 
     func testIsBodyweight() throws {

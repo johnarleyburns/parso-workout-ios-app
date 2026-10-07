@@ -62,6 +62,19 @@ public enum SessionViewModel {
         }?.weight
     }
 
+    /// Returns the most recently recorded load for the requested rep count.
+    /// Exact history is authoritative for the next editor default: it must not
+    /// be converted into a plate-rounded estimate merely because the cached
+    /// suggestion was built before the repository finished refreshing.
+    public static func exactHistoricalWeight(targetReps: Int,
+                                             history: [SetSample]) -> Double? {
+        guard targetReps > 0 else { return nil }
+        return history
+            .filter { !$0.isWarmup && $0.reps == targetReps && $0.weight > 0 }
+            .max { $0.date < $1.date }?
+            .weight
+    }
+
     /// Prescription line for a planned movement, resolved from the plan. A flexible
     /// template launched with a chosen rep scheme shows that ladder; a coach
     /// prescription also carries a working load.

@@ -13,13 +13,16 @@ region of red fill bounded by an outline. This script therefore:
    and a deeper layer on the other, so the two halves do not mirror);
 3. splits the few regions the artwork draws as one shape but anatomy treats as
    two muscles (`SPLITS`, e.g. the trapezius into neck/upper traps/mid back);
-4. excludes untracked anatomy (head, hands, feet) with `EXCLUDE` polygons;
+4. gives the anatomy no group tracks to its nearest group with `ABSORB`
+   polygons (head → neck, hands → forearms, feet → calves), so no muscle is
+   left uncoloured;
 5. floods every remaining body pixel (tiny unlabelled slivers, pale or
    transparent deep-layer linework, antialiasing) from the nearest assigned
-   region, so a mask covers its whole muscle and never leaves a hole or gap; and
-6. writes one `untracked` mask per panel covering every muscle pixel no group
-   claims (head, hands, feet), which the app draws white so the map never shows
-   red muscle that no workout can turn green.
+   region, so a mask covers its whole muscle and never leaves a hole or gap.
+
+Every red muscle pixel ends up in exactly one group's mask. Groups outside the
+volume scope (neck, tibialis, rotator cuff, hip flexors by default) take their
+nearest tracked group's colour in the app (`MuscleMapLayout.hostGroup`).
 
 Bone, tendon and skin (large light areas) are never part of a mask, and the
 artwork's dark outline strokes are left out so the individual muscles remain
@@ -142,27 +145,27 @@ SPLITS = {
     ],
 }
 
-# Untracked anatomy. Every body pixel inside is left uncoloured.
-EXCLUDE = {
+# Anatomy no group tracks, given to the nearest group: (group, polygon). Every
+# body pixel inside is assigned to that group.
+ABSORB = {
     "front": [
         # Head and face, down to the jaw line.
-        [(400, 0), (630, 0), (630, 252), (566, 262), (540, 284), (512, 297),
-         (484, 284), (458, 262), (400, 252)],
+        ("neck", [(400, 0), (630, 0), (630, 252), (566, 262), (540, 284), (512, 297),
+         (484, 284), (458, 262), (400, 252)]),
         # Hands, beyond each wrist.
-        [(0, 850), (60, 860), (120, 880), (250, 950), (250, 1200), (0, 1200)],
-        [(1024, 850), (964, 860), (904, 880), (774, 950), (774, 1200), (1024, 1200)],
+        ("forearms", [(0, 850), (60, 860), (120, 880), (250, 950), (250, 1200), (0, 1200)]),
+        ("forearms", [(1024, 850), (964, 860), (904, 880), (774, 950), (774, 1200), (1024, 1200)]),
         # Feet, below the ankles.
-        [(0, 1525), (1024, 1525), (1024, 1782), (0, 1782)],
+        ("calves", [(0, 1525), (1024, 1525), (1024, 1782), (0, 1782)]),
     ],
     "back": [
-        [(400, 0), (720, 0), (720, 219), (400, 219)],
-        [(0, 840), (150, 862), (200, 883), (320, 931), (320, 1200), (0, 1200)],
-        [(1024, 840), (970, 862), (920, 883), (800, 931), (800, 1200), (1024, 1200)],
-        [(0, 1600), (1024, 1600), (1024, 1782), (0, 1782)],
+        ("neck", [(400, 0), (720, 0), (720, 219), (400, 219)]),
+        ("forearms", [(0, 840), (150, 862), (200, 883), (320, 931), (320, 1200), (0, 1200)]),
+        ("forearms", [(1024, 840), (970, 862), (920, 883), (800, 931), (800, 1200), (1024, 1200)]),
+        ("calves", [(0, 1600), (1024, 1600), (1024, 1782), (0, 1782)]),
     ],
 }
 
-NONE = "_none"
 SPECK_AREA = 600    # enclosed specks of bone/linework smaller than this are filled
 LIGHT_OPENING = 9   # light areas wider than this are bone, tendon or skin
 BODY_CLOSING = 7    # bridges thin transparent linework inside the figure
@@ -286,11 +289,11 @@ def segment(panel):
             if inside[index] and labels[index] in components:
                 assigned[index] = group
 
-    for polygon in EXCLUDE[panel]:
+    for group, polygon in ABSORB[panel]:
         inside = polygon_mask(image.size, polygon)
         for index in range(width * height):
-            if inside[index] and body[index]:
-                assigned[index] = NONE
+            if inside[index] and (body[index] or red[index]):
+                assigned[index] = group
 
     # Geodesic flood through the body from every assigned pixel, so outlines
     # and unseeded slivers join the muscle that surrounds them.
@@ -330,24 +333,14 @@ def segment(panel):
                     alpha[index] = 255
 
     groups = sorted({g for g in SEEDS[panel]} | {g for g, _, _ in SPLITS[panel]})
-    covered = bytearray(width * height)
     for group in groups:
-        alpha = bytearray(255 if body[i] and assigned[i] == group else 0
+        alpha = bytearray(255 if (body[i] or red[i]) and assigned[i] == group else 0
                           for i in range(width * height))
         fill_specks(alpha)
         # Keep the artwork's own outlines visible over the colour so the
         # individual muscles still read when every group is on target.
         alpha = bytes(0 if outline[i] else alpha[i] for i in range(width * height))
-        for i in range(width * height):
-            if alpha[i]:
-                covered[i] = 1
         write_mask(panel, group, alpha, image.size)
-
-    # Untracked anatomy (head, hands, feet and anything no group claims) is drawn
-    # white, so the map never shows red muscle that no workout can turn green.
-    untracked = bytearray(255 if (body[i] or red[i]) and not covered[i] and not outline[i] else 0
-                          for i in range(width * height))
-    write_mask(panel, "untracked", bytes(untracked), image.size)
 
 
 def write_mask(panel, group, alpha, size):

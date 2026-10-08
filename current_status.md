@@ -2,6 +2,28 @@
 
 Updated: 2026-10-04
 
+## Latest implementation — Muscle map: untracked muscle takes its nearest tracked group's colour (2026-10-08)
+
+Owner follow-up to the 2026-10-04 white treatment: no white muscle either. Every
+muscle region now colours with a tracked group:
+
+- Anatomy no group covered is assigned in `scripts/generate-muscle-masks.py`
+  (`ABSORB`, replacing `EXCLUDE`): head → neck, hands → forearms, feet → calves.
+  The `MuscleMask-*-untracked` assets are gone; every red artwork pixel is in
+  exactly one group mask.
+- Groups outside the volume scope colour as their host
+  (`MuscleMapLayout.hostGroup` / `colourGroup` / `colourLayers`):
+  neck (splenius, other neck muscles, head) → traps; tibialis anterior →
+  calves; rotator cuff region beside the shoulder blade (the "rhomboids") →
+  middle back; hip flexors (sartorius and the other front-of-thigh strips) →
+  adductors. A group in scope keeps its own colour.
+- `MuscleMapMaskAssetTests`: every red pixel on both panels is in exactly one
+  group mask; the owner's named regions sit in the expected masks; every mask
+  is coloured by a tracked group under the default scope.
+
+Renders: `/tmp/muscle-map/after-merged-all-on-target-{front,back}.png` (0 red,
+0 white muscle px) and `after-merged-some-off-target-*.png`.
+
 ## Latest implementation — Muscle map: untracked muscle is white, never red (2026-10-04)
 
 Field report: with every muscle group green, the Home muscle map still showed

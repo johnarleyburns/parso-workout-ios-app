@@ -103,21 +103,43 @@ public enum MuscleMapLayout {
         maskGroups(for: panel).filter { visibleGroups.contains($0) }
     }
 
-    /// Masks drawn solid white under the group colours, so the map never shows the artwork's red
-    /// on muscle that no workout can turn green: the panel's untracked anatomy (head, hands, feet)
-    /// and every mask group outside the current volume scope (e.g. neck, tibialis, rotator cuff
-    /// when they aren't tracked).
-    public static func neutralMaskAssetNames(for panel: MuscleMapPanel,
-                                             visibleGroups: Set<MuscleGroup>) -> [String] {
-        guard panel != .list else { return [] }
-        return [untrackedMaskAssetName(for: panel)]
-            + maskGroups(for: panel).filter { !visibleGroups.contains($0) }
-                .map { maskAssetName(for: $0, panel: panel) }
+    /// The nearest tracked group whose colour an untracked group's muscle takes, so the map never
+    /// shows uncoloured muscle (field report 2026-10-04): the neck (splenius and the other neck
+    /// muscles, and the head) colours with the traps, tibialis anterior with the calves, the rotator
+    /// cuff region beside the shoulder blade (read as the rhomboids) with the middle back, and the
+    /// hip flexors (sartorius and the other front-of-thigh strips) with the adductors.
+    public static func hostGroup(for group: MuscleGroup) -> MuscleGroup? {
+        switch group {
+        case .neck: .traps
+        case .tibialis: .calves
+        case .rotatorCuff: .middleBack
+        case .hipFlexors: .adductors
+        default: nil
+        }
     }
 
-    /// Asset-catalog name of a panel's untracked-anatomy mask.
-    public static func untrackedMaskAssetName(for panel: MuscleMapPanel) -> String {
-        "MuscleMask-\(panel.rawValue)-untracked"
+    /// The group whose heat colours `group`'s muscle: itself when it is in the volume scope,
+    /// otherwise the nearest host in scope. Nil only when no group in its chain is in scope.
+    public static func colourGroup(for group: MuscleGroup,
+                                   visibleGroups: Set<MuscleGroup>) -> MuscleGroup? {
+        var current: MuscleGroup? = group
+        var seen: Set<MuscleGroup> = []
+        while let candidate = current, seen.insert(candidate).inserted {
+            if visibleGroups.contains(candidate) { return candidate }
+            current = hostGroup(for: candidate)
+        }
+        return nil
+    }
+
+    /// Every mask on a panel paired with the group whose heat colours it. Masks of groups outside
+    /// the volume scope take their host's colour, so all muscle on the map is coloured.
+    public static func colourLayers(for panel: MuscleMapPanel,
+                                    visibleGroups: Set<MuscleGroup>) -> [MuscleMapColourLayer] {
+        maskGroups(for: panel).compactMap { group in
+            colourGroup(for: group, visibleGroups: visibleGroups).map {
+                MuscleMapColourLayer(mask: group, colourGroup: $0)
+            }
+        }
     }
 
     /// Asset-catalog name of a group's colour mask on a panel.
@@ -142,5 +164,17 @@ public enum MuscleMapLayout {
     public static func callouts(for panel: MuscleMapPanel,
                                 visibleGroups: Set<MuscleGroup>) -> [MuscleMapCallout] {
         callouts(for: panel).filter { visibleGroups.contains($0.group) }
+    }
+}
+
+/// One mask drawn on the muscle map and the group whose heat colours it.
+public struct MuscleMapColourLayer: Equatable, Sendable, Identifiable {
+    public let mask: MuscleGroup
+    public let colourGroup: MuscleGroup
+    public var id: MuscleGroup { mask }
+
+    public init(mask: MuscleGroup, colourGroup: MuscleGroup) {
+        self.mask = mask
+        self.colourGroup = colourGroup
     }
 }

@@ -7,6 +7,7 @@ struct WatchCardioSummaryView: View {
     let summary: WatchWorkoutManager.SavedWorkoutSummary
     let metrics: CardioMetricsModel
     let lapText: String?
+    let isSwim: Bool
     let onSave: () -> Void
     let onDiscard: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
@@ -48,7 +49,7 @@ struct WatchCardioSummaryView: View {
                 }
             }
             if summary.distanceMeters > 0 {
-                summaryRow(String(localized: "Distance"), metrics.formatDistance())
+                summaryRow(String(localized: "Distance"), isSwim ? String(format: "%.0f m", summary.distanceMeters) : metrics.formatDistance())
             }
             if let laps = lapText {
                 summaryRow(String(localized: "Laps"), laps)

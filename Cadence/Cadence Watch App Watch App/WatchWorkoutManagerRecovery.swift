@@ -54,6 +54,11 @@ extension WatchWorkoutManager {
     func beginSession(activity: HKWorkoutActivityType, spec: WorkoutConfigurationSpec? = nil) {
         let config = HKWorkoutConfiguration()
         config.activityType = activity; config.locationType = .indoor
+        isSwimSession = activity == .swimming
+        isOutdoorSession = false
+        activeSwimSpec = isSwimSession ? spec ?? WorkoutConfigurationSpec(for: "swim") : nil
+        swimProgress = WatchSwimProgress(poolLengthMeters: activeSwimSpec?.poolLengthMeters)
+        swimWaterLockPending = isSwimSession
         if let spec {
             switch spec.location {
             case .indoor: break
@@ -61,7 +66,9 @@ extension WatchWorkoutManager {
             case .pool(let lapLength):
                 config.swimmingLocationType = .pool; isSwimSession = true
                 if #available(watchOS 10.0, *) { config.lapLength = HKQuantity(unit: .meter(), doubleValue: lapLength) }
-            case .openWater: config.swimmingLocationType = .openWater; isSwimSession = true
+            case .openWater:
+                config.swimmingLocationType = .openWater; config.locationType = .outdoor
+                isSwimSession = true; isOutdoorSession = true
             }
         }
         sessionStart = Date(); autoPauseDetector.reset(); manualLapCount = 0; autoLapCount = 0
@@ -73,10 +80,19 @@ extension WatchWorkoutManager {
             b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
             b.delegate = self; builder = b; s.delegate = self
             s.startActivity(with: Date())
-            b.beginCollection(withStart: Date(), completion: { _, _ in })
+            let id = ObjectIdentifier(b)
+            b.beginCollection(withStart: Date()) { success, error in
+                guard !success else { return }
+                let message = error?.localizedDescription ?? "Workout measurements could not start."
+                Task { @MainActor [weak self] in
+                    guard let self, self.builder.map(ObjectIdentifier.init) == id else { return }
+                    self.workoutStartError = message
+                    self.stopWorkout(save: false)
+                }
+            }
             if hrSource == .bluetooth { startBLE() }
-            if isSwimSession { enableWaterLock() }
         } catch {
+            workoutStartError = error.localizedDescription
             isActive = false
             isMonitoring = false
             session = nil
@@ -119,6 +135,18 @@ extension WatchWorkoutManager {
         isActive = !monitoring
         heartRateEnabled = true
         gpsEnabled = recovered.workoutConfiguration.locationType == .outdoor
+        isOutdoorSession = gpsEnabled
+        isSwimSession = recovered.workoutConfiguration.activityType == .swimming
+        activeSwimSpec = Self.swimSpec(from: recovered.workoutConfiguration)
+        swimProgress = WatchSwimProgress(poolLengthMeters: activeSwimSpec?.poolLengthMeters)
+        swimWaterLockPending = isSwimSession
+        if isSwimSession {
+            cardioSessionStart = recovered.startDate
+            cardioOwnsSession = true
+            if let quantity = recoveredBuilder.statistics(for: HKQuantityType(.distanceSwimming))?.sumQuantity() {
+                apply(CollectedSample(swimmingDistanceMeters: quantity.doubleValue(for: .meter())))
+            }
+        }
         sessionStart = recovered.startDate ?? Date()
         if case .endNow(let startedAt) = WatchSessionOwnership.backgroundVerdict(
             startedAt: sessionStart, ownedByPhone: phoneRequestID != nil) {
@@ -128,6 +156,7 @@ extension WatchWorkoutManager {
         if recovered.state == .running {
             startHeartRatePolling()
             sendHeartRateToPhoneSoon()
+            enablePendingSwimWaterLock()
         }
     }
 

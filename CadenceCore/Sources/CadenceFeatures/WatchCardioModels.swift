@@ -14,6 +14,11 @@ public struct WorkoutConfigurationSpec: Equatable {
     public let plannedDurationSeconds: Int?
     public let targetZone: Int?
 
+    public var poolLengthMeters: Double? {
+        guard kind == .swim, case .pool(let length) = location, length.isFinite, length > 0, length < Double(Int.max) else { return nil }
+        return length
+    }
+
     public var usesGPS: Bool {
         switch location {
         case .outdoor, .openWater: return true

@@ -2,6 +2,18 @@
 
 Live handoff/progress tracker.
 
+## Watch swimming improvements — 2026-10-08
+
+See `current_status.md`: 25/50 m lap-pool and open-water setup, water lock after
+actual running/foreground, native swimming distance/length counting, a lap-first
+wake/recovery screen, and preservation of pool distance/laps in the phone handoff.
+The v1 completion gains optional fields; the SwiftData schema is unchanged.
+Eight new regressions raise the package suite to 2,073; all 11 focused swim/sync
+checks and the generic iPhone/embedded Watch build passed. Full suite is gated by
+the commit hook. Next: real swimming validation. Actual watchOS passcode security
+cannot be bypassed; fit/wrist-detection and screen-setting help is provided.
+
+
 ## Today recovery recommendation repair — 2026-10-08
 
 See `current_status.md` for the phone diagnosis and implementation. Today now

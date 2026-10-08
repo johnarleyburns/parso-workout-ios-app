@@ -21,7 +21,9 @@ extension WatchWorkoutManager {
             end: timing.end, distanceMeters: summary.distanceMeters,
             hrSamples: summary.hrSamples,
             avgHeartRate: summary.avgHR, maxHeartRate: summary.maxHR,
-            gpsEnabled: isOutdoorSession)
+            gpsEnabled: gpsEnabled,
+            swimmingLapCount: activeSwimSpec?.poolLengthMeters != nil ? autoLapCount : nil,
+            poolLengthMeters: activeSwimSpec?.poolLengthMeters)
         guard !pendingCardioCompletions.contains(where: { $0.id == completion.id }) else { return }
         pendingCardioCompletions.append(completion)
         persistPendingCardioCompletions()

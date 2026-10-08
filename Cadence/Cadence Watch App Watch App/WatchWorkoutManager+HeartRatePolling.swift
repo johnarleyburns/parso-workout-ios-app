@@ -108,6 +108,7 @@ extension WatchWorkoutManager {
     func setDisplayActive(_ active: Bool) {
         displayActive = active
         if active {
+            enablePendingSwimWaterLock()
             if isActive || isMonitoring { startHeartRatePolling() }
         } else {
             hrPollTimer?.invalidate()

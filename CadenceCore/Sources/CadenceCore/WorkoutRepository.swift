@@ -1252,6 +1252,13 @@ public enum WorkoutRepository {
                                               duration: completion.end.timeIntervalSince(completion.start)))
         let saved = try saveRecordedCardio(summary, source: .watch,
                                     healthKitWorkoutUUID: nil, in: context)
+        if completion.type == .swim {
+            saved.laps = completion.swimmingLapCount
+            if let length = completion.poolLengthMeters, length.isFinite, length > 0 {
+                saved.notes = String(localized: "Lap Pool · \(length.formatted()) m per lap", bundle: .module)
+            }
+            try context.save()
+        }
         if completion.hrSamples.isEmpty {
             saved.avgHeartRate = completion.avgHeartRate
             saved.maxHeartRate = completion.maxHeartRate

@@ -145,6 +145,24 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(cardio.orderedHRSamples.count, 1)
     }
 
+    func testPoolSwimCompletionStoresLapsDistanceAndDoesNotDuplicateHealthImport() throws {
+        let context = try makeContext()
+        let start = Date(timeIntervalSince1970: 10000)
+        let value = WatchCardioCompletion(type: .swim, start: start,
+            end: start.addingTimeInterval(600), distanceMeters: 500,
+            swimmingLapCount: 10, poolLengthMeters: 50)
+        XCTAssertTrue(try WorkoutRepository.ingest(value, in: context))
+        XCTAssertFalse(try WorkoutRepository.ingest(value, in: context))
+        let imported = IngestedWorkout(id: UUID(), type: .swim, start: start,
+            end: start.addingTimeInterval(600), distanceMeters: 500, importedKind: .swimming)
+        XCTAssertEqual(try WorkoutRepository.ingest([imported], in: context), 0)
+        let saved = try XCTUnwrap(try WorkoutRepository.allCardio(context).first)
+        XCTAssertEqual(saved.distance, 500)
+        XCTAssertEqual(saved.laps, 10)
+        XCTAssertTrue(saved.notes?.contains("50 m") == true)
+        XCTAssertEqual(saved.healthKitWorkoutUUID, imported.id)
+    }
+
     func testSaveRecordedCardioComputesHRAndLinksHK() throws {
         let ctx = try makeContext()
         let hkID = UUID()

@@ -5,15 +5,17 @@ import CadenceFeatures
 struct WatchCardioControlsView: View {
     let isSwim: Bool
     let isPaused: Bool
+    let automaticallyTracksLaps: Bool
     let onEnd: () -> Void
     let onPause: () -> Void
     let onLock: () -> Void
     let onLap: () -> Void
 
-    init(isSwim: Bool, isPaused: Bool = false, onEnd: @escaping () -> Void,
+    init(isSwim: Bool, isPaused: Bool = false, automaticallyTracksLaps: Bool = false, onEnd: @escaping () -> Void,
          onPause: @escaping () -> Void, onLock: @escaping () -> Void, onLap: @escaping () -> Void) {
         self.isSwim = isSwim
         self.isPaused = isPaused
+        self.automaticallyTracksLaps = automaticallyTracksLaps
         self.onEnd = onEnd
         self.onPause = onPause
         self.onLock = onLock
@@ -27,7 +29,15 @@ struct WatchCardioControlsView: View {
                           identifier: "watchCardio.pause", action: onPause)
             controlButton("End", "xmark", isDestructive: true, identifier: "watchCardio.end", action: onEnd)
             controlButton("Water Lock", "drop.fill", identifier: "watchCardio.lock", action: onLock)
-            controlButton("Lap", "plus", identifier: "watchCardio.lap", action: onLap)
+            if automaticallyTracksLaps {
+                Label("Auto laps", systemImage: "figure.pool.swim")
+                    .font(.caption2).foregroundStyle(.secondary)
+            } else if isSwim {
+                Label("GPS distance", systemImage: "location.fill")
+                    .font(.caption2).foregroundStyle(.secondary)
+            } else {
+                controlButton("Lap", "plus", identifier: "watchCardio.lap", action: onLap)
+            }
         }
         .padding(.horizontal, 2)
     }

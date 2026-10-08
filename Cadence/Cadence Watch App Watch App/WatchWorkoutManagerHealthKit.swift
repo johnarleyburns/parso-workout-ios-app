@@ -25,11 +25,19 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate {
                                     didChangeTo toState: HKWorkoutSessionState,
                                     from fromState: HKWorkoutSessionState,
                                     date: Date) {
-        Task { @MainActor [weak self] in self?.handleSessionStateChange(toState) }
+        let id = ObjectIdentifier(workoutSession)
+        Task { @MainActor [weak self] in
+            guard let self, self.session.map(ObjectIdentifier.init) == id else { return }
+            self.handleSessionStateChange(toState)
+        }
     }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
-        Task { @MainActor [weak self] in self?.handleSessionFailure() }
+        let id = ObjectIdentifier(workoutSession)
+        Task { @MainActor [weak self] in
+            guard let self, self.session.map(ObjectIdentifier.init) == id else { return }
+            self.handleSessionFailure()
+        }
     }
 }
 
@@ -37,6 +45,7 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
     nonisolated func workoutBuilder(_ workoutBuilder: HKLiveWorkoutBuilder,
                                     didCollectDataOf collectedTypes: Set<HKSampleType>) {
         var sample = CollectedSample()
+        sample.builderID = ObjectIdentifier(workoutBuilder)
 
         let hrType = HKQuantityType(.heartRate)
         if collectedTypes.contains(hrType),
@@ -53,7 +62,11 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
             if collectedTypes.contains(type),
                let stats = workoutBuilder.statistics(for: type),
                let quantity = stats.sumQuantity() {
-                sample.distanceMeters = quantity.doubleValue(for: .meter())
+                if id == .distanceSwimming {
+                    sample.swimmingDistanceMeters = quantity.doubleValue(for: .meter())
+                } else {
+                    sample.distanceMeters = quantity.doubleValue(for: .meter())
+                }
             }
         }
 
@@ -62,6 +75,7 @@ extension WatchWorkoutManager: HKLiveWorkoutBuilderDelegate {
 
     nonisolated func workoutBuilderDidCollectEvent(_ workoutBuilder: HKLiveWorkoutBuilder) {
         guard let type = workoutBuilder.workoutEvents.last?.type, type == .lap || type == .segment else { return }
-        Task { @MainActor [weak self] in self?.applyLapEvent() }
+        let id = ObjectIdentifier(workoutBuilder)
+        Task { @MainActor [weak self] in self?.applyLapEvent(builderID: id) }
     }
 }

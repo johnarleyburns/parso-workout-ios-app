@@ -15,6 +15,7 @@ final class WatchWorkoutManager: NSObject {
     var isActive: Bool = false
     var isMonitoring: Bool = false
     var workoutType: String?
+    var workoutStartError: String?
 
     var hrSource: HRSource {
         get { HRSource(rawValue: hrSourceRaw) ?? .appleWatch }
@@ -144,6 +145,7 @@ final class WatchWorkoutManager: NSObject {
     func startWorkout(type rawType: String, cardioType: CardioType? = nil,
                       spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
+        workoutStartError = nil
         // Only `startPhoneLaunchedWorkout` marks a start as awaiting the phone.
         phoneLaunchPendingSince = nil
         let resolvedSpec = spec ?? WorkoutConfigurationSpec(for: rawType)
@@ -163,6 +165,7 @@ final class WatchWorkoutManager: NSObject {
             // the state now; beginning here would leave an untracked session.
             guard generation == startGeneration, isActive else { return }
             guard authorized else {
+                workoutStartError = String(localized: "Health workout access is required. Enable it and try starting the swim again.")
                 isActive = false; self.phoneRequestID = nil
                 clearPersistedWorkoutMetadata()
                 return
@@ -237,6 +240,7 @@ final class WatchWorkoutManager: NSObject {
         accumulatedHR = 0; hrCount = 0
         recordedHRSamples = []
         isSwimSession = false; isOutdoorSession = false
+        activeSwimSpec = nil; swimWaterLockPending = false
         heartRateEnabled = true; gpsEnabled = false
         autoPauseDetector.reset(); lastAutoPauseDistance = 0
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
@@ -257,7 +261,7 @@ final class WatchWorkoutManager: NSObject {
     func resetSavedSummary() { savedSummary = nil }
     private var lastAutoPauseDistance: Double = 0
     private func evaluateAutoPause(distance m: Double) {
-        guard isOutdoorSession else { return }
+        guard isOutdoorSession, !isSwimSession else { return }
         let speed: Double? = (m - lastAutoPauseDistance) > 0 ? (m - lastAutoPauseDistance) : nil
         lastAutoPauseDistance = m
         let enabled = UserDefaults.standard.object(forKey: "watch.cardio.autoPause") as? Bool ?? true
@@ -318,10 +322,12 @@ final class WatchWorkoutManager: NSObject {
     var manualLapCount: Int = 0
     var autoLapCount: Int = 0
     var isSwimSession: Bool = false
+    var activeSwimSpec: WorkoutConfigurationSpec?
+    var swimProgress = WatchSwimProgress(poolLengthMeters: nil)
+    var swimWaterLockPending = false
     var isOutdoorSession: Bool = false
 
     func incrementManualLap() { manualLapCount += 1 }
-    func enableWaterLock() { WKInterfaceDevice.current().enableWaterLock() }
     func togglePause() {
         guard let s = session else { return }
         if s.state == .running { s.pause(); elapsedTracker.startPause() }
@@ -356,8 +362,10 @@ final class WatchWorkoutManager: NSObject {
     /// HealthKit's own queue so nothing non-`Sendable` crosses into the main
     /// actor. The delegate boundary is kept in WatchWorkoutManagerHealthKit.
     struct CollectedSample: Sendable {
+        var builderID: ObjectIdentifier?
         var bpm: Double?
         var distanceMeters: Double?
+        var swimmingDistanceMeters: Double?
         /// End of `bpm`'s HealthKit sample; identifies a reading the relay already sent.
         var bpmSampleEnd: Date?
     }
@@ -365,6 +373,7 @@ final class WatchWorkoutManager: NSObject {
     /// Applies one builder callback's values on the main actor.
     func apply(_ sample: CollectedSample) {
         guard isActive || isMonitoring else { return }
+        if let id = sample.builderID, builder.map(ObjectIdentifier.init) != id { return }
         if let bpm = sample.bpm {
             currentBPM = bpm
             accumulatedHR += bpm
@@ -373,28 +382,18 @@ final class WatchWorkoutManager: NSObject {
             if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
             if hrSource == .appleWatch { relayReading(bpm, endingAt: sample.bpmSampleEnd) }
         }
-        if let meters = sample.distanceMeters {
-            distanceMeters = meters
+        if let meters = isSwimSession ? sample.swimmingDistanceMeters : sample.distanceMeters, meters.isFinite, meters >= 0 {
+            if isSwimSession {
+                swimProgress.update(distanceMeters: meters)
+                autoLapCount = swimProgress.lapCount ?? 0
+            }
+            distanceMeters = isSwimSession ? swimProgress.distanceMeters : meters
             evaluateAutoPause(distance: meters)
         }
         if let sessionStart { elapsed = Date().timeIntervalSince(sessionStart) }
     }
 
-    /// A lap/segment event the builder reported, applied on the main actor.
-    func applyLapEvent() { autoLapCount += 1 }
-
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
-
-    func handleSessionStateChange(_ state: HKWorkoutSessionState) {
-        if state == .running {
-            startHeartRatePolling()
-            // Arms the heartbeat, which also reads the builder, so the phone
-            // gets the first value even before a builder callback arrives.
-            sendHeartRateToPhoneSoon()
-        } else if (state == .ended || state == .stopped), isActive || isMonitoring {
-            stopWorkout(save: false)
-        }
-    }
 
 }

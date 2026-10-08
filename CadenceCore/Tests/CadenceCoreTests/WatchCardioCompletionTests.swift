@@ -26,4 +26,25 @@ final class WatchCardioCompletionTests: XCTestCase {
                                           distanceMeters: 1000, gpsEnabled: false)
         XCTAssertNil(value.distanceMeters)
     }
+    func testPoolSwimPreservesDistanceLapsAndPoolSizeWithoutGPS() throws {
+        let value = WatchCardioCompletion(type: .swim, start: Date(), end: Date(),
+            distanceMeters: 500, gpsEnabled: false, swimmingLapCount: 20, poolLengthMeters: 25)
+        XCTAssertEqual(try WatchCardioCompletion.decode(value.encoded()), value)
+        XCTAssertEqual(value.distanceMeters, 500)
+        XCTAssertEqual(value.ingestedWorkout.distanceMeters, 500)
+        XCTAssertEqual(value.swimmingLapCount, 20)
+        XCTAssertEqual(value.poolLengthMeters, 25)
+        XCTAssertFalse(value.gpsEnabled)
+    }
+
+    func testLegacyCompletionStillDecodesWithoutSwimmingFields() throws {
+        let value = WatchCardioCompletion(type: .swim, start: Date(), end: Date())
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: value.encoded()) as? [String: Any])
+        json.removeValue(forKey: "swimmingLapCount")
+        json.removeValue(forKey: "poolLengthMeters")
+        let decoded = try WatchCardioCompletion.decode(JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(decoded.swimmingLapCount)
+        XCTAssertNil(decoded.poolLengthMeters)
+    }
+
 }

@@ -19,7 +19,9 @@ struct WatchRootView: View {
     private var resumableSessions: [WorkoutSession]
 
     @State private var cardioLocation: WorkoutConfigurationSpec.Location = .outdoor
-    @State private var cardioLapLength: Double = 25
+    @AppStorage("watch.swim.poolLength") private var cardioLapLength: Double = 25
+    @State private var plannedSwimSpec: WorkoutConfigurationSpec?
+    @State private var cardioStartError: String?
     @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
     @State private var activeCardioSpec: WorkoutConfigurationSpec?
     @State private var activeIntervalSession: ActiveIntervalSession?
@@ -63,12 +65,32 @@ struct WatchRootView: View {
             // phone replays an unchanged list (it does on every activation).
             watchManager.applyCustomExercisesInBackground(container: context.container)
         }
+        .onChange(of: watchManager.activeSwimSpec, initial: true) { _, spec in
+            guard let spec, activeCardioKind == nil, watchManager.phoneRequestID == nil,
+                  watchManager.phoneLaunchPendingSince == nil else { return }
+            activeCardioKind = .swim
+            activeCardioSpec = spec
+        }
         .onOpenURL { launchRequests.handle($0) }
         .onChange(of: launchRequests.pendingStart, initial: true) { _, style in
             guard style != nil, !watchManager.isActive, activeIntervalSession == nil, activeCardioKind == nil,
                   let style = launchRequests.consumeStart() else { return }
             handleStartRequest(style)
         }
+        .sheet(isPresented: Binding(get: { plannedSwimSpec != nil }, set: { if !$0 { plannedSwimSpec = nil } })) {
+            if let planned = plannedSwimSpec {
+                WatchCardioSetupView(kind: .swim, location: $cardioLocation, lapLength: $cardioLapLength,
+                                     unit: watchAppSettings.unit,
+                                     plannedDurationSeconds: planned.plannedDurationSeconds,
+                                     targetZone: planned.targetZone) { spec in
+                    startConfiguredCardio(.swim, spec: spec)
+                    plannedSwimSpec = nil
+                }
+            }
+        }
+        .alert("Swim could not start", isPresented: Binding(get: { cardioStartError != nil }, set: { if !$0 { cardioStartError = nil } })) {
+            Button("OK", role: .cancel) { cardioStartError = nil }
+        } message: { Text(cardioStartError ?? "") }
         .accessibilityIdentifier("watch.root")
     }
 
@@ -317,7 +339,6 @@ struct WatchRootView: View {
                 activeIntervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: ct.displayName)
             }
         } else {
-            let kind = ct.toCardioKind()
             let richCardio = session.planPayload?.cardio.first
             let duration = richCardio?.durationSeconds ?? session.durationMinutes.map { $0 * 60 }
             let zone = richCardio?.targetZone ?? session.zone
@@ -325,9 +346,11 @@ struct WatchRootView: View {
                 for: ct.rawValue,
                 plannedDurationSeconds: duration,
                 targetZone: zone)
-            watchManager.beginCardioWorkout(type: ct.rawValue, spec: spec)
-            activeCardioKind = kind
-            activeCardioSpec = spec
+            if ct == .swim {
+                plannedSwimSpec = spec
+            } else {
+                startConfiguredCardio(ct, spec: spec)
+            }
         }
     }
 
@@ -340,11 +363,19 @@ struct WatchRootView: View {
             }
         } else {
             WatchCardioSetupView(kind: kind, location: $cardioLocation, lapLength: $cardioLapLength, unit: watchAppSettings.unit) { spec in
-                watchManager.beginCardioWorkout(type: ct.rawValue, spec: spec)
-                activeCardioKind = kind
-                activeCardioSpec = spec
+                startConfiguredCardio(ct, spec: spec)
             }
         }
+    }
+
+    private func startConfiguredCardio(_ type: CardioType, spec: WorkoutConfigurationSpec) {
+        let owns = watchManager.beginCardioWorkout(type: type.rawValue, spec: spec)
+        guard type != .swim || owns else {
+            cardioStartError = String(localized: "Another workout is already using the watch. Finish it before starting a swim so automatic distance and lap tracking can start.")
+            return
+        }
+        activeCardioKind = spec.kind
+        activeCardioSpec = spec
     }
 
     private func intervalSetupModel(kind: String) -> IntervalSetupModel {

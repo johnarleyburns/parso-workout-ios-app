@@ -23,7 +23,20 @@ struct WatchCardioView: View {
                 age: watchSettings.userAge)
         )
         VStack(alignment: .leading, spacing: 4) {
-            if let distance = presentation.distanceText {
+            if kind == .swim {
+                if let poolLength = spec.poolLengthMeters {
+                    Text("Laps").font(.caption)
+                    bigNumber("\(metrics.lapCount)", size: 42)
+                        .accessibilityLabel(Text("\(metrics.lapCount) laps"))
+                        .accessibilityIdentifier("watch.swim.laps")
+                    Text("\(Int(poolLength)) m per lap").font(.caption2).foregroundStyle(.secondary)
+                }
+                bigNumber(String(format: "%.0f m", metrics.distanceMeters), size: 30)
+                    .accessibilityLabel(Text("Distance \(Int(metrics.distanceMeters)) meters"))
+                    .accessibilityIdentifier("watch.cardio.distance")
+                Text(presentation.elapsedText).monospacedDigit().font(.footnote)
+                Text("Hold Digital Crown to unlock").font(.caption2).foregroundStyle(.secondary)
+            } else if let distance = presentation.distanceText {
                 bigNumber(distance, size: 30)
                     .accessibilityLabel(Text("Distance \(distance)"))
                     .accessibilityIdentifier("watch.cardio.distance")
@@ -46,7 +59,7 @@ struct WatchCardioView: View {
                     .accessibilityIdentifier("watch.cardio.bpm")
                 }
                 Spacer(minLength: 4)
-                if presentation.distanceText != nil {
+                if kind != .swim && presentation.distanceText != nil {
                     Text(presentation.elapsedText).monospacedDigit()
                         .accessibilityLabel(Text("Elapsed time \(presentation.elapsedText)"))
                 }

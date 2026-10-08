@@ -26,7 +26,7 @@ extension WatchWorkoutManager {
         // workout), or the user is in a Watch workout, which the command will
         // be told about.
         guard !isActive, !isMonitoring else { return }
-        guard startWorkout(type: Self.rawType(for: configuration.activityType)) else { return }
+        guard startWorkout(type: Self.rawType(for: configuration.activityType), spec: Self.swimSpec(from: configuration)) else { return }
         let launchedAt = Date()
         phoneLaunchPendingSince = launchedAt
         Task { @MainActor [weak self] in

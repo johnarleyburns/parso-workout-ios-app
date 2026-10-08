@@ -17,15 +17,20 @@ public struct WatchCardioCompletion: Codable, Equatable, Sendable {
     public let avgHeartRate: Double?
     public let maxHeartRate: Double?
     public let gpsEnabled: Bool
+    public let swimmingLapCount: Int?
+    public let poolLengthMeters: Double?
 
     public init(id: UUID = UUID(), type: CardioType, title: String? = nil,
                 start: Date, end: Date, distanceMeters: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], avgHeartRate: Double? = nil,
                 maxHeartRate: Double? = nil, gpsEnabled: Bool = false,
+                swimmingLapCount: Int? = nil, poolLengthMeters: Double? = nil,
                 version: Int = currentVersion) {
         self.version = version; self.id = id; self.type = type; self.title = title
         self.start = start; self.end = end
-        self.distanceMeters = gpsEnabled ? distanceMeters : nil
+        self.distanceMeters = gpsEnabled || type == .swim ? distanceMeters : nil
+        self.swimmingLapCount = type == .swim ? swimmingLapCount : nil
+        self.poolLengthMeters = type == .swim ? poolLengthMeters : nil
         self.hrSamples = hrSamples; self.avgHeartRate = avgHeartRate
         self.maxHeartRate = maxHeartRate; self.gpsEnabled = gpsEnabled
     }

@@ -2,6 +2,48 @@
 
 Updated: 2026-10-08
 
+## Latest implementation — Watch swimming (2026-10-08)
+
+- Swim setup replaces GPS with a mutually exclusive Lap Pool / Open Water w/GPS
+  bar. Pool length is 25 or 50 m and remembered. Planned swims also go through
+  this setup while retaining their time/zone targets.
+- Water lock waits for the actual HKWorkoutSession running callback and foreground
+  activation on supported hardware. A pending request is consumed once, so Crown
+  unlocking does not immediately re-lock on every wrist raise. Setup/live/help
+  show press-and-hold Crown instructions. Background-started sessions retry the
+  pending request when the screen becomes active.
+- Configure pool length in HealthKit and use its native cumulative swimming
+  distance to count completed pool lengths. Ignore duplicate lap/segment events,
+  non-swimming distance, invalid readings and stale builder/session callbacks.
+  Open-water configuration is outdoor/GPS; swim auto-pause is disabled so turns
+  or delayed distance samples cannot pause the workout.
+- Live swim page prioritizes laps and meters, returns to metrics on foreground
+  activation, and reopens recovered swims with native pool/open-water settings
+  and collected distance. Preserve native workout ownership; reject a swim over
+  an unrelated session rather than pretend automatic sensors are available.
+  Startup/collection failures are visible.
+- Watch completion adds optional swimmingLapCount/poolLengthMeters fields under
+  the backward-compatible v1 envelope. Non-GPS pool distance is preserved; phone
+  saves count in existing CardioWorkout.laps and pool size in notes. No SwiftData
+  schema changes. Later HealthKit import still reconciles without duplicate rows.
+- A real watchOS passcode lock cannot be bypassed. Help describes unlocking before
+  swimming, sensor contact/band fit, Wake on Wrist Raise and Return to App settings.
+
+Verification: 11 focused tests passed (eight new regressions; suite now 2,073).
+Generic iPhone + embedded Watch build passed; no simulator was launched. Physical
+water-lock/turn-detection/wrist-raise behavior still needs the owner's real swim
+check after installing the update. Full suite runs in the commit hook and release
+verification is recorded in GitHub Actions.
+
+Apple references:
+- https://developer.apple.com/documentation/watchkit/wkinterfacedevice/enablewaterlock()
+- https://developer.apple.com/documentation/healthkit/hkliveworkoutdatasource
+- https://developer.apple.com/documentation/healthkit/hkworkoutconfiguration/laplength
+- https://support.apple.com/en-us/111819
+
+Next: confirm 25/50 m laps/distance at turns, Crown unlocking, wrist-raise display
+and phone history on a real pool swim; check GPS distance on an open-water swim.
+
 ## Latest implementation — Today recovery recommendation repair (2026-10-08)
 
 The Today fallback discarded every non-strength coach choice and rendered a

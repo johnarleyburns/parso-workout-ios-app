@@ -10,9 +10,12 @@ struct WatchCardioSessionView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchSettings
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var metrics: CardioMetricsModel?
     @State private var pendingSummary: WatchWorkoutManager.SavedWorkoutSummary?
     @State private var isShowingConfirmEnd = false
+    @State private var startFailure = false
     @State private var page: Page = .metrics
 
     enum Page: Hashable { case controls, metrics, heart }
@@ -24,6 +27,7 @@ struct WatchCardioSessionView: View {
                     summary: summary,
                     metrics: metrics,
                     lapText: lapSummaryText,
+                    isSwim: kind == .swim,
                     onSave: save,
                     onDiscard: discard
                 )
@@ -41,6 +45,18 @@ struct WatchCardioSessionView: View {
                     .workoutStarted(title: String(describing: kind)), enabled: watchSettings.spokenCues)
             }
         }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active, kind == .swim, pendingSummary == nil else { return }
+            page = .metrics
+            watchManager.enablePendingSwimWaterLock()
+            if let metrics { update(metrics) }
+        }
+        .onChange(of: watchManager.workoutStartError, initial: true) { _, error in
+            if kind == .swim, error != nil { startFailure = true }
+        }
+        .alert("Swim could not start", isPresented: $startFailure) {
+            Button("OK") { onDone() }
+        } message: { Text(watchManager.workoutStartError ?? "Please try starting the swim again.") }
         .onDisappear {
             WatchWorkoutVoiceCoach.shared.stop()
             if case nil = pendingSummary {
@@ -61,6 +77,7 @@ struct WatchCardioSessionView: View {
                 WatchCardioControlsView(
                     isSwim: kind == .swim,
                     isPaused: watchManager.isPaused,
+                    automaticallyTracksLaps: spec.poolLengthMeters != nil,
                     onEnd: { isShowingConfirmEnd = true },
                     onPause: {
                         watchManager.togglePause()
@@ -145,8 +162,7 @@ struct WatchCardioSessionView: View {
     }
 
     private var lapSummaryText: String? {
-        guard kind == .swim else { return nil }
-        let total = watchManager.autoLapCount + watchManager.manualLapCount
-        return "\(total)"
+        guard spec.poolLengthMeters != nil else { return nil }
+        return "\(metrics?.lapCount ?? 0)"
     }
 }

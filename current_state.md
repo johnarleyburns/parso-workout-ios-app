@@ -2,6 +2,18 @@
 
 Live handoff/progress tracker.
 
+## Today recovery recommendation repair — 2026-10-08
+
+See `current_status.md` for the phone diagnosis and implementation. Today now
+preserves the selected coach modality, uses matching WHY/start/edit, removes the
+duplicate Recovery day and Train anyway button, and offers reviewed light
+bodyweight and short easy walk/cycle options. Cardio setup retains that guidance.
+Four new package regressions passed; initial 2,061-test suite and final generic
+iPhone/embedded Watch build passed. Full package suite now contains 2,065 tests
+and runs in the required commit hook. Release CI is recorded in GitHub Actions.
+No schema changes. Next: verify the updated Today and recovery picker on-device.
+
+
 ## Public GPLv3 licensing and workout recovery — 2026-09-05 — IN PROGRESS
 
 The repository is public. Cladiron application code is being restored to

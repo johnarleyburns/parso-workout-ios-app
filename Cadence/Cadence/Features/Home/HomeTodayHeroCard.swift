@@ -54,9 +54,11 @@ struct HomeTodayHeroCard: View {
             if let summary, tag == String(localized: "Done for today") {
                 doneSummary(summary)
             } else {
-                Text(title)
-                    .font(.title3.weight(.bold))
-                    .fixedSize(horizontal: false, vertical: true)
+                if title != tag && tag != String(localized: "Recovery day") {
+                    Text(title)
+                        .font(.title3.weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
                 if !exercises.isEmpty {
                     exerciseRows
@@ -90,7 +92,7 @@ struct HomeTodayHeroCard: View {
                     .foregroundStyle(CadenceTheme.link)
                     .accessibilityIdentifier("home.hero.whyWorkout")
                     .sheet(isPresented: $rationalePresented) {
-                        RecommendationRationaleSheet(rationale: rationale)
+                        RecommendationRationaleSheet(rationale: rationale, citationIDs: citationIDs)
                     }
                 }
 
@@ -106,10 +108,6 @@ struct HomeTodayHeroCard: View {
                 } else if tag == String(localized: "Recovery day") {
                     Button("Easy options", action: onChooseAnother)
                         .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
-                    Button("Train anyway", action: onStart)
-                        .buttonStyle(.plain)
-                        .foregroundStyle(CadenceTheme.link)
                         .frame(maxWidth: .infinity)
                 } else {
                     Button(action: onStart) {

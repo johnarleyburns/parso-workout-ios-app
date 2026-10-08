@@ -8,7 +8,6 @@ struct HomeView: View {
     enum Surface: Equatable {
         case today
         case thisWeek
-
         var title: String {
             switch self {
             case .today: return String(localized: "Today")
@@ -16,7 +15,6 @@ struct HomeView: View {
             }
         }
     }
-
     let surface: Surface
     init(surface: Surface = .today, navigationPath: Binding<NavigationPath>? = nil) {
         self.surface = surface
@@ -43,6 +41,7 @@ struct HomeView: View {
 
     @State var logPickerPresented = false
     @State var selectWorkoutPresented = false
+    @State var recoveryOptionsPresented = false
     @State private var ownedPath = NavigationPath()
     private let externalPath: Binding<NavigationPath>?
     let usesExternalNavigation: Bool
@@ -82,6 +81,7 @@ struct HomeView: View {
     @State var plannedWorkoutsPresented = false
     @State var weightsStartPresented = false
     @State var cardioGoalFor: CardioType?
+    @State var cardioRecommendation: CoachSession?
     @State var scheduleCardioType: WorkoutType?
     @State var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
     @State var outdoorGoalMeters: Double?

@@ -83,28 +83,7 @@ extension HomeView {
         // launch timing. The already-computed Coach decision is the stable
         // fallback until the personalized plan arrives (or if generation has
         // no launchable catalog result).
-        let coachFallback: TodayHero? = {
-            let session = coachDecision.primary
-            guard coachRecommendsStrength else { return nil }
-            let lines = (session.exercises ?? []).prefix(5).map { exercise in
-                let reps: String
-                if let low = exercise.repsLow, let high = exercise.repsHigh, low != high {
-                    reps = "\(low)–\(high)"
-                } else if let repsLow = exercise.repsLow {
-                    reps = "\(repsLow)"
-                } else {
-                    reps = "—"
-                }
-                let sets = exercise.sets.map(String.init) ?? "—"
-                return TodayHero.Line(name: exercise.name, detail: "\(sets) × \(reps)")
-            }
-            return TodayHero(kind: .suggested,
-                             title: session.title,
-                             estimatedMinutes: session.durationMinutes,
-                             exercises: Array(lines),
-                             reason: session.subtitle.isEmpty ? reason : String(localized: "Why today: \(session.subtitle)"),
-                             citationIDs: session.citationIds)
-        }()
+        let coachFallback = coachSnapshotReady ? TodayHeroPresenter.recommendation(coachDecision) : nil
         let scheduled = todayScheduled.map {
             TodayHero(kind: .scheduled, title: $0.title,
                       estimatedMinutes: WorkoutDurationEstimator.estimate(
@@ -159,7 +138,9 @@ extension HomeView {
         }
         return HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
-                                 rationale: todaySuggestedPlan?.recommendationRationale,
+                                 rationale: hero.kind == .suggested && coachRecommendsStrength && suggested != nil
+                                    ? todaySuggestedPlan?.recommendationRationale
+                                    : hero.reason.map { SuggestedWorkoutRationale(whyWorkout: $0, exercises: []) },
                                  citationIDs: hero.citationIDs,
                                  summary: hero.summary,
                                  unit: settings.unit,
@@ -172,12 +153,14 @@ extension HomeView {
                                          active.present()
                                      } else if let todayScheduled {
                                          startScheduledWorkout(todayScheduled)
-                                     } else {
+                                     } else if coachRecommendsStrength && todaySuggestedPlan != nil {
                                          openTodaySuggestion()
+                                     } else {
+                                         launchDecision(coachDecision.primary)
                                      }
                                  },
-                                 onEdit: { openTodaySuggestion() },
-                                 onChooseAnother: { selectWorkoutPresented = true },
+                                 onEdit: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
+                                 onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
                                  onViewSummary: {
                                      if let row = workoutsTodayRows.first(where: { $0.modality == .strength }) {
                                          openTodayWorkout(row)

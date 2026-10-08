@@ -93,7 +93,8 @@ extension HomeView {
 
     /// Presents the optional distance-goal chooser before a run/walk/cycle (batch 8).
     /// A fresh start clears any prior goal; the chooser sets it (or leaves it nil).
-    func startOutdoorWithGoal(_ type: CardioType) {
+    func startOutdoorWithGoal(_ type: CardioType, recommendation: CoachSession? = nil) {
+        cardioRecommendation = recommendation
         otherCardioTitle = nil
         outdoorGoalMeters = nil
         cardioGoalFor = type
@@ -259,7 +260,7 @@ extension HomeView {
                 exercises: [])
             workoutEditorPlan = fallback
         case .outdoorCardio(let type):
-            startOutdoorWithGoal(type)             // → CardioGoalSheet → HR gate → recorder
+            startOutdoorWithGoal(type, recommendation: session) // → CardioGoalSheet → HR gate → recorder
         case .swim:
             swimPresented = true                   // SwimRecordView opens to its setup screen
         case .interval(let workoutType):

@@ -1,4 +1,5 @@
 import Foundation
+import CadenceCore
 
 public struct TodayHero: Equatable, Sendable {
     public enum Kind: Equatable, Sendable { case suggested, scheduled, inProgress, doneToday, restDay, needsHistory, loading }
@@ -28,6 +29,44 @@ public struct TodayHero: Equatable, Sendable {
 }
 
 public enum TodayHeroPresenter {
+    /// Preserve the actual modality; absence of a strength draft is not recovery.
+    public static func recommendation(_ decision: CoachDecision, computedAt: Date = Date()) -> TodayHero {
+        let session = decision.primary
+        let isRecovery = session.kind == .rest || session.kind == .recovery
+        let ranking = decision.scoreBreakdowns[session.id]?.reasons ?? []
+        var reasons = ranking.map { $0.text }
+        if isRecovery {
+            reasons += decision.deferred.map { $0.reason.message }
+            let hardDays = decision.weeklyBalance.consecutiveHardDays
+            if hardDays >= 3 {
+                reasons.append(String(localized: "You have logged \(hardDays) consecutive hard training days.", bundle: .module))
+            }
+            if let score = decision.scoreBreakdowns[session.id], score.preference > 0 {
+                reasons.append(String(localized: "Your previous workout choices favor this option.", bundle: .module))
+            }
+            reasons += decision.observedFacts.filter {
+                $0.kind == .lastStrength || $0.kind == .lastCardio
+            }.map { "\($0.title): \($0.value)" }
+        }
+        if !isRecovery {
+            let kind: ObservedFact.Kind = session.kind == .strength ? .weeklyStrengthDays : .weeklyModerateEquivalentMinutes
+            reasons += decision.observedFacts.filter { $0.kind == kind }.map { "\($0.title): \($0.value)" }
+        }
+        let evidence = session.citationIds + ranking.map { $0.selectedCitationId } + (isRecovery ? decision.deferred.flatMap { $0.reason.citationIds } : [])
+        let explanation = ([session.subtitle] + Array(Set(reasons)).sorted()).filter { !$0.isEmpty }.joined(separator: "\n")
+        return TodayHero(kind: isRecovery ? .restDay : .suggested, title: session.title,
+                         estimatedMinutes: session.durationMinutes,
+                         exercises: (session.exercises ?? []).map { exercise in
+                             let low = exercise.repsLow.map(String.init) ?? "—"
+                             let reps = exercise.repsHigh.map { high in
+                                 exercise.repsLow != high ? "\(low)–\(high)" : low
+                             } ?? low
+                             let sets = exercise.sets.map(String.init) ?? "—"
+                             return TodayHero.Line(name: exercise.name, detail: "\(sets) × \(reps)")
+                         }, reason: explanation.isEmpty ? nil : explanation,
+                         citationIDs: Array(Set(evidence)).sorted(), computedAt: computedAt)
+    }
+
     public static func hero(inProgress: TodayHero?, scheduled: TodayHero?, suggested: TodayHero?,
                             fallbackRecommendation: TodayHero? = nil,
                             completedWorkoutCount: Int, completedToday: DaySummary? = nil,

@@ -42,6 +42,7 @@ struct RecommendationRationaleDisclosure: View {
 
 struct RecommendationRationaleSheet: View {
     let rationale: SuggestedWorkoutRationale
+    var citationIDs: [String] = []
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -53,6 +54,7 @@ struct RecommendationRationaleSheet: View {
                     Text(rationale.whyWorkout)
                         .font(.subheadline)
                         .fixedSize(horizontal: false, vertical: true)
+                    CoachSourcesLink(citationIds: citationIDs, identifier: "home.hero.why.science")
                     ForEach(rationale.exercises, id: \.exerciseName) { exercise in
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Why this exercise: \(exercise.exerciseName)")

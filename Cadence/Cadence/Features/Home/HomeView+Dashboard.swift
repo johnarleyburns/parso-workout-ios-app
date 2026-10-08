@@ -50,6 +50,9 @@ extension HomeView {
             .sheet(isPresented: $readinessPresented) {
                 ReadinessCheckInView(existing: todayReadiness)
             }
+            .sheet(isPresented: $recoveryOptionsPresented) {
+                recoveryOptionsSheet
+            }
             .sheet(isPresented: $selectWorkoutPresented, onDismiss: presentPendingSuggestedWorkout) {
                 SelectWorkoutView(
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
@@ -271,7 +274,7 @@ extension HomeView {
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
             .sheet(item: $cardioGoalFor) { type in
-                CardioGoalSheet(type: type, onSchedule: { date in
+                CardioGoalSheet(type: type, recommendation: cardioRecommendation, onSchedule: { date in
                     try scheduleCardioWorkout(WorkoutType(rawValue: type.rawValue) ?? .other,
                                               for: date)
                 }) { goal, indoors in

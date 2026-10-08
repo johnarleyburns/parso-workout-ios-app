@@ -4,6 +4,7 @@ import CadenceFeatures
 
 struct CardioGoalSheet: View {
     let type: CardioType
+    let recommendation: CoachSession?
     let onSchedule: ((Date) async throws -> Void)?
     let onStart: (_ goalMeters: Double?, _ indoors: Bool) -> Void
 
@@ -23,9 +24,11 @@ struct CardioGoalSheet: View {
     ]
 
     init(type: CardioType,
+         recommendation: CoachSession? = nil,
          onSchedule: ((Date) async throws -> Void)? = nil,
          onStart: @escaping (Double?, Bool) -> Void) {
         self.type = type
+        self.recommendation = recommendation
         self.onSchedule = onSchedule
         self.onStart = onStart
         let ws = WorkoutSettings.default
@@ -38,6 +41,14 @@ struct CardioGoalSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                if let recommendation {
+                    Section("Suggested workout") {
+                        Text(recommendation.title).font(.headline)
+                        Text(recommendation.subtitle).foregroundStyle(.secondary)
+                        CoachSourcesLink(citationIds: recommendation.citationIds,
+                                         identifier: "goal.recommendation.science")
+                    }
+                }
                 Section {
                     Button {
                         saveAndStart()

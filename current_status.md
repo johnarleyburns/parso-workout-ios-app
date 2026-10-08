@@ -1,6 +1,36 @@
 # Current Status
 
-Updated: 2026-10-04
+Updated: 2026-10-08
+
+## Latest implementation — Today recovery recommendation repair (2026-10-08)
+
+The Today fallback discarded every non-strength coach choice and rendered a
+synthetic Recovery day. WHY came from a separate personalized strength draft,
+and Easy options opened the unrestricted picker. Read-only diagnostics of the
+attached phone (1.1.658) and replay of its copied shared store/settings selected
+moderate-aerobic **Boxing conditioning**, which the old card mislabeled recovery.
+The replay uses saved history/check-in/settings, without live HealthKit signals.
+
+- Preserve strength, cardio and genuine recovery choices in the Today presenter.
+  WHY and Start/Edit now follow the displayed choice. Fallback WHY includes
+  relevant weekly facts; recovery includes hard-day streak, deferred reasons,
+  and recent training. Its science links are available in the explanation sheet.
+- Show Recovery day once, with a single Easy options button. The separate picker
+  provides one set of eight bodyweight squats/incline push-ups (no added load,
+  at least five reps in reserve) and 10–15-minute relaxed walks/cycles. All open
+  setup/editor for review. Choose any workout remains available inside the picker.
+- Retain the selected cardio recommendation/instructions/citations in its setup.
+- Four new regressions cover non-strength fallback, selected recovery reasoning
+  and science, and genuinely light/launchable drafts. No persistence changes.
+
+Verification: initial 2,061 package tests and all four recovery regressions passed;
+final generic iPhone + embedded Watch build and citation/test-pyramid/history/
+release-safety/warning guardrails passed. The required pre-commit hook runs the
+complete 2,065-test suite. GitHub Actions is the release verification record.
+No simulator was launched and no data on the phone was modified.
+
+Next: after TestFlight processing, verify Today/WHY agree on the phone and that
+Easy options opens only the intended light drafts, with full selection available.
 
 ## Latest implementation — Muscle map: untracked muscle takes its nearest tracked group's colour (2026-10-08)
 

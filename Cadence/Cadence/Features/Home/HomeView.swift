@@ -153,16 +153,9 @@ struct HomeView: View {
                                      readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan,
                                      engineObservation: coachSnapshot.engineObservation)
         let weekStart = WeeklyStats.weekStart(now: Date())
-        let rhr = passiveSamples
-            .map(\.restingHR)
-            .compactMap { $0 }
-            .filter { $0 > 25 && $0 < 160 }
-            .sorted()
-        let restingHR = rhr.isEmpty ? nil : rhr[rhr.count / 2]
-        let intensityProfile = CardioIntensityProfile.resolved(
-            restingHR: restingHR,
-            userEnteredMaximumHR: settings.cardioMaximumHROverride,
-            age: settings.userAge, updatedAt: Date())
+        let intensityProfile = CardioIntensityProfile.forHome(
+            passiveSamples: passiveSamples, userAge: settings.userAge,
+            maximumHROverride: settings.cardioMaximumHROverride)
         let weeklyCardio = WeeklyCardioAggregator.summarize(cardio, since: weekStart,
                                                              profile: intensityProfile)
         let activityDose = WeeklyActivityDoseAggregator.summarize(
@@ -241,6 +234,7 @@ struct HomeView: View {
             schedule: settings.coachSchedulePreferences,
             profile: settings.coachPreferenceProfile,
             userAge: settings.userAge,
+            cardioMaximumHROverride: settings.cardioMaximumHROverride,
             overrideWeekKey: settings.coachPlanOverrideWeekKey)
     }
     func buildCoachSnapshot() async -> HomeCoachSnapshot {
@@ -259,6 +253,7 @@ struct HomeView: View {
                 profile: settings.coachPreferenceProfile,
                 passiveSamples: passiveSamples,
                 userAge: settings.userAge,
+                cardioMaximumHROverride: settings.cardioMaximumHROverride,
                 constraintPolicy: policy)
         } else {
             computed = await HomeCoachModel.snapshotAsync(
@@ -273,6 +268,7 @@ struct HomeView: View {
                 profile: settings.coachPreferenceProfile,
                 passiveSamples: passiveSamples,
                 userAge: settings.userAge,
+                cardioMaximumHROverride: settings.cardioMaximumHROverride,
                 constraintPolicy: policy)
         }
         let snapshot = HomeCoachSnapshot(computed)

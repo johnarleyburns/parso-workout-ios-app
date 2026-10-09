@@ -343,41 +343,43 @@ extension HomeView {
     }
 
     private var dashboardScrollContent: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if surface == .today {
-                        dashboardTopContent
-                        dashboardBottomContent
-                    } else {
-                        thisWeekContent
-                    }
-                }
-                .padding()
-            }
-            .background { CadenceGlassBackdrop(tint: .green) }
-            .navigationTitle(surface.title)
-            .navigationBarTitleDisplayMode(.large)
-            .onChange(of: weekScrollTarget) { _, target in
-                guard let target else { return }
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    proxy.scrollTo(target, anchor: .top)
-                }
-                weekScrollTarget = nil
-            }
-            .toolbar {
-                // Settings is no longer a bottom tab; Today owns the single
-                // entry point, shown only on the Today surface.
-                if surface == .today {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        Button {
-                            Haptics.selection()
-                            path.append(HomeRoute.settings)
-                        } label: {
-                            Image(systemName: "gearshape")
+        TodayHeroViewport {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 20) {
+                        if surface == .today {
+                            dashboardTopContent
+                            dashboardBottomContent
+                        } else {
+                            thisWeekContent
                         }
-                        .accessibilityIdentifier("home.settings")
-                        .accessibilityLabel("Settings")
+                    }
+                    .padding()
+                }
+                .background { CadenceGlassBackdrop(tint: .green) }
+                .navigationTitle(surface.title)
+                .navigationBarTitleDisplayMode(.large)
+                .onChange(of: weekScrollTarget) { _, target in
+                    guard let target else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(target, anchor: .top)
+                    }
+                    weekScrollTarget = nil
+                }
+                .toolbar {
+                    // Settings is no longer a bottom tab; Today owns the single
+                    // entry point, shown only on the Today surface.
+                    if surface == .today {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button {
+                                Haptics.selection()
+                                path.append(HomeRoute.settings)
+                            } label: {
+                                Image(systemName: "gearshape")
+                            }
+                            .accessibilityIdentifier("home.settings")
+                            .accessibilityLabel("Settings")
+                        }
                     }
                 }
             }

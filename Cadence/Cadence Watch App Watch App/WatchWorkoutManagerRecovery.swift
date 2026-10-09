@@ -81,7 +81,7 @@ extension WatchWorkoutManager {
             b.delegate = self; builder = b; s.delegate = self
             s.startActivity(with: Date())
             let id = ObjectIdentifier(b)
-            b.beginCollection(withStart: Date()) { success, error in
+            b.beginCollection(withStart: Date()) { [weak self] success, error in
                 guard !success else { return }
                 let message = error?.localizedDescription ?? "Workout measurements could not start."
                 Task { @MainActor [weak self] in

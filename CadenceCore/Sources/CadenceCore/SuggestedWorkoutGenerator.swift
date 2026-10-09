@@ -413,9 +413,14 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
     /// `SuggestedWorkoutGenerator.generate` for a real from-scratch rerun —
     /// never a patch of the existing plan.
     public func excluding(candidateID: String) -> SuggestedWorkoutInput {
-        SuggestedWorkoutInput(
+        excluding(candidateIDs: [candidateID])
+    }
+
+    public func excluding(candidateIDs: Set<String>) -> SuggestedWorkoutInput {
+        guard !candidateIDs.isEmpty else { return self }
+        return SuggestedWorkoutInput(
             completedSetsByMuscle: completedSetsByMuscle,
-            candidates: candidates.filter { $0.id != candidateID },
+            candidates: candidates.filter { !candidateIDs.contains($0.id) },
             historyData: historyData,
             historyWorkoutCount: historyWorkoutCount,
             historyWorkingSetCount: historyWorkingSetCount,
@@ -447,6 +452,7 @@ public enum SuggestedWorkoutGenerator {
     }
 
     public static func generate(input: SuggestedWorkoutInput) -> SuggestedWorkoutBundle {
+        let input = input.excluding(candidateIDs: input.recentlyCompletedCandidateIDs)
         let historyQuality = historyQuality(for: input)
         if let context = input.engineContext,
            let engineBundle = generateWithEngine(input: input, context: context) {
@@ -494,6 +500,7 @@ public enum SuggestedWorkoutGenerator {
     /// before five workouts: historical movements are preferred once available;
     /// the onboarding style fills only gaps (or supplies the initial pool).
     public static func generatePersonalized(input: SuggestedWorkoutInput) -> SuggestedWorkoutOption {
+        let input = input.excluding(candidateIDs: input.recentlyCompletedCandidateIDs)
         let clock = ContinuousClock()
         let indexStart = clock.now
         let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
@@ -537,6 +544,7 @@ public enum SuggestedWorkoutGenerator {
         allowPersonalizedFallback: Bool = false,
         priorityMuscle: MuscleGroup? = nil
     ) -> SuggestedWorkoutExercise? {
+        let input = input.excluding(candidateIDs: input.recentlyCompletedCandidateIDs)
         guard style != .personalized || allowPersonalizedFallback
             || input.historyWorkoutCount >= minimumPersonalizedWorkouts else {
             return nil
@@ -678,6 +686,7 @@ public enum SuggestedWorkoutGenerator {
                   goal: input.trainingGoal, historyWorkoutCount: input.historyWorkoutCount,
                   index: index, counters: &counters)
         }
+        let allowedExerciseKeys = Set(input.candidates.map { ExerciseSuggestionExclusionKey.forName($0.name) })
         let olympicCandidateIDs = Set(input.candidates
             .filter { $0.trainingTypes.contains(.olympicWeightlifting)
                 || ExerciseTrainingType.isOlympicOnlyMovement(named: $0.name) }
@@ -693,7 +702,8 @@ public enum SuggestedWorkoutGenerator {
            let fitnessIndex = styles.firstIndex(of: .fitness),
            engineOption.isLaunchable,
            engineOption.exercises.allSatisfy({ exercise in
-               !olympicCandidateIDs.contains(exercise.candidateID)
+               allowedExerciseKeys.contains(ExerciseSuggestionExclusionKey.forName(exercise.name))
+                   && !olympicCandidateIDs.contains(exercise.candidateID)
                    && !olympicCandidateNames.contains(exercise.name.localizedLowercase)
            }) {
             options[fitnessIndex] = engineOption

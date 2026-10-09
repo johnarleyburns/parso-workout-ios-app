@@ -17,7 +17,7 @@ final class CladironRedesignPresenterTests: XCTestCase {
 
     func testHeatBoundaries() {
         XCTAssertEqual(MuscleHeatPresenter.level(sets: 4, target: 12), .mid)
-        XCTAssertEqual(MuscleHeatPresenter.level(sets: 6, target: 12), .high)
+        XCTAssertEqual(MuscleHeatPresenter.level(sets: 6, target: 12), .mid)
         XCTAssertEqual(MuscleHeatPresenter.level(sets: 9, target: 12), .onTarget)
         XCTAssertEqual(MuscleHeatPresenter.level(sets: 0, target: 0), .none)
     }

@@ -188,4 +188,14 @@ final class HomeCoachModelTests: XCTestCase {
             coachHidden: true, assessments: [], lastRecommendedAt: nil, snoozedUntil: [:]))
     }
 
+    func testMaximumHROverrideInvalidatesCoachSignature() {
+        let token = UUID()
+        let base = HomeCoachModel.Signature(token: token, sessionCount: 0, cardioCount: 0,
+            assessmentCount: 0, goal: .strength, experience: .intermediate, formula: .epley,
+            schedule: .default, profile: .empty, painToday: false, userAge: 50)
+        var edited = base
+        edited.cardioMaximumHROverride = 180
+        XCTAssertNotEqual(edited, base)
+    }
+
 }

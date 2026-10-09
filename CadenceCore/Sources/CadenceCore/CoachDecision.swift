@@ -95,6 +95,7 @@ public struct ObservedFact: Sendable, Equatable, Identifiable {
         case lastStrength
         case lastCardio
         case weeklyStrengthDays
+        case weeklyCardioDays
         case weeklyModerateEquivalentMinutes
         case weeklySteps
         case sessionStructure
@@ -197,9 +198,10 @@ public enum CoachDecisionEngine {
 
         // Gate 3: score eligible candidates (base + system need + preference
         // − same-day damping − confidence penalty).
-        let scored = score(eligible, facts: facts, profile: profile,
+        let scored = prioritizeDueTraining(score(eligible, facts: facts, profile: profile,
                            schedulePreferences: schedulePreferences,
-                           todayCompleted: todayCompleted)
+                           todayCompleted: todayCompleted), facts: facts,
+                           schedule: schedulePreferences, todayCompleted: todayCompleted)
 
         var strengthOverrideWarning: CoachWarning?
         let primary: CoachSession
@@ -328,10 +330,17 @@ public enum CoachDecisionEngine {
         ))
 
         factsList.append(ObservedFact(
+            kind: .weeklyCardioDays,
+            title: String(localized: "Cardio days this week", bundle: .module),
+            value: "\(facts.weeklyBalance.cardioDays)/\(schedulePreferences.cardioDaysPerWeek)",
+            detail: String(localized: "Your chosen weekly frequency is separate from the aerobic minute goal.", bundle: .module)
+        ))
+
+        factsList.append(ObservedFact(
             kind: .weeklyModerateEquivalentMinutes,
             title: String(localized: "Moderate-equivalent minutes", bundle: .module),
             value: {
-                let done = Int(facts.weeklyBalance.moderateEquivalentMinutes)
+                let done = Int(facts.weeklyBalance.moderateEquivalentMinutes.rounded())
                 let toGo = max(0, 150 - done)
                 return toGo > 0 ? String(localized: "\(done)/150 · \(toGo) min to go", bundle: .module) : "\(done)/150 · target met"
             }(),
@@ -419,7 +428,8 @@ public enum CoachDecisionEngine {
         }
 
         let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
-        let cardioNeeded = facts.weeklyBalance.moderateEquivalentMinutes < 150.0
+        let cardioNeeded = facts.weeklyBalance.cardioDays < schedulePreferences.cardioDaysPerWeek
+            || facts.weeklyBalance.moderateEquivalentMinutes < 150.0
         let todayPlan = todayPlanStatus(todayCompleted: todayCompleted,
                                         facts: facts,
                                         schedulePreferences: schedulePreferences)
@@ -492,13 +502,16 @@ public enum CoachDecisionEngine {
             return cal.startOfDay(for: event.start)
         }).count
 
-        let moderateEquivalentBeforeToday = beforeToday.reduce(0.0) { total, event in
-            total + moderateEquivalentMinutes(for: event)
-        }
+        let creditBeforeToday = beforeToday.reduce(0.0) { $0 + moderateEquivalentMinutes(for: $1) }
+        let cardioDaysBeforeToday = Set(beforeToday.compactMap { event -> Date? in
+            guard event.isAerobic else { return nil }
+            return cal.startOfDay(for: event.start)
+        }).count
 
         return TodayPlanStatus(
             strengthPlannedAtStart: strengthDaysBeforeToday < schedulePreferences.strengthDaysPerWeek,
-            cardioPlannedAtStart: moderateEquivalentBeforeToday < 150.0,
+            cardioPlannedAtStart: cardioDaysBeforeToday < schedulePreferences.cardioDaysPerWeek
+                || creditBeforeToday < 150.0,
             strengthCompleted: todayCompleted.contains(where: \.isStrength),
             cardioCompleted: todayCompleted.contains(where: \.isAerobic)
         )
@@ -590,7 +603,8 @@ public enum CoachDecisionEngine {
         let aerobicFloor = 150.0
 
         let strengthNeeded = balance.strengthDays < strengthFloor
-        let aerobicNeeded = balance.moderateEquivalentMinutes < aerobicFloor
+        let aerobicNeeded = balance.cardioDays < schedulePreferences.cardioDaysPerWeek
+            || balance.moderateEquivalentMinutes < aerobicFloor
 
         // Check recovery gates for strength
         let canStrength: Bool
@@ -685,6 +699,25 @@ public enum CoachDecisionEngine {
         }
     }
 
+    private static func prioritizeDueTraining(
+        _ scored: [(session: CoachSession, breakdown: SessionScoreBreakdown)],
+        facts: CoachFacts, schedule: CoachSchedulePreferences,
+        todayCompleted: [TrainingEvent]
+    ) -> [(session: CoachSession, breakdown: SessionScoreBreakdown)] {
+        if case .fixed(let days) = schedule.restPreference,
+           let weekday = Weekday(from: facts.referenceDate), days.contains(weekday) { return scored }
+        let strengthDue = facts.weeklyBalance.strengthDays < schedule.strengthDaysPerWeek
+            && !todayCompleted.contains(where: \.isStrength)
+        let cardioDue = facts.weeklyBalance.cardioDays < schedule.cardioDaysPerWeek
+            && !todayCompleted.contains(where: \.isAerobic)
+        let due = scored.filter { item in
+            (strengthDue && item.session.kind == .strength) || (cardioDue && item.session.isAerobic)
+        }
+        guard !due.isEmpty else { return scored }
+        let dueIDs = Set(due.map { $0.session.id })
+        return due + scored.filter { !dueIDs.contains($0.session.id) }
+    }
+
     /// Small, capped nudge (≤12) toward candidates that train a system the user has
     /// neglected this week or has no baseline for. Bounded well under the strength/
     /// aerobic floor terms so it breaks near-ties without overriding them, and it is
@@ -761,10 +794,10 @@ public enum CoachDecisionEngine {
     private static func generateWarnings(facts: CoachFacts) -> [CoachWarning] {
         var warnings: [CoachWarning] = []
 
-        if facts.weeklyBalance.consecutiveHardDays >= 6 {
+        if facts.weeklyBalance.consecutiveHardDays >= 4 {
             warnings.append(CoachWarning(
                 id: "consecutiveHardDays",
-                message: String(localized: "You've trained hard \(facts.weeklyBalance.consecutiveHardDays) days in a row. Evidence suggests recovery periods improve long-term adaptation.", bundle: .module),
+                message: String(localized: "You've logged demanding exercise on \(facts.weeklyBalance.consecutiveHardDays) consecutive days. If you need more recovery, reduce today's effort or choose an easy option; your planned training days still apply.", bundle: .module),
                 citationIds: ["meeusenOvertraining2013", "drewFinchInjury2016"]
             ))
         }

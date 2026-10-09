@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadenceFeatures
 
 /// Quick-start that targets the muscle groups you haven't trained this week (feedback
 /// batch 8 — tapping the Home "muscle groups" tile). It first lists your **past
@@ -14,6 +15,15 @@ struct MuscleGroupQuickStartView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+
+    @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive }) private var exclusions: [ExerciseSuggestionExclusion]
+
+    private var allowedSuggestions: [ExerciseTemplate] {
+        let lastWorkoutIDs = RecentSuggestionExclusion.candidateIDs(
+            sessions: sessions, candidates: suggestions.map { SuggestedExerciseCandidate(template: $0) })
+        let keys = Set(exclusions.map(\.exerciseKey)).union(lastWorkoutIDs)
+        return suggestions.filter { SuggestedExerciseFilter.allows($0, keys: keys) }
+    }
 
     /// Computed once per history change, not on every body pass. Ranking walks
     /// every set of every past session, and the list used to evaluate it twice
@@ -32,27 +42,9 @@ struct MuscleGroupQuickStartView: View {
                         .accessibilityIdentifier("groupQuick.missing")
                 }
 
-                if !ranked.isEmpty {
-                    Section("Repeat a past workout") {
-                        ForEach(ranked.prefix(5), id: \.session.id) { item in
-                            Button {
-                                reuse(item.session)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.session.title.isEmpty ? String(localized: "Workout") : item.session.title)
-                                        .font(.headline)
-                                    Text(String(localized: "Covers: ") + item.covered.map(\.displayName).joined(separator: ", "))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                            .accessibilityIdentifier("groupQuick.past")
-                        }
-                    }
-                }
-
-                if !suggestions.isEmpty {
+                if !allowedSuggestions.isEmpty {
                     Section("Build from suggestions") {
-                        ForEach(suggestions, id: \.id) { t in
+                        ForEach(allowedSuggestions, id: \.id) { t in
                             HStack {
                                 Text(t.name)
                                 Spacer()
@@ -70,6 +62,28 @@ struct MuscleGroupQuickStartView: View {
                         }
                         .cadenceGlassButton(prominent: true, tint: .green)
                         .accessibilityIdentifier("groupQuick.buildStart")
+                    }
+                }
+
+                if !ranked.isEmpty {
+                    Section("Repeat a past workout") {
+                        ForEach(ranked.prefix(5), id: \.session.id) { item in
+                            Button {
+                                reuse(item.session)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(item.session.title.isEmpty ? String(localized: "Workout") : item.session.title)
+                                        .font(.headline)
+                                    Text(item.session.date.formatted(date: .abbreviated, time: .shortened))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Text(item.session.exercisesInOrder.map(\.name).joined(separator: ", "))
+                                        .font(.subheadline).foregroundStyle(.secondary)
+                                    Text(String(localized: "Covers: ") + item.covered.map(\.displayName).joined(separator: ", "))
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .accessibilityIdentifier("groupQuick.past")
+                        }
                     }
                 }
             }
@@ -93,9 +107,10 @@ struct MuscleGroupQuickStartView: View {
     }
 
     private func buildFromSuggestions() {
+        guard !allowedSuggestions.isEmpty else { return }
         guard let s = try? WorkoutRepository.createSession(title: String(localized: "Workout"), in: context) else { return }
-        s.plannedExerciseNames = suggestions.map(\.name)
-        for name in suggestions { _ = try? WorkoutRepository.findOrCreateExercise(named: name.name, in: context) }
+        s.plannedExerciseNames = allowedSuggestions.map(\.name)
+        for name in allowedSuggestions { _ = try? WorkoutRepository.findOrCreateExercise(named: name.name, in: context) }
         try? context.save()
         startAfterDismiss(s)
     }

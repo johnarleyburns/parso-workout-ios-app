@@ -57,7 +57,7 @@ extension HomeView {
         let scheduledPlan = todayScheduled.flatMap { try? ScheduledWorkoutStore.decode($0.payloadData,
                                                                                          version: $0.payloadVersion) }
         func heroLines(_ plan: EditablePlan?) -> [TodayHero.Line] {
-            plan?.exercises.prefix(5).map {
+            plan?.exercises.map {
                 TodayHero.Line(name: $0.name,
                                detail: "\($0.sets.count) × \($0.sets.first?.targetReps ?? 0)")
             } ?? []

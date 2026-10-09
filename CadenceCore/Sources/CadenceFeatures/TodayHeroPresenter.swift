@@ -50,9 +50,11 @@ public enum TodayHeroPresenter {
         }
         if !isRecovery {
             let kind: ObservedFact.Kind = session.kind == .strength ? .weeklyStrengthDays : .weeklyModerateEquivalentMinutes
-            reasons += decision.observedFacts.filter { $0.kind == kind }.map { "\($0.title): \($0.value)" }
+            reasons += decision.observedFacts.filter { $0.kind == kind || (session.isAerobic && $0.kind == .weeklyCardioDays) }.map { "\($0.title): \($0.value)" }
         }
-        let evidence = session.citationIds + ranking.map { $0.selectedCitationId } + (isRecovery ? decision.deferred.flatMap { $0.reason.citationIds } : [])
+        let recoveryAdvice = decision.warnings.filter { $0.id == "consecutiveHardDays" }
+        reasons += recoveryAdvice.map(\.message)
+        let evidence = recoveryAdvice.flatMap(\.citationIds) + session.citationIds + ranking.map { $0.selectedCitationId } + (isRecovery ? decision.deferred.flatMap { $0.reason.citationIds } : [])
         let explanation = ([session.subtitle] + Array(Set(reasons)).sorted()).filter { !$0.isEmpty }.joined(separator: "\n")
         return TodayHero(kind: isRecovery ? .restDay : .suggested, title: session.title,
                          estimatedMinutes: session.durationMinutes,

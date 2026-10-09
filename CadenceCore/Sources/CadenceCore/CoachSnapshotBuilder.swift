@@ -61,6 +61,7 @@ public enum CoachSnapshotBuilder {
                              readinessEntry: ReadinessEntry? = nil,
                              passiveSamples: [PassiveReadinessSample] = [],
                              userAge: Int? = nil,
+                             cardioIntensityProfile: CardioIntensityProfile? = nil,
                              now: Date = Date(),
                              constraintPolicy: PlanningConstraintPolicy = .safe) -> CoachSnapshot {
         let liveSessions = sessions.filter { $0.deletedAt == nil }
@@ -72,7 +73,9 @@ public enum CoachSnapshotBuilder {
                                                formula: formula)
         let events = trainingEvents(sessions: liveSessions, cardio: cardio,
                                     assessments: assessments, formula: formula,
-                                    userAge: userAge)
+                                    userAge: userAge,
+                                    cardioIntensityProfile: cardioIntensityProfile ?? .forHome(
+                                        passiveSamples: passiveSamples, userAge: userAge))
         let coachFacts = CoachFacts.make(from: events, goal: goal, experience: experience,
                                          readinessEntry: readinessEntry,
                                          formula: formula, now: now,
@@ -259,9 +262,15 @@ public enum CoachSnapshotBuilder {
 
     public static func trainingEvents(sessions: [WorkoutSession], cardio: [CardioWorkout],
                                assessments: [Assessment], formula: OneRepMaxFormula,
-                               userAge: Int? = nil) -> [TrainingEvent] {
+                               userAge: Int? = nil,
+                               cardioIntensityProfile: CardioIntensityProfile? = nil) -> [TrainingEvent] {
         let strength = sessions.compactMap { TrainingEvent.from(session: $0, formula: formula) }
-        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { TrainingEvent.from(cardio: $0, userAge: userAge) }
+        let cardioEvents = cardio.filter { $0.deletedAt == nil }.map { workout in
+            if let cardioIntensityProfile {
+                return TrainingEvent.guidelineCardio(workout, userAge: userAge, profile: cardioIntensityProfile)
+            }
+            return TrainingEvent.from(cardio: workout, userAge: userAge)
+        }
         let assessmentEvents = assessments.map { TrainingEvent.from(assessment: $0) }
         return strength + cardioEvents + assessmentEvents
     }

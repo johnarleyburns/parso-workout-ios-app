@@ -105,6 +105,8 @@ enum SuggestedExerciseRequestFactory {
             historyData: historyData,
             historyWorkoutCount: historyWorkoutCount,
             historyWorkingSetCount: historyWorkingSetCount,
+            recentlyCompletedCandidateIDs: RecentSuggestionExclusion.candidateIDs(
+                sessions: history, excludingSessionID: excludingSessionID, candidates: candidates),
             trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
             preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
             trainingGoal: settings.trainingGoal,

@@ -3,6 +3,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct HomeTodayHeroCard: View {
+    @Environment(\.todayHeroHeight) private var heroHeight
     let title: String
     let tag: String
     let estimatedMinutes: Int?
@@ -25,6 +26,7 @@ struct HomeTodayHeroCard: View {
             HStack {
                 Label(tag, systemImage: "sparkles")
                     .font(.caption.weight(.bold))
+                    .lineLimit(1).minimumScaleFactor(0.7)
                     .foregroundStyle(CadenceTheme.accent)
                 Spacer()
                 if let estimatedMinutes {
@@ -54,32 +56,40 @@ struct HomeTodayHeroCard: View {
             if let summary, tag == String(localized: "Done for today") {
                 doneSummary(summary)
             } else {
-                if title != tag && tag != String(localized: "Recovery day") {
-                    Text(title)
-                        .font(.title3.weight(.bold))
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                VStack(alignment: .leading, spacing: 8) {
+                    if title != tag && tag != String(localized: "Recovery day") {
+                        Text(title)
+                            .font(.title3.weight(.bold))
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                    }
 
-                if !exercises.isEmpty {
-                    exerciseRows
-                }
+                    if !exercises.isEmpty {
+                        exerciseRows
+                    }
 
-                if let reason {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(reason)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        if !citationIDs.isEmpty {
-                            CoachSourcesLink(
-                                citationIds: citationIDs,
-                                contexts: Dictionary(uniqueKeysWithValues: citationIDs.map {
-                                    ($0, String(localized: "Why this workout"))
-                                }),
-                                identifier: "home.hero.science")
+                    if let reason {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(reason)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(2)
+                                .truncationMode(.tail)
+                            if !citationIDs.isEmpty {
+                                CoachSourcesLink(
+                                    citationIds: citationIDs,
+                                    contexts: Dictionary(uniqueKeysWithValues: citationIDs.map {
+                                        ($0, String(localized: "Why this workout"))
+                                    }),
+                                    identifier: "home.hero.science")
+                            }
                         }
                     }
+
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .clipped()
+                .layoutPriority(-1)
 
                 if let rationale {
                     Button {
@@ -87,6 +97,7 @@ struct HomeTodayHeroCard: View {
                     } label: {
                         Label("Why this workout", systemImage: "questionmark.circle")
                             .font(.caption.weight(.semibold))
+                            .lineLimit(1).minimumScaleFactor(0.7)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(CadenceTheme.link)
@@ -113,6 +124,7 @@ struct HomeTodayHeroCard: View {
                     Button(action: onStart) {
                         Label(tag == "In progress" ? "Resume" : "Start Workout",
                               systemImage: tag == String(localized: "In progress") ? "play.fill" : "play.fill")
+                            .lineLimit(1).minimumScaleFactor(0.7)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -125,6 +137,7 @@ struct HomeTodayHeroCard: View {
                         Button("Choose another", action: onChooseAnother)
                     }
                     .font(.subheadline.weight(.semibold))
+                    .lineLimit(1).minimumScaleFactor(0.7)
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.plain)
                     .foregroundStyle(CadenceTheme.link)
@@ -132,13 +145,14 @@ struct HomeTodayHeroCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(height: heroHeight - 24, alignment: .topLeading)
         .cadenceCard(.hero)
         .accessibilityIdentifier("home.hero")
     }
 
     private var exerciseRows: some View {
         VStack(spacing: 0) {
-            ForEach(Array(exercises.prefix(5).enumerated()), id: \.offset) { _, exercise in
+            ForEach(Array(exercises.prefix(3).enumerated()), id: \.offset) { _, exercise in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(exercise.name)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -152,6 +166,11 @@ struct HomeTodayHeroCard: View {
                 }
                 .padding(.vertical, 5)
                 .overlay(alignment: .bottom) { Divider().opacity(0.35) }
+            }
+            if exercises.count > 3 {
+                Text("\(exercises.count - 3) more…")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

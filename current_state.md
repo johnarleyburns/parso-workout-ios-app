@@ -2,6 +2,22 @@
 
 Live handoff/progress tracker.
 
+## Today consistency and Fill the Gaps — 2026-10-08
+
+See `current_status.md`. Today has a bounded viewport-based hero; recovery and
+Fill the Gaps automatic drafts honor current exclusions (including legacy Air
+Squat keys). Coach and This Week share guideline cardio credit and HR profiles,
+including HRmax edits. Chosen due strength/cardio frequency takes priority over
+hard-streak rest scoring; optional effort advice remains cited and an explicit
+rest weekday is preserved. Muscle shading is 25% at >0–<4 sets, 50% at 4–<8,
+and 100% at 8+. Fill the Gaps puts fresh suggestions/Start with these first;
+past-workout rows show their dates, times and exercise lists.
+The consecutive-workout rule now covers initial and in-workout suggestions,
+including maintenance/style fallbacks and the engine boundary. It excludes only
+the latest strength session, not the penultimate one, and resolves renamed catalog
+movements without a date cutoff. Fifteen new regressions bring the suite to 2,088. Release verification and final CI
+are recorded in the handoff below; physical UI/swim verification is still needed.
+
 ## Watch swimming improvements — 2026-10-08
 
 See `current_status.md`: 25/50 m lap-pool and open-water setup, water lock after
@@ -10,7 +26,10 @@ wake/recovery screen, and preservation of pool distance/laps in the phone handof
 The v1 completion gains optional fields; the SwiftData schema is unchanged.
 Eight new regressions raise the package suite to 2,073; all 11 focused swim/sync
 checks and the generic iPhone/embedded Watch build passed. Full suite is gated by
-the commit hook. Next: real swimming validation. Actual watchOS passcode security
+the commit hook. Initial CI tests passed; its archive warning gate caught a weak/
+strong capture mismatch. The collection callback now explicitly captures self
+weakly before its MainActor hop. Corrected release builds and warning gates pass;
+final CI follows the combined Today/suggestion push, then real swimming validation. Actual watchOS passcode security
 cannot be bypassed; fit/wrist-detection and screen-setting help is provided.
 
 

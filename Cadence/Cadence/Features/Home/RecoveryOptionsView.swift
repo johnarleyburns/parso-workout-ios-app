@@ -1,8 +1,21 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
 struct RecoveryOptionsView: View {
+    @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive }) private var exclusions: [ExerciseSuggestionExclusion]
+
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var history: [WorkoutSession]
+
+    private var resistancePlan: EditablePlan {
+        let candidates = RecoveryOptionsPresenter.resistancePlan().exercises.compactMap { exercise in
+            ExerciseLibrary.template(matching: exercise.name).map { SuggestedExerciseCandidate(template: $0) }
+        }
+        let lastWorkoutIDs = RecentSuggestionExclusion.candidateIDs(sessions: history, candidates: candidates)
+        return RecoveryOptionsPresenter.resistancePlan(excludedKeys: Set(exclusions.map(\.exerciseKey)).union(lastWorkoutIDs))
+    }
+
     let onResistance: (EditablePlan) -> Void
     let onCardio: (CoachSession) -> Void
     let onChooseWorkout: () -> Void
@@ -15,14 +28,16 @@ struct RecoveryOptionsView: View {
                     Text("Keep these optional sessions light. Review the setup before starting, and shorten or stop if you feel uncomfortable.")
                         .foregroundStyle(.secondary)
                 }
-                Section("Light resistance") {
-                    Button {
-                        onResistance(RecoveryOptionsPresenter.resistancePlan())
-                    } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("Light resistance")
-                            Text("1 × 8 bodyweight squats and incline push-ups against a wall or high support · no added weight · at least 5 reps left in reserve")
-                                .font(.subheadline).foregroundStyle(.secondary)
+                if !resistancePlan.exercises.isEmpty {
+                    Section("Light resistance") {
+                        Button {
+                            onResistance(resistancePlan)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Light resistance")
+                                Text("\(resistancePlan.exercises.map(\.name).joined(separator: ", ")) · 1 × 8 · no added weight · at least 5 reps left in reserve")
+                                    .font(.subheadline).foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

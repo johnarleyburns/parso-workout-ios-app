@@ -47,13 +47,18 @@ public enum MuscleHeatPresenter {
     }
 
     public static func level(sets: Double, target: Double) -> HeatLevel {
-        guard target > 0, sets > 0 else { return .none }
-        let ratio = sets / target
-        switch ratio {
-        case ..<(1.0 / 3.0): return .low
-        case ..<0.5: return .mid
-        case ..<0.75: return .high
-        default: return .onTarget
+        guard sets.isFinite, sets > 0 else { return .none }
+        if sets < 4 { return .low }
+        if sets < 8 { return .mid }
+        return .onTarget
+    }
+
+    public static func opacity(for level: HeatLevel) -> Double {
+        switch level {
+        case .none: return 0.12
+        case .low: return 0.25
+        case .mid, .high: return 0.5
+        case .onTarget: return 1
         }
     }
 

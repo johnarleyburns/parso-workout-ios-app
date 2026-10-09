@@ -34,4 +34,26 @@ public enum RecentSuggestionExclusion {
             return normalized.isEmpty ? nil : normalized
         })
     }
+    /// Catalog identity joins aliases (e.g. renamed imported movements); unknown
+    /// custom names still match by normalized name. Only the latest session is used.
+    public static func candidateIDs(from workouts: [RecentCompletedWorkoutSnapshot],
+                                    candidates: [SuggestedExerciseCandidate]) -> Set<String> {
+        let names = exerciseNames(from: workouts)
+        let identities = Set(names.map(ExerciseSuggestionExclusionKey.forName))
+        return Set(candidates.filter { identities.contains(ExerciseSuggestionExclusionKey.forName($0.name)) }.map(\.id))
+    }
+
+    @MainActor
+    public static func candidateIDs(sessions: [WorkoutSession], excludingSessionID: UUID? = nil,
+                                    candidates: [SuggestedExerciseCandidate]) -> Set<String> {
+        let workouts = sessions.filter {
+            $0.id != excludingSessionID && $0.countsAsStrengthHistory && $0.completedOwnerWorkingSetCount > 0
+        }.map { session in
+            RecentCompletedWorkoutSnapshot(startedAt: session.date, endedAt: session.endedAt,
+                exerciseNames: session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }
+                    .compactMap { $0.exercise?.name })
+        }
+        return candidateIDs(from: workouts, candidates: candidates)
+    }
+
 }

@@ -110,7 +110,7 @@ struct HomeMuscleMapView: View {
             .resizable()
             .scaledToFit()
             .frame(width: imageSize.width, height: imageSize.height)
-            .foregroundStyle(CadenceTheme.accent.opacity(opacity(for: level)))
+            .foregroundStyle(CadenceTheme.accent.opacity(MuscleHeatPresenter.opacity(for: level)))
             .allowsHitTesting(false)
             .accessibilityHidden(true)
 
@@ -168,15 +168,14 @@ struct HomeMuscleMapView: View {
     private var legend: some View {
         HStack(spacing: 8) {
             legendItem("0", color: CadenceTheme.attention, dashed: true)
-            legendItem("< ⅓", color: CadenceTheme.accent.opacity(0.25))
-            legendItem("⅓–½", color: CadenceTheme.accent.opacity(0.45))
-            legendItem("½–¾", color: CadenceTheme.accent.opacity(0.7))
-            legendItem("on target", color: CadenceTheme.accent)
+            legendItem(">0–<4 sets", color: CadenceTheme.accent.opacity(0.25))
+            legendItem("4–<8 sets", color: CadenceTheme.accent.opacity(0.5))
+            legendItem("8+ sets", color: CadenceTheme.accent)
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Muscle coverage legend: zero, under one third, one third to one half, one half to three quarters, and on target")
+        .accessibilityLabel("Muscle coverage legend: zero, any sets below four, four to under eight sets, and eight or more sets")
     }
 
     private func legendItem(_ title: String, color: Color, dashed: Bool = false) -> some View {
@@ -187,13 +186,4 @@ struct HomeMuscleMapView: View {
         }
     }
 
-    private func opacity(for level: HeatLevel) -> Double {
-        switch level {
-        case .none: return 0.12
-        case .low: return 0.25
-        case .mid: return 0.45
-        case .high: return 0.7
-        case .onTarget: return 1
-        }
-    }
 }

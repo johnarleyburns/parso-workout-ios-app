@@ -2,6 +2,44 @@
 
 Updated: 2026-10-08
 
+## Latest implementation — Today, suggestions and Fill the Gaps (2026-10-08)
+
+- Today allocates half its viewport (320–440 pt) to the hero independently of
+  loading or recommendation content. Preview title/reason/exercise text truncates;
+  WHY and actions remain outside the bounded preview. Additional exercises have
+  a more… indicator; full details remain available through WHY/edit.
+- Recovery resistance and Fill the Gaps automatic drafts honor live persisted
+  exclusions, including legacy Air Squat keys. Hide an empty resistance draft
+  rather than reintroduce an excluded movement; easy cardio remains available.
+- Coach facts and This Week use the same guideline-minute accumulator, HRR
+  profile/resting-HR median and explicit HRmax override. Cache invalidation covers
+  HRmax edits. Vigorous minutes count twice in both surfaces; sparse/unclassified
+  samples do not gain invented credit. WHY includes chosen cardio-day frequency
+  separately from adjusted guideline minutes.
+- Due chosen strength/cardio days outrank hard-streak rest/recovery scoring even
+  when 150 adjusted minutes are met. Completed-today types are not repeated;
+  explicit rest weekdays remain the user's choice. Hard-streak effort advice is
+  conditional, cited and attached to the training recommendation.
+- Weekly muscle shading is 25% green for any >0–<4 sets, 50% for 4–<8,
+  and 100% for 8+, independently of the target. Existing anatomy masks/host
+  mapping and fractional set accounting are preserved.
+- Fill the Gaps shows Build from suggestions first with Start with these directly
+  beneath its exercises. Repeat a past workout rows show date/time and exercise
+  lists in addition to their coverage.
+- Only the latest strength session's exercises are excluded from automatic
+  initial and in-workout suggestions, without a date cutoff. The penultimate
+  session remains eligible. Ignore current/deleted/empty sessions, resolve catalog
+  aliases/source names, and enforce the input restriction in all generator,
+  maintenance/style fallback and engine-result paths. Explicit past-workout reuse
+  remains a deliberate user choice.
+
+Verification: 93 focused checks passed, including 15 new regressions (suite now
+2,088). Full suite runs in the required commit hook. Release compilation and its
+owned-warning gate passed; final generic iPhone/embedded Watch build and its
+warning gate passed using all latest source changes. No simulator was launched. Main CI verifies the final
+release archive, warnings and TestFlight upload after push. Physical Today/Fill
+The Gaps and pool-swim UI behavior still needs on-device confirmation.
+
 ## Latest implementation — Watch swimming (2026-10-08)
 
 - Swim setup replaces GPS with a mutually exclusive Lap Pool / Open Water w/GPS
@@ -30,7 +68,10 @@ Updated: 2026-10-08
   swimming, sensor contact/band fit, Wake on Wrist Raise and Return to App settings.
 
 Verification: 11 focused tests passed (eight new regressions; suite now 2,073).
-Generic iPhone + embedded Watch build passed; no simulator was launched. Physical
+Generic iPhone + embedded Watch build passed; no simulator was launched.
+Initial CI core tests passed, but the archive warning gate caught an implicit
+strong outer / weak inner closure capture. Both captures now explicitly use weak
+ownership; release Watch and iPhone/embedded Watch builds verify the correction. Physical
 water-lock/turn-detection/wrist-raise behavior still needs the owner's real swim
 check after installing the update. Full suite runs in the commit hook and release
 verification is recorded in GitHub Actions.

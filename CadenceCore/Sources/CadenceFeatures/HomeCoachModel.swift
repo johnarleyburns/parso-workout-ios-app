@@ -30,6 +30,7 @@ public enum HomeCoachModel {
         /// Cardio intensity classification is age-anchored (Tanaka HRmax), so an
         /// age edit must invalidate the snapshot. Additive/defaulted.
         public var userAge: Int?
+        public var cardioMaximumHROverride: Double?
         /// The coach plan override week key; when it changes the snapshot rebuilds
         /// with the corresponding constraint policy.
         public var overrideWeekKey: String?
@@ -37,7 +38,7 @@ public enum HomeCoachModel {
         public init(token: UUID, sessionCount: Int, cardioCount: Int, assessmentCount: Int,
                     goal: TrainingGoal, experience: ExperienceLevel, formula: OneRepMaxFormula,
                     schedule: CoachSchedulePreferences, profile: CoachPreferenceProfile,
-                    painToday: Bool, userAge: Int? = nil, overrideWeekKey: String? = nil) {
+                    painToday: Bool, userAge: Int? = nil, cardioMaximumHROverride: Double? = nil, overrideWeekKey: String? = nil) {
             self.token = token
             self.sessionCount = sessionCount
             self.cardioCount = cardioCount
@@ -49,6 +50,7 @@ public enum HomeCoachModel {
             self.profile = profile
             self.painToday = painToday
             self.userAge = userAge
+            self.cardioMaximumHROverride = cardioMaximumHROverride
             self.overrideWeekKey = overrideWeekKey
         }
     }
@@ -75,6 +77,7 @@ public enum HomeCoachModel {
                                  schedule: CoachSchedulePreferences,
                                  profile: CoachPreferenceProfile,
                                  userAge: Int? = nil,
+                                 cardioMaximumHROverride: Double? = nil,
                                  overrideWeekKey: String? = nil,
                                  now: Date = Date()) -> Signature {
         Signature(token: token,
@@ -88,6 +91,7 @@ public enum HomeCoachModel {
                   profile: profile,
                   painToday: painToday(readiness: readiness, now: now),
                   userAge: userAge,
+                  cardioMaximumHROverride: cardioMaximumHROverride,
                   overrideWeekKey: overrideWeekKey)
     }
 
@@ -103,6 +107,7 @@ public enum HomeCoachModel {
                                 profile: CoachPreferenceProfile,
                                 passiveSamples: [PassiveReadinessSample] = [],
                                 userAge: Int? = nil,
+                                cardioMaximumHROverride: Double? = nil,
                                 now: Date = Date(),
                                 constraintPolicy: PlanningConstraintPolicy = .safe) -> CoachSnapshot {
         CoachSnapshotBuilder.build(
@@ -118,6 +123,8 @@ public enum HomeCoachModel {
             readinessEntry: latestReadiness(readiness, now: now),
             passiveSamples: passiveSamples,
             userAge: userAge,
+            cardioIntensityProfile: .forHome(passiveSamples: passiveSamples, userAge: userAge,
+                                             maximumHROverride: cardioMaximumHROverride),
             now: now,
             constraintPolicy: constraintPolicy)
     }
@@ -138,6 +145,7 @@ public enum HomeCoachModel {
                                      profile: CoachPreferenceProfile,
                                      passiveSamples: [PassiveReadinessSample] = [],
                                      userAge: Int? = nil,
+                                     cardioMaximumHROverride: Double? = nil,
                                      now: Date = Date(),
                                      constraintPolicy: PlanningConstraintPolicy = .safe) async -> CoachSnapshot {
         // Phase 1: extract value types from SwiftData models (must be on main actor)
@@ -150,7 +158,10 @@ public enum HomeCoachModel {
                                                formula: formula)
         let events = CoachSnapshotBuilder.trainingEvents(sessions: liveSessions, cardio: cardio,
                                                           assessments: assessments, formula: formula,
-                                                          userAge: userAge)
+                                                          userAge: userAge,
+                                                          cardioIntensityProfile: .forHome(
+                                                            passiveSamples: passiveSamples, userAge: userAge,
+                                                            maximumHROverride: cardioMaximumHROverride))
         let hasPain = painToday(readiness: readiness, now: now)
         let readinessSnapshot = latestReadiness(readiness, now: now)
             .map { ReadinessSnapshot.from($0, now: now) }
@@ -209,6 +220,7 @@ public enum HomeCoachModel {
                                      profile: CoachPreferenceProfile,
                                      passiveSamples: [PassiveReadinessSample] = [],
                                      userAge: Int? = nil,
+                                     cardioMaximumHROverride: Double? = nil,
                                      now: Date = Date(),
                                      constraintPolicy: PlanningConstraintPolicy = .safe) async -> CoachSnapshot {
         await Task.detached(priority: .userInitiated) {
@@ -228,6 +240,7 @@ public enum HomeCoachModel {
                             profile: profile,
                             passiveSamples: passiveSamples,
                             userAge: userAge,
+                            cardioMaximumHROverride: cardioMaximumHROverride,
                             now: now,
                             constraintPolicy: constraintPolicy)
         }.value

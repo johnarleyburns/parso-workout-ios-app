@@ -62,6 +62,16 @@ public enum ExerciseSuggestionExclusionReason: String, CaseIterable, Codable, Id
 /// Converts catalog identity into a key that survives catalog refreshes and
 /// also gives legacy, source-less rows a deterministic fallback.
 public enum ExerciseSuggestionExclusionKey {
+    public static func forName(_ name: String) -> String {
+        if let template = ExerciseLibrary.template(matching: name) { return forTemplate(template) }
+        let normalized = ExerciseLibrary.dedupKey(name)
+        return importedKeysByName[normalized] ?? "legacy:\(normalized)"
+    }
+
+    private static let importedKeysByName = Dictionary(
+        ImportedExerciseLibrary.templates.map { (ExerciseLibrary.dedupKey($0.name), forTemplate($0)) },
+        uniquingKeysWith: { first, _ in first })
+
     public static func forExercise(_ exercise: Exercise) -> String {
         if let source = exercise.sourceExerciseID, !source.isEmpty {
             return "dbpp:\(source)"
@@ -145,6 +155,18 @@ public enum ExerciseSuggestionExclusionStore {
 }
 
 public enum SuggestedExerciseFilter {
+    public static func allows(_ template: ExerciseTemplate, keys: Set<String>) -> Bool {
+        let templateKey = ExerciseSuggestionExclusionKey.forTemplate(template)
+        return !keys.contains { key in
+            if key == templateKey { return true }
+            // Older seeded rows may not yet have a source ID. Resolve their
+            // legacy name through the same catalog aliases as the editor.
+            guard key.hasPrefix("legacy:"),
+                  let legacy = ExerciseLibrary.template(matching: String(key.dropFirst(7))) else { return false }
+            return ExerciseSuggestionExclusionKey.forTemplate(legacy) == templateKey
+        }
+    }
+
     public static func excluding(_ candidates: [SuggestedExerciseCandidate],
                                  keys: Set<String>) -> [SuggestedExerciseCandidate] {
         candidates.filter { candidate in

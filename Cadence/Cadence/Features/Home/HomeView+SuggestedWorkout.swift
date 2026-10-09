@@ -123,17 +123,8 @@ extension HomeView {
                     starterCandidates + historicalCandidates,
                     keys: exclusionKeys)
             }
-            let mostRecentCompletedNames = RecentSuggestionExclusion.exerciseNames(
-                from: completedHistorySessions.map {
-                    RecentCompletedWorkoutSnapshot(
-                        startedAt: $0.date,
-                        endedAt: $0.endedAt,
-                        exerciseNames: $0.exercisesInOrder.map(\.name))
-                })
-            let recentlyCompletedCandidateIDs = Set(candidates.compactMap { candidate in
-                mostRecentCompletedNames.contains(candidate.name.localizedLowercase)
-                    ? candidate.id : nil
-            })
+            let recentlyCompletedCandidateIDs = RecentSuggestionExclusion.candidateIDs(
+                sessions: completedHistorySessions, candidates: candidates)
             let historyData = historyWorkingSetCount > 0
                 ? TrainingEngineBridge.historyData(from: completedHistorySessions,
                                                    subjectId: "cladiron-local")

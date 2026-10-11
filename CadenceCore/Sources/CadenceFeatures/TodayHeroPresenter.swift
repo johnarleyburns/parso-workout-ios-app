@@ -113,10 +113,11 @@ public struct DaySummary: Equatable, Sendable {
     public let durationMinutes: Int?
     public let nextSessionTitle: String?
     public let nextSessionDate: Date?
+    public let exercises: [TodayHero.Line]
 
     public init(title: String, setCount: Int, volumeKg: Double, bestPR: String? = nil,
                 durationMinutes: Int? = nil, nextSessionTitle: String? = nil,
-                nextSessionDate: Date? = nil) {
+                nextSessionDate: Date? = nil, exercises: [TodayHero.Line] = []) {
         self.title = title
         self.setCount = setCount
         self.volumeKg = volumeKg
@@ -124,5 +125,6 @@ public struct DaySummary: Equatable, Sendable {
         self.durationMinutes = durationMinutes
         self.nextSessionTitle = nextSessionTitle
         self.nextSessionDate = nextSessionDate
+        self.exercises = exercises
     }
 }

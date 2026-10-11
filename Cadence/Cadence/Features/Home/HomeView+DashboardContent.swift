@@ -109,13 +109,29 @@ extension HomeView {
             .filter { $0.isVisible && $0.scheduledDate >= today && !Calendar.current.isDateInToday($0.scheduledDate) }
             .sorted { $0.scheduledDate < $1.scheduledDate }
             .first
-        let completedSummary = completedToday.map {
-            DaySummary(title: $0.title.isEmpty ? String(localized: "Workout complete") : $0.title,
-                       setCount: $0.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
-                       volumeKg: $0.totalVolume,
-                       durationMinutes: $0.duration > 0 ? Int(($0.duration / 60).rounded()) : nil,
-                       nextSessionTitle: nextScheduled?.title,
-                       nextSessionDate: nextScheduled?.scheduledDate)
+        let completedSummary = completedToday.map { session in
+            let lines: [TodayHero.Line] = session.exercisesInOrder.map { ex in
+                let working = session.orderedSets.filter {
+                    $0.exercise?.id == ex.id && !$0.isWarmup && $0.isOwnerSet
+                }
+                let sets = working.count
+                let detail: String
+                if sets == 0 {
+                    detail = String(localized: "No sets")
+                } else if let lastReps = working.last?.reps {
+                    detail = "\(sets) × \(lastReps)"
+                } else {
+                    detail = "\(sets) sets"
+                }
+                return TodayHero.Line(name: ex.name, detail: detail)
+            }
+            return DaySummary(title: session.title.isEmpty ? String(localized: "Workout complete") : session.title,
+                              setCount: session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
+                              volumeKg: session.totalVolume,
+                              durationMinutes: session.duration > 0 ? Int((session.duration / 60).rounded()) : nil,
+                              nextSessionTitle: nextScheduled?.title,
+                              nextSessionDate: nextScheduled?.scheduledDate,
+                              exercises: lines)
         }
         let remainingScheduledToday = scheduledWorkouts.filter {
             Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible

@@ -81,7 +81,7 @@ extension SessionView {
             session.plannedExerciseNames.append(exercise.name)
             try? context.save()
         }
-        openInlineEditor(for: exercise)
+        recordActivity() // Return to the workout screen; the user adds the set.
     }
 
     func finishCooldown(_ seconds: Int) {

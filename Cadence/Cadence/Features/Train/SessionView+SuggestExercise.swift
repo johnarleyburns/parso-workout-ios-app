@@ -53,9 +53,24 @@ extension SessionView {
             $0.caseInsensitiveCompare(exercise.name) == .orderedSame
         }) {
             session.plannedExerciseNames.append(exercise.name)
+            // Record the suggestion's set/rep prescription so the exercise's Add
+            // Set action honors it, without opening the set editor (field report:
+            // "Suggest Exercise" must return to the workout screen).
+            var prescriptions = session.plannedPrescriptions
+            if !prescriptions.contains(where: {
+                $0.exerciseName.caseInsensitiveCompare(exercise.name) == .orderedSame
+            }) {
+                let sets = (0..<max(1, suggestion.plannedSets)).map { _ in
+                    PlannedSetPrescription(targetReps: suggestion.repRange.lowerBound,
+                                           targetWeightKg: nil)
+                }
+                prescriptions.append(PlannedExercisePrescription(exerciseName: exercise.name,
+                                                                 sets: sets))
+                session.plannedPrescriptions = prescriptions
+            }
             try? context.save()
         }
-        openInlineEditor(for: exercise, repsOverride: suggestion.repRange.lowerBound)
+        recordActivity()
     }
 
     func exerciseForName(named name: String) -> Exercise? {

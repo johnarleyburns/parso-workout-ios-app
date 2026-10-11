@@ -93,6 +93,32 @@ final class SessionViewModelTests: XCTestCase {
         XCTAssertEqual(SessionViewModel.plannedSetCount(session: s), 3)
     }
 
+    func testOwnerPlanContextDoesNotLeakLadderToUnplannedExercise() throws {
+        let ctx = try makeContext()
+        let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
+        // A planned workout whose legacy ladder reflects only the first planned
+        // exercise's set scheme.
+        s.plannedRepLadder = [6, 6, 6]
+        s.plannedPrescriptions = [
+            PlannedExercisePrescription(
+                exerciseName: "Back Squat",
+                sets: [PlannedSetPrescription(targetReps: 6),
+                       PlannedSetPrescription(targetReps: 6),
+                       PlannedSetPrescription(targetReps: 6)])
+        ]
+
+        // An ad-hoc "Add Exercise" movement has no explicit plan entry, so it
+        // must fall through to its own history instead of inheriting the ladder.
+        let unplanned = SessionViewModel.ownerPlanContext(session: s, exerciseName: "Snatch")
+        XCTAssertTrue(unplanned.ownerPlan.isEmpty)
+        XCTAssertNil(unplanned.ownerLadder)
+
+        // A genuinely planned movement keeps both its explicit plan and ladder.
+        let planned = SessionViewModel.ownerPlanContext(session: s, exerciseName: "Back Squat")
+        XCTAssertEqual(planned.ownerPlan.count, 3)
+        XCTAssertEqual(planned.ownerLadder, [6, 6, 6])
+    }
+
     func testPlannedOnlyNamesExcludesLogged() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)

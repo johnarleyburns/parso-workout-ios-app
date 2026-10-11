@@ -190,7 +190,7 @@ struct RootTabView: View {
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
                     AdaptiveProgressRoot()
                 }
-                SwiftUI.Tab(value: .search, role: .search) { ExercisePickerView(action: .use) { _ in } }
+                SwiftUI.Tab(value: .search, role: .search) { ExercisePickerView(action: .use, showsPickAction: false) { _ in } }
             }
             .modifier(MinimizeTabBarOnScrollDown())
             .modifier(LiveWorkoutTabAccessory(active: active))

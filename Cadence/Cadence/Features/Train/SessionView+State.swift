@@ -270,11 +270,12 @@ extension SessionView {
                              performerID: UUID?) -> PerformerSetPlanner.Resolved {
         let explicit = session.explicitPlannedSets(forPerformerID: performerID,
                                                    exerciseName: exercise.name)
-        let ownerPlan = session.explicitPlannedSets(forPerformerID: nil, exerciseName: exercise.name)
-            ?? session.plannedRepLadder.map {
-                PlannedSetPrescription(targetReps: $0,
-                                       targetWeightKg: session.prescribedLoadKg > 0 ? session.prescribedLoadKg : nil)
-            }
+        // A movement added ad-hoc (e.g. via "Add Exercise") has no explicit plan
+        // entry, so it must fall through to its own history instead of inheriting
+        // the session's legacy rep ladder (which only reflects the first planned
+        // exercise). See SessionViewModel.ownerPlanContext.
+        let ownerContext = SessionViewModel.ownerPlanContext(session: session,
+                                                             exerciseName: exercise.name)
         var history = cache.state.performerHistory(forExerciseID: exercise.id, performerID: performerID)
         if history.repLadders.isEmpty {
             history.repLadders = WorkoutRepository.repLadderHistory(
@@ -303,10 +304,8 @@ extension SessionView {
         return PerformerSetPlanner.resolve(
             setIndex: setIndex,
             performerPlan: explicit,
-            ownerPlan: ownerPlan,
-            // The coach ladder is the owner's prescription. A returning partner
-            // gets their own established rep pattern instead.
-            ownerLadder: SessionViewModel.effectiveLadder(session: session),
+            ownerPlan: ownerContext.ownerPlan,
+            ownerLadder: ownerContext.ownerLadder,
             isOwner: performerID == nil,
             history: history,
             formula: settings.formula)

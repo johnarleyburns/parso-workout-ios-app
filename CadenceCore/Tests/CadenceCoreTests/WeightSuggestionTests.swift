@@ -34,6 +34,22 @@ final class WeightSuggestionTests: XCTestCase {
         if let r = result { XCTAssertEqual(r.weightKg, 90, accuracy: 0.01, "Should pick most recent") } else { XCTFail() }
     }
 
+    func testMostRecentExactMatchPreferredEvenWhenInputUnsorted() {
+        // The exact-rep match must be resolved by `date`, not array order, so
+        // an older set cannot win merely because it appears first (field
+        // report: invalid set default).
+        let history: [SetSample] = [
+            SetSample(weight: 75, reps: 5, date: Date().addingTimeInterval(-7200)),
+            SetSample(weight: 90, reps: 5, date: Date().addingTimeInterval(-1800)),
+        ]
+        let result = WeightSuggestion.suggest(targetReps: 5, history: history)
+        if let r = result {
+            XCTAssertEqual(r.weightKg, 90, accuracy: 0.01, "Should pick most recent by date")
+        } else {
+            XCTFail()
+        }
+    }
+
     // MARK: - e1RMScalesFromBestRecentSet
 
     func testE1RMScalesFromBestRecentSet() {

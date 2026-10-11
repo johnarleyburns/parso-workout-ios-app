@@ -13,6 +13,12 @@ enum CadenceTheme {
     static let attention = Color.orange
     static let positive = Color.green
     static let achievement = Color(red: 0.95, green: 0.66, blue: 0.23)
+    /// Muscle-coverage heat colours: red (0%), yellow (below the 4-set
+    /// minimum), light green (building toward productive), green (productive).
+    static let muscleZero = Color.red
+    static let muscleBelow = Color.yellow
+    static let muscleBuilding = Color.mint
+    static let muscleProductive = Color.green
     static let cardBackground = Color(.secondarySystemBackground)
     static let heroFill = accent.opacity(0.12)
     static let heroStroke = accent.opacity(0.25)

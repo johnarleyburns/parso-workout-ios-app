@@ -5,14 +5,21 @@ import CadenceFeatures
 
 extension ExercisePickerView {
     /// Browse / Recents / Popular, as a List row so it shares the exercise rows'
-    /// horizontal margins instead of spanning wider than them.
+    /// horizontal margins. Rendered as the same large chip buttons as the
+    /// muscle/equipment filters (field report: choose-exercise selector styles
+    /// were inconsistent with the rest of the app).
     var tabPicker: some View {
-        Picker("Tab", selection: $selectedTab) {
-            Text("Browse").tag(PickerTab.browse)
-            Text("Recents").tag(PickerTab.recents)
-            Text("Popular").tag(PickerTab.popular)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("Browse", active: selectedTab == .browse) { selectedTab = .browse }
+                    .accessibilityIdentifier("picker.tab.browse")
+                chip("Recents", active: selectedTab == .recents) { selectedTab = .recents }
+                    .accessibilityIdentifier("picker.tab.recents")
+                chip("Popular", active: selectedTab == .popular) { selectedTab = .popular }
+                    .accessibilityIdentifier("picker.tab.popular")
+            }
+            .padding(.vertical, 2)
         }
-        .pickerStyle(.segmented)
         .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
         .listRowBackground(Color.clear)
     }
@@ -31,11 +38,15 @@ extension ExercisePickerView {
     }
 
     var browseModePicker: some View {
-        Picker("Browse by", selection: $browseMode) {
-            Text("By Muscle Group").tag(BrowseMode.byMuscleGroup)
-            Text("By Equipment").tag(BrowseMode.byEquipment)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                chip("By Muscle Group", active: browseMode == .byMuscleGroup) { browseMode = .byMuscleGroup }
+                    .accessibilityIdentifier("picker.browseMode.muscleGroup")
+                chip("By Equipment", active: browseMode == .byEquipment) { browseMode = .byEquipment }
+                    .accessibilityIdentifier("picker.browseMode.equipment")
+            }
+            .padding(.vertical, 2)
         }
-        .pickerStyle(.segmented)
     }
 
     // MARK: Filter chips

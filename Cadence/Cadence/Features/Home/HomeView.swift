@@ -80,6 +80,7 @@ struct HomeView: View {
     @State var cardioPickerPresented = false
     @State var plannedWorkoutsPresented = false
     @State var weightsStartPresented = false
+    @State var fillGapsPresented = false
     @State var cardioGoalFor: CardioType?
     @State var cardioRecommendation: CoachSession?
     @State var scheduleCardioType: WorkoutType?

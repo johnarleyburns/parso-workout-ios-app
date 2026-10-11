@@ -73,7 +73,7 @@ struct HomeTodayHeroCard: View {
                             Text(reason)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(2)
+                                .lineLimit(tag == String(localized: "Recovery day") ? nil : 2)
                                 .truncationMode(.tail)
                             if !citationIDs.isEmpty {
                                 CoachSourcesLink(
@@ -177,20 +177,31 @@ struct HomeTodayHeroCard: View {
 
     private func doneSummary(_ summary: DaySummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(summary.title)
-                .font(.title3.weight(.bold))
-            HStack(spacing: 12) {
-                fact("\(summary.setCount)", "sets")
-                fact(WorkoutMath.tonnageLabel(volumeKg: summary.volumeKg, unit: unit), "volume")
-                if let duration = summary.durationMinutes {
-                    fact(String(localized: "\(duration) min"), "duration")
+            VStack(alignment: .leading, spacing: 12) {
+                Text(summary.title)
+                    .font(.title3.weight(.bold))
+                HStack(spacing: 12) {
+                    fact("\(summary.setCount)", "sets")
+                    fact(WorkoutMath.tonnageLabel(volumeKg: summary.volumeKg, unit: unit), "volume")
+                    if let duration = summary.durationMinutes {
+                        fact(String(localized: "\(duration) min"), "duration")
+                    }
+                }
+                if let bestPR = summary.bestPR {
+                    Label(bestPR, systemImage: "trophy.fill")
+                        .foregroundStyle(CadenceTheme.achievement)
+                        .font(.subheadline.weight(.semibold))
+                }
+                if !summary.exercises.isEmpty {
+                    doneExerciseRows(summary.exercises)
                 }
             }
-            if let bestPR = summary.bestPR {
-                Label(bestPR, systemImage: "trophy.fill")
-                    .foregroundStyle(CadenceTheme.achievement)
-                    .font(.subheadline.weight(.semibold))
-            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .clipped()
+            .layoutPriority(-1)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Done for today. \(summary.setCount) sets, \(WorkoutMath.tonnageLabel(volumeKg: summary.volumeKg, unit: unit)).")
+
             HStack(spacing: 18) {
                 Button {
                     onViewSummary()
@@ -206,9 +217,32 @@ struct HomeTodayHeroCard: View {
                     .foregroundStyle(CadenceTheme.link)
             }
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("Done for today. \(summary.setCount) sets, \(WorkoutMath.tonnageLabel(volumeKg: summary.volumeKg, unit: unit)).")
         .accessibilityIdentifier("home.hero.done")
+    }
+
+    private func doneExerciseRows(_ lines: [TodayHero.Line]) -> some View {
+        VStack(spacing: 0) {
+            ForEach(Array(lines.prefix(4).enumerated()), id: \.offset) { _, line in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text(line.name)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                    Text(line.detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .padding(.vertical, 4)
+                .overlay(alignment: .bottom) { Divider().opacity(0.35) }
+            }
+            if lines.count > 4 {
+                Text("\(lines.count - 4) more…")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
     }
 
     private func fact(_ value: String, _ label: String) -> some View {

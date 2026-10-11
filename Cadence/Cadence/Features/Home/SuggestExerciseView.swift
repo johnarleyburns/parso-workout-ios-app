@@ -93,7 +93,7 @@ struct SuggestExerciseView: View {
                         } label: {
                             Image(systemName: "info.circle")
                                 .font(.title3)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.tint)
                         }
                         .accessibilityIdentifier("suggestExercise.info")
                         .accessibilityLabel("Exercise details")

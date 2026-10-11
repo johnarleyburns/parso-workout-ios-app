@@ -62,10 +62,16 @@ struct ExercisePickerView: View {
     let action: PickAction
     let source: Exercise?
     let onPick: (Exercise) -> Void
+    /// When false, exercise detail shows no "Use Exercise" action. The system
+    /// Search tab browses the catalog and has nothing to "use" the exercise for
+    /// (field report: remove the meaningless Use Exercise button).
+    var showsPickAction: Bool = true
 
-    init(action: PickAction = .add, source: Exercise? = nil, onPick: @escaping (Exercise) -> Void) {
+    init(action: PickAction = .add, source: Exercise? = nil,
+         showsPickAction: Bool = true, onPick: @escaping (Exercise) -> Void) {
         self.action = action
         self.source = source
+        self.showsPickAction = showsPickAction
         self.onPick = onPick
     }
 
@@ -268,11 +274,16 @@ struct ExercisePickerView: View {
                 switch route {
                 case .exercise(let id):
                     if let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) {
-                        ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
-                            onPick(picked)
-                            dismiss()
+                        if showsPickAction {
+                            ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
+                                onPick(picked)
+                                dismiss()
+                            }
+                            .navigationTransition(.zoom(sourceID: id, in: searchTransition))
+                        } else {
+                            ExerciseDetailView(exercise: exercise)
+                                .navigationTransition(.zoom(sourceID: id, in: searchTransition))
                         }
-                        .navigationTransition(.zoom(sourceID: id, in: searchTransition))
                     } else {
                         ContentUnavailableView(
                             "Exercise unavailable",

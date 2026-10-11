@@ -32,6 +32,23 @@ public enum SessionViewModel {
         session.plannedRepLadder.isEmpty ? nil : session.plannedRepLadder
     }
 
+    /// The owner's plan and ladder that seed a movement's defaults. A movement
+    /// with no explicit plan entry — for example one added ad-hoc via "Add
+    /// Exercise" — must not inherit the session's legacy `plannedRepLadder`,
+    /// which only reflects the *first* planned exercise's set scheme. Doing so
+    /// made a newly added Snatch default to the ladder's reps instead of the
+    /// user's own previous load (field report: invalid set default).
+    public static func ownerPlanContext(
+        session: WorkoutSession,
+        exerciseName: String
+    ) -> (ownerPlan: [PlannedSetPrescription], ownerLadder: [Int]?) {
+        if let ownerPlan = session.explicitPlannedSets(forPerformerID: nil,
+                                                       exerciseName: exerciseName) {
+            return (ownerPlan, effectiveLadder(session: session))
+        }
+        return ([], nil)
+    }
+
     /// How many planned set rows an exercise should pre-seed (ladder length).
     public static func plannedSetCount(session: WorkoutSession) -> Int {
         effectiveLadder(session: session)?.count ?? 0

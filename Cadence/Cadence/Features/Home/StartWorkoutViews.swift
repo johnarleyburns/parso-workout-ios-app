@@ -13,6 +13,7 @@ struct StartWorkoutView: View {
     let onScheduleCardio: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     let recentCardioTypes: [WorkoutType]
+    var onFillGaps: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -25,7 +26,8 @@ struct StartWorkoutView: View {
                             PickWorkoutView(
                                 onEditorStart: onEditorStart,
                                 onScheduleStrength: onScheduleStrength,
-                                onLogWorkout: onLogWorkout)
+                                onLogWorkout: onLogWorkout,
+                                onFillGaps: onFillGaps)
                         } label: {
                             startActionLabel("Strength", symbol: "dumbbell.fill", tint: .green)
                         }
@@ -98,12 +100,23 @@ struct PickWorkoutView: View {
     let onEditorStart: (EditablePlan) -> Void
     let onScheduleStrength: () -> Void
     let onLogWorkout: () -> Void
+    var onFillGaps: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
     @Environment(AppSettings.self) private var settings
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
+                // Shortcut to the muscle-coverage "Fill the gaps" flow, which
+                // builds a workout from this week's least-trained groups.
+                Button {
+                    onFillGaps?()
+                } label: {
+                    pickActionLabel(String(localized: "Suggest a workout"), symbol: "wand.and.stars")
+                }
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("pickWorkout.suggestWorkout")
+
                 pickAction(String(localized: "Custom Workout"), symbol: "slider.horizontal.3") {
                     WorkoutPlanEditor(
                         plan: .empty(warmup: settings.warmupMinutes,

@@ -110,11 +110,22 @@ struct HomeMuscleMapView: View {
             .resizable()
             .scaledToFit()
             .frame(width: imageSize.width, height: imageSize.height)
-            .foregroundStyle(CadenceTheme.accent.opacity(MuscleHeatPresenter.opacity(for: level)))
+            .foregroundStyle(muscleColor(for: level))
             .allowsHitTesting(false)
             .accessibilityHidden(true)
 
         return mask
+    }
+
+    /// red for 0% · yellow below productive · light green building toward
+    /// productive · green productive (field report: muscle-coverage colouring).
+    private func muscleColor(for level: HeatLevel) -> Color {
+        switch level {
+        case .none: return CadenceTheme.muscleZero
+        case .low: return CadenceTheme.muscleBelow
+        case .mid, .high: return CadenceTheme.muscleBuilding
+        case .onTarget: return CadenceTheme.muscleProductive
+        }
     }
 
     private func heatButton(for callout: MuscleMapCallout) -> some View {
@@ -126,7 +137,7 @@ struct HomeMuscleMapView: View {
                 .frame(width: MapMetrics.hitPointSize, height: MapMetrics.hitPointSize)
                 .overlay {
                     if level == .none {
-                        Circle().inset(by: 9).stroke(CadenceTheme.attention,
+                        Circle().inset(by: 9).stroke(CadenceTheme.muscleZero,
                                         style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
                     }
                 }
@@ -148,7 +159,8 @@ struct HomeMuscleMapView: View {
                             Spacer()
                             Text(row.rangeText).font(.caption).foregroundStyle(.secondary)
                         }
-                        ProgressView(value: row.normalized).tint(CadenceTheme.accent)
+                        ProgressView(value: row.normalized)
+                            .tint(muscleColor(for: MuscleHeatPresenter.level(sets: row.sets, target: 12)))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
@@ -167,15 +179,15 @@ struct HomeMuscleMapView: View {
 
     private var legend: some View {
         HStack(spacing: 8) {
-            legendItem("0", color: CadenceTheme.attention, dashed: true)
-            legendItem(">0–<4 sets", color: CadenceTheme.accent.opacity(0.25))
-            legendItem("4–<8 sets", color: CadenceTheme.accent.opacity(0.5))
-            legendItem("8+ sets", color: CadenceTheme.accent)
+            legendItem("0 sets", color: CadenceTheme.muscleZero, dashed: true)
+            legendItem("Below 4", color: CadenceTheme.muscleBelow)
+            legendItem("4–7", color: CadenceTheme.muscleBuilding)
+            legendItem("8+", color: CadenceTheme.muscleProductive)
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Muscle coverage legend: zero, any sets below four, four to under eight sets, and eight or more sets")
+        .accessibilityLabel("Muscle coverage legend: red for zero sets, yellow below the 4-set minimum, light green building toward productive volume, and green for productive volume")
     }
 
     private func legendItem(_ title: String, color: Color, dashed: Bool = false) -> some View {

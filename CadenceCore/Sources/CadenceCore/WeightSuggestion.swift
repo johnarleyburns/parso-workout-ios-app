@@ -35,8 +35,10 @@ public enum WeightSuggestion {
 
         let working = history.filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
 
-        // 1. Exact rep-match: most recent set at this rep count.
-        if let exact = working.first(where: { $0.reps == targetReps }) {
+        // 1. Exact rep-match: most recent set at this rep count. The input is
+        // not guaranteed to be sorted, so resolve recency from `date` rather
+        // than array order (field report: invalid set default).
+        if let exact = working.filter({ $0.reps == targetReps }).max(by: { $0.date < $1.date }) {
             return Result(weightKg: exact.weight, basis: .exactRepMatch)
         }
 

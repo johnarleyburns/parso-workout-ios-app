@@ -77,7 +77,8 @@ extension HomeView {
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
                     },
-                    recentCardioTypes: recentCardioTypes)
+                    recentCardioTypes: recentCardioTypes,
+                    onFillGaps: openFillGapsFromStartWorkout)
             }
             .sheet(isPresented: $plannedWorkoutsPresented) {
                 NavigationStack {
@@ -186,6 +187,9 @@ extension HomeView {
                         onSuggestedWorkout: { requestSuggestedWorkout($0) })
                 }
             }
+            // "Suggest a workout" shortcut from Start Workout → Strength → Pick
+            // Workout. Reuses the muscle-coverage Fill the Gaps flow.
+            .sheet(isPresented: $fillGapsPresented) { fillGapsQuickStart }
             .overlay {
                 suggestionGenerationStatus
             }

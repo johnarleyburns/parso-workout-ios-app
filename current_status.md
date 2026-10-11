@@ -1,6 +1,43 @@
 # Current Status
 
-Updated: 2026-10-08
+Updated: 2026-10-10
+
+## Latest implementation — field-test fix batch (2026-10-10)
+
+Nine field-report fixes, all headless-verified where logic exists:
+
+- **Set default (CLAD-018).** A movement added ad-hoc via "Add Exercise" no
+  longer inherits the session's legacy `plannedRepLadder` (which only reflects
+  the *first* planned exercise), so its set editor now defaults to the user's own
+  previous load. `SessionViewModel.ownerPlanContext` is the pure gate; the exact
+  same-rep weight match is now resolved by `date` rather than array order
+  (`WeightSuggestion.suggest`).
+- **Workout margins.** The live workout's Add Exercise / Suggest Exercise /
+  controls block now uses the shared `LayoutMetrics.sectionSpacing` and drops the
+  ad-hoc `.padding(.top, 8)`.
+- **Add/Suggest Exercise no longer opens the set editor.** Both return to the
+  workout screen; the user adds the set from the exercise's Add Set action.
+  Swipe-dismissing the set editor now clears the inline state (`onDismiss`), which
+  was the "missing Add Set button" case.
+- **Choose Exercise selectors.** Browse/Recents/Popular and By Muscle Group/By
+  Equipment are the same large chip buttons as the muscle/equipment filters.
+- **Suggest Exercise info icon** uses the accent tint to match Choose Exercise.
+- **Done for today / Recovery cards.** Done for today shows the completed
+  workout's exercise list and pins View summary / Do more to the bottom; the
+  recovery card now shows its full rationale instead of two truncated lines.
+- **Muscle coverage colours.** Red (0%) · yellow (below the 4-set minimum) ·
+  light green (building) · green (productive), applied to the map, its legend,
+  and the list progress bars via `CadenceTheme.muscle*`.
+- **Suggest a workout shortcut.** Start Workout → Strength → Pick Workout now
+  offers "Suggest a workout", which opens the muscle-coverage Fill the Gaps flow.
+- **Search tab.** Exercise detail no longer shows the meaningless "Use Exercise"
+  action (`ExercisePickerView(showsPickAction:)`).
+
+Verification: full `swift test --parallel` suite (2,090 tests) passes; generic
+iPhone build and all CI guardrails (test-pyramid, no-network, history-safety,
+watch AppIcon/background-modes, xcodebuild-platform, release-safety, engine
+boundary, citation sync, design-token ratchet, warning gate) pass. No simulator
+was launched. Device visual confirmation remains for the owner.
 
 ## Latest implementation — Today, suggestions and Fill the Gaps (2026-10-08)
 

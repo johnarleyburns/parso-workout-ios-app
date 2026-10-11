@@ -48,7 +48,7 @@ extension SessionView {
             ForEach(plannedOnlyNames, id: \.self) { name in
                 plannedCard(name)
             }
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 CadenceActionButton(title: String(localized: "Add Exercise"),
                                     systemImage: "plus.circle.fill",
                                     emphasis: .secondary) {
@@ -73,7 +73,6 @@ extension SessionView {
                     .accessibilityIdentifier("log.done")
                 }
             }
-            .padding(.top, 8)
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
         .accessibilityRotor("Exercises", entries: cache.state.contexts, entryID: \.exerciseID, entryLabel: \.name)
@@ -199,7 +198,7 @@ extension SessionView {
                 useHR: $workoutSettings.useHRMonitoring)
         }
         .modifier(SuggestionFailureAlertModifier(isPresented: $suggestExerciseFailed))
-        .sheet(item: $setEditorRoute) { _ in inlineSetEditorSheetContent }
+        .sheet(item: $setEditorRoute, onDismiss: closeInlineEditor) { _ in inlineSetEditorSheetContent }
         .fullScreenCover(isPresented: $coolingDown, content: cooldownOverlay)
         .modifier(SessionCooldownConfirmationModifier(isPresented: $coolDownConfirm,
                                                        onStart: startCooldown))

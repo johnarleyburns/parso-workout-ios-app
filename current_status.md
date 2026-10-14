@@ -2,6 +2,19 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — TestFlight What to Test notes (issue #69)
+
+- Added `TestFlightReleaseNotes` and `TestFlightNotesPublication` (CadenceCore,
+  Foundation-only): version/build, 12-char archived SHA, repo, deduped issue
+  list, per-issue test steps, CI-only handling, explicit "no issues" text,
+  4000-char truncation that keeps SHA and issue numbers, and an idempotent,
+  exact-build publish decision. 7 new tests pass.
+- The "preceding traceability" scripts were not present on `main`, and CI
+  maintenance was not authorized, so `.github/workflows/ios.yml` is NOT yet
+  wired: next task is to feed archived `git rev-parse HEAD`, merged PR/issue
+  data, and the App Store Connect betaBuildLocalizations PATCH into these types
+  after the existing upload step (no extra archive/export).
+
 ## Latest implementation — field-test fix batch (2026-10-10)
 
 Nine field-report fixes, all headless-verified where logic exists:

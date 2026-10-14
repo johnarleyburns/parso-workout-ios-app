@@ -126,6 +126,8 @@ public struct CardioSuggestion: Codable, Equatable, Hashable, Sendable, Identifi
 public enum CardioSuggestionGenerator {
     public static let minimumIntervalHistoryCount = 3
     public static let minimumIntervalBaseMinutes = 90.0
+    public static let intervalHabitWindowDays = 28
+    public static let minimumRecentIntervalSessions = 2
     public static let minimumDurationMinutes = 20
     public static let maximumDurationMinutes = 45
 
@@ -139,13 +141,20 @@ public enum CardioSuggestionGenerator {
             && usableHistory.count >= minimumIntervalHistoryCount
             && usableHistory.prefix(7).reduce(0) { $0 + $1.moderateEquivalentMinutes }
                 >= minimumIntervalBaseMinutes
-        let recentInterval = usableHistory.first?.isInterval == true
-        let shouldSuggestIntervals = established && recentInterval
-            && (type == .hiit || type == .boxing)
+        // An interval habit (e.g. Tabata, Norwegian 4x4, REHIT) is any interval
+        // session in the recent window, even when the latest session was a run
+        // or ride — intervals are logged as HIIT/boxing and must not be starved
+        // just because they were not the very last workout.
+        let windowStart = input.asOf.addingTimeInterval(-Double(intervalHabitWindowDays) * 86_400)
+        let recentIntervals = usableHistory.filter { $0.isInterval && $0.start >= windowStart }
+        let shouldSuggestIntervals = established
+            && recentIntervals.count >= minimumRecentIntervalSessions
 
         if shouldSuggestIntervals {
+            let intervalType: CardioType = recentIntervals.first
+                .map { $0.type == .boxing ? .boxing : .hiit } ?? .hiit
             return CardioSuggestion(
-                type: type,
+                type: intervalType,
                 durationMinutes: 25,
                 intensity: .interval,
                 indoor: true,

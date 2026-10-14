@@ -222,7 +222,7 @@ struct HomeTodayHeroCard: View {
 
     private func doneExerciseRows(_ lines: [TodayHero.Line]) -> some View {
         VStack(spacing: 0) {
-            ForEach(Array(lines.prefix(4).enumerated()), id: \.offset) { _, line in
+            ForEach(Array(lines.prefix(2).enumerated()), id: \.offset) { _, line in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(line.name)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -237,8 +237,8 @@ struct HomeTodayHeroCard: View {
                 .padding(.vertical, 4)
                 .overlay(alignment: .bottom) { Divider().opacity(0.35) }
             }
-            if lines.count > 4 {
-                Text("\(lines.count - 4) more…")
+            if lines.count > 2 {
+                Text("\(lines.count - 2) more…")
                     .font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }

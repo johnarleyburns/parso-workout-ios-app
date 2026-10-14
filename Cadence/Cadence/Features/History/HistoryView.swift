@@ -5,6 +5,8 @@ import CadenceFeatures
 
 struct HistoryView: View {
     @Binding var path: NavigationPath
+    /// When embedded in the Progress tab, the parent owns the navigation title.
+    var embedded = false
 
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
@@ -53,7 +55,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .navigationTitle("History")
+        .navigationTitle(embedded ? "Progress" : "History")
         .confirmationDialog("Delete this workout?",
                             isPresented: Binding(get: { sessionToDelete != nil },
                                                  set: { if !$0 { sessionToDelete = nil } }),

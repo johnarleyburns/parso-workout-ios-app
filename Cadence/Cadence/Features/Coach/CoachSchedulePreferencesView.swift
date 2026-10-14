@@ -51,23 +51,6 @@ struct CoachSchedulePreferencesView: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("Strength days/week").font(.subheadline.weight(.medium))
-                        Spacer()
-                        Text("\(settings.coachSchedulePreferences.strengthDaysPerWeek)").font(.subheadline.bold())
-                    }
-                    Picker("Strength days", selection: Binding(get: {
-                        settings.coachSchedulePreferences.strengthDaysPerWeek
-                    }, set: { v in
-                        settings.coachSchedulePreferences = settings.coachSchedulePreferences.withStrengthDays(v)
-                    })) {
-                        ForEach(2...5, id: \.self) { n in
-                            Text("\(n)").tag(n)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
                         Text("Working sets/exercise").font(.subheadline.weight(.medium))
                         Spacer()
                         Text("\(settings.coachSchedulePreferences.desiredSetsPerExercise)").font(.subheadline.bold())
@@ -91,22 +74,10 @@ struct CoachSchedulePreferencesView: View {
             }
 
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Cardio days/week").font(.subheadline.weight(.medium))
-                        Spacer()
-                        Text("\(settings.coachSchedulePreferences.cardioDaysPerWeek)").font(.subheadline.bold())
-                    }
-                    Picker("Cardio days", selection: Binding(get: {
-                        settings.coachSchedulePreferences.cardioDaysPerWeek
-                    }, set: { v in
-                        settings.coachSchedulePreferences = settings.coachSchedulePreferences.withCardioDays(v)
-                    })) {
-                        ForEach(0...6, id: \.self) { n in
-                            Text("\(n)").tag(n)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                Text("Cardio is tracked as weekly minutes, not days per week.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                if let citation = CitationRegistry.citation(forId: "leeWeekendWarrior2022") {
+                    CitationLink(citation: citation, compact: true)
                 }
                 if let citation = CitationRegistry.citation(forId: "ekelundActivityMortality2016") {
                     CitationLink(citation: citation, compact: true)

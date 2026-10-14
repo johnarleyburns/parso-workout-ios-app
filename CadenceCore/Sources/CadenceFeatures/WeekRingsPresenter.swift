@@ -1,7 +1,7 @@
 import Foundation
 
 public struct WeekRing: Equatable, Sendable, Identifiable {
-    public enum Kind: String, Sendable { case sets, cardioMinutes, sessions }
+    public enum Kind: String, Sendable { case sets, cardioMinutes }
     public let kind: Kind
     public let value: Double
     public let target: Double
@@ -17,10 +17,8 @@ public struct WeekRing: Equatable, Sendable, Identifiable {
 
 public enum WeekRingsPresenter {
     public static func rings(workingSets: Double, setTarget: Double,
-                             cardioMinutes: Double, cardioTarget: Double,
-                             sessions: Double, sessionTarget: Double) -> [WeekRing] {
+                             cardioMinutes: Double, cardioTarget: Double) -> [WeekRing] {
         [WeekRing(kind: .sets, value: workingSets, target: setTarget),
-         WeekRing(kind: .cardioMinutes, value: cardioMinutes, target: cardioTarget),
-         WeekRing(kind: .sessions, value: sessions, target: sessionTarget)]
+         WeekRing(kind: .cardioMinutes, value: cardioMinutes, target: cardioTarget)]
     }
 }

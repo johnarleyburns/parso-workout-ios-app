@@ -254,6 +254,15 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1016/S0140-6736(16)30370-1"
     )
 
+    public static let leeWeekendWarrior2022 = Citation(
+        id: "leeWeekendWarrior2022",
+        authors: "O'Donovan, Lee et al.",
+        year: 2022,
+        title: "Association of the \"Weekend Warrior\" and Other Leisure-time Physical Activity Patterns With All-Cause and Cause-Specific Mortality",
+        source: "JAMA Internal Medicine",
+        url: "https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/2794038"
+    )
+
     public static let pellandDoseResponse2026 = Citation(
         id: "pellandDoseResponse2026",
         authors: "Pelland, Remmert, Robinson, Hinson & Zourdos",
@@ -707,7 +716,7 @@ public enum CitationRegistry {
         rockportWalk, queensCollegeStep,
         krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
         zourdosDUP, amirthalingamGVT, williamsLinearPeriodization, tufanoCluster,
-        ekelundActivityMortality2016,
+        ekelundActivityMortality2016, leeWeekendWarrior2022,
         pellandDoseResponse2026, ramosCampoSplit2024, parejaBlancoRecovery2020,
         sawMonitoring2016, meeusenOvertraining2013, schumannConcurrent2022,
         crowleyVO2Intensity2022, poonHIIT2024,
@@ -762,6 +771,7 @@ public enum CitationRegistry {
         "williamsLinearPeriodization": "Linear periodization effectiveness — backs linear programs (5/3/1) and periodization claims.",
         "tufanoCluster": "Cluster set training — backs the cluster-set program routine.",
         "ekelundActivityMortality2016": "Physical activity attenuates sitting-time mortality risk — backs aerobic-base recommendations and the 150-min floor.",
+        "leeWeekendWarrior2022": "Same mortality benefit whether weekly activity is concentrated in 1–2 days or spread out — backs showing weekly sets and cardio minutes instead of a days-per-week goal.",
         "pellandDoseResponse2026": "Resistance-training dose-response meta-regression — backs volume personalization, diminishing-return warnings, and the fractional weekly-set model where primary sets count 1.0 and indirect sets count 0.5.",
         "ramosCampoSplit2024": "Full-body vs split routine effects on strength and hypertrophy — backs session-structure choices in the weekly plan.",
         "parejaBlancoRecovery2020": "48-hour same-lift recovery window after training to failure — backs the session eligibility deferral gates.",

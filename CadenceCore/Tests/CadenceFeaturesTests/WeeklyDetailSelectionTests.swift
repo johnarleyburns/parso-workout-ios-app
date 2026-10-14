@@ -60,7 +60,6 @@ final class WeeklyDetailSelectionTests: XCTestCase {
 
     func testRingTapsMapToTheMatchingThisWeekSection() {
         XCTAssertEqual(ThisWeekDestination.forRing(.sets), .muscleCoverage)
-        XCTAssertEqual(ThisWeekDestination.forRing(.sessions), .strength)
         XCTAssertEqual(ThisWeekDestination.forRing(.cardioMinutes), .cardio)
 
         XCTAssertEqual(ThisWeekDestination.muscleCoverage.detailMode, .muscleMap)

@@ -268,6 +268,14 @@ struct HomeWeekDashboardSection: View {
     /// Field test 2026-08-19 #7: five short but hard sessions read as "158 of 150
     /// min" against 80 minutes on the clock. The weighting is real public-health
     /// arithmetic, so the fix is to show it rather than hide it.
+    private var cardioTint: Color {
+        switch WeeklyCardioProgress.tintRole(for: dashboard.cardioDetail.moderateEquivalentMinutes) {
+        case .red: return .red
+        case .yellow: return .yellow
+        case .green: return .green
+        }
+    }
+
     private var cardioMinutes: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Cardio Minutes")
@@ -300,10 +308,12 @@ struct HomeWeekDashboardSection: View {
                     dashboard.cardioDetail.moderateEquivalentMinutes,
                     target: dashboard.cardioDetail.targetMinutes))
                     .font(.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(cardioTint)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.week.cardio.total")
+            Text("Goal \(Int(WeeklyCardioProgress.target)) min moderate-equivalent; \(Int(WeeklyCardioProgress.minimum)) min is the guideline minimum.")
+                .font(.caption2).foregroundStyle(.secondary)
             if dashboard.cardioDetail.unclassifiedMinutes > 0 {
                 Text(CardioMinutesDisplay.unclassified(dashboard.cardioDetail.unclassifiedMinutes))
                     .font(.caption2).foregroundStyle(.secondary)

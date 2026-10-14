@@ -15,6 +15,14 @@ struct HomeWeekRingsCard: View {
             sessionTarget: dashboard.strength.target)
     }
 
+    private var cardioTint: Color {
+        switch WeeklyCardioProgress.tintRole(for: dashboard.cardioDetail.moderateEquivalentMinutes) {
+        case .red: return .red
+        case .yellow: return .yellow
+        case .green: return .green
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Button {
@@ -31,7 +39,7 @@ struct HomeWeekRingsCard: View {
             .accessibilityLabel("Open This Week")
             HStack(spacing: 6) {
                 ringButton(rings[0], tint: CadenceTheme.accent)
-                ringButton(rings[1], tint: CadenceTheme.link)
+                ringButton(rings[1], tint: cardioTint)
                 ringButton(rings[2], tint: CadenceTheme.attention)
             }
             .frame(maxWidth: .infinity)

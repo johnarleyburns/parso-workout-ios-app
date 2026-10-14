@@ -23,3 +23,13 @@ final class CardioMinutesDisplayTests: XCTestCase {
         XCTAssertFalse(values.joined(separator: " ").contains("Int("))
     }
 }
+
+final class WeeklyCardioProgressTests: XCTestCase {
+    func testTintRolesUseMinimumAndTarget() {
+        XCTAssertEqual(WeeklyCardioProgress.tintRole(for: 0), .red)
+        XCTAssertEqual(WeeklyCardioProgress.tintRole(for: 149), .red)
+        XCTAssertEqual(WeeklyCardioProgress.tintRole(for: 150), .yellow)
+        XCTAssertEqual(WeeklyCardioProgress.tintRole(for: 299), .yellow)
+        XCTAssertEqual(WeeklyCardioProgress.tintRole(for: 300), .green)
+    }
+}

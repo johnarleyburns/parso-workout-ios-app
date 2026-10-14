@@ -1,0 +1,38 @@
+
+name: PR Swift Validation
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select stable Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Swift package tests
+        run: swift test --package-path CadenceCore --parallel
+      - name: Build iPhone and embedded Watch app
+        run: |
+          bash scripts/xcodebuild-safe.sh \
+            -project Cadence/Cadence.xcodeproj \
+            -scheme Cadence \
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Guardrails
+        run: |
+          bash scripts/check-test-pyramid.sh
+          bash scripts/check-no-network.sh
+          bash scripts/check-history-safety.sh
+          bash scripts/check-watch-appicon.sh
+          bash scripts/check-watch-background-modes.sh
+          bash scripts/check-xcodebuild-platform.sh
+          bash scripts/check-release-safety.sh

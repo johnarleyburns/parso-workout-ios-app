@@ -23,9 +23,7 @@ extension HomeView {
                workingSets: dashboard.volumeCoverage.completed,
                setTarget: dashboard.volumeCoverage.target,
                cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
-               cardioTarget: dashboard.cardioDetail.targetMinutes,
-               sessions: dashboard.strength.completed,
-               sessionTarget: dashboard.strength.target) {
+               cardioTarget: dashboard.cardioDetail.targetMinutes) {
             VStack(alignment: .leading, spacing: 4) {
                 Label(close.title, systemImage: "party.popper.fill")
                     .font(.headline)

@@ -49,7 +49,7 @@ public struct WeeklyDetailSelection: Equatable, Sendable {
 }
 
 /// Where a Today → This Week tap should land. The weekly rings map sets to
-/// muscle coverage, sessions to Strength, and cardio minutes to Cardio.
+/// muscle coverage and cardio minutes to Cardio.
 public enum ThisWeekDestination: String, CaseIterable, Sendable {
     case muscleCoverage
     case strength
@@ -58,7 +58,6 @@ public enum ThisWeekDestination: String, CaseIterable, Sendable {
     public static func forRing(_ kind: WeekRing.Kind) -> ThisWeekDestination {
         switch kind {
         case .sets: return .muscleCoverage
-        case .sessions: return .strength
         case .cardioMinutes: return .cardio
         }
     }

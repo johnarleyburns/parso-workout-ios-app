@@ -186,8 +186,6 @@ struct HomeView: View {
             setsTarget: target,
             cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
             cardioTarget: dashboard.cardioDetail.targetMinutes,
-            sessionsCompleted: dashboard.strength.completed,
-            sessionsTarget: dashboard.strength.target,
             weeklyMuscles: dashboard.volume.map {
                 CadenceWeeklyMuscleSnapshot(id: $0.displayName, sets: $0.sets, target: $0.isTracked ? 12 : 0)
             },

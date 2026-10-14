@@ -194,10 +194,13 @@ public enum HomeDashboardPresenter {
                             weeklyCardio: WeeklyCardioSummary? = nil,
                             activityDose: WeeklyActivitySummary? = nil) -> HomeDashboardState {
         let balance = snapshot.decision.weeklyBalance
-        let strengthTarget = Double(max(1, schedule.strengthDaysPerWeek))
-        let strength = HomeDashboardState.Progress(completed: Double(balance.strengthDays), target: strengthTarget,
-            displayText: String(localized: "\(balance.strengthDays) of \(schedule.strengthDaysPerWeek) days", bundle: .module),
-            normalized: min(1, Double(balance.strengthDays) / strengthTarget))
+        // Weekly sets, not days per week: frequency is not an independent
+        // indicator of training impact (O'Donovan/Lee et al. 2022).
+        let strengthSets = snapshot.facts.weeklySetsByGroup.values.reduce(0, +)
+        let strengthTarget = Double(max(1, schedule.trackedMuscleGroups.count)) * 12
+        let strength = HomeDashboardState.Progress(completed: strengthSets, target: strengthTarget,
+            displayText: String(localized: "\(Int(strengthSets.rounded())) of \(Int(strengthTarget)) sets", bundle: .module),
+            normalized: min(1, strengthSets / strengthTarget))
         let cardioCredit = weeklyCardio?.moderateEquivalentMinutes ?? balance.moderateEquivalentMinutes
         let cardioTarget = weeklyCardio?.guidelineTarget ?? WeeklyCardioProgress.target
         let cardio = HomeDashboardState.Progress(completed: cardioCredit, target: cardioTarget,

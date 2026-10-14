@@ -359,11 +359,6 @@ struct HomeWeekDashboardSection: View {
                 Text("\(Int(dose.totalStandardMETMinutes.rounded()))")
                     .monospacedDigit().foregroundStyle(.secondary)
             }
-            HStack {
-                Text("Strength days")
-                Spacer()
-                Text("\(dose.strengthDays)").monospacedDigit().foregroundStyle(.secondary)
-            }
             if let citation = CitationRegistry.citation(forId: "compendium2024AdultPhysicalActivities") {
                 CitationLink(citation: citation,
                              context: "MET-minutes are a separate standardized activity-dose estimate; they are not a replacement for cardio guideline credit.",

@@ -70,9 +70,6 @@ struct CadenceTodayWidgetView: View {
                                        target: snapshot.setsTarget, symbol: "circle")
                             widgetRing("Cardio", value: snapshot.cardioMinutes,
                                        target: snapshot.cardioTarget, symbol: "heart")
-                            widgetRing(String(localized: "Sessions"), value: snapshot.sessionsCompleted,
-                                       target: snapshot.sessionsTarget,
-                                       symbol: "figure.strengthtraining.traditional")
                         }
                     }
                 if snapshot.sessionTitles.isEmpty {

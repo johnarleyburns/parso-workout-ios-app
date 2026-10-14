@@ -169,18 +169,11 @@ struct OnboardingView: View {
         @Bindable var flow = flow
         return pageScaffold(title: String(localized: "Make it fit your week"),
                             subtitle: String(localized: "Cladiron starts with a sensible plan and learns from what you actually complete.")) {
-            Text("Strength days per week").font(.subheadline.weight(.medium))
-            Picker("Strength days", selection: $flow.strengthDays) {
-                ForEach(2...5, id: \.self) { Text("\($0)").tag($0) }
+            Text("Cladiron tracks your weekly strength sets and cardio minutes rather than a number of days per week. Research finds total weekly activity matters more than how many days it is spread across.")
+                .font(.footnote).foregroundStyle(.secondary)
+            if let citation = CitationRegistry.citation(forId: "leeWeekendWarrior2022") {
+                CitationLink(citation: citation, compact: true)
             }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("onboarding.strengthDays")
-            Text("Cardio days per week").font(.subheadline.weight(.medium)).padding(.top, 4)
-            Picker("Cardio days", selection: $flow.cardioDays) {
-                ForEach(0...6, id: \.self) { Text("\($0)").tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .accessibilityIdentifier("onboarding.cardioDays")
             Divider().padding(.vertical, 4)
             Text("Units").font(.subheadline.weight(.medium))
             Picker("Units", selection: $flow.unit) {

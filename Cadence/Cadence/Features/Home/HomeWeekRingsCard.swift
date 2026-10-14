@@ -10,9 +10,7 @@ struct HomeWeekRingsCard: View {
             workingSets: dashboard.volume.reduce(0) { $0 + $1.sets },
             setTarget: dashboard.volume.filter(\.isTracked).reduce(0) { total, _ in total + 12 },
             cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
-            cardioTarget: dashboard.cardioDetail.targetMinutes,
-            sessions: dashboard.strength.completed,
-            sessionTarget: dashboard.strength.target)
+            cardioTarget: dashboard.cardioDetail.targetMinutes)
     }
 
     private var cardioTint: Color {
@@ -40,7 +38,6 @@ struct HomeWeekRingsCard: View {
             HStack(spacing: 6) {
                 ringButton(rings[0], tint: CadenceTheme.accent)
                 ringButton(rings[1], tint: cardioTint)
-                ringButton(rings[2], tint: CadenceTheme.attention)
             }
             .frame(maxWidth: .infinity)
         }
@@ -50,7 +47,7 @@ struct HomeWeekRingsCard: View {
     }
 
     /// Each ring deep-links to the This Week section it summarizes: sets to
-    /// muscle coverage, cardio minutes to Cardio, sessions to Strength.
+    /// muscle coverage, and cardio minutes to Cardio.
     private func ringButton(_ value: WeekRing, tint: Color) -> some View {
         let destination = ThisWeekDestination.forRing(value.kind)
         return Button {
@@ -80,7 +77,6 @@ private extension WeekRing.Kind {
         switch self {
         case .sets: return String(localized: "Sets")
         case .cardioMinutes: return String(localized: "Cardio minutes")
-        case .sessions: return String(localized: "Sessions")
         }
     }
 }

@@ -255,6 +255,18 @@ Structures: A Systematic Review.* **J Strength Cond Res 31(3).**
 
 ## Recovery-aware redesign citations (2026-06-22)
 
+### `leeWeekendWarrior2022` — weekend-warrior activity patterns and mortality
+O'Donovan, Lee et al. (2022). *Association of the "Weekend Warrior" and Other
+Leisure-time Physical Activity Patterns With All-Cause and Cause-Specific Mortality.*
+**JAMA Internal Medicine.**
+<https://jamanetwork.com/journals/jamainternalmedicine/fullarticle/2794038>
+
+- **Used by:** onboarding, Coach schedule settings, and This Week, which track weekly
+  strength sets and cardio minutes rather than a days-per-week goal.
+- **What it supports:** adults reaching the guideline volume had similar mortality
+  benefit whether activity was concentrated in one or two days or spread across the
+  week, so session frequency is not an independent indicator of training quality.
+
 ### `ekelundActivityMortality2016` — physical activity dose-response meta-analysis
 Ekelund et al. (2016). *Does physical activity attenuate, or even eliminate, the
 detrimental association of sitting time with mortality?* **The Lancet 388(10051).**

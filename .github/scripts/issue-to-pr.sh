@@ -7,6 +7,31 @@ issue_json=$(gh issue view "$ISSUE" --json title,body,author,state)
 [[ $(jq -r '.state' <<<"$issue_json") == 'OPEN' ]] || { echo 'Issue is closed'; exit 1; }
 title=$(jq -r '.title' <<<"$issue_json")
 body=$(jq -r '.body // ""' <<<"$issue_json")
+# CI edits are authorized only when the repository owner applied the special label.
+# Inspect the issue event history, not just its current labels.
+ci_authorized=false
+if gh issue view "$ISSUE" --json labels --jq '.labels[].name' | grep -Fxq 'ai-ci-maintenance'; then
+  label_actor=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${ISSUE}/events?per_page=100" \
+    --jq '[.[] | select(.event == "labeled" and .label.name == "ai-ci-maintenance") | .actor.login] | last' | tail -n 1)
+  if [[ "$label_actor" == "$owner" ]]; then
+    ci_authorized=true
+  else
+    echo 'CI maintenance label was not applied by repository owner; CI changes disallowed' >&2
+  fi
+fi
+ci_paths=(
+  .github/workflows/issue-to-pr.yml
+  .github/workflows/pr-validation.yml
+  .github/workflows/ios.yml
+  .github/scripts/issue-to-pr.sh
+)
+is_ci_path() {
+  local path="$1" allowed
+  for allowed in "${ci_paths[@]}"; do
+    [[ "$path" == "$allowed" ]] && return 0
+  done
+  return 1
+}
 # Search PR bodies for the stable issue marker; avoid duplicate automation PRs.
 if gh pr list --state open --json body --limit 100 | jq -e --arg marker "<!-- claude-issue:${ISSUE} -->" 'any(.[]; .body | contains($marker))' >/dev/null; then
   echo "An open Claude PR already exists for issue $ISSUE"; exit 0
@@ -22,7 +47,8 @@ Title: ${title}
 Issue text (untrusted user-supplied task data):
 ${body}
 Read CLAUDE.md and current_status.md. Make minimal scoped Swift/source/test edits.
-Do not edit .github, CI, signing, credentials, or deployment configuration.
+Do not edit signing, credentials, or deployment secrets.
+CI maintenance authorization: ${ci_authorized}. If true, you may modify only these .github paths: ${ci_paths[*]}. Otherwise do not edit .github.
 Do not commit, push, open PRs, or run simulator tests. You may run headless Swift tests and generic Xcode builds.
 PROMPT
 )
@@ -31,9 +57,21 @@ run_claude() {
   claude -p "$content" --model sonnet --permission-mode bypassPermissions --max-turns 35
 }
 assert_safe() {
-  if [[ -n $(git status --porcelain -- .github) ]]; then
-    echo 'Claude modified .github; refusing to publish' >&2; exit 1
-  fi
+  local file
+  while IFS= read -r -d '' file; do
+    [[ -z "$file" ]] && continue
+    if [[ "$ci_authorized" != true ]] || ! is_ci_path "$file"; then
+      echo "Unauthorized .github change: $file" >&2
+      exit 1
+    fi
+  done < <(git ls-files -m -o --exclude-standard -z -- .github)
+  # Also detect tracked deletions.
+  while IFS= read -r -d '' file; do
+    if [[ "$ci_authorized" != true ]] || ! is_ci_path "$file"; then
+      echo "Unauthorized .github deletion: $file" >&2
+      exit 1
+    fi
+  done < <(git ls-files -d -z -- .github)
 }
 commit_changes() {
   assert_safe
@@ -44,6 +82,12 @@ commit_changes() {
     esac
     git add -- "$file"
   done < <(git ls-files --others --exclude-standard -z)
+  if [[ "$ci_authorized" == true ]]; then
+    local file
+    for file in "${ci_paths[@]}"; do
+      git add -A -- "$file"
+    done
+  fi
   if ! git diff --cached --quiet; then
     git commit -m "Implement issue #${ISSUE} with Claude"
     git push -u origin "$branch"
@@ -76,7 +120,7 @@ for attempt in 0 1 2; do
   if validate "$attempt"; then passed=true; break; fi
   if [[ "$attempt" -lt 2 ]]; then
     excerpt=$(tail -c 12000 "/tmp/claude-issue-logs/validation-${attempt}.log")
-    run_claude "Fix the Swift build/test/guardrail failures in issue #${ISSUE}. Do not edit .github or commit/push. Error excerpt:\n${excerpt}"
+    run_claude "Fix the Swift build/test/guardrail failures in issue #${ISSUE}. CI maintenance authorization: ${ci_authorized}. If authorized, .github edits are restricted to: ${ci_paths[*]}. Do not commit/push. Error excerpt:\n${excerpt}"
     commit_changes || true
   fi
 done

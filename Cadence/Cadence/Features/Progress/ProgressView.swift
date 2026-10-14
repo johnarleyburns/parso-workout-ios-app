@@ -46,7 +46,7 @@ struct TrainingProgressView: View {
                             detailContent: { progressQuestionContent(for: $0) })
                         .padding(.horizontal)
                         .padding(.top, 8)
-                        HistoryView(path: $path)
+                        HistoryView(path: $path, embedded: true)
                     }
                 } else {
                     ScrollView {

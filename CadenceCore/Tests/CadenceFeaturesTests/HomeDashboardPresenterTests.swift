@@ -275,7 +275,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
 
     func testCardioDetailIsPopulatedFromTheWeeklyBalance() throws {
         let dash = try dashboard(chestSets: 1, now: Date())
-        XCTAssertEqual(dash.cardioDetail.targetMinutes, 150)
+        XCTAssertEqual(dash.cardioDetail.targetMinutes, 300)
         XCTAssertEqual(dash.cardioDetail.loggedMinutes, 0)
         XCTAssertEqual(dash.cardioDetail.moderateEquivalentMinutes, dash.cardio.completed)
     }

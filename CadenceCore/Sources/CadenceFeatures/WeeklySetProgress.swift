@@ -56,3 +56,18 @@ public enum WeeklySetProgress {
         sets.formatted(.number.precision(.fractionLength(sets.rounded() == sets ? 0 : 1)))
     }
 }
+
+/// Weekly cardio scale on the same red/yellow/green roles as weekly sets:
+/// 150 moderate-equivalent minutes is the guideline minimum, 300 the goal.
+public enum WeeklyCardioProgress {
+    public static let minimum = 150.0
+    public static let target = 300.0
+
+    public static func tintRole(for moderateEquivalentMinutes: Double) -> WeeklySetTintRole {
+        switch moderateEquivalentMinutes {
+        case ..<minimum: .red
+        case ..<target: .yellow
+        default: .green
+        }
+    }
+}

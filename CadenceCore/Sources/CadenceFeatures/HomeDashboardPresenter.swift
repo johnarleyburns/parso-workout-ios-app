@@ -199,7 +199,7 @@ public enum HomeDashboardPresenter {
             displayText: String(localized: "\(balance.strengthDays) of \(schedule.strengthDaysPerWeek) days", bundle: .module),
             normalized: min(1, Double(balance.strengthDays) / strengthTarget))
         let cardioCredit = weeklyCardio?.moderateEquivalentMinutes ?? balance.moderateEquivalentMinutes
-        let cardioTarget = weeklyCardio?.guidelineTarget ?? 150
+        let cardioTarget = weeklyCardio?.guidelineTarget ?? WeeklyCardioProgress.target
         let cardio = HomeDashboardState.Progress(completed: cardioCredit, target: cardioTarget,
             displayText: String(localized: "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit", bundle: .module),
             normalized: min(1, max(0, cardioCredit / cardioTarget)))

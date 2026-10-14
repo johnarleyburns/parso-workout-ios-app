@@ -441,7 +441,7 @@ public struct WeeklyCardioSummary: Codable, Equatable, Sendable {
     public init(actualMinutes: Double, belowModerateMinutes: Double,
                 moderateMinutes: Double, vigorousMinutes: Double,
                 moderateEquivalentMinutes: Double, unclassifiedMinutes: Double,
-                zoneMinutes: [TrainingZone: Double], guidelineTarget: Double = 150,
+                zoneMinutes: [TrainingZone: Double], guidelineTarget: Double = 300,
                 personalActualMinutesTarget: Double? = nil,
                 algorithmVersion: CardioAlgorithmVersion) {
         self.actualMinutes = actualMinutes
@@ -506,7 +506,7 @@ public enum WeeklyCardioAggregator {
             moderateMinutes: moderate, vigorousMinutes: vigorous,
             moderateEquivalentMinutes: moderate + vigorous * 2,
             unclassifiedMinutes: unclassified, zoneMinutes: zones,
-            guidelineTarget: 150, personalActualMinutesTarget: actualMinutesTarget,
+            guidelineTarget: 300, personalActualMinutesTarget: actualMinutesTarget,
             algorithmVersion: usedLegacy ? .legacy : .hrrGuidelineV1)
     }
 }

@@ -21,7 +21,7 @@ final class ExerciseEvidenceTests: XCTestCase {
     }
 
     func testCuratedRegistryIsUnchanged() {
-        XCTAssertEqual(CitationRegistry.all.count, 65)
+        XCTAssertEqual(CitationRegistry.all.count, 66)
         XCTAssertEqual(CitationRegistry.usageReasons.count, CitationRegistry.all.count)
     }
 

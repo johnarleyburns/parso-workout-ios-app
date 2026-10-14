@@ -78,7 +78,8 @@ extension HomeView {
                         startOtherCardio(description: description, gps: gps)
                     },
                     recentCardioTypes: recentCardioTypes,
-                    onFillGaps: openFillGapsFromStartWorkout)
+                    onFillGaps: openFillGapsFromStartWorkout,
+                    onSuggestCardio: { requestSuggestedWorkout(.cardio) })
             }
             .sheet(isPresented: $plannedWorkoutsPresented) {
                 NavigationStack {
@@ -176,7 +177,8 @@ extension HomeView {
                         onOtherCardio: { desc, gps in
                             cardioPickerPresented = false
                             startOtherCardio(description: desc, gps: gps)
-                        })
+                        },
+                        onSuggestCardio: { requestSuggestedWorkout(.cardio) })
                 }
             }
             // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).
@@ -235,6 +237,10 @@ extension HomeView {
                                 await Task.yield()
                                 scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
                             }
+                        },
+                        onExclude: { excluded in
+                            settings.setCardioTypeExcluded(excluded.type, true)
+                            suggestedCardio = nil
                         })
                 }
             }

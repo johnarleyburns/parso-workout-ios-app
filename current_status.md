@@ -2,6 +2,14 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — Suggest Cardio on Pick Cardio (issue #61)
+
+- Cardio picker is retitled **Pick Cardio** and opens with a **Suggest Cardio** button (reuses the reviewed cardio suggestion sheet).
+- `CardioSuggestionGenerator`: honors `excludedTypes`; with an established base and no interval work in 14 days it proposes a Norwegian 4×4 on the user's most recent interval-capable modality (cites `hiitVo2max` + new `gillenSIT2016`); adds a plain-language `observation` (weekly shortfall / no recent intervals). Returns nil only when every type is excluded.
+- "Don't suggest <type> again" on the suggestion sheet persists to `AppSettings.excludedCardioTypeRawValues`; Pick Cardio lists exclusions with "Allow again". Manual picks are unaffected. (Not yet in JSON export.)
+- Mockup: `docs/mockups/cardio-suggestion.html`. New citation documented in `docs/CITATIONS.md`.
+- Verification: `swift test --parallel` clean; generic iPhone build succeeded. No simulator run. Next: include exclusions in export/import and Settings.
+
 ## Latest implementation — field-test fix batch (2026-10-10)
 
 Nine field-report fixes, all headless-verified where logic exists:

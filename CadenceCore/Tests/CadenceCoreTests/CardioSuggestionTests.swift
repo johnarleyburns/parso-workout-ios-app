@@ -80,4 +80,54 @@ final class CardioSuggestionTests: XCTestCase {
         XCTAssertFalse(result.citationIDs.isEmpty)
         XCTAssertTrue(result.citationIDs.allSatisfy { CitationRegistry.citation(forId: $0) != nil })
     }
+
+    private func steadyHistory(_ type: CardioType, count: Int = 4) -> [CardioSuggestionHistory] {
+        (0..<count).map { index in
+            CardioSuggestionHistory(
+                type: type, durationMinutes: 40, moderateEquivalentMinutes: 40,
+                intensity: .moderate,
+                start: now.addingTimeInterval(TimeInterval(-(index + 1) * 86_400)))
+        }
+    }
+
+    func testNoRecentIntervalsSuggestsNorwegian4x4OnPreferredModality() throws {
+        let result = try XCTUnwrap(CardioSuggestionGenerator.generate(
+            input: CardioSuggestionInput(history: steadyHistory(.swim),
+                                         weeklyModerateEquivalentMinutes: 60, asOf: now)))
+        XCTAssertEqual(result.type, .swim)
+        XCTAssertTrue(result.isInterval)
+        XCTAssertEqual(result.intervalRounds, 4)
+        XCTAssertEqual(result.intervalWorkSeconds, 240)
+        XCTAssertNotNil(result.observation)
+        XCTAssertTrue(result.citationIDs.contains("hiitVo2max"))
+        XCTAssertTrue(result.citationIDs.contains("gillenSIT2016"))
+        XCTAssertTrue(result.citationIDs.allSatisfy { CitationRegistry.citation(forId: $0) != nil })
+    }
+
+    func testWalkingHistoryNeverReceivesIntervalsOnWalk() throws {
+        let result = try XCTUnwrap(CardioSuggestionGenerator.generate(
+            input: CardioSuggestionInput(history: steadyHistory(.walk),
+                                         weeklyModerateEquivalentMinutes: 60, asOf: now)))
+        XCTAssertFalse(result.isInterval)
+    }
+
+    func testExcludedTypeIsNeverSuggested() throws {
+        let result = try XCTUnwrap(CardioSuggestionGenerator.generate(
+            input: CardioSuggestionInput(history: steadyHistory(.run),
+                                         weeklyModerateEquivalentMinutes: 60, asOf: now,
+                                         excludedTypes: [.run])))
+        XCTAssertNotEqual(result.type, .run)
+    }
+
+    func testEmptyHistoryFallbackSkipsExcludedAndAllExcludedReturnsNil() {
+        let skipped = CardioSuggestionGenerator.generate(
+            input: CardioSuggestionInput(weeklyModerateEquivalentMinutes: 0, asOf: now,
+                                         excludedTypes: [.run]))
+        XCTAssertEqual(skipped?.type, .walk)
+        let none = CardioSuggestionGenerator.generate(
+            input: CardioSuggestionInput(
+                weeklyModerateEquivalentMinutes: 0, asOf: now,
+                excludedTypes: Set(CardioType.allCases)))
+        XCTAssertNil(none)
+    }
 }

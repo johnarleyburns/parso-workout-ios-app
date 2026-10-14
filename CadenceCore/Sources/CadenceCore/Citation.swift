@@ -513,6 +513,16 @@ public enum CitationRegistry {
         url: "https://doi.org/10.1007/s40279-015-0365-0"
     )
 
+    /// 10-minute sprint intervals vs 50-minute endurance — time-efficient HIIT claims.
+    public static let gillenSIT2016 = Citation(
+        id: "gillenSIT2016",
+        authors: "Gillen, Martin, Gibala et al.",
+        year: 2016,
+        title: "Twelve Weeks of Sprint Interval Training Improves Indices of Cardiometabolic Health Similar to Traditional Endurance Training despite a Five-Fold Lower Exercise Volume and Time Commitment",
+        source: "PLOS ONE 11(4)",
+        url: "https://doi.org/10.1371/journal.pone.0154075"
+    )
+
     /// Sprint interval training effects — short, hard anaerobic interval claims.
     public static let slothSIT2013 = Citation(
         id: "slothSIT2013",
@@ -728,7 +738,7 @@ public enum CitationRegistry {
         mezzani2013AerobicIntensity,
         compendium2024AdultPhysicalActivities, pag2018AerobicStrengthGuidelines,
         kaufmannThreshold2023, milanovicHIIT2015,
-        slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
+        slothSIT2013, gillenSIT2016, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
         lauersenInjuryPrevention2014, fieldFitnessReliability2022, tongPlank2014,
         murlasitsConcurrentSequence2018, currierResistancePrescription2023,
         tabata1996, gibala2006, metcalfeREHIT2012, gunnarsson1020302012,
@@ -798,6 +808,7 @@ public enum CitationRegistry {
         "seilerPolarized2010": "Training intensity distribution in endurance athletes — backs how the coach reads weekly cardio time spread across HR zones (mostly easy, some hard).",
         "kaufmannThreshold2023": "HRV-derived thresholds for exercise intensity prescription — backs threshold/tempo training prescriptions.",
         "milanovicHIIT2015": "HIIT vs continuous endurance training for VO₂max — supplementary evidence for VO₂-interval prescriptions.",
+        "gillenSIT2016": "Ten minutes of sprint intervals matched 50 minutes of endurance training for cardiometabolic health — backs time-efficient interval cardio suggestions.",
         "slothSIT2013": "Sprint interval training effects on VO₂max — backs the anaerobic/SIT opt-in prescription.",
         "buchheitLaursenHIIT2013": "HIIT programming: anaerobic energy and neuromuscular load — supplementary evidence for anaerobic training.",
         "konradStretchROM2024": "Chronic stretching effects on range of motion — backs stretch/mobility session candidates.",

@@ -98,3 +98,33 @@ public enum WatchExerciseSelection {
         return out
     }
 }
+
+/// Narrowing choices layered on a Watch muscle-group list: compound/isolation
+/// and equipment. `nil` means "Any" for that facet.
+public struct WatchExerciseFilter: Equatable, Sendable {
+    public var mechanics: Mechanics?
+    public var equipment: Equipment?
+
+    public init(mechanics: Mechanics? = nil, equipment: Equipment? = nil) {
+        self.mechanics = mechanics
+        self.equipment = equipment
+    }
+
+    public var isActive: Bool { mechanics != nil || equipment != nil }
+
+    public func apply(to entries: [ExerciseCatalogEntry]) -> [ExerciseCatalogEntry] {
+        entries.filter { entry in
+            (mechanics == nil || entry.mechanicsValue == mechanics)
+                && (equipment == nil || entry.equipmentValue == equipment)
+        }
+    }
+
+    /// Equipment present in `entries` that also satisfies the mechanics choice,
+    /// so the equipment picker never offers an option that yields an empty list.
+    public func availableEquipment(in entries: [ExerciseCatalogEntry]) -> [Equipment] {
+        let present = Set(entries
+            .filter { mechanics == nil || $0.mechanicsValue == mechanics }
+            .compactMap(\.equipmentValue))
+        return Equipment.allCases.filter(present.contains)
+    }
+}

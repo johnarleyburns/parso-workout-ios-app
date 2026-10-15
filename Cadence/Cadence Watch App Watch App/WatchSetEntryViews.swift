@@ -39,7 +39,8 @@ struct WatchWeightEntryView: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button { adjust(-plate) } label: { Label("Subtract", systemImage: "minus") }
+                    Button { adjust(-plate) } label: { Label("Sub", systemImage: "minus").lineLimit(1) }
+                        .accessibilityLabel("Subtract")
                         .accessibilityIdentifier("watchWeight.minusPlate")
                     Button { adjust(plate) } label: { Label("Add", systemImage: "plus") }
                         .accessibilityIdentifier("watchWeight.plusPlate")

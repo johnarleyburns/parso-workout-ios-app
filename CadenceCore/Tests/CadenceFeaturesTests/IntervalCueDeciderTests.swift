@@ -53,4 +53,17 @@ final class IntervalCueDeciderTests: XCTestCase {
         d.reset()
         XCTAssertEqual(d.cues(phaseKind: .work, currentPhaseID: 1, phaseRemaining: 3, isPaused: false, isComplete: false), [.countdownTick])
     }
+
+    func testGetReadyCountdownBeforeWorkInterval() {
+        var d = IntervalCueDecider()
+        XCTAssertEqual(d.cues(phaseKind: .rest, currentPhaseID: 2, phaseRemaining: 3, nextPhaseKind: .work, isPaused: false, isComplete: false), [.getReady(3)])
+        XCTAssertEqual(d.cues(phaseKind: .rest, currentPhaseID: 2, phaseRemaining: 3, nextPhaseKind: .work, isPaused: false, isComplete: false), [])
+        XCTAssertEqual(d.cues(phaseKind: .rest, currentPhaseID: 2, phaseRemaining: 2, nextPhaseKind: .work, isPaused: false, isComplete: false), [.getReady(2)])
+    }
+
+    func testNoGetReadyWhenNextPhaseIsNotWork() {
+        var d = IntervalCueDecider()
+        XCTAssertEqual(d.cues(phaseKind: .work, currentPhaseID: 1, phaseRemaining: 10, nextPhaseKind: .rest, isPaused: false, isComplete: false), [])
+        XCTAssertEqual(d.cues(phaseKind: .warmup, currentPhaseID: 1, phaseRemaining: 3, nextPhaseKind: .cooldown, isPaused: false, isComplete: false), [])
+    }
 }

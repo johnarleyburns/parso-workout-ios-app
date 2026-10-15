@@ -1,5 +1,15 @@
 # Current Status
 
+## Latest implementation — 3-2-1 get-ready countdown (issue #110)
+
+- iPhone `IntervalView` shows a full-screen 3-2-1 "Get Ready" overlay before the
+  workout clock starts and in the last 3 s before each work interval (voice on or
+  off); with spoken cues on it also says "Get ready". Logic:
+  `IntervalRunner.nextPhaseKind/startCountdownSecond` and
+  `IntervalCueDecider.Cue.getReady` (2 new tests; `swift test --parallel` exits 0).
+  Watch app not changed yet — next task: mirror the countdown in the Watch
+  interval/cardio flow (`WatchIntervalCuePlayer`). iOS app target not built here.
+
 ## Latest implementation — small-watch smoke (issue #44)
 
 - Added `make watch-smoke-small`: runs the existing single watch UI test (plus

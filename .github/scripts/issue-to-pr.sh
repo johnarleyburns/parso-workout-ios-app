@@ -23,7 +23,11 @@ ci_paths=(
   .github/workflows/issue-to-pr.yml
   .github/workflows/pr-validation.yml
   .github/workflows/ios.yml
+  .github/workflows/pr-conflict-repair.yml
+  .github/workflows/pr-maintenance.yml
   .github/scripts/issue-to-pr.sh
+  .github/scripts/pr-conflict-repair.sh
+  .github/scripts/pr-maintenance.sh
 )
 is_ci_path() {
   local path="$1" allowed

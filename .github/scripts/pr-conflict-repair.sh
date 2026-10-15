@@ -135,7 +135,13 @@ repair_pr() {
     fi
   fi
 
-  [[ $(mergeable_state "$n") == CONFLICTING ]] || { echo "PR #$n: not conflicting"; return 0; }
+  local state
+  state=$(mergeable_state "$n")
+  if [[ "$state" != CONFLICTING && "$state" != BEHIND ]]; then
+    echo "PR #$n: no conflict or behind state (state=$state)"
+    return 0
+  fi
+
   echo "PR #$n: repairing"
   ci_authorized=false; ci_authorized_for "$issue" && ci_authorized=true
   autom=$(jq -r '.autoMergeRequest != null' <<<"$info")

@@ -1,6 +1,6 @@
 # CLAUDE.md — Cadence
 
-Project memory for Claude Code. Read `docs/REQUIREMENTS.md` for the full spec; this file is the quick, durable context. Keep it short — prune anything Claude learns on its own.
+Project memory for Claude Code. This file is the quick, durable context. The code is the rule: the `docs/` directory exists only for historical reasons and must not be relied upon; when docs and code disagree, the code wins. Keep it short — prune anything Claude learns on its own.
 
 ## Swift 6 hard rule
 
@@ -18,7 +18,7 @@ Cladiron: an open-source, privacy-first, iPhone-native **strength coach** built 
 
 The **Cladiron Platform Spec v2.5** (`docs/plans/cladiron-mvp-revised/`) is a
 historical planning document. The active roadmap and product scope are recorded
-in `current_status.md`; the retired Trainer/client-sharing/Pro direction must
+in this file and the code; the retired Trainer/client-sharing/Pro direction must
 not be implemented.
 Current direction, so you don't design against the wrong target:
 
@@ -95,7 +95,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 ## Conventions
 - Small, focused commits; one feature per branch; push to main when verified.
 - Reference spec IDs in commits/PRs (e.g. "FR-1 strength logging", "FR-3 steps").
-- Follow the phasing in `docs/REQUIREMENTS.md` §8. Build the `CadenceCore` package first.
+- Build the `CadenceCore` package first.
 - Accessibility is not optional: VoiceOver labels + Dynamic Type on every new view (NFR-2).
 - **Logic goes in `CadenceFeatures`, not in a `View`.** Views take a prepared
   state struct / view-model and render it; the logic is unit-tested in
@@ -144,7 +144,7 @@ diagnostic, export, or recovery path instead of implying a control the app does
 not have.
 
 ## Workflow rules for Claude Code
-- **`current_status.md` is the active task plan and handoff.** At the start of every task, read it and continue from its documented overall position and immediate next task. Before implementing, update it with the intended task/step when the work meaningfully changes the plan. After implementation, update it with what changed, verification results, remaining work, and the next task. Do not rely on stale conversation context instead of this file.
+- **We do NOT use `current_status.md` to track status** (the file has been removed). Do not create or update it; derive state from the code, git history, and this file.
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
 - **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.
 - Scope investigations narrowly; ask before large refactors or new dependencies (this repo aims for zero proprietary deps — see NFR-6).

@@ -2,6 +2,22 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — Watch "This Week" page (issue #55)
+
+- Swipe left from the Watch Today page (page-style `TabView`) to **This Week**: two
+  concentric rings, Strength sets (outer) and Cardio minutes (inner), each with a text
+  label, count and unit. Tones: red = 0, yellow < minimum, light blue between minimum and
+  upper limit, green at/above upper (`WatchWeekRings` / `WatchWeekRing.tone`, CadenceFeatures).
+  Cardio uses 150/300; sets use 4 and 12 per tracked muscle group, as on the phone.
+- Data: the Watch holds only its own sessions, so the phone publishes
+  `WatchSync.WeekSummary` (new `week.*` application-context keys, carried through
+  `pushSettingsContext`) from `savePlatformSnapshot`. Until synced the page shows zeros and
+  "Open Cladiron on iPhone to sync."
+- Mockups for 40/41 mm and 46/49 mm: `docs/mockups/watch-this-week.html`.
+- Verification: `WatchWeekRingsTests` (4) pass; generic iOS build (embeds Watch) succeeds;
+  test-pyramid guardrail OK. No simulator run — device/visual check on small and large
+  watches remains for the owner. Next: owner visual confirmation.
+
 ## Latest implementation — TestFlight What to Test notes (issue #69)
 
 - Added `TestFlightReleaseNotes` and `TestFlightNotesPublication` (CadenceCore,

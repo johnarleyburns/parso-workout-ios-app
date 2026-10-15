@@ -24,6 +24,10 @@ struct WatchAddExerciseView: View {
     @State private var customName = ""
     @State private var customGroups: Set<MuscleGroup> = []
     @State private var showingAllGroups = false
+    /// When the visible list last swapped (category opened, Recent, search).
+    /// A tap that was aimed at the previous list can land on the new list's
+    /// first row; rows ignore taps for a short moment after a swap.
+    @State private var listChangedAt = Date.distantPast
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -136,6 +140,7 @@ struct WatchAddExerciseView: View {
                     if !catalog.recent.isEmpty {
                         Button {
                             WatchHaptics.tap()
+                            listChangedAt = Date()
                             showingRecent = true
                         } label: { Label("My Last Exercises", systemImage: "clock.arrow.circlepath") }
                         .buttonStyle(.plain)
@@ -145,6 +150,7 @@ struct WatchAddExerciseView: View {
                     ForEach(watchCategoryOrder) { group in
                         Button {
                             WatchHaptics.tap()
+                            listChangedAt = Date()
                             selectedGroup = group
                         } label: { Text(group.displayName) }
                         .buttonStyle(.plain)
@@ -331,6 +337,7 @@ struct WatchAddExerciseView: View {
     /// Rows are plain values; the stored exercise is read only when tapped.
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
         Button {
+            guard Date().timeIntervalSince(listChangedAt) > 0.5 else { return }
             WatchHaptics.tap()
             selectedExercise = ExerciseCatalogSnapshot.exercise(id: exercise.id, in: context)
         } label: {
@@ -342,6 +349,7 @@ struct WatchAddExerciseView: View {
     }
 
     private func scheduleSearch(immediate: Bool = false) {
+        listChangedAt = Date()
         searchTask?.cancel()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

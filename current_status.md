@@ -1,5 +1,25 @@
 # Current Status
 
+## Latest implementation — automated Claude PR conflict repair (issue #82)
+
+- Added `.github/workflows/pr-conflict-repair.yml` (push to main, hourly sweep,
+  owner-only manual dispatch with `pr_number`; single concurrency group) and
+  `.github/scripts/pr-conflict-repair.sh`. For each open same-repo PR with the
+  `<!-- claude-issue:N -->` marker and `claude/issue-N-RUN` branch, it polls
+  mergeability (bounded), merges latest main (no force-push), lets Sonnet
+  resolve only the conflicted files, checks for markers/unmerged paths, runs the
+  full validation list, re-checks PR state/head/main, then pushes. Up to 3
+  attempts, each re-fetching main. Signing/credential files and unauthorized
+  `.github` files are never auto-resolved. On exhaustion: `needs-human-review`
+  label, PR + issue (@johnarleyburns) comments with run link, and a
+  failure marker keyed to the head SHA stops retries until the PR changes or the
+  owner dispatches. Auto-merge is re-enabled only if it was on; approvals and
+  checks stay with branch protection.
+- Not run: workflow/script exercised only via `bash -n`; the eight scenarios in
+  the issue need a live repository to verify. No Swift changes.
+
+Updated: 2026-10-15
+
 ## Latest implementation — small-watch smoke (issue #44)
 
 - Added `make watch-smoke-small`: runs the existing single watch UI test (plus

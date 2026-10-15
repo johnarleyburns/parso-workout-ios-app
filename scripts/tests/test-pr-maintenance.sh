@@ -3,6 +3,9 @@
 # and a mocked-gh end-to-end sweep. No network, no simulator.
 set -uo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
+# Hermetic: never inherit repair-job state (e.g. TARGET_PR) or real credentials.
+unset TARGET_PR DRY_RUN GITHUB_RUN_ID GITHUB_STEP_SUMMARY REPORT_FILE
+export GH_TOKEN=mock-token GITHUB_TOKEN=mock-token GITHUB_REPOSITORY=o/r
 # shellcheck disable=SC1091
 source .github/scripts/pr-maintenance.sh
 fails=0
@@ -16,7 +19,10 @@ eq "ready success automerge -> waiting-merge"       "$(decide false clean succes
 eq "dirty -> repair"                                "$(decide false dirty success true false 0)" repair
 eq "failed validation, clean -> repair"             "$(decide false clean failed false false 1)" repair
 eq "failed, 3 attempts -> exhausted"                "$(decide false clean failed false false 3)" exhausted
-eq "action_required never passes"                   "$(decide true clean action_required false false 0)" escalate-approval
+eq "action_required first -> resync"               "$(decide true clean action_required false false 0)" resync-approval
+eq "action_required after resync -> escalate"      "$(decide true clean action_required false false 0 1)" escalate-approval
+eq "draft behind action_required -> resync"        "$(decide true behind action_required false false 0)" resync-approval
+eq "draft dirty action_required -> repair"         "$(decide true dirty action_required false false 0)" repair
 eq "cancelled -> rerun"                             "$(decide false clean cancelled false false 0)" rerun
 eq "missing check -> retrigger"                     "$(decide false clean missing false false 0)" retrigger
 eq "pending -> wait"                                "$(decide false behind pending true false 0)" wait
@@ -73,5 +79,31 @@ grep -Eq 'pr (ready|merge|close)' "$MOCK_LOG" && r=yes || r=no
 eq "no ready/merge/close on behind PR" "$r" no
 eq "fork/non-Claude ignored" "$(jq '.open_claude_prs' "$tmp/report.json")" 1
 eq "behind counted" "$(jq '.behind' "$tmp/report.json")" 1
+
+# Git: modify/delete conflict resolved by accepting main's deletion, filenames with spaces.
+if [[ -z "${SKIP_GIT_TESTS:-}" ]]; then
+  src=$(sed -n '/^staged_merge_paths_ok()/,/^}/p;/^stage_resolved()/,/^}/p' .github/scripts/pr-conflict-repair.sh)
+  ci_authorized=false; ci_paths=(); sensitive_re='\.p12$'
+  path_allowed() { [[ "$1" != .github/* ]] && ! grep -Eiq "$sensitive_re" <<<"$1"; }
+  eval "$src"
+  g="$tmp/g"; git init -q -b main "$g"; (
+    cd "$g" && git config user.email t@t && git config user.name t
+    echo a >current_status.md; echo b >"my file.txt"; mkdir -p .github/workflows; echo w >.github/workflows/x.yml
+    git add -A && git commit -qm base
+    git checkout -qb feat && echo c >>current_status.md && echo d >>"my file.txt" && git commit -qam feat
+    git checkout -q main && git rm -q current_status.md && echo w2 >.github/workflows/x.yml && git commit -qam main
+    git update-ref refs/remotes/origin/main main
+    git checkout -q feat
+    git merge --no-edit origin/main >/dev/null 2>&1
+    cf=(); while IFS= read -r -d '' f; do cf+=("$f"); done < <(git diff --name-only --diff-filter=U -z)
+    rm -f current_status.md
+    stage_resolved "${cf[@]}" && [[ -z "$(git ls-files -u)" ]] && staged_merge_paths_ok && git commit -qm merge && echo ok
+  ) >"$tmp/gitout" 2>&1
+  eq "modify/delete resolved + upstream .github allowed" "$(tail -1 "$tmp/gitout")" ok
+  [[ ! -e "$g/current_status.md" ]] && r=yes || r=no
+  eq "deleted file not recreated" "$r" yes
+  ( cd "$g" && git checkout -q feat && echo evil >.github/workflows/x.yml && git add -A && staged_merge_paths_ok ) 2>/dev/null && r=allowed || r=rejected
+  eq "unauthorized workflow edit rejected" "$r" rejected
+fi
 
 [[ $fails -eq 0 ]] && echo "all passed" || { echo "$fails failure(s)"; exit 1; }

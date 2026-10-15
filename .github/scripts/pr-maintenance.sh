@@ -27,17 +27,18 @@ repo="${GITHUB_REPOSITORY:-}"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/${repo}/actions/runs/${GITHUB_RUN_ID:-0}"
 REPORT="${REPORT_FILE:-/tmp/pr-maintenance-report.json}"
 INFRA=0
+FIX_VERSION=126   # bump to re-migrate stops caused by a newly fixed automation defect
 
-# decide <draft> <state> <validation> <automerge> <stopped> <attempts>
+# decide <draft> <state> <validation> <automerge> <stopped> <attempts> [approval_tries]
 decide() {
-  local draft="$1" state="$2" val="$3" autom="$4" stopped="$5" attempts="$6"
+  local draft="$1" state="$2" val="$3" autom="$4" stopped="$5" attempts="$6" atries="${7:-0}"
   [[ "$stopped" == true ]] && { echo stopped; return; }
   if [[ "$state" == dirty || "$val" == failed ]]; then
     (( attempts >= max_attempts )) && echo exhausted || echo repair
     return
   fi
   case "$val" in
-    action_required) echo escalate-approval; return ;;
+    action_required) (( atries < 1 )) && echo resync-approval || echo escalate-approval; return ;;
     cancelled) echo rerun; return ;;
     missing) echo retrigger; return ;;
     pending) echo wait; return ;;
@@ -160,11 +161,22 @@ process_pr() {
       dry || { gh pr edit "$n" --remove-label "$label" >/dev/null 2>&1; }  # head moved: resume
     fi
   fi
+  # One-time migration: stops caused by now-fixed automation defects (deleted-file
+  # staging, inherited TARGET_PR, premature action_required) get a fresh budget
+  # once per FIX_VERSION. Security stops (restricted-conflict, etc.) are untouched.
+  if [[ "$stopped" == true && "$(jq -r '.migrated_fix // 0' <<<"$st")" -lt "$FIX_VERSION" ]] \
+     && jq -e '(.escalated // []) | all(.[]; test("^(action-required|repair-exhausted|automation-infrastructure-failure):"))' <<<"$st" >/dev/null; then
+    st=$(jq -c --argjson v "$FIX_VERSION" --argjson a "$attempts" \
+      '.migrated_fix = $v | .migrated_from_attempts = $a | .attempts = 0 | .approval_tries = 0 | .escalated = [] | del(.stopped_head)' <<<"$st")
+    attempts=0; stopped=false
+    echo "PR #$n: stop invalidated by automation fix v$FIX_VERSION (prior diagnostics kept in history)"
+    dry || { gh pr edit "$n" --remove-label "$label" >/dev/null 2>&1; put_state "$n" "$st" "automation fix v$FIX_VERSION invalidated an earlier automation stop; resuming"; }
+  fi
   # A newly passing head ends the failure generation.
   if [[ "$val" == success && "$attempts" -gt 0 ]]; then
     st=$(jq -c '.attempts = 0' <<<"$st"); attempts=0
   fi
-  action=$(decide "$draft" "$state" "$val" "$autom" "$stopped" "$attempts")
+  action=$(decide "$draft" "$state" "$val" "$autom" "$stopped" "$attempts" "$(jq -r '.approval_tries // 0' <<<"$st")")
   echo "PR #$n: head=${head:0:8} state=$state validation=$val draft=$draft auto_merge=$autom attempts=$attempts -> $action"
   record "$n" "$state" "$val" "$action"
   dry && return 0
@@ -178,8 +190,18 @@ process_pr() {
         put_state "$n" "$st" "repair dispatched ($state / validation $val)"
       fi ;;
     exhausted) escalate "$n" "$issue" "$head" "repair-exhausted" "Validation=$val, branch state=$state after $attempts automated repair attempts." ;;
+    resync-approval)
+      # Bounded (once per head): a trusted-token sync event; GitHub still decides
+      # whether a human approval is genuinely required (then escalate-approval).
+      st=$(jq -c '.approval_tries = ((.approval_tries // 0) + 1)' <<<"$st")
+      if [[ "$state" == behind ]]; then
+        api -X PUT "repos/${repo}/pulls/$n/update-branch" -f expected_head_sha="$head" >/dev/null 2>&1 || echo "PR #$n: update-branch refused"
+      else
+        gh pr close "$n" >/dev/null 2>&1 && gh pr reopen "$n" >/dev/null 2>&1 || INFRA=1
+      fi
+      put_state "$n" "$st" "approval-required validation: trusted re-sync attempted for ${head:0:8}" ;;
     escalate-approval)
-      escalate "$n" "$issue" "$head" "action-required" "GitHub requires approval before validation runs for this commit. Confirm CLAUDE_WORKFLOW_TOKEN belongs to a user with write access and that the repository's Actions approval policy does not require approval for this actor; then approve the run once in the Actions tab." ;;
+      escalate "$n" "$issue" "$head" "action-required" "GitHub requires approval before validation runs for this commit. Confirm CLAUDE_WORKFLOW_TOKEN belongs to a user with write access and that the repository's Actions approval policy does not require approval for this actor; then approve the run once in the Actions tab: ${GITHUB_SERVER_URL:-https://github.com}/${repo}/pull/${n}/checks" ;;
     rerun)
       gh run list --workflow pr-validation.yml --commit "$head" --limit 5 --json databaseId,conclusion,event \
         --jq '[.[]|select(.event=="pull_request" and .conclusion=="cancelled")][0].databaseId // empty' \

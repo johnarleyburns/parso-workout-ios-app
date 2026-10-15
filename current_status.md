@@ -1,5 +1,13 @@
 # Current Status
 
+## Latest implementation — small-watch smoke (issue #44)
+
+- Added `make watch-smoke-small`: runs the existing single watch UI test (plus
+  watch unit tests) on a `Watch-Small` simulator (`WATCH_SMALL_SIM_NAME`), and
+  wired it into `all-tests` and `shutdown-sims`. No new XCUITest functions
+  (one-test cap kept). Simulator not run here. Next: create the Watch-Small
+  simulator, run it, and fix any clipped buttons it reveals.
+
 Updated: 2026-10-10
 
 ## Latest implementation — Watch set defaults (issue #41)

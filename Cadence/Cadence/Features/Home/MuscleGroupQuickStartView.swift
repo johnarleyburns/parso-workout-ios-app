@@ -91,7 +91,7 @@ struct MuscleGroupQuickStartView: View {
             .navigationBarTitleDisplayMode(.inline)
             .task(id: sessions.count) {
                 ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
-                suggestions = ExerciseLibrary.suggestions(forMissing: missing)
+                suggestions = ExerciseLibrary.suggestions(forMissing: missing, limit: max(6, missing.count))
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

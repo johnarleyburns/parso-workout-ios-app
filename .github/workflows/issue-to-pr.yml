@@ -46,7 +46,9 @@ jobs:
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
       - name: Implement and update draft PR
-        run: bash .github/scripts/issue-to-pr.sh
+        run: |
+          cp .github/scripts/issue-to-pr.sh "$RUNNER_TEMP/issue-to-pr-runner.sh"
+          bash "$RUNNER_TEMP/issue-to-pr-runner.sh"
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4

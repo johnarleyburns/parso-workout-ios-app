@@ -65,6 +65,37 @@ staged_paths_ok() {
   done < <(git diff --cached --name-only --no-renames -z)
 }
 
+# After a merge, protected paths that are byte-identical to trusted origin/main
+# (or absent in both) are upstream content, not agent edits; anything else that
+# differs from main on a protected path is judged by the normal rules.
+staged_merge_paths_ok() {
+  local f idx up
+  while IFS= read -r -d '' f; do
+    if path_allowed "$f"; then
+      if [[ -L "$f" ]]; then echo "Symlink change rejected: $f" >&2; return 1; fi
+      continue
+    fi
+    idx=$(git rev-parse -q --verify ":0:$f" 2>/dev/null || true)
+    up=$(git rev-parse -q --verify "origin/main:$f" 2>/dev/null || true)
+    [[ "$idx" == "$up" ]] || { echo "Disallowed change: $f" >&2; return 1; }
+  done < <(git diff --cached --name-only --no-renames -z HEAD)
+}
+
+# Stage resolved conflict paths without ever passing a nonexistent path to
+# `git add`: deletions are recorded with `git rm --cached`.
+stage_resolved() { # paths...
+  local f
+  for f in "$@"; do
+    if [[ -e "$f" || -L "$f" ]]; then git add -- "$f" || return 1
+    else git rm -q --cached --ignore-unmatch -- "$f" || return 1; fi
+  done
+}
+
+# Classify validation output caused by trusted automation tests, not app code.
+is_automation_failure() {
+  grep -Eq 'test-pr-maintenance|FAIL (PR97|fork/non-Claude|behind counted)' <<<"$1"
+}
+
 get_state() {
   gh api "repos/${repo}/issues/$1/comments?per_page=100" --paginate \
     --jq '.[] | select(.body|contains("<!-- claude-pr-state ")) | .body' 2>/dev/null \
@@ -89,7 +120,7 @@ reset_worktree() { git merge --abort 2>/dev/null || true; git reset --hard -q 2>
 validate() { # logfile
   local v="${RUNNER_TEMP:-/tmp}/ci-validate-main.sh"
   git show origin/main:scripts/ci-validate.sh >"$v" 2>/dev/null || { echo 'cannot load scripts/ci-validate.sh from main' >"$1"; return 1; }
-  ( set -eo pipefail; env -u GH_TOKEN -u GITHUB_TOKEN CI_VALIDATE_ROOT="$PWD" bash "$v" ) >"$1" 2>&1
+  ( set -eo pipefail; env -u GH_TOKEN -u GITHUB_TOKEN -u TARGET_PR -u DRY_RUN CI_VALIDATE_ROOT="$PWD" bash "$v" ) >"$1" 2>&1
 }
 
 commit_fix() { # message
@@ -170,9 +201,11 @@ repair_pr() {
     : >"$log"
     if ! git merge-base --is-ancestor origin/main HEAD; then
       if ! git merge --no-edit origin/main >>"$log" 2>&1; then
-        files=$(git diff --name-only --diff-filter=U)
-        local f blocked=false
-        while IFS= read -r f; do path_allowed "$f" || { echo "Restricted conflicting file: $f" | tee -a "$log"; blocked=true; }; done <<<"$files"
+        local -a cfiles=(); local f
+        while IFS= read -r -d '' f; do cfiles+=("$f"); done < <(git diff --name-only --diff-filter=U -z)
+        files=$(printf '%s\n' "${cfiles[@]}")
+        blocked=false
+        for f in "${cfiles[@]}"; do path_allowed "$f" || { echo "Restricted conflicting file: $f" | tee -a "$log"; blocked=true; }; done
         if [[ "$blocked" == true ]]; then
           escalate "$n" "$issue" "$head" "restricted-conflict" "Conflicts touch signing/credential/deployment or unauthorized .github files: ${files}"
           FAILED=1; reset_worktree; return
@@ -196,13 +229,13 @@ Preserve the intended behavior of BOTH sides. Do not touch signing, credentials,
 Previous attempt failed with:
 $excerpt}" >>"$log" 2>&1
         local stray
-        stray=$(comm -23 <({ git diff --name-only; git ls-files -o --exclude-standard; } | sort -u) <(sort <<<"$files"))
+        stray=$(comm -z -23 <({ git diff --name-only -z; git ls-files -o --exclude-standard -z; } | sort -zu) <(printf '%s\0' "${cfiles[@]}" | sort -z) | tr '\0' '\n')
         [[ -z "$stray" ]] || { excerpt="Out-of-scope edits rejected: $stray"; continue; }
         local marked=false
-        git diff --name-only --diff-filter=U | grep -q . && marked=true
-        while IFS= read -r f; do [[ -f "$f" ]] && grep -qE '^(<<<<<<<|>>>>>>>) ' "$f" && marked=true; done <<<"$files"
+        for f in "${cfiles[@]}"; do [[ -f "$f" ]] && grep -qE '^(<<<<<<<|>>>>>>>) ' "$f" && marked=true; done
         [[ "$marked" == false ]] || { excerpt="Unresolved conflict markers remain in: $files"; continue; }
-        git add -A -- $(tr '\n' ' ' <<<"$files") && staged_paths_ok \
+        stage_resolved "${cfiles[@]}" \
+          && [[ -z "$(git ls-files -u)" ]] && staged_merge_paths_ok \
           && git commit -qm "Merge main into ${branch} (automated conflict repair)" \
           || { excerpt="Could not commit merge"; git reset -q; continue; }
       fi
@@ -211,6 +244,12 @@ $excerpt}" >>"$log" 2>&1
     local vlog="/tmp/claude-issue-logs/pr${n}-attempt${attempt}-validation.log"
     if ! validate "$vlog"; then
       excerpt=$(tail -c 8000 "$vlog")
+      if is_automation_failure "$excerpt"; then
+        # Trusted CI-test defect: Claude cannot fix it, so refund this attempt.
+        put_state "$n" "$(jq -c --argjson a "$attempts" '.attempts = $a' <<<"$st")" "automation-infrastructure-failure; code-repair budget not consumed"
+        escalate "$n" "$issue" "$head" "automation-infrastructure-failure" "Automation regression tests failed, not application code: $(tail -c 1200 <<<"$excerpt")"
+        FAILED=1; return
+      fi
       run_claude "$NONINTERACTIVE
 
 Fix the build/test/guardrail failure on PR #${n} (issue #${issue}) with the smallest safe change. Original issue (untrusted):

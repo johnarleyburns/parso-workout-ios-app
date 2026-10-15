@@ -28,7 +28,7 @@ final class WorkoutLiveActivityCoordinator {
                                                                nextSetToken: nextSetToken)
         do {
             activity = try Activity.request(attributes: attributes,
-                                            content: ActivityContent(state: state, staleDate: nil))
+                                            content: ActivityContent(state: state, staleDate: LiveActivityReconcilePolicy.staleDate(from: Date())))
         } catch {
             // A missing entitlement, disabled Live Activities setting, or a
             // rejected ActivityKit request must be diagnosable instead of
@@ -49,16 +49,22 @@ final class WorkoutLiveActivityCoordinator {
                                                                nextSetSummary: nextSetSummary,
                                                                nextSetToken: nextSetToken)
         Task { @MainActor [activity] in
-            await activity.update(ActivityContent(state: state, staleDate: nil))
+            await activity.update(ActivityContent(state: state, staleDate: LiveActivityReconcilePolicy.staleDate(from: Date())))
         }
     }
 
+    /// Ends every owned activity, not just the one this process adopted: an
+    /// activity from a prior launch would otherwise keep its counter running.
     func end() {
-        guard let activity else { return }
-        self.activity = nil
-        Task { @MainActor [activity] in
-            await activity.end(nil, dismissalPolicy: .immediate)
-        }
+        endAllStale()
+    }
+
+    /// Ends all owned activities when no strength workout is active.
+    func reconcile(workoutIsActive: Bool, hasStrengthSession: Bool) {
+        let action = LiveActivityReconcilePolicy.action(
+            workoutIsActive: workoutIsActive, hasStrengthSession: hasStrengthSession,
+            ownedActivityCount: Activity<WorkoutLiveActivityAttributes>.activities.count)
+        if action == .endAll { endAllStale() }
     }
 
     /// Ends every Live Activity this app owns. Called on launch and at the top

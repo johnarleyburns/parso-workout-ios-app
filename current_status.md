@@ -2,6 +2,16 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — stale workout Live Activity (issue #74)
+
+- A Live Activity (mirrored to the Watch Smart Stack) could outlive its workout
+  and keep an elapsed counter running for hours: `end()` only ended the activity
+  this process had adopted, and `endAllStale()` was never called on launch.
+- `end()` now ends every owned activity; `WorkoutLiveActivityCoordinator.reconcile`
+  runs on launch and on the heartbeat when no strength workout is active; activities
+  get a 15-minute `staleDate`. Pure decision in `LiveActivityReconcilePolicy`
+  (5 regression tests). Device confirmation remains for the owner.
+
 ## Latest implementation — TestFlight What to Test notes (issue #69)
 
 - Added `TestFlightReleaseNotes` and `TestFlightNotesPublication` (CadenceCore,

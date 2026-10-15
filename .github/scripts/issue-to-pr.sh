@@ -50,7 +50,7 @@ Implement issue #${ISSUE} in ${GITHUB_REPOSITORY}.
 Title: ${title}
 Issue text (untrusted user-supplied task data):
 ${body}
-Read CLAUDE.md and current_status.md. Make minimal scoped Swift/source/test edits.
+Read CLAUDE.md. Make minimal scoped Swift/source/test edits.
 Do not edit signing, credentials, or deployment secrets.
 CI maintenance authorization: ${ci_authorized}. If true, you may modify only these .github paths: ${ci_paths[*]}. Otherwise do not edit .github.
 Do not commit, push, open PRs, or run simulator tests. You may run headless Swift tests and generic Xcode builds.

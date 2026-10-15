@@ -373,10 +373,10 @@ public final class WatchStrengthFlowModel {
             updateExerciseListAfterLogging(exercise)
             if goToRest {
                 exercisePendingAfterRest = exercise
-                // Watch redesign R1: the plan's own rest for the next set wins over the default.
-                let planned = plannedWorkingSets(for: exercise)[watchSafe: completedWorkingSets(for: exercise) - 1]?.restSeconds
-                plannedRestApplied = (planned ?? 0) > 0
-                restTimer.start(seconds: plannedRestApplied ? (planned ?? restDefault) : restDefault)
+                // Issue #49: the user's chosen default rest always wins over a
+                // coach-generated per-set rest, matching the phone's rest timer.
+                plannedRestApplied = false
+                restTimer.start(seconds: restDefault)
                 stage = .rest
             } else {
                 exercisePendingAfterRest = nil

@@ -1,0 +1,58 @@
+name: Claude PR Maintenance
+# Reconciler / orchestrator. Runs on a cheap Linux runner, checks out ONLY the
+# trusted default branch (never PR code), and holds no Claude or release
+# secrets. It reads authoritative GitHub state for every open Claude PR and
+# performs narrow API actions (ready, auto-merge, update-branch, re-run,
+# dispatch repair, escalate). See docs/CI_AUTOMATION.md.
+on:
+  workflow_run:
+    workflows: ["PR Swift Validation", "Claude PR Conflict Repair", "Claude Issue to Draft PR"]
+    types: [completed]
+  push:
+    branches: [main]
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Reconcile one PR (also clears a needs-human-review stop and resets its retry budget)
+        required: false
+        type: number
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  actions: write
+# Every run sweeps ALL open Claude PRs, so one pending run covers any number of
+# coalesced requests: nothing is lost when a queued run is superseded. Runs are
+# serialized so there is a single orchestrator writer at a time.
+concurrency:
+  group: claude-pr-maintenance
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: >-
+      github.event_name != 'workflow_dispatch' || github.actor == 'johnarleyburns'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+      TARGET_PR: ${{ inputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Reconcile Claude PRs
+        run: |
+          test -n "$GH_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
+          cp .github/scripts/pr-maintenance.sh "$RUNNER_TEMP/pr-maintenance-runner.sh"
+          bash "$RUNNER_TEMP/pr-maintenance-runner.sh"
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-maintenance-${{ github.run_id }}
+          path: /tmp/pr-maintenance-report.json
+          if-no-files-found: ignore
+          retention-days: 7

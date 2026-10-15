@@ -82,6 +82,13 @@ final class ExerciseCatalogSnapshotTests: XCTestCase {
         XCTAssertTrue(snapshot.search("bench", limit: 0).isEmpty)
     }
 
+    func testWatchSearchLimitSurfacesNonPrefixKeywordMatches() throws {
+        let snapshot = try ExerciseCatalogSnapshot.build(in: context)
+        let results = snapshot.search("incline", limit: WatchExerciseSearchPresenter.resultLimit)
+        XCTAssertTrue(results.contains { !$0.name.lowercased().hasPrefix("incline") },
+                      "keyword search must reach names where the term is not first")
+    }
+
     func testRecentIsNewestFirstAndLimited() throws {
         let all = try WorkoutRepository.allExercises(context)
         let pushdown = try XCTUnwrap(all.first { $0.name == "Triceps Pushdown" })

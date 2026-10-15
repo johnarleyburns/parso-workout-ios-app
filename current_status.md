@@ -2,6 +2,14 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — Watch hold-to-log crash (issue #54)
+
+- `WatchQuickTalkController.requestPermission` now uses the async
+  `AVAudioApplication.requestRecordPermission()` (the callback form ran a
+  main-actor-isolated closure on a background queue, trapping in Swift 6), and
+  the record session uses `.playAndRecord`. Generic iOS build (embeds Watch)
+  passes; not reproduced on device — owner to confirm on hardware.
+
 ## Latest implementation — TestFlight What to Test notes (issue #69)
 
 - Added `TestFlightReleaseNotes` and `TestFlightNotesPublication` (CadenceCore,

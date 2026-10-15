@@ -1,4 +1,5 @@
 import SwiftUI
+import Charts
 import CadenceCore
 import CadenceFeatures
 
@@ -16,6 +17,30 @@ extension Color {
         case .zone5: self = .red
         case .neutral: self = .secondary
         }
+    }
+}
+
+/// Semi-transparent HR-zone background bands for HR charts, plus a bold white
+/// HR line. Bands follow the user's actual max HR (override, else age estimate).
+struct HRZoneChart: View {
+    let samples: [(t: Double, bpm: Double)]
+    let maxHR: Double
+    var body: some View {
+        let domain = HRZoneBands.domain(bpms: samples.map(\.bpm), maxHR: maxHR)
+        Chart {
+            ForEach(HRZoneBands.bands(maxHR: maxHR, domain: domain), id: \.zone) { band in
+                RectangleMark(yStart: .value("Zone start", band.lower),
+                              yEnd: .value("Zone end", band.upper))
+                    .foregroundStyle(Color(hrZoneTint: band.tint).opacity(0.3))
+            }
+            ForEach(Array(samples.enumerated()), id: \.offset) { _, sample in
+                LineMark(x: .value("Time", sample.t / 60), y: .value("BPM", sample.bpm))
+                    .foregroundStyle(.white)
+                    .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round, lineJoin: .round))
+            }
+        }
+        .chartYScale(domain: domain)
+        .chartXAxisLabel("min")
     }
 }
 

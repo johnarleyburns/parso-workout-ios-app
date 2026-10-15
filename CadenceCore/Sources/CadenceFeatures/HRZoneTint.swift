@@ -52,3 +52,34 @@ public enum LiveHRPresenter {
         return "\(Int(bpm.rounded()))"
     }
 }
+
+/// Background zone bands for HR charts: the user's actual zones (fixed %HRmax
+/// bands matching `CardioMath.hrZone`) as bpm ranges, clipped to a chart's
+/// y-domain. The view maps `tint` to a semi-transparent color.
+public enum HRZoneBands {
+    public struct Band: Equatable, Sendable {
+        public let zone: Int
+        public let lower: Double
+        public let upper: Double
+        public var tint: HRZoneTint { HRZoneTint.tint(for: zone) }
+    }
+
+    /// Lower %HRmax edges of zones 1...5 (Z1 extends down to the domain floor).
+    private static let edges: [Double] = [0, 0.60, 0.70, 0.80, 0.90]
+
+    /// y-domain covering every sample and the full Z1–Z5 span of the max HR.
+    public static func domain(bpms: [Double], maxHR: Double) -> ClosedRange<Double> {
+        let lo = min(bpms.min() ?? maxHR * 0.5, maxHR * 0.5).rounded(.down)
+        let hi = max(bpms.max() ?? maxHR, maxHR).rounded(.up)
+        return lo...max(hi, lo + 1)
+    }
+
+    public static func bands(maxHR: Double, domain: ClosedRange<Double>) -> [Band] {
+        guard maxHR > 0 else { return [] }
+        return (0..<5).compactMap { i in
+            let lower = i == 0 ? domain.lowerBound : max(edges[i] * maxHR, domain.lowerBound)
+            let upper = i == 4 ? domain.upperBound : min(edges[i + 1] * maxHR, domain.upperBound)
+            return lower < upper ? Band(zone: i + 1, lower: lower, upper: upper) : nil
+        }
+    }
+}

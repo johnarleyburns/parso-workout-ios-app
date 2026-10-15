@@ -10,6 +10,7 @@ struct CardioDetailView: View {
     @Bindable var workout: CardioWorkout
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
     @State private var datePickerPresented = false
     @State private var deletePresented = false
     @State private var titleEditorPresented = false
@@ -82,12 +83,10 @@ struct CardioDetailView: View {
 
             if !hr.isEmpty {
                 Section("Heart Rate") {
-                    Chart(hr) { sample in
-                        LineMark(x: .value("Time", sample.t / 60),
-                                 y: .value("BPM", sample.bpm))
-                            .foregroundStyle(.red)
-                    }
-                    .chartXAxisLabel("min")
+                    HRZoneChart(samples: hr.map { ($0.t, $0.bpm) },
+                                maxHR: CardioIntensityProfile.resolved(
+                                    userEnteredMaximumHR: settings.cardioMaximumHROverride,
+                                    age: settings.userAge).maximumHR ?? CardioMath.defaultMaxHR(age: settings.userAge))
                     .frame(height: 180)
                     .accessibilityIdentifier("cardioDetail.hrChart")
                     .accessibilityElement(children: .ignore)

@@ -1,5 +1,12 @@
 # Current Status
 
+## Latest implementation — Watch cardio picker legibility (issue #99)
+
+- `WatchCardioPickerView` tiles (top two rows) now use full-opacity white
+  content on `WatchTone.surfaceRaised` with `.plain` button style, instead of
+  the borderless style that rendered them as dimmed grey. Watch build and
+  simulator not run.
+
 ## Latest implementation — small-watch smoke (issue #44)
 
 - Added `make watch-smoke-small`: runs the existing single watch UI test (plus

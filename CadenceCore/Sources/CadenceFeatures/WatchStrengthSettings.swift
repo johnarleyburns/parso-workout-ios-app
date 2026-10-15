@@ -118,6 +118,10 @@ public enum WatchExerciseSearchPhase: Equatable, Sendable {
 }
 
 public enum WatchExerciseSearchPresenter {
+    /// Keyword search ranks names that start with the term first; a cap of 8
+    /// hid every "Barbell Incline…" style match behind the "Incline…" ones.
+    public static let resultLimit = 40
+
     public static func phase(query: String,
                              isSearching: Bool,
                              resultCount: Int) -> WatchExerciseSearchPhase {

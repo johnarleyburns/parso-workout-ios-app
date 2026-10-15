@@ -25,7 +25,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 120
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       ISSUE: ${{ github.event.issue.number || inputs.issue_number }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_MODEL: sonnet
@@ -34,6 +34,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          token: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       - name: Install Claude Code
         run: |
           test -n "$CLAUDE_CODE_OAUTH_TOKEN"

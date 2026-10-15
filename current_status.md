@@ -2,6 +2,16 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — strength cardio minutes (issue #53, 2026-10-15)
+
+- Strength sessions now carry HR (`WorkoutSession.hrSamplesData` / `intensitySummaryData`, additive) and
+  feed `WeeklyCardioAggregator(sessions:)` so This Week cardio minutes and Z1–Z5 include them.
+- Strength start now shows the HR gate (like cardio); the summary shows the same Intensity/zones block
+  plus strength-cardio citations; Settings → Cardio Science explains it.
+- Watch sends samples with `end_session` (`WatchStrengthHeartRate`); the phone applier stores them idempotently.
+- Five citations added (registry + CITATIONS.md). Tests: 2 new; full `swift test --parallel` and generic iOS build pass.
+- Not done: YourWeekView zone bar and native DB export still ignore session HR; simulator/device check pending.
+
 ## Latest implementation — field-test fix batch (2026-10-10)
 
 Nine field-report fixes, all headless-verified where logic exists:

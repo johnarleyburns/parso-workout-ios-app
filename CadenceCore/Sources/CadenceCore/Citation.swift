@@ -435,6 +435,51 @@ public enum CitationRegistry {
         url: "https://pubmed.ncbi.nlm.nih.gov/9139182/"
     )
 
+    public static let squatCardiorespiratory2024 = Citation(
+        id: "squatCardiorespiratory2024",
+        authors: "Hong et al.",
+        year: 2024,
+        title: "Cardiorespiratory and aerobic demands of squat exercise",
+        source: "Scientific Reports",
+        url: "https://doi.org/10.1038/s41598-024-68187-z"
+    )
+
+    public static let resistanceCircuitBodyComp2021 = Citation(
+        id: "resistanceCircuitBodyComp2021",
+        authors: "Ramos-Campo et al.",
+        year: 2021,
+        title: "Effects of Resistance Circuit-Based Training on Body Composition, Strength and Cardiorespiratory Fitness: A Systematic Review and Meta-Analysis",
+        source: "Biology",
+        url: "https://doi.org/10.3390/biology10050377"
+    )
+
+    public static let resistanceCircuitVo2max2017 = Citation(
+        id: "resistanceCircuitVo2max2017",
+        authors: "Muñoz-Martínez et al.",
+        year: 2017,
+        title: "Effectiveness of Resistance Circuit-Based Training for Maximum Oxygen Uptake and Upper-Body One-Repetition Maximum Improvements: A Systematic Review and Meta-Analysis",
+        source: "Sports Medicine",
+        url: "https://doi.org/10.1007/s40279-017-0773-4"
+    )
+
+    public static let metabolicResistanceTraining2025 = Citation(
+        id: "metabolicResistanceTraining2025",
+        authors: "Yu & Ding",
+        year: 2025,
+        title: "The effectiveness of metabolic resistance training versus traditional cardio on athletic performance: a systematic review and meta-analysis",
+        source: "Frontiers in Physiology",
+        url: "https://doi.org/10.3389/fphys.2025.1551645"
+    )
+
+    public static let circuitResistanceCardiac2022 = Citation(
+        id: "circuitResistanceCardiac2022",
+        authors: "Wu et al.",
+        year: 2022,
+        title: "Rehabilitation effects of circuit resistance training in coronary heart disease patients: A systematic review and meta-analysis",
+        source: "Clinical Cardiology",
+        url: "https://doi.org/10.1002/clc.23855"
+    )
+
     public static let acsmGarber2011AerobicGuidelines = Citation(
         id: "acsmGarber2011AerobicGuidelines",
         authors: "Garber et al.",
@@ -726,6 +771,7 @@ public enum CitationRegistry {
         zourdosRIR2016, tanakaMaxHR2001, swainLeutholtz1997HRR,
         acsmGarber2011AerobicGuidelines, piercy2018PhysicalActivityGuidelines,
         mezzani2013AerobicIntensity,
+        squatCardiorespiratory2024, resistanceCircuitBodyComp2021, resistanceCircuitVo2max2017, metabolicResistanceTraining2025, circuitResistanceCardiac2022,
         compendium2024AdultPhysicalActivities, pag2018AerobicStrengthGuidelines,
         kaufmannThreshold2023, milanovicHIIT2015,
         slothSIT2013, buchheitLaursenHIIT2013, konradStretchROM2024, behmStretching2016,
@@ -790,6 +836,11 @@ public enum CitationRegistry {
         "zourdosRIR2016": "Novel RPE scale measuring repetitions in reserve — backs the strength-intensity prescription pool.",
         "tanakaMaxHR2001": "Age-predicted maximal heart rate — backs threshold/tempo training when HR zones are estimated rather than tested.",
         "swainLeutholtz1997HRR": "Heart-rate reserve tracks oxygen-reserve intensity more closely than raw maximum-heart-rate percentages.",
+        "squatCardiorespiratory2024": "Squatting itself produces a measurable cardiorespiratory and aerobic demand, so heart-rate-derived minutes during strength work are real aerobic stimulus.",
+        "resistanceCircuitBodyComp2021": "Resistance circuit training improves cardiorespiratory fitness alongside strength, supporting counting its heart-rate minutes toward weekly aerobic totals.",
+        "resistanceCircuitVo2max2017": "Resistance circuit training raises VO2max and upper-body strength together, supporting crediting aerobic minutes earned during strength sessions.",
+        "metabolicResistanceTraining2025": "Metabolic resistance training improves sprint and jump performance versus traditional training (VO2max change was not significant), supporting it as a legitimate conditioning stimulus alongside cardio.",
+        "circuitResistanceCardiac2022": "Circuit resistance training improves aerobic capacity in cardiac rehabilitation, further evidence that resistance work carries a genuine cardiorespiratory response.",
         "acsmGarber2011AerobicGuidelines": "ACSM aerobic exercise guidance — backs the moderate/vigorous guideline accounting model.",
         "piercy2018PhysicalActivityGuidelines": "U.S. Physical Activity Guidelines — backs 150 moderate or 75 vigorous minutes and their equivalence.",
         "mezzani2013AerobicIntensity": "Aerobic-intensity position statement — backs using relative HRR and maximum-HR bands to distinguish moderate from vigorous aerobic work.",

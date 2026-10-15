@@ -158,7 +158,8 @@ struct HomeView: View {
             passiveSamples: passiveSamples, userAge: settings.userAge,
             maximumHROverride: settings.cardioMaximumHROverride)
         let weeklyCardio = WeeklyCardioAggregator.summarize(cardio, since: weekStart,
-                                                             profile: intensityProfile)
+                                                             profile: intensityProfile,
+                                                             sessions: sessions)
         let activityDose = WeeklyActivityDoseAggregator.summarize(
             cardio: cardio, sessions: sessions, since: weekStart, profile: intensityProfile)
         return HomeDashboardPresenter.make(snapshot: snapshot,

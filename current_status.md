@@ -1,5 +1,11 @@
 # Current Status
 
+## Latest implementation — cardio summary HR chart order (issue #102)
+
+- `WorkoutSummaryView`: for cardio (incl. HIIT) summaries the HR chart now renders
+  as the second section, right after the header/metrics. Strength order unchanged.
+  View-only change; no build/tests run.
+
 ## Latest implementation — small-watch smoke (issue #44)
 
 - Added `make watch-smoke-small`: runs the existing single watch UI test (plus

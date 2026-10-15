@@ -42,6 +42,7 @@ struct WorkoutSummaryView: View {
             VStack(alignment: .leading, spacing: 20) {
                 header
                 metricsGrid
+                if data.kind == .cardio, !data.hr.isEmpty { hrChart }
                 if data.kind == .strength,
                    !data.volume.isEmpty || !data.volumeByPerformer.isEmpty {
                     LiveWorkoutVolumeSummary(
@@ -58,7 +59,7 @@ struct WorkoutSummaryView: View {
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }
-                if !data.hr.isEmpty { hrChart }
+                if data.kind == .strength, !data.hr.isEmpty { hrChart }
                 if data.route.count > 1 { routeMap }
             }
             .padding()

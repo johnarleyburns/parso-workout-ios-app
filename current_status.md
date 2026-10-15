@@ -2,6 +2,19 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — Watch Today mirrors phone suggestion (issue #50)
+
+- The phone had stopped publishing any Today plan to the Watch, so the Watch
+  always said "Nothing planned today" while Home suggested e.g. Boxing
+  conditioning. `CoachWatchTodayBridge` (CadenceFeatures) projects the coach
+  decision's today recommendations into `WatchSync.TodayPlan`; Home publishes it
+  after each coach refresh (`AppModel.updateWatchTodayPlan`), `pushWatchPayload`
+  now re-sends the cached plan instead of clearing it, and the launch-time
+  `clearWatchTodayPlan()` was removed. Suggestion stays advisory (NFR-8).
+- Verification: 3 new bridge tests pass; generic iPhone build succeeds. Full
+  suite and device check of the Watch hero not run. Rich `planPayload` is not
+  sent for coach suggestions (legacy exercise names/cardio type launch only).
+
 ## Latest implementation — TestFlight What to Test notes (issue #69)
 
 - Added `TestFlightReleaseNotes` and `TestFlightNotesPublication` (CadenceCore,

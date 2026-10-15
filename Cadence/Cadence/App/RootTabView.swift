@@ -135,10 +135,6 @@ struct RootTabView: View {
                     nextSetSummary: active.nextSetSummary,
                     nextSetToken: active.nextSetToken)
             }
-            // Clear the legacy weekly Today-plan projection from older builds.
-            // Current Watch/widget projections are populated only from explicit
-            // one-off scheduled workouts.
-            model.clearWatchTodayPlan()
             // The training log syncs live via SwiftData↔CloudKit (private DB);
             // there is nothing to restore or upload here — SwiftData mirrors the
             // store automatically on launch and as changes happen.

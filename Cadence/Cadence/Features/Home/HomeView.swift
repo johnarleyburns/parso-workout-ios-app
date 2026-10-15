@@ -277,6 +277,9 @@ struct HomeView: View {
         // workout records; do not recreate a hidden weekly plan on every Home
         // refresh. This also removes a large plan-payload build from the Home
         // refresh path.
+        // The Watch Today hero mirrors the phone's suggested workout; the
+        // suggestion is advisory and the Watch still lets the user start anything.
+        model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(from: snapshot.decision))
         let todayScheduled = PlannedWorkoutsPresenter.today(
             scheduledWorkouts.map(HomePlannedWorkoutsSection.item))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(

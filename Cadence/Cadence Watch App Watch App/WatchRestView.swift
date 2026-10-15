@@ -43,6 +43,7 @@ struct WatchRestView: View {
                 Task { @MainActor in
                     let wasRunning = model.restTimer.isRunning
                     model.restTimer.tick()
+                    if model.restTimer.isRunning, (1...3).contains(model.restTimer.remaining) { WatchHaptics.tap() }
                     publishWidgetState()
                     if wasRunning, !model.restTimer.isRunning, model.restTimer.remaining == 0 {
                         cues.restComplete(soundsEnabled: watchSettings.workoutSounds)
@@ -63,15 +64,16 @@ struct WatchRestView: View {
     private var ring: some View {
         let fraction = isOver ? 1 : Double(remaining) / Double(max(total, remaining, 1))
         return ZStack {
-            Circle().stroke(Color.white.opacity(0.14), lineWidth: 7)
+            Circle().stroke(ringColor.opacity(0.2), lineWidth: 7)
             Circle()
                 .trim(from: 0, to: fraction)
-                .stroke(WatchTone.accent, style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                .stroke(isOver || remaining <= 10 ? AnyShapeStyle(ringColor) : AnyShapeStyle(WatchTone.ringGradient), style: StrokeStyle(lineWidth: 7, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 1), value: remaining)
+                .shadow(color: ringColor.opacity(0.5), radius: isLuminanceReduced ? 0 : 4)
             VStack(spacing: 2) {
                 if isOver {
-                    Text("Lift!").font(.title2.weight(.bold))
+                    Text("Lift!").font(.title2.weight(.bold)).foregroundStyle(WatchTone.accent)
                 } else if let ends = model.restTimer.endsAt {
                     Text(timerInterval: Date()...max(Date(), ends), countsDown: true)
                         .font(.system(.title, design: .rounded).weight(.bold))
@@ -90,6 +92,11 @@ struct WatchRestView: View {
         .frame(width: 112, height: 112)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(isOver ? Text("Rest over") : Text("Rest, \(format(remaining)) left"))
+    }
+
+    /// Green while resting, orange for the last 10 s so the end of rest is felt before it is read.
+    private var ringColor: Color {
+        isOver ? WatchTone.accent : (remaining <= 10 ? WatchTone.attention : WatchTone.accent)
     }
 
     @ViewBuilder

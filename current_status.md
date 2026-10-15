@@ -1,5 +1,15 @@
 # Current Status
 
+## Latest implementation — Watch visual impact (issue #107)
+
+- Styling only (no flow/button changes): primary pills use a bright accent gradient
+  and spring press-scale; set dots glow/scale for the current set; rest ring uses an
+  angular gradient + glow, turns orange for the last 10 s, and "Lift!" is accent-tinted;
+  light `.click` haptics tick on the final 3 rest seconds (success haptic at 0 kept).
+- Generic watchOS build of `Cadence Watch App Watch App` succeeds; no simulator run,
+  no mockups committed. Next: review on device/Watch-Small, extend gradients to
+  cardio/interval screens.
+
 ## Latest implementation — small-watch smoke (issue #44)
 
 - Added `make watch-smoke-small`: runs the existing single watch UI test (plus

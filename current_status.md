@@ -2,6 +2,14 @@
 
 Updated: 2026-10-10
 
+## Observations fix (issue #57, 2026-10-15)
+
+Home's Observations card only listed warnings and `.attention` insights, so it was
+empty on most days. `HomeDashboardPresenter.suggestions` now also includes cited
+`.info` insights (except cold-start) as neutral `.progress` items ranked after
+warnings. Verified: `swift test --parallel` passes. Remaining: a multi-week
+(e.g. 12-week mesocycle) retrospective insight is not yet implemented.
+
 ## Latest implementation — field-test fix batch (2026-10-10)
 
 Nine field-report fixes, all headless-verified where logic exists:

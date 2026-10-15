@@ -1,31 +1,31 @@
 name: Claude PR Conflict Repair
+# Repairs exactly one PR per run (conflicts, branch freshness, failed
+# validation). Dispatched by "Claude PR Maintenance"; the owner may also
+# dispatch it by hand. It never decides readiness or merging.
+run-name: Repair PR #${{ inputs.pr_number }} (${{ github.event_name }})
 on:
-  push:
-    branches: [main]
-  schedule:
-    # Safety net for PRs that became unmergeable without a new push to main.
-    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       pr_number:
-        description: Claude PR to repair (clears a needs-human-review stop)
+        description: Claude PR to repair
         required: true
         type: number
 permissions:
-  contents: write
+  contents: read
   issues: write
   pull-requests: write
-  actions: read
-# One repair operation at a time. A queued run sweeps every eligible PR, so a
-# superseded pending run loses nothing. Recovery pushes land on PR branches,
-# never on main, so they cannot retrigger this workflow.
+  actions: write
+# One writer per PR branch. Different PRs have different groups, so a request
+# for one PR can never cancel another PR's repair. If a second request for the
+# same PR queues behind a running one, GitHub keeps only the newest pending
+# run; that is safe because maintenance re-evaluates and re-dispatches every
+# sweep, so no request is lost.
 concurrency:
-  group: claude-pr-conflict-repair
+  group: claude-pr-repair-${{ inputs.pr_number }}
   cancel-in-progress: false
 jobs:
   repair:
-    if: >-
-      github.event_name != 'workflow_dispatch' || github.actor == 'johnarleyburns'
+    if: github.actor == 'johnarleyburns' || github.actor == 'github-actions[bot]'
     runs-on: xcode-27
     timeout-minutes: 180
     env:
@@ -37,8 +37,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
-          token: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+          persist-credentials: false   # the token is passed per git command, never stored for Claude
       - name: Install Claude Code
         run: |
           test -n "$CLAUDE_CODE_OAUTH_TOKEN"
@@ -50,7 +49,7 @@ jobs:
           test -n "$XCODE"
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - name: Repair conflicting Claude PRs
+      - name: Repair PR
         run: |
           cp .github/scripts/pr-conflict-repair.sh "$RUNNER_TEMP/pr-conflict-repair-runner.sh"
           bash "$RUNNER_TEMP/pr-conflict-repair-runner.sh"
@@ -58,7 +57,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: pr-conflict-repair-${{ github.run_id }}
+          name: pr-repair-${{ inputs.pr_number }}-${{ github.run_id }}
           path: /tmp/claude-issue-logs/
           if-no-files-found: ignore
           retention-days: 7

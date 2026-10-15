@@ -1,0 +1,64 @@
+name: Claude PR Conflict Repair
+on:
+  push:
+    branches: [main]
+  schedule:
+    # Safety net for PRs that became unmergeable without a new push to main.
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Claude PR to repair (clears a needs-human-review stop)
+        required: true
+        type: number
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  actions: read
+# One repair operation at a time. A queued run sweeps every eligible PR, so a
+# superseded pending run loses nothing. Recovery pushes land on PR branches,
+# never on main, so they cannot retrigger this workflow.
+concurrency:
+  group: claude-pr-conflict-repair
+  cancel-in-progress: false
+jobs:
+  repair:
+    if: >-
+      github.event_name != 'workflow_dispatch' || github.actor == 'johnarleyburns'
+    runs-on: xcode-27
+    timeout-minutes: 180
+    env:
+      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      ANTHROPIC_MODEL: sonnet
+      TARGET_PR: ${{ inputs.pr_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+      - name: Install Claude Code
+        run: |
+          test -n "$CLAUDE_CODE_OAUTH_TOKEN"
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Select stable Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - name: Repair conflicting Claude PRs
+        run: |
+          cp .github/scripts/pr-conflict-repair.sh "$RUNNER_TEMP/pr-conflict-repair-runner.sh"
+          bash "$RUNNER_TEMP/pr-conflict-repair-runner.sh"
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-conflict-repair-${{ github.run_id }}
+          path: /tmp/claude-issue-logs/
+          if-no-files-found: ignore
+          retention-days: 7

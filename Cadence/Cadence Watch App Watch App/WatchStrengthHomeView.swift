@@ -3,12 +3,13 @@ import CadenceCore
 import CadenceFeatures
 
 /// Watch redesign §5 P3 — the Plan page (swipe left): today's exercises with their progress, tap to
-/// jump to one, and Add exercise. Removing an exercise lives in the Set Card's More: row swipe
+/// jump to one, and Add exercise. Removing an exercise: long-press a row (or Set Card's More); row swipe
 /// actions can't be reached on a page of a horizontal pager (the swipe turns the page).
 struct WatchStrengthHomeView: View {
     let model: WatchStrengthFlowModel
     let onSelect: () -> Void
     @State private var pendingExerciseID: UUID?
+    @State private var exerciseToRemove: Exercise?
 
     var body: some View {
         List {
@@ -27,6 +28,11 @@ struct WatchStrengthHomeView: View {
                 .buttonStyle(.plain)
                 .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(isCurrent(item.exercise) ? WatchTone.accentSoft : WatchTone.surface))
                 .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
+                .contextMenu {
+                    Button(role: .destructive) { exerciseToRemove = item.exercise } label: {
+                        Label("Remove exercise", systemImage: "trash")
+                    }
+                }
             }
 
             Button {
@@ -39,6 +45,20 @@ struct WatchStrengthHomeView: View {
             .accessibilityIdentifier("watchStrength.addExercise")
         }
         .navigationTitle(model.session?.title ?? String(localized: "Plan"))
+        .alert("Remove \(exerciseToRemove?.name ?? "")?", isPresented: removeAlertBinding, presenting: exerciseToRemove) { exercise in
+            Button("Remove", role: .destructive) {
+                WatchHaptics.delete()
+                if let payload = model.deleteExercise(exercise) { WatchSyncSender.send(payload) }
+                exerciseToRemove = nil
+            }
+            Button("Keep", role: .cancel) { exerciseToRemove = nil }
+        } message: { _ in
+            Text("Its sets in this workout are removed too.")
+        }
+    }
+
+    private var removeAlertBinding: Binding<Bool> {
+        Binding(get: { exerciseToRemove != nil }, set: { if !$0 { exerciseToRemove = nil } })
     }
 
     private func row(_ exercise: Exercise, logged: Int) -> some View {

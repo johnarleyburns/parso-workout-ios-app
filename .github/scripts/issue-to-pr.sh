@@ -79,7 +79,19 @@ assert_safe() {
 }
 commit_changes() {
   assert_safe
-  git add -u -- ':!.github' ':!*.p12' ':!*.p8' ':!*.pem' ':!*.key' ':!*.mobileprovision' ':!*.env'
+  # Reject invalid generated shell scripts before committing.
+  local script
+  while IFS= read -r -d '' script; do
+    if [[ -f "$script" ]]; then
+      if ! bash -n "$script"; then
+        echo "Generated shell script has syntax errors: $script" >&2
+        return 1
+      fi
+    fi
+  done < <(
+    git ls-files -m -o --exclude-standard -z -- '*.sh'
+  )
+  git add -u -- ':!.github' ':!*.p12' ':!*.p8' ':!*.pem' ':!*.key' ':!*.mobileprovision' ':!*.env' 
   while IFS= read -r -d '' file; do
     case "$file" in
       .github/*|*.p12|*.p8|*.pem|*.key|*.mobileprovision|*.env|*/.env|*/.env.*|*credentials*|*secret*) continue ;;

@@ -395,7 +395,7 @@ struct WatchAddExerciseView: View {
             }
             guard !Task.isCancelled else { return }
             let matches = await Task.detached(priority: .userInitiated) {
-                snapshot.search(trimmed, limit: 8)
+                snapshot.search(trimmed, limit: WatchExerciseSearchPresenter.resultLimit)
             }.value
             guard !Task.isCancelled,
                   query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }

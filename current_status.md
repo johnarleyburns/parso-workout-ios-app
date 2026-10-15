@@ -1,5 +1,12 @@
 # Current Status
 
+## Latest implementation — Watch music volume restore (issue #100)
+
+- `WatchIntervalCuePlayer` now deactivates the cue audio session (with
+  `notifyOthersOnDeactivation`) shortly after each bell finishes, so music
+  ducked by cues returns to full volume. Previously the session stayed active
+  until `stop()`. Not built or run on device.
+
 ## Latest implementation — small-watch smoke (issue #44)
 
 - Added `make watch-smoke-small`: runs the existing single watch UI test (plus

@@ -16,8 +16,8 @@ Cladiron: an open-source, privacy-first, iPhone-native **strength coach** built 
 
 ## Roadmap — adopted 2026-08-11
 
-The **Cladiron Platform Spec v2.5** (`docs/plans/cladiron-mvp-revised/`) is a
-historical planning document. The active roadmap and product scope are recorded
+The **Cladiron Platform Spec v2.5** is a
+removed historical planning document. The active roadmap and product scope are recorded
 in this file and the code; the retired Trainer/client-sharing/Pro direction must
 not be implemented.
 Current direction, so you don't design against the wrong target:
@@ -58,7 +58,7 @@ entitlements, paywalls, or Pro targets.
 - **Search** — the iOS 18+ system search tab for the unified exercise catalog.
 
 ## Current release (v1) — iPhone + embedded Watch app
-The watch app **shipped 2026-07-17** (W1–W4: strength with partners, HIIT/Boxing, cardio suite, live wrist HR, Health save + phone sync); the W5 backlog (Resume, complication, routes) is deferred — see `plans/watch-app/2026-07-17/`. v1 ships:
+The watch app **shipped 2026-07-17** (W1–W4: strength with partners, HIIT/Boxing, cardio suite, live wrist HR, Health save + phone sync); the W5 backlog (Resume, complication, routes) is deferred. v1 ships:
 - Log **strength** workouts on the phone with **coaching** — the core loop.
 - Run a **no-lab fitness test battery** whose baselines feed the coach.
 - Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. The coach also reads **HRV, resting HR, sleep, and bodyweight** (read-only, on-device) as a passive-readiness prior fused with self-report.

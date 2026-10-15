@@ -2,6 +2,15 @@
 
 Updated: 2026-10-10
 
+## Latest implementation — Watch set defaults (issue #41)
+
+- `WatchStrengthFlowModel.startLogSet` now resolves reps/weight through the
+  phone's `PerformerSetPlanner` (explicit plan → current-session load → exact-rep
+  history → prior history), so sets 2, 3… carry the previous load/reps and set 1
+  uses the last workout. Ad-hoc movements with history ignore the legacy ladder.
+- Added two `WatchStrengthFlowModelTests`; full `swift test --parallel` passes.
+  Watch target build not run; no simulator used.
+
 ## Latest implementation — TestFlight What to Test notes (issue #69)
 
 - Added `TestFlightReleaseNotes` and `TestFlightNotesPublication` (CadenceCore,

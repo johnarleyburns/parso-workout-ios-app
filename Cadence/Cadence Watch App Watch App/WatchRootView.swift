@@ -118,41 +118,12 @@ struct WatchRootView: View {
     /// (Quick lift · Cardio), settings behind ⚙︎. Double Tap = the hero's primary action.
     private var launcher: some View {
         NavigationStack {
-            List {
-                if needsHealthAccess {
-                    Button {
-                        Task { _ = await watchManager.requestWorkoutAuthorization() }
-                    } label: {
-                        Label("Health access needed. Tap to enable.", systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption2).foregroundStyle(WatchTone.attention)
-                    }
-                    .listRowBackground(Color.clear)
-                    .accessibilityIdentifier("healthWarningRow")
-                }
-                WatchSessionOwnershipCard(verdict: sessionOwnership)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                heroCard
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
-                // Two tiles in one row: plain Buttons with their own destinations, because a List row
-                // with two NavigationLinks activates as one (tapping Quick lift opened Cardio).
-                HStack(spacing: 6) {
-                    Button { startingQuickLift = true } label: {
-                        tile(title: "Quick lift", systemImage: "dumbbell.fill")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("watch.startStrength")
-                    Button { showingCardio = true } label: {
-                        tile(title: "Cardio", systemImage: "figure.run")
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("watch.cardio")
-                }
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
+            // Page 1 is Today; swipe left for This Week (HIG: peer pages in a page-style TabView).
+            TabView {
+                launcherList
+                WatchWeekView(summary: watchManager.weekSummary)
             }
-            .listStyle(.plain)
+            .tabViewStyle(.page)
             .navigationTitle("Cladiron")
             .task(id: sessionOwnership) {
                 if case .endNow(let startedAt) = sessionOwnership {
@@ -182,6 +153,44 @@ struct WatchRootView: View {
                 Text("The sets logged on this watch are removed.")
             }
         }
+    }
+
+    private var launcherList: some View {
+        List {
+            if needsHealthAccess {
+                Button {
+                    Task { _ = await watchManager.requestWorkoutAuthorization() }
+                } label: {
+                    Label("Health access needed. Tap to enable.", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption2).foregroundStyle(WatchTone.attention)
+                }
+                .listRowBackground(Color.clear)
+                .accessibilityIdentifier("healthWarningRow")
+            }
+            WatchSessionOwnershipCard(verdict: sessionOwnership)
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            heroCard
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets())
+            // Two tiles in one row: plain Buttons with their own destinations, because a List row
+            // with two NavigationLinks activates as one (tapping Quick lift opened Cardio).
+            HStack(spacing: 6) {
+                Button { startingQuickLift = true } label: {
+                    tile(title: "Quick lift", systemImage: "dumbbell.fill")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("watch.startStrength")
+                Button { showingCardio = true } label: {
+                    tile(title: "Cardio", systemImage: "figure.run")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("watch.cardio")
+            }
+            .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets())
+        }
+        .listStyle(.plain)
     }
 
     private var sessionOwnership: WatchSessionOwnership.Verdict {

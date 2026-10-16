@@ -55,6 +55,12 @@ public enum WatchSync {
         public static let todayPlanSessions = "todayPlan.sessions"
         public static let todayPlanUpdatedAt = "todayPlan.updatedAt"
 
+        public static let weekSets = "week.sets"
+        public static let weekSetsMinimum = "week.setsMinimum"
+        public static let weekSetsTarget = "week.setsTarget"
+        public static let weekCardioMinutes = "week.cardioMinutes"
+        public static let weekUpdatedAt = "week.updatedAt"
+
         /// Watch Quick Talk (decision D-W2): the watch sends a ≤10 s clip; the iPhone transcribes it
         /// with SpeechAnalyzer and replies with the text (or an error code). Audio is not kept.
         public static let transcribeQuickTalk = "transcribe_quick_talk"
@@ -456,13 +462,16 @@ public enum WatchSync {
         public let todayPlan: TodayPlan?
         public let customExercises: [CustomExercise]?
         public let updatedAt: Date
+        public let weekSummary: WeekSummary?
 
         public init(preferences: Preferences, todayPlan: TodayPlan?,
-                    customExercises: [CustomExercise]?, updatedAt: Date) {
+                    customExercises: [CustomExercise]?, updatedAt: Date,
+                    weekSummary: WeekSummary? = nil) {
             self.preferences = preferences
             self.todayPlan = todayPlan
             self.customExercises = customExercises
             self.updatedAt = updatedAt
+            self.weekSummary = weekSummary
         }
 
         public static func from(context: [String: Any],
@@ -477,7 +486,46 @@ public enum WatchSync {
                 preferences: base.applying(context: context),
                 todayPlan: TodayPlan.from(context: context),
                 customExercises: customExercises,
-                updatedAt: (context[Key.contextUpdatedAt] as? Date) ?? Date())
+                updatedAt: (context[Key.contextUpdatedAt] as? Date) ?? Date(),
+                weekSummary: WeekSummary.from(context: context))
+        }
+    }
+
+    /// This week's strength sets and cardio minutes, computed by the iPhone from the full
+    /// training log (the Watch only holds its own sessions) and shown on the Watch's This Week page.
+    public struct WeekSummary: Equatable, Sendable {
+        public var sets: Double
+        public var setsMinimum: Double
+        public var setsTarget: Double
+        public var cardioMinutes: Double
+        public var updatedAt: Date
+
+        public init(sets: Double, setsMinimum: Double, setsTarget: Double,
+                    cardioMinutes: Double, updatedAt: Date) {
+            self.sets = max(0, sets)
+            self.setsMinimum = max(0, setsMinimum)
+            self.setsTarget = max(0, setsTarget)
+            self.cardioMinutes = max(0, cardioMinutes)
+            self.updatedAt = updatedAt
+        }
+
+        public static func contextDict(_ summary: WeekSummary) -> [String: Any] {
+            [Key.weekSets: summary.sets,
+             Key.weekSetsMinimum: summary.setsMinimum,
+             Key.weekSetsTarget: summary.setsTarget,
+             Key.weekCardioMinutes: summary.cardioMinutes,
+             Key.weekUpdatedAt: summary.updatedAt]
+        }
+
+        public static func from(context: [String: Any]) -> WeekSummary? {
+            guard let sets = context[Key.weekSets] as? Double,
+                  let cardio = context[Key.weekCardioMinutes] as? Double else { return nil }
+            return WeekSummary(
+                sets: sets,
+                setsMinimum: (context[Key.weekSetsMinimum] as? Double) ?? 0,
+                setsTarget: (context[Key.weekSetsTarget] as? Double) ?? 0,
+                cardioMinutes: cardio,
+                updatedAt: (context[Key.weekUpdatedAt] as? Date) ?? Date())
         }
     }
 

@@ -48,6 +48,7 @@ final class WatchWorkoutManager: NSObject {
     var lastPhoneSyncAt: Date? = UserDefaults.standard.object(forKey: "watch.lastPhoneSyncAt") as? Date
     var lastPhoneSyncError: String?
     var todayPlan: WatchSync.TodayPlan?
+    var weekSummary: WatchSync.WeekSummary?  // This Week page, from the phone
     var recentPartnerNames: [String] = []
     var pendingCustomExercises: [WatchSync.CustomExercise] = []
     var customExercisesUpdatedAt = Date.distantPast

@@ -554,11 +554,14 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         var context = WatchSync.Preferences.contextDict(prefs, updatedAt: date)
         context[WatchSync.Key.customExercises] = payload.customExercises.map(\.propertyList)
-        // Explicitly remove the retired weekly plan keys. A context is merged
-        // on the receiving side, so merely omitting them would leave a stale
-        // plan from an older app build visible on the Watch.
-        context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
-        context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
+        if let plan = cachedTodayPlan {
+            context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
+        } else {
+            // A context is merged on the receiving side, so merely omitting the
+            // keys would leave a stale plan visible on the Watch.
+            context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
+            context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
+        }
         // The settings context is built fresh, so carry the This Week totals along with it.
         if let week = cachedWeekSummary {
             context.merge(WatchSync.WeekSummary.contextDict(week)) { _, new in new }
@@ -585,8 +588,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
-    /// Legacy compatibility hook for older callers. New Home code no longer
-    /// publishes an automatic weekly coach plan to the Watch.
+    /// Publishes today's coach suggestion so the Watch Today hero matches the phone.
     func updateWatchTodayPlan(_ plan: WatchSync.TodayPlan) {
         cachedTodayPlan = plan
         guard let session = wcSession, session.isWatchAppInstalled else { return }

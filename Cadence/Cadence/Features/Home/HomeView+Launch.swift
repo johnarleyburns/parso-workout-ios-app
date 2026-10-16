@@ -41,12 +41,9 @@ extension HomeView {
             return
         }
         pendingPlan = nil
-        startWarmupAfterHRGate = false
-        if settings.warmupMinutes > 0 {
-            warmupActive = true
-        } else {
-            launch(.strength, startCue: .single)
-        }
+        // Strength shows the heart-rate gate first (like cardio); warm-up follows it.
+        startWarmupAfterHRGate = settings.warmupMinutes > 0
+        hrGateKind = .strength
     }
     /// "Other Cardio" chosen (feedback batch 6 item 3): stash its description, then
     /// route to the GPS recorder or the indoor timer per the user's GPS toggle.
@@ -106,11 +103,7 @@ extension HomeView {
     /// `skipCountdown` makes "Quick Start" truly immediate — no countdown
     /// regardless of the Settings value (which still applies to library/reuse/warm-up).
     func launchFromPicker(_ kind: PendingWorkout.Kind, skipCountdown: Bool = false) {
-        if skipCountdown {
-            launch(kind)
-        } else {
-            proceedFromHRGate(kind, useHR: false)
-        }
+        hrGateKind = kind
     }
     func begin(_ kind: PendingWorkout.Kind) {
         hrGateKind = kind
@@ -320,7 +313,7 @@ extension HomeView {
         if plan.warmupMinutes > 0 {
             startWarmupAfterHRGate = true
         }
-        proceedFromHRGate(.strength, useHR: false)
+        hrGateKind = .strength
     }
 
     func materializePlan(_ plan: EditablePlan) throws -> WorkoutSession {

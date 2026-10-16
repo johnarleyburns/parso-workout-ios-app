@@ -65,20 +65,15 @@ extension HomeView {
                         selectWorkoutPresented = false
                         logPickerPresented = true
                     },
-                    onStartCardio: { type in
-                        selectWorkoutPresented = false
-                        start(type)
-                    },
-                    onScheduleCardio: { type in
-                        selectWorkoutPresented = false
-                        scheduleCardioType = type
-                    },
+                    onStartCardio: { type in selectWorkoutPresented = false; start(type) },
+                    onScheduleCardio: { type in selectWorkoutPresented = false; scheduleCardioType = type },
                     onOtherCardio: { description, gps in
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
                     },
                     recentCardioTypes: recentCardioTypes,
-                    onFillGaps: openFillGapsFromStartWorkout)
+                    onFillGaps: openFillGapsFromStartWorkout,
+                    onSuggestCardio: { requestSuggestedWorkout(.cardio) })
             }
             .sheet(isPresented: $plannedWorkoutsPresented) {
                 NavigationStack {
@@ -173,10 +168,8 @@ extension HomeView {
                         recentCardioTypes: recentCardioTypes,
                         onSelect: { type in cardioPickerPresented = false; start(type) },
                         onSchedule: { type in cardioPickerPresented = false; scheduleCardioType = type },
-                        onOtherCardio: { desc, gps in
-                            cardioPickerPresented = false
-                            startOtherCardio(description: desc, gps: gps)
-                        })
+                        onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
+                        onSuggestCardio: { requestSuggestedWorkout(.cardio) })
                 }
             }
             // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).
@@ -235,7 +228,8 @@ extension HomeView {
                                 await Task.yield()
                                 scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
                             }
-                        })
+                        },
+                        onExclude: { settings.setCardioTypeExcluded($0.type, true); suggestedCardio = nil })
                 }
             }
             .sheet(item: $suggestedWorkoutPlan) { plan in

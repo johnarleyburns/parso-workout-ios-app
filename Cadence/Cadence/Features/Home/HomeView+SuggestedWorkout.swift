@@ -200,6 +200,7 @@ extension HomeView {
         let weeklyMinutes = dashboard.cardioDetail.moderateEquivalentMinutes
         let targetMinutes = dashboard.cardioDetail.targetMinutes
         let experience = settings.experienceLevel
+        let excludedTypes = settings.excludedCardioTypes
         cancelSuggestedCardioGeneration()
         suggestedCardioCalculating = true
         let task = Task {
@@ -208,6 +209,7 @@ extension HomeView {
                                             weeklyMinutes: weeklyMinutes,
                                             targetMinutes: targetMinutes,
                                             experience: experience,
+                                            excludedTypes: excludedTypes,
                                             asOf: Date())
             }.value
             guard !Task.isCancelled else { return }
@@ -228,6 +230,7 @@ extension HomeView {
         weeklyMinutes: Double,
         targetMinutes: Double,
         experience: ExperienceLevel,
+        excludedTypes: Set<CardioType>,
         asOf: Date
     ) -> CardioSuggestionInput {
         let decoder = JSONDecoder()
@@ -268,7 +271,8 @@ extension HomeView {
                                      weeklyModerateEquivalentMinutes: weeklyMinutes,
                                      weeklyTargetMinutes: targetMinutes,
                                      experience: experience,
-                                     asOf: asOf)
+                                     asOf: asOf,
+                                     excludedTypes: excludedTypes)
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
@@ -320,7 +324,7 @@ extension HomeView {
                 suggestedCardioCalculating = false
                 suggestedCardioTask = nil
                 guard let suggestion else {
-                    suggestedCardioFailure = String(localized: "No supported cardio history is available yet. Try again after recording a cardio workout.")
+                    suggestedCardioFailure = String(localized: "No cardio suggestion is available. Every supported cardio type may be set to never suggest; allow one again from Pick Cardio.")
                     return
                 }
                 suggestedCardio = suggestion

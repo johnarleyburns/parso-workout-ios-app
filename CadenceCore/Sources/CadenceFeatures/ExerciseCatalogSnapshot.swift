@@ -20,6 +20,7 @@ public struct ExerciseCatalogEntry: Sendable, Hashable, Identifiable, ExerciseSe
     public let trainedMuscleGroups: Set<MuscleGroup>
     public let equipmentValue: Equipment?
     public let category: ExerciseCategory
+    public let mechanicsValue: Mechanics?
     /// Up to three groups for a row subtitle: the primary muscles, or the
     /// legacy muscle tags when a row has no primary muscles.
     public let summaryMuscleGroups: [MuscleGroup]
@@ -27,7 +28,8 @@ public struct ExerciseCatalogEntry: Sendable, Hashable, Identifiable, ExerciseSe
     public init(id: UUID, name: String, searchKeywords: [String] = [], isCustom: Bool = false,
                 primaryMuscleGroups: [MuscleGroup] = [], trainedMuscleGroups: Set<MuscleGroup> = [],
                 equipmentValue: Equipment? = nil, category: ExerciseCategory = .other,
-                summaryMuscleGroups: [MuscleGroup] = []) {
+                summaryMuscleGroups: [MuscleGroup] = [], mechanicsValue: Mechanics? = nil) {
+        self.mechanicsValue = mechanicsValue
         self.id = id
         self.name = name
         self.searchKeywords = searchKeywords
@@ -52,7 +54,8 @@ public struct ExerciseCatalogEntry: Sendable, Hashable, Identifiable, ExerciseSe
                   equipmentValue: exercise.equipmentValue,
                   category: exercise.categoryValue ?? .other,
                   summaryMuscleGroups: Array(MuscleGroup.canonicalize(
-                      primary.isEmpty ? exercise.muscleGroups : primary).prefix(3)))
+                      primary.isEmpty ? exercise.muscleGroups : primary).prefix(3)),
+                  mechanicsValue: exercise.mechanicsValue)
     }
 }
 

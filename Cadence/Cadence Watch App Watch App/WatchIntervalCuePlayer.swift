@@ -58,5 +58,16 @@ final class WatchIntervalCuePlayer {
         audioSession.activateForCues()
         player?.currentTime = 0
         player?.play()
+        releaseSessionWhenIdle(after: (player?.duration ?? 0) + 0.15)
+    }
+
+    /// Hand audio focus back once the cue ends so music that was ducked by a
+    /// bell or spoken cue returns to full volume instead of staying quiet.
+    private func releaseSessionWhenIdle(after delay: TimeInterval) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self else { return }
+            let playing = (self.bell?.isPlaying ?? false) || (self.warningBell?.isPlaying ?? false)
+            if !playing { self.audioSession.deactivate() }
+        }
     }
 }

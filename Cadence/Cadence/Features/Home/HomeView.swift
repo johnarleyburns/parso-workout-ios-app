@@ -158,7 +158,8 @@ struct HomeView: View {
             passiveSamples: passiveSamples, userAge: settings.userAge,
             maximumHROverride: settings.cardioMaximumHROverride)
         let weeklyCardio = WeeklyCardioAggregator.summarize(cardio, since: weekStart,
-                                                             profile: intensityProfile)
+                                                             profile: intensityProfile,
+                                                             sessions: sessions)
         let activityDose = WeeklyActivityDoseAggregator.summarize(
             cardio: cardio, sessions: sessions, since: weekStart, profile: intensityProfile)
         return HomeDashboardPresenter.make(snapshot: snapshot,
@@ -176,6 +177,10 @@ struct HomeView: View {
             Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
         }
         let target = dashboard.volume.filter(\.isTracked).reduce(0.0) { total, _ in total + 12 }
+        model.updateWatchWeekSummary(WatchSync.WeekSummary(
+            sets: dashboard.volume.reduce(0) { $0 + $1.sets },
+            setsMinimum: target / WeeklySetProgress.maximum * WeeklySetProgress.minimum, setsTarget: target,
+            cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes, updatedAt: Date()))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
             planTitle: todayScheduled?.title ?? String(localized: "Recovery day"),
@@ -272,11 +277,9 @@ struct HomeView: View {
         }
         let snapshot = HomeCoachSnapshot(computed)
 
-        // Weekly coach plans are no longer a user-facing or Watch execution
-        // surface. Widgets and the Watch receive only explicitly scheduled
-        // workout records; do not recreate a hidden weekly plan on every Home
-        // refresh. This also removes a large plan-payload build from the Home
-        // refresh path.
+        // No hidden weekly plan is rebuilt here. The Watch Today hero mirrors the
+        // phone's advisory suggestion; the Watch still lets the user start anything.
+        model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(from: snapshot.decision))
         let todayScheduled = PlannedWorkoutsPresenter.today(
             scheduledWorkouts.map(HomePlannedWorkoutsSection.item))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(

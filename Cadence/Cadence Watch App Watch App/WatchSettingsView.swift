@@ -111,11 +111,12 @@ struct WatchCardioPickerView: View {
                             Image(systemName: type.symbol).font(.title3)
                             Text(type.displayName).font(.caption2.weight(.semibold)).lineLimit(1)
                         }
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.white)
+                        .opacity(1)
                         .frame(maxWidth: .infinity, minHeight: 54)
-                        .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surface))
+                        .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surfaceRaised))
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.plain)
                     .accessibilityIdentifier("watch.cardio.\(type.rawValue)")
                 }
             }

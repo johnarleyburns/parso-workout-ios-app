@@ -46,20 +46,31 @@ struct CardioDetailView: View {
                     detailRow(String(localized: "Guideline credit"), "\(minutes(summary.moderateEquivalentMinutes * 60)) min")
                     detailRow(String(localized: "Method"), summary.method.displayName)
                     detailRow(String(localized: "Confidence"), summary.confidence.displayName)
-                    if !summary.zoneDurations.isEmpty {
-                        Divider()
-                        Text("Training zones").font(.caption.weight(.semibold))
-                        ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
-                            detailRow(zone.displayName, String(localized: "\(minutes(summary.zoneDurations[zone] ?? 0)) min"))
-                        }
-                    }
                     if let citation = CitationRegistry.citation(forId: "swainLeutholtz1997HRR") {
                         CitationLink(citation: citation,
-                                     context: String(localized: "Heart-rate reserve estimates relative effort. Guideline credit is separate from actual minutes and does not credit below-moderate work."),
+                                     context: String(localized: "Heart-rate reserve (%HRR) estimates relative effort, which sets the moderate and vigorous bands. Guideline credit is separate from actual minutes and does not credit below-moderate work."),
+                                     compact: true)
+                    }
+                    if let citation = CitationRegistry.citation(forId: "piercy2018PhysicalActivityGuidelines") {
+                        CitationLink(citation: citation,
+                                     context: String(localized: "Guidelines: 150 moderate or 75 vigorous minutes per week; one vigorous minute counts as two moderate minutes."),
+                                     compact: true)
+                    }
+                    if let citation = CitationRegistry.citation(forId: "acsmGarber2011AerobicGuidelines") {
+                        CitationLink(citation: citation,
+                                     context: String(localized: "ACSM intensity classification by percent of heart-rate reserve or maximum heart rate."),
                                      compact: true)
                     }
                 }
                 .accessibilityIdentifier("cardioDetail.intensity")
+                if !summary.zoneDurations.isEmpty {
+                    Section("Training Zones") {
+                        ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
+                            detailRow(zone.displayName, String(localized: "\(minutes(summary.zoneDurations[zone] ?? 0)) min"))
+                        }
+                    }
+                    .accessibilityIdentifier("cardioDetail.trainingZones")
+                }
             } else if workout.duration > 0 {
                 Section("Intensity") {
                     Text("This workout predates intensity provenance. It remains in actual history, but its intensity credit is unclassified.")

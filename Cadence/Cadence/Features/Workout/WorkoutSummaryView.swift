@@ -43,8 +43,7 @@ struct WorkoutSummaryView: View {
                 header
                 metricsGrid
                 if data.kind == .cardio, !data.hr.isEmpty { hrChart }
-                if data.kind == .strength,
-                   !data.volume.isEmpty || !data.volumeByPerformer.isEmpty {
+                if data.kind == .strength, !data.volume.isEmpty || !data.volumeByPerformer.isEmpty {
                     LiveWorkoutVolumeSummary(
                         state: LiveWorkoutVolumeState(current: data.volume),
                         expanded: $summaryVolumeExpanded,

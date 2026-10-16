@@ -323,7 +323,9 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
+      actions: read
     steps:
+      - uses: actions/checkout@v4
       - name: Report deployment outcome
         env:
           GH_TOKEN: ${{ github.token }}
@@ -353,3 +355,8 @@ jobs:
           if [[ "$TESTS" != success || "$BUILD" != success ]]; then
             echo "::error::$status"; exit 1
           fi
+      - name: Label deployed issues ready for QA
+        if: ${{ needs.core-tests.result == 'success' && needs.testflight-build.result == 'success' && needs.testflight-build.outputs.stage == 'uploaded' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/mark-testflight-qa.sh

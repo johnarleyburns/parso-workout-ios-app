@@ -14,6 +14,7 @@ struct SelectWorkoutView: View {
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var recentCardioTypes: [WorkoutType] = []
     var onFillGaps: (() -> Void)? = nil
+    var onSuggestCardio: (() -> Void)? = nil
     var inline = false
     @Environment(\.dismiss) private var dismiss
 
@@ -28,7 +29,8 @@ struct SelectWorkoutView: View {
                     onScheduleCardio: onScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes,
-                    onFillGaps: onFillGaps)
+                    onFillGaps: onFillGaps,
+                    onSuggestCardio: onSuggestCardio)
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: "play.circle.fill").font(.headline)
@@ -52,7 +54,8 @@ struct SelectWorkoutView: View {
                     onScheduleCardio: onScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes,
-                    onFillGaps: onFillGaps)
+                    onFillGaps: onFillGaps,
+                    onSuggestCardio: onSuggestCardio)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("Cancel") { dismiss() }

@@ -63,12 +63,24 @@ struct SuggestedCardioPreviewView: View {
     let suggestion: CardioSuggestion
     let onStart: (CardioSuggestion) -> Void
     let onSchedule: (CardioSuggestion) -> Void
+    var onExclude: ((CardioSuggestion) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
-                Label(suggestion.type.displayName, systemImage: suggestion.type.symbol)
+                if let observation = suggestion.observation {
+                    Label(observation, systemImage: "eye")
+                        .font(.subheadline)
+                        .padding(12)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+                        .accessibilityIdentifier("suggestedCardio.observation")
+                }
+                Label(suggestion.isInterval && suggestion.intervalWorkSeconds == 240
+                      ? "Norwegian 4×4 · \(suggestion.type.displayName)"
+                      : suggestion.type.displayName,
+                      systemImage: suggestion.type.symbol)
                     .font(.title2.weight(.bold))
                 HStack(spacing: 12) {
                     metric(String(localized: "Duration"), "\(suggestion.durationMinutes) min")
@@ -92,7 +104,7 @@ struct SuggestedCardioPreviewView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if let citation = suggestion.citationIDs.first.flatMap(CitationRegistry.citation(forId:)) {
+                ForEach(suggestion.citationIDs.compactMap(CitationRegistry.citation(forId:)), id: \.id) { citation in
                     CitationLink(citation: citation, context: String(localized: "How this cardio suggestion is selected"), compact: true)
                 }
 
@@ -117,6 +129,20 @@ struct SuggestedCardioPreviewView: View {
                 .buttonStyle(.bordered)
                 .tint(.blue)
                 .accessibilityIdentifier("suggestedCardio.schedule")
+
+                if let onExclude {
+                    Button(role: .destructive) {
+                        onExclude(suggestion)
+                        dismiss()
+                    } label: {
+                        Text("Don't suggest \(suggestion.type.displayName) again")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .accessibilityIdentifier("suggestedCardio.exclude")
+                    Text("You can allow it again from Pick Cardio. Picking it yourself always still works.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
                 Button("Cancel") { dismiss() }
                     .frame(maxWidth: .infinity)

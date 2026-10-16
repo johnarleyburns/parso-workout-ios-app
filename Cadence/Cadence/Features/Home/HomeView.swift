@@ -177,6 +177,10 @@ struct HomeView: View {
             Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
         }
         let target = dashboard.volume.filter(\.isTracked).reduce(0.0) { total, _ in total + 12 }
+        model.updateWatchWeekSummary(WatchSync.WeekSummary(
+            sets: dashboard.volume.reduce(0) { $0 + $1.sets },
+            setsMinimum: target / WeeklySetProgress.maximum * WeeklySetProgress.minimum, setsTarget: target,
+            cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes, updatedAt: Date()))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
             planTitle: todayScheduled?.title ?? String(localized: "Recovery day"),

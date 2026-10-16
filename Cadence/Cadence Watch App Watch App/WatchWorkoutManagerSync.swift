@@ -191,6 +191,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         s.spokenCues = preferences.spokenCues
         recentPartnerNames = preferences.recentPartnerNames
         todayPlan = incoming.todayPlan
+        if let week = incoming.weekSummary { weekSummary = week }
         if let customExercises = incoming.customExercises {
             pendingCustomExercises = customExercises
             customExercisesUpdatedAt = incoming.updatedAt

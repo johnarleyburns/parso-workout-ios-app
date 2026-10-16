@@ -65,14 +65,8 @@ extension HomeView {
                         selectWorkoutPresented = false
                         logPickerPresented = true
                     },
-                    onStartCardio: { type in
-                        selectWorkoutPresented = false
-                        start(type)
-                    },
-                    onScheduleCardio: { type in
-                        selectWorkoutPresented = false
-                        scheduleCardioType = type
-                    },
+                    onStartCardio: { type in selectWorkoutPresented = false; start(type) },
+                    onScheduleCardio: { type in selectWorkoutPresented = false; scheduleCardioType = type },
                     onOtherCardio: { description, gps in
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
@@ -174,10 +168,7 @@ extension HomeView {
                         recentCardioTypes: recentCardioTypes,
                         onSelect: { type in cardioPickerPresented = false; start(type) },
                         onSchedule: { type in cardioPickerPresented = false; scheduleCardioType = type },
-                        onOtherCardio: { desc, gps in
-                            cardioPickerPresented = false
-                            startOtherCardio(description: desc, gps: gps)
-                        },
+                        onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
                         onSuggestCardio: { requestSuggestedWorkout(.cardio) })
                 }
             }
@@ -238,10 +229,7 @@ extension HomeView {
                                 scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
                             }
                         },
-                        onExclude: { excluded in
-                            settings.setCardioTypeExcluded(excluded.type, true)
-                            suggestedCardio = nil
-                        })
+                        onExclude: { settings.setCardioTypeExcluded($0.type, true); suggestedCardio = nil })
                 }
             }
             .sheet(item: $suggestedWorkoutPlan) { plan in

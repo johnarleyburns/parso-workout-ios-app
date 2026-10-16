@@ -817,6 +817,15 @@ public final class WatchStrengthFlowModel {
         lastPerformedByName = currentPerformer?.name
     }
 
+    /// Heart-rate samples (seconds since workout start) the Watch collected during
+    /// the session; refreshed by the views before each end-of-session send.
+    public private(set) var recordedHeartRate: [HRSamplePoint] = []
+
+    public func recordHeartRate(_ samples: [HRSamplePoint]) {
+        // Keep the richest capture: the live manager is reset when the workout stops.
+        if samples.count >= recordedHeartRate.count { recordedHeartRate = samples }
+    }
+
     public func endSessionPayload() -> [String: Any]? {
         guard let session else { return nil }
         var payload: [String: Any] = [
@@ -835,6 +844,9 @@ public final class WatchStrengthFlowModel {
         }
         if let planKey = session.planKey {
             payload["plan_key"] = planKey
+        }
+        if !recordedHeartRate.isEmpty {
+            payload[WatchStrengthHeartRate.transportKey] = WatchStrengthHeartRate.encode(recordedHeartRate)
         }
         return payload
     }

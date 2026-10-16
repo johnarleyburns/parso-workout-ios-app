@@ -53,7 +53,7 @@ struct WorkoutSummaryView: View {
                         performers: summaryVolumePerformers,
                         performerStates: summaryVolumeStates)
                 }
-                if data.kind == .cardio, let intensity = data.cardioIntensity {
+                if let intensity = data.cardioIntensity {
                     cardioIntensitySection(intensity)
                 }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
@@ -198,6 +198,18 @@ struct WorkoutSummaryView: View {
             summaryRow(String(localized: "Guideline credit"), "\(wholeMinutes(summary.moderateEquivalentMinutes * 60)) min")
             if let metMinutes = data.standardMETMinutes {
                 summaryRow(String(localized: "Standard MET-minutes"), "\(Int(metMinutes.rounded()))")
+            }
+            if !summary.zoneDurations.isEmpty {
+                Text("Training zones").font(.caption.weight(.semibold)).padding(.top, 4)
+                ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) {
+                    summaryRow($0.displayName, String(localized: "\(wholeMinutes(summary.zoneDurations[$0] ?? 0)) min"))
+                }
+            }
+            if data.kind == .strength {
+                Text("Resistance training also raises heart rate. Minutes at moderate or vigorous heart rate during this workout count toward your weekly cardio minutes.").font(.caption).foregroundStyle(.secondary)
+                ForEach(CardioIntensityPolicy.strengthCardioCitationIDs.compactMap(CitationRegistry.citation(forId:)), id: \.id) {
+                    CitationLink(citation: $0, compact: true)
+                }
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)

@@ -32,6 +32,7 @@ final class WatchIntervalHaptics {
             currentPhaseID: runner.currentPhaseID,
             phaseRemaining: runner.phaseRemaining,
             phaseDuration: runner.phaseDuration,
+            nextPhaseKind: runner.nextPhaseKind,
             isPaused: runner.isPaused,
             isComplete: runner.isComplete
         )
@@ -45,6 +46,9 @@ final class WatchIntervalHaptics {
                             enabled: spokenEnabled)
             case .countdownTick:
                 device.play(.click)
+            case .getReady(let second):
+                device.play(.click)
+                if second == 3 { voice.speak(.warning(seconds: nil), enabled: spokenEnabled) }
             case .phaseTransition(let kind):
                 switch kind {
                 case .work:

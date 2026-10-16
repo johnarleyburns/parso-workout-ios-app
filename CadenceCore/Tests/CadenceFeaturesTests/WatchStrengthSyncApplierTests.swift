@@ -101,6 +101,46 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         XCTAssertEqual(session.plannedPrescriptions.first?.sets.first?.restSeconds, 150)
     }
 
+    func testEndSessionTransmitsWatchHeartRateAndSummarizesZones() throws {
+        let sessionID = UUID()
+        let samples = (0..<20).map { HRSamplePoint(t: Double($0) * 30, bpm: 150) }
+        let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 190, maximumHRSource: .userEntered)
+
+        // Round-trips through the same property-list encoding the Watch transfers.
+        let flowPayload: [String: Any] = [
+            "action": "end_session",
+            "session_id": sessionID.uuidString,
+            "ended_at": Date(timeIntervalSince1970: 2_000).timeIntervalSince1970,
+            WatchStrengthHeartRate.transportKey: WatchStrengthHeartRate.encode(samples),
+        ]
+        try WatchStrengthSyncApplier.apply(userInfo: flowPayload, in: context, intensityProfile: profile)
+        // Redelivery is idempotent.
+        try WatchStrengthSyncApplier.apply(userInfo: flowPayload, in: context, intensityProfile: profile)
+
+        let session = try XCTUnwrap(fetchSessions().first { $0.id == sessionID })
+        XCTAssertEqual(session.hrSamplePoints, samples)
+        let summary = try XCTUnwrap(session.intensitySummary)
+        XCTAssertGreaterThan(summary.vigorousDuration, 0)
+        XCTAssertFalse(summary.zoneDurations.isEmpty)
+        let data = WorkoutSummaryData.from(session: session)
+        XCTAssertEqual(data.hr.count, samples.count)
+        XCTAssertEqual(data.cardioIntensity, summary)
+    }
+
+    func testStrengthHeartRateCountsTowardWeeklyCardioMinutes() throws {
+        let session = WorkoutSession(title: "Lift", date: Date())
+        context.insert(session)
+        let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 190, maximumHRSource: .userEntered)
+        session.recordHeartRate((0..<10).map { HRSamplePoint(t: Double($0) * 60, bpm: 130) }, profile: profile)
+        let weekly = WeeklyCardioAggregator.summarize([], since: Date().addingTimeInterval(-86_400),
+                                                      profile: profile, sessions: [session])
+        XCTAssertGreaterThan(weekly.moderateEquivalentMinutes, 0)
+        XCTAssertFalse(weekly.zoneMinutes.isEmpty)
+        let none = WeeklyCardioAggregator.summarize([], since: Date().addingTimeInterval(-86_400),
+                                                    profile: profile, sessions: [WorkoutSession(title: "No HR")])
+        XCTAssertEqual(none.moderateEquivalentMinutes, 0)
+    }
+
     func testDeleteSetPayloadRemovesMirroredSet() throws {
         let session = try WorkoutRepository.createSession(title: "Strength", in: context)
         let exercise = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: context)

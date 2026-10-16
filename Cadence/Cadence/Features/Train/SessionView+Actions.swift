@@ -275,7 +275,19 @@ extension SessionView {
             _ = try? ScheduledWorkoutStore.markCompleted(recordID: scheduled.id, in: context)
         }
         try? context.save()
-        active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: hrSamples), session: session)
+        let samples = hrSamples
+        if samples.isEmpty {
+            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: samples), session: session)
+            return
+        }
+        // Same resting-HR/HRmax profile cardio uses; stored so history and the
+        // weekly cardio minutes/zones include this strength session.
+        Task {
+            let profile = await cardioIntensityProfile(model: model, settings: settings)
+            session.recordHeartRate(samples, profile: profile)
+            try? context.save()
+            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: samples), session: session)
+        }
     }
 
     func sampleHR() {

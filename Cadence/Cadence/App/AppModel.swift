@@ -1030,7 +1030,11 @@ extension AppModel {
             let action = try WatchStrengthSyncApplier.apply(
                 userInfo: info,
                 in: ctx,
-                phoneActiveID: _active?.strengthSession?.id
+                phoneActiveID: _active?.strengthSession?.id,
+                intensityProfile: _settings.map {
+                    CardioIntensityProfile.resolved(userEnteredMaximumHR: $0.cardioMaximumHROverride,
+                                                    age: $0.userAge, updatedAt: Date())
+                }
             )
             guard action != .ignored else { return true }
             switch action {

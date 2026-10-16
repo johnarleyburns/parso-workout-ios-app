@@ -127,8 +127,11 @@ public enum WeeklyActivityDoseAggregator {
     public static func summarize(cardio: [CardioWorkout], sessions: [WorkoutSession],
                                  since: Date, profile: CardioIntensityProfile? = nil)
         -> WeeklyActivitySummary {
-        let aerobic = WeeklyCardioAggregator.summarize(cardio, since: since, profile: profile)
-        var actual = aerobic.actualMinutes
+        let aerobic = WeeklyCardioAggregator.summarize(cardio, since: since, profile: profile,
+                                                       sessions: sessions)
+        // Strength durations are added below, so exclude the strength minutes the
+        // aerobic split already carries to avoid counting them twice.
+        var actual = WeeklyCardioAggregator.summarize(cardio, since: since, profile: profile).actualMinutes
         var total = 0.0
         var byCategory: [ActivityCategory: Double] = [:]
         for workout in cardio where workout.deletedAt == nil && workout.start >= since {

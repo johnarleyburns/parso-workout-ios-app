@@ -303,6 +303,41 @@ Swain & Leutholtz (1997). *Heart rate reserve is equivalent to %VO2 reserve, not
   than treated as a raw percent of maximum HR; Cladiron therefore prefers the 40–<60%
   HRR moderate band when it has a resting-HR baseline.
 
+### `squatCardiorespiratory2024` — strength work has a cardiorespiratory response
+Hong et al. *Cardiorespiratory and aerobic demands of squat exercise.* **Scientific Reports (2024).**
+<https://doi.org/10.1038/s41598-024-68187-z>
+
+- **Used by:** weekly cardio minutes / zone totals (strength sessions with heart-rate data), strength workout summaries, and Settings → Cardio Science.
+- **What it supports:** Squatting itself produces a measurable cardiorespiratory and aerobic demand, so heart-rate-derived minutes during strength work are real aerobic stimulus.
+
+### `resistanceCircuitBodyComp2021` — strength work has a cardiorespiratory response
+Ramos-Campo et al. *Effects of Resistance Circuit-Based Training on Body Composition, Strength and Cardiorespiratory Fitness: A Systematic Review and Meta-Analysis.* **Biology (2021).**
+<https://doi.org/10.3390/biology10050377>
+
+- **Used by:** weekly cardio minutes / zone totals (strength sessions with heart-rate data), strength workout summaries, and Settings → Cardio Science.
+- **What it supports:** Resistance circuit training improves cardiorespiratory fitness alongside strength, supporting counting its heart-rate minutes toward weekly aerobic totals.
+
+### `resistanceCircuitVo2max2017` — strength work has a cardiorespiratory response
+Muñoz-Martínez et al. *Effectiveness of Resistance Circuit-Based Training for Maximum Oxygen Uptake and Upper-Body One-Repetition Maximum Improvements: A Systematic Review and Meta-Analysis.* **Sports Medicine (2017).**
+<https://doi.org/10.1007/s40279-017-0773-4>
+
+- **Used by:** weekly cardio minutes / zone totals (strength sessions with heart-rate data), strength workout summaries, and Settings → Cardio Science.
+- **What it supports:** Resistance circuit training raises VO2max and upper-body strength together, supporting crediting aerobic minutes earned during strength sessions.
+
+### `metabolicResistanceTraining2025` — strength work has a cardiorespiratory response
+Yu & Ding *The effectiveness of metabolic resistance training versus traditional cardio on athletic performance: a systematic review and meta-analysis.* **Frontiers in Physiology (2025).**
+<https://doi.org/10.3389/fphys.2025.1551645>
+
+- **Used by:** weekly cardio minutes / zone totals (strength sessions with heart-rate data), strength workout summaries, and Settings → Cardio Science.
+- **What it supports:** Metabolic resistance training improves sprint and jump performance versus traditional training (VO2max change was not significant), supporting it as a legitimate conditioning stimulus alongside cardio.
+
+### `circuitResistanceCardiac2022` — strength work has a cardiorespiratory response
+Wu et al. *Rehabilitation effects of circuit resistance training in coronary heart disease patients: A systematic review and meta-analysis.* **Clinical Cardiology (2022).**
+<https://doi.org/10.1002/clc.23855>
+
+- **Used by:** weekly cardio minutes / zone totals (strength sessions with heart-rate data), strength workout summaries, and Settings → Cardio Science.
+- **What it supports:** Circuit resistance training improves aerobic capacity in cardiac rehabilitation, further evidence that resistance work carries a genuine cardiorespiratory response.
+
 ### `acsmGarber2011AerobicGuidelines` — relative aerobic intensity bands
 Garber et al. (2011). *Quantity and Quality of Exercise for Developing and Maintaining
 Cardiorespiratory, Musculoskeletal, and Neuromotor Fitness in Apparently Healthy Adults: Guidance for Prescribing Exercise.* **Medicine & Science in Sports & Exercise 43(7).**

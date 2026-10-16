@@ -205,17 +205,10 @@ extension HomeView {
 
     @ViewBuilder
     var dashboardBottomContent: some View {
-        homeDetailDisclosure(
-            title: String(localized: "Observations"),
-            subtitle: dashboard.suggestions.isEmpty ? String(localized: "No new suggestions") : String(localized: "Coach guidance and rationale"),
-            expanded: $observationsExpanded,
-            identifier: "home.observations.show")
-        if observationsExpanded {
-            HomeCoachSuggestionsSection(
-                suggestions: dashboard.suggestions,
-                focusGroup: dashboard.volume.first(where: { $0.isTracked && $0.sets < 12 })?.group ?? .chest,
-                expanded: $suggestionsExpanded)
-        }
+        HomeCoachSuggestionsSection(
+            suggestions: dashboard.suggestions,
+            focusGroup: dashboard.volume.first(where: { $0.isTracked && $0.sets < 12 })?.group ?? .chest,
+            expanded: $suggestionsExpanded)
         homeDetailDisclosure(
             title: homeReadinessTitle,
             subtitle: homeReadinessSubtitle,

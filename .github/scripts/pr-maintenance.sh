@@ -27,7 +27,7 @@ repo="${GITHUB_REPOSITORY:-}"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/${repo}/actions/runs/${GITHUB_RUN_ID:-0}"
 REPORT="${REPORT_FILE:-/tmp/pr-maintenance-report.json}"
 INFRA=0
-FIX_VERSION=126   # bump to re-migrate stops caused by a newly fixed automation defect
+FIX_VERSION=130   # bump to re-migrate stops caused by a newly fixed automation defect
 
 # decide <draft> <state> <validation> <automerge> <stopped> <attempts> [approval_tries]
 decide() {
@@ -134,8 +134,9 @@ repair_active() {
 }
 
 is_transient_merge_error() {
-  # A second required validation can queue when a draft becomes ready.
-  grep -Eqi 'required status check .* (is )?(queued|pending|in.progress|expected)' "$1"
+  # GitHub may reject --auto while required checks are queued. Treat these
+  # as retryable, not as a permanent needs-human-review stop.
+  grep -Eqi 'required status check|status checks? (are |is )?(queued|pending|in.progress|expected)|checks? (are |is )?(queued|pending|in.progress|expected)' "$1"
 }
 
 process_pr() {
@@ -173,7 +174,7 @@ process_pr() {
   # staging, inherited TARGET_PR, premature action_required) get a fresh budget
   # once per FIX_VERSION. Security stops (restricted-conflict, etc.) are untouched.
   if [[ "$stopped" == true && "$(jq -r '.migrated_fix // 0' <<<"$st")" -lt "$FIX_VERSION" ]] \
-     && jq -e '(.escalated // []) | all(.[]; test("^(action-required|repair-exhausted|automation-infrastructure-failure):"))' <<<"$st" >/dev/null; then
+     && jq -e '(.escalated // []) | all(.[]; test("^(action-required|repair-exhausted|automation-infrastructure-failure|auto-merge-refused):"))' <<<"$st" >/dev/null; then
     st=$(jq -c --argjson v "$FIX_VERSION" --argjson a "$attempts" \
       '.migrated_fix = $v | .migrated_from_attempts = $a | .attempts = 0 | .approval_tries = 0 | .escalated = [] | del(.stopped_head)' <<<"$st")
     attempts=0; stopped=false
@@ -258,7 +259,11 @@ process_pr() {
           echo "PR #$n: merge deferred because required validation is queued/pending"
           put_state "$n" "$st" "merge deferred: required validation pending (automatic retry next sweep)"
         else
-          escalate "$n" "$issue" "$head" "auto-merge-refused" "$(tail -c 400 /tmp/automerge-$n.err)"
+          # Avoid permanently stopping a valid PR on a transient GraphQL
+          # merge/ruleset response. Re-evaluate it on the next sweep.
+          echo "PR #$n: auto-merge request refused; retrying next sweep: $(tail -c 400 /tmp/automerge-$n.err)"
+          put_state "$n" "$st" "auto-merge request refused; retrying next sweep"
+          INFRA=1
         fi
       else
         put_state "$n" "$st" "ready; auto-merge enabled; waiting for required checks"

@@ -1,6 +1,6 @@
 .NOTPARALLEL:
 
-.PHONY: resolve-dbpp build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform check-release-safety smoke ipad-smoke watch-smoke shutdown-sims all-tests ci pre-commit pre-push
+.PHONY: resolve-dbpp build test test-core test-features guardrails check-watch-appicon check-xcodebuild-platform check-release-safety smoke ipad-smoke watch-smoke watch-smoke-small shutdown-sims all-tests ci pre-commit pre-push
 
 resolve-dbpp:
 	swift package resolve --package-path CadenceCore
@@ -109,6 +109,15 @@ watch-smoke:
 	  $(MAKE) --no-print-directory shutdown-sims; \
 	  exit $$status
 
+# Small-watch gate (issue #44): the same single watch UI test on the smallest
+# watch (e.g. a 40/41 mm device named Watch-Small) so clipped or unreachable
+# buttons fail there. Create it once with:
+#   xcrun simctl create Watch-Small "Apple Watch SE 3 (40mm)"
+# Reuses the watch-smoke recipe; no extra test functions are added.
+WATCH_SMALL_SIM_NAME ?= Watch-Small
+watch-smoke-small:
+	$(MAKE) --no-print-directory watch-smoke WATCH_SIM_NAME=$(WATCH_SMALL_SIM_NAME)
+
 # Every simulator this repo boots is shut down when a smoke gate finishes, pass
 # or fail. A watchOS runtime left booted alongside the iPhone saturates the
 # machine and makes the iPhone UI test time out with "Test crashed with signal
@@ -123,6 +132,7 @@ shutdown-sims:
 	@xcrun simctl shutdown "$(SMOKE_SIM_NAME)" >/dev/null 2>&1 || true
 	@xcrun simctl shutdown "$(IPAD_SIM_NAME)" >/dev/null 2>&1 || true
 	@xcrun simctl shutdown "$(WATCH_SIM_NAME)" >/dev/null 2>&1 || true
+	@xcrun simctl shutdown "$(WATCH_SMALL_SIM_NAME)" >/dev/null 2>&1 || true
 	@if ! xcrun simctl list devices booted 2>/dev/null | grep -q "(Booted)"; then \
 	  pkill -x Simulator >/dev/null 2>&1 || true; \
 	  echo "simulators: shut down (Simulator.app closed)"; \
@@ -134,7 +144,7 @@ shutdown-sims:
 # iPhone, iPad planning, and watch UI smoke. `.NOTPARALLEL` is intentional:
 # the iPhone and Watch builds share Xcode/DerivedData resources and must never
 # overlap on a developer machine.
-all-tests: test smoke ipad-smoke watch-smoke
+all-tests: test smoke ipad-smoke watch-smoke watch-smoke-small
 
 # CI-equivalent host gate without simulators.
 ci: build test guardrails

@@ -36,6 +36,17 @@ final class HomeDashboardPresenterTests: XCTestCase {
             experience: .intermediate, userAge: nil)
     }
 
+    func testGapGroupsIncludesEveryUnproductiveTrackedGroupUncapped() {
+        let rows = HomeDashboardPresenter.volumeRows(
+            setsByGroup: [.chest: 12, .biceps: 2], tracked: MuscleGroup.defaultTracked)
+        let gaps = HomeDashboardPresenter.gapGroups(from: rows)
+        XCTAssertFalse(gaps.contains(.chest))
+        XCTAssertEqual(Set(gaps).count, gaps.count)
+        XCTAssertGreaterThan(gaps.count, 3)
+        XCTAssertTrue(gaps.contains(.abductors))
+        XCTAssertTrue(gaps.contains(.biceps))
+    }
+
     func testVolumeRowsUseTheSharedWeeklySetZonesAndCitation() throws {
         let below = try dashboard(chestSets: 3, now: Date()).volume.first { $0.group == .chest }
         let building = try dashboard(chestSets: 4, now: Date()).volume.first { $0.group == .chest }

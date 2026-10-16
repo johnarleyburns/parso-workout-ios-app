@@ -261,6 +261,18 @@ public enum HomeDashboardPresenter {
         return facts
     }
 
+    /// The tracked groups still short of a productive week (zero, below the
+    /// minimum, or building), most behind first. Uncapped so Fill the Gaps
+    /// addresses every gap the muscle-group list shows.
+    public static func gapGroups(from rows: [HomeDashboardState.VolumeRow]) -> [MuscleGroup] {
+        rows
+            .filter { $0.isTracked && ($0.zone == .belowMinimum || $0.zone == .building) }
+            .sorted { $0.normalized == $1.normalized
+                ? MuscleGroup.canonicalIndex($0.group) < MuscleGroup.canonicalIndex($1.group)
+                : $0.normalized < $1.normalized }
+            .map(\.group)
+    }
+
     /// Every tracked muscle group, plus any untracked group the user has actually
     /// trained, alphabetically by displayed name.
     public static func volumeRows(setsByGroup: [MuscleGroup: Double],

@@ -14,6 +14,7 @@ struct WatchAddExerciseView: View {
     @State private var catalog = ExerciseCatalogSnapshot.empty
     @State private var selectedGroup: MuscleGroup?
     @State private var showingRecent = false
+    @State private var filter = WatchExerciseFilter()
     @State private var selectedExercise: Exercise?
     @State private var showingDetail = false
     @State private var query = ""
@@ -102,17 +103,26 @@ struct WatchAddExerciseView: View {
                     Button {
                         WatchHaptics.tap()
                         self.selectedGroup = nil
+                        filter = WatchExerciseFilter()
                     } label: {
                         Label("Back", systemImage: "chevron.left")
                     }
                     .buttonStyle(.plain)
                 }
-                Section(selectedGroup.displayName) {
-                    if catalog.isLoaded {
-                        ForEach(catalog.entries(in: selectedGroup)) { exercise in
+                if catalog.isLoaded {
+                    let groupEntries = catalog.entries(in: selectedGroup)
+                    WatchExerciseFilterSection(filter: $filter, entries: groupEntries)
+                    let shown = filter.apply(to: groupEntries)
+                    Section(selectedGroup.displayName) {
+                        if shown.isEmpty {
+                            Text("No matches").font(.caption).foregroundStyle(.secondary)
+                        }
+                        ForEach(shown) { exercise in
                             exerciseButton(exercise)
                         }
-                    } else {
+                    }
+                } else {
+                    Section(selectedGroup.displayName) {
                         loadingRow
                     }
                 }

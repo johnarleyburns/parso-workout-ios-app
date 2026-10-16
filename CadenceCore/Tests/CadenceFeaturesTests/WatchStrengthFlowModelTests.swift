@@ -172,6 +172,41 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(Int(m.currentReps), 10)
     }
 
+    func testSecondAndThirdSetDefaultToPreviousLoadAndReps() {
+        let m = makeModel()
+        m.start()
+        let ex = simpleExercise(named: "Default Carry Press")
+        m.startLogSet(for: ex)
+        m.currentWeight = 62.5
+        m.currentReps = 8
+        _ = m.logSet()
+        m.finishRest()
+        XCTAssertEqual(m.currentWeight, 62.5)
+        XCTAssertEqual(Int(m.currentReps), 8)
+        m.currentWeight = 65
+        _ = m.logSet()
+        m.finishRest()
+        XCTAssertEqual(m.currentWeight, 65)
+        XCTAssertEqual(Int(m.currentReps), 8)
+    }
+
+    func testFirstSetDefaultsToPreviousWorkoutLoad() throws {
+        let first = makeModel()
+        first.start()
+        let ex = simpleExercise(named: "History Carry Press")
+        first.startLogSet(for: ex)
+        first.currentWeight = 80
+        first.currentReps = 6
+        _ = first.logSet()
+        first.finish()
+
+        let second = makeModel()
+        second.start()
+        second.startLogSet(for: ex)
+        XCTAssertEqual(second.currentWeight, 80)
+        XCTAssertEqual(Int(second.currentReps), 6)
+    }
+
     func testStartCreateSessionPrefillsPlannedExercisesAndLadder() {
         let m = makeModel()
         m.start(title: "Push Day",

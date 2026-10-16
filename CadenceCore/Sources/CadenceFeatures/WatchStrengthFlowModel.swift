@@ -267,32 +267,51 @@ public final class WatchStrengthFlowModel {
     }
 
     public func startLogSet(for exercise: Exercise) {
-        currentReps = Double(defaultReps(for: exercise))
         isWarmupSet = false
         effortMode = .rpe
         effortValue = nil
-        // Preserve the exact last working/prescribed load. Cable stacks and
-        // specialty machines commonly use decimal values that must survive
-        // reopening the keypad instead of being snapped to a plate boundary.
-        let lastWork = session.flatMap {
-            SessionViewModel.lastSessionWeight(session: $0, exercise: exercise,
-                                               performerID: currentPerformer?.id)
-        } ?? priorSets(for: exercise).first {
-            !$0.isWarmup && $0.weight > 0 && belongsToCurrentPerformer($0)
-        }?.weight
+        // Same resolver as the phone's set editor so set 1, 2, 3… default
+        // identically: explicit plan → current-session load → exact-rep history
+        // → prior history. Exact loads are preserved (cable stacks use decimals).
+        let performerID: UUID? = currentPerformer?.isMe == true ? nil : currentPerformer?.id
+        let logged = (session?.orderedSets ?? [])
+            .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && belongsToCurrentPerformer($0) }
+            .sorted { $0.order < $1.order }
+        let prior = priorSets(for: exercise).filter(belongsToCurrentPerformer)
+        let ladders = repLadders(from: prior)
+        var history = PerformerSetPlanner.History(
+            repsLoggedThisSession: logged.map(\.reps),
+            repLadders: ladders,
+            firstWorkingWeightKg: prior.first { !$0.isWarmup && $0.weight > 0 }?.weight,
+            lastWeightThisSessionKg: logged.last?.weight,
+            weightSamples: prior.filter { !$0.isWarmup }.map { SetSample.from($0) }
+        )
+        if history.lastWeightThisSessionKg == nil, let session,
+           let last = SessionViewModel.lastSessionWeight(session: session, exercise: exercise,
+                                                         performerID: performerID) {
+            history.lastWeightThisSessionKg = last
+        }
+        let context = session.map { SessionViewModel.ownerPlanContext(session: $0, exerciseName: exercise.name) }
+        let resolved = PerformerSetPlanner.resolve(
+            setIndex: logged.count,
+            performerPlan: session?.explicitPlannedSets(forPerformerID: performerID, exerciseName: exercise.name),
+            ownerPlan: context?.ownerPlan ?? [],
+            // An ad-hoc movement with its own history follows that history (as on
+            // the phone); one with none still follows the chosen rep scheme.
+            ownerLadder: context?.ownerLadder
+                ?? (ladders.contains { !$0.isEmpty } ? nil : session.flatMap { SessionViewModel.effectiveLadder(session: $0) }),
+            isOwner: performerID == nil,
+            history: history)
         let prescribed = (session.map { SessionViewModel.isPrescribedMovement(exercise.name, session: $0) } == true)
             ? (session?.prescribedLoadKg ?? 0)
             : 0
-        if let lastWork {
-            currentWeight = lastWork
+        currentReps = Double(resolved.reps)
+        if let weight = resolved.weightKg {
+            currentWeight = weight
         } else if prescribed > 0 {
             currentWeight = prescribed
         } else {
             currentWeight = unit == .pounds ? WorkoutMath.canonical(45, from: .pounds) : 20
-        }
-        if let plannedReps = plannedWorkingSets(for: exercise)[watchSafe: completedWorkingSets(for: exercise)]?.targetReps,
-           plannedReps > 0 {
-            currentReps = Double(plannedReps)
         }
         prefillWeightKg = currentWeight
         prefillReps = currentReps
@@ -354,10 +373,10 @@ public final class WatchStrengthFlowModel {
             updateExerciseListAfterLogging(exercise)
             if goToRest {
                 exercisePendingAfterRest = exercise
-                // Watch redesign R1: the plan's own rest for the next set wins over the default.
-                let planned = plannedWorkingSets(for: exercise)[watchSafe: completedWorkingSets(for: exercise) - 1]?.restSeconds
-                plannedRestApplied = (planned ?? 0) > 0
-                restTimer.start(seconds: plannedRestApplied ? (planned ?? restDefault) : restDefault)
+                // Issue #49: the user's chosen default rest always wins over a
+                // coach-generated per-set rest, matching the phone's rest timer.
+                plannedRestApplied = false
+                restTimer.start(seconds: restDefault)
                 stage = .rest
             } else {
                 exercisePendingAfterRest = nil
@@ -722,41 +741,6 @@ public final class WatchStrengthFlowModel {
         let dur = max(0, (session.endedAt ?? Date()).timeIntervalSince(session.date))
         let total = Int(dur)
         return String(format: "%d:%02d", total / 60, total % 60)
-    }
-
-    private func defaultReps(for exercise: Exercise) -> Int {
-        let currentReps: [Int]
-        let setIndex: Int
-        let lastLogged: Int?
-        if let session {
-            let sets = session.orderedSets
-                .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && belongsToCurrentPerformer($0) }
-                .sorted { $0.order < $1.order }
-            currentReps = sets.map(\.reps)
-            setIndex = sets.count
-            lastLogged = sets.last?.reps
-            if setIndex < session.plannedRepLadder.count,
-               session.plannedRepLadder[setIndex] > 0 {
-                return session.plannedRepLadder[setIndex]
-            }
-        } else {
-            currentReps = []
-            setIndex = 0
-            lastLogged = nil
-        }
-
-        let prior = repLadders(from: priorSets(for: exercise).filter(belongsToCurrentPerformer))
-        if setIndex < (prior.last?.count ?? 0), let reps = prior.last?[setIndex], reps > 0 {
-            return reps
-        }
-
-        return SessionViewModel.plannedReps(
-            ladder: session.flatMap { SessionViewModel.effectiveLadder(session: $0) },
-            setIndex: setIndex,
-            currentSessionReps: currentReps,
-            priorSessionLadders: prior,
-            lastLoggedReps: lastLogged
-        )
     }
 
     private func historyLines(from sets: [SetEntry]) -> [WatchSetHistoryLine] {

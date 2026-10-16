@@ -64,4 +64,18 @@ final class WatchExerciseSelectionTests: XCTestCase {
         XCTAssertEqual(matches.first?.name, "Bench Press")
         XCTAssertFalse(matches.contains { $0.name == "Cable Row" })
     }
+
+    func testFilterNarrowsByMechanicsAndEquipment() {
+        let entries = [
+            ExerciseCatalogEntry(id: UUID(), name: "Squat", equipmentValue: .barbell, mechanicsValue: .compound),
+            ExerciseCatalogEntry(id: UUID(), name: "Leg Extension", equipmentValue: .machine, mechanicsValue: .isolation),
+            ExerciseCatalogEntry(id: UUID(), name: "Goblet Squat", equipmentValue: .dumbbell, mechanicsValue: .compound),
+        ]
+        XCTAssertEqual(WatchExerciseFilter().apply(to: entries).count, 3)
+        XCTAssertFalse(WatchExerciseFilter().isActive)
+        let compound = WatchExerciseFilter(mechanics: .compound)
+        XCTAssertEqual(compound.apply(to: entries).map(\.name), ["Squat", "Goblet Squat"])
+        XCTAssertEqual(compound.availableEquipment(in: entries), [.barbell, .dumbbell])
+        XCTAssertEqual(WatchExerciseFilter(mechanics: .compound, equipment: .barbell).apply(to: entries).map(\.name), ["Squat"])
+    }
 }

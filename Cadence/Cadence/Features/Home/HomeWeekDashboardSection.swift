@@ -103,13 +103,9 @@ struct HomeWeekDashboardSection: View {
     }
 
     private var fillGapsButton: some View {
-        let behind = displayedVolumeRows
-            .sorted { $0.normalized == $1.normalized
-                ? MuscleGroup.canonicalIndex($0.group) < MuscleGroup.canonicalIndex($1.group)
-                : $0.normalized < $1.normalized }
-            .prefix(3)
+        let behind = HomeDashboardPresenter.gapGroups(from: displayedVolumeRows)
         return NavigationLink {
-            MuscleGroupQuickStartView(missing: behind.map(\.group), onStart: onStartWorkout)
+            MuscleGroupQuickStartView(missing: behind, onStart: onStartWorkout)
         } label: {
             Label("Fill the gaps", systemImage: "plus.circle")
                 .frame(maxWidth: .infinity)

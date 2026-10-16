@@ -347,7 +347,7 @@ struct WatchAddExerciseView: View {
     /// Rows are plain values; the stored exercise is read only when tapped.
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
         Button {
-            guard Date().timeIntervalSince(listChangedAt) > 0.5 else { return }
+            guard Date().timeIntervalSince(listChangedAt) > 0.8 else { return }
             WatchHaptics.tap()
             selectedExercise = ExerciseCatalogSnapshot.exercise(id: exercise.id, in: context)
         } label: {
@@ -385,6 +385,9 @@ struct WatchAddExerciseView: View {
                   query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
             searchResults = matches
             isSearching = false
+            // Results swapping in under a finger that is still scrolling or
+            // dismissing the keyboard must not register as a row tap.
+            listChangedAt = Date()
         }
     }
 }

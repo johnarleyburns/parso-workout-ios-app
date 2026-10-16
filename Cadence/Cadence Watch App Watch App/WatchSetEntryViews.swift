@@ -39,7 +39,8 @@ struct WatchWeightEntryView: View {
                     }
                 }
                 HStack(spacing: 8) {
-                    Button { adjust(-plate) } label: { Label("Subtract", systemImage: "minus") }
+                    Button { adjust(-plate) } label: { Label("Sub", systemImage: "minus").lineLimit(1) }
+                        .accessibilityLabel("Subtract")
                         .accessibilityIdentifier("watchWeight.minusPlate")
                     Button { adjust(plate) } label: { Label("Add", systemImage: "plus") }
                         .accessibilityIdentifier("watchWeight.plusPlate")
@@ -134,17 +135,19 @@ struct WatchNumericEntryView: View {
     }
 
     var body: some View {
-        VStack(spacing: 6) {
+        // Scrolls so the value, keys and Done stay reachable on the smallest watch.
+        ScrollView {
+        VStack(spacing: 4) {
             Text(text.isEmpty ? initialValue : text)
                 .font(.system(.title, design: .rounded).weight(.bold))
                 .monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
-                .frame(maxWidth: .infinity, minHeight: 34)
+                .frame(maxWidth: .infinity, minHeight: 28)
                 .accessibilityIdentifier("watchNumeric.value")
             ForEach(rows, id: \.self) { row in
                 HStack(spacing: 5) {
                     ForEach(row, id: \.self) { key in
                         Button { tap(key) } label: {
-                            Text(key).font(.headline).frame(maxWidth: .infinity, minHeight: 34)
+                            Text(key).font(.headline).frame(maxWidth: .infinity, minHeight: 30)
                         }
                         .buttonStyle(.bordered)
                         .disabled(key.isEmpty)
@@ -155,7 +158,8 @@ struct WatchNumericEntryView: View {
                 .buttonStyle(WatchPillStyle(kind: .primary, small: true))
                 .accessibilityIdentifier("watchNumeric.done")
         }
-        .padding(8)
+        .padding(.horizontal, 6)
+        }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { text = initialValue }

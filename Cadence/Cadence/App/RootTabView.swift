@@ -124,6 +124,9 @@ struct RootTabView: View {
             // surface. A workout is never auto-ended or discarded, no matter
             // how stale. Manual minimization remains a deliberate path to Home.
             recoverActiveSessionIfNeeded()
+            // End any Live Activity orphaned by a previous launch when no
+            // workout is running (issue #74).
+            WorkoutLiveActivityCoordinator.shared.reconcile(workoutIsActive: active.isActive)
             // Recovery can make the workout active before this view's
             // `.onChange` observer is installed. Reconcile once after launch
             // so a recovered workout always gets its Live Activity.

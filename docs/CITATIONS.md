@@ -583,6 +583,17 @@ and aerobic exercise performance.* **Scand J Med Sci Sports 23(6).**
 - **App policy:** SIT is **never auto-prescribed**; it is an explicit opt-in lane with
   fatigue/safety caveats.
 
+### `gillenSIT2016` — 10-minute sprint intervals vs 50-minute endurance
+Gillen, Martin, Gibala et al. (2016). *Twelve Weeks of Sprint Interval Training Improves
+Indices of Cardiometabolic Health Similar to Traditional Endurance Training despite a
+Five-Fold Lower Exercise Volume and Time Commitment.* **PLOS ONE 11(4).**
+<https://doi.org/10.1371/journal.pone.0154075>
+
+- **Used by:** `CardioSuggestionGenerator` — the Suggest Cardio "Norwegian 4×4" pick, shown
+  with `hiitVo2max` when the user has had no interval work in 14 days.
+- **What it supports:** short interval sessions are a time-efficient route to
+  cardiometabolic fitness. The suggestion is always reviewed, never auto-applied.
+
 ### `buchheitLaursenHIIT2013` — HIIT programming (Part II)
 Buchheit & Laursen (2013). *High-Intensity Interval Training, Solutions to the
 Programming Puzzle: Part II.* **Sports Med 43(10).**

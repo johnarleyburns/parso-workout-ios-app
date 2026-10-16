@@ -117,6 +117,7 @@ public final class AppSettings {
         }
         self.lastStrengthSettings = Self.readWorkoutSettings(defaults, "settings.lastStrengthSettings")
         self.lastCardioSettings = Self.readWorkoutSettings(defaults, "settings.lastCardioSettings")
+        self.excludedCardioTypeRawValues = defaults.stringArray(forKey: "settings.excludedCardioTypes") ?? []
         self.lastIntervalSettings = Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings")
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
@@ -279,6 +280,18 @@ public final class AppSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastStrengthSettings", lastStrengthSettings) }
     }
 
+    /// Cardio modalities the user never wants suggested (raw `CardioType` values).
+    public var excludedCardioTypeRawValues: [String] {
+        didSet { defaults.set(excludedCardioTypeRawValues, forKey: "settings.excludedCardioTypes") }
+    }
+    public var excludedCardioTypes: Set<CardioType> {
+        Set(excludedCardioTypeRawValues.compactMap(CardioType.init(rawValue:)))
+    }
+    public func setCardioTypeExcluded(_ type: CardioType, _ excluded: Bool) {
+        var set = Set(excludedCardioTypeRawValues)
+        if excluded { set.insert(type.rawValue) } else { set.remove(type.rawValue) }
+        excludedCardioTypeRawValues = set.sorted()
+    }
     public var lastCardioSettings: WorkoutSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastCardioSettings", lastCardioSettings) }
     }

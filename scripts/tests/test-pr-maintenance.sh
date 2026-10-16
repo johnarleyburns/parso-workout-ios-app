@@ -12,8 +12,8 @@ fails=0
 eq() { [[ "$2" == "$3" ]] && echo "ok   $1" || { echo "FAIL $1: expected '$3' got '$2'"; fails=$((fails+1)); }; }
 
 # decide <draft> <state> <val> <automerge> <stopped> <attempts>
-eq "behind+success+automerge -> waiting-merge"    "$(decide false behind success true false 0)" waiting-merge
-eq "behind+success -> advance before update"       "$(decide false behind success false false 0)" advance
+eq "behind+success+automerge -> update once"       "$(decide false behind success true false 0)" update-branch
+eq "behind+success -> update before merge"         "$(decide false behind success false false 0)" update-branch
 eq "draft success clean -> advance"                 "$(decide true clean success false false 0)" advance
 eq "ready success no automerge -> advance"          "$(decide false clean success false false 0)" advance
 eq "ready success automerge -> waiting-merge"       "$(decide false clean success true false 0)" waiting-merge
@@ -55,8 +55,8 @@ eq "auto merge confirmed" "$(echo '{"state":"open","auto_merge":{"enabled_by":{"
 eq "immediate merge confirmed" "$(echo '{"state":"closed","merged_at":"2026-01-01T00:00:00Z","auto_merge":null}' | merge_confirmation)" merged
 eq "successful command but inactive is diagnosed" "$(echo '{"state":"open","auto_merge":null}' | merge_confirmation)" inactive
 
-# Mocked end-to-end sweep: a behind PR with an already-enabled auto-merge must
-# not update its branch just because main advanced.
+# Mocked end-to-end sweep: a successfully validated branch behind strict
+# required checks must update once, then wait for the resulting SHA.
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 cat >"$tmp/gh" <<'MOCK'
 #!/usr/bin/env bash
@@ -82,7 +82,7 @@ repo=o/r; REPORT="$tmp/report.json"
 eq "sweep exit code" "$rc" 0
 [[ $rc -ne 0 ]] && cat "$tmp/out"
 grep -q 'update-branch' "$MOCK_LOG" && r=yes || r=no
-eq "behind branch is not proactively updated" "$r" no
+eq "strict behind branch is updated once" "$r" yes
 grep -Eq 'pr (ready|merge|close)' "$MOCK_LOG" && r=yes || r=no
 eq "no ready/merge/close on behind PR" "$r" no
 eq "fork/non-Claude ignored" "$(jq '.open_claude_prs' "$tmp/report.json")" 1

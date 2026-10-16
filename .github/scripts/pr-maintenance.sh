@@ -11,7 +11,7 @@
 #   action_required    -> escalate (GitHub approval policy; never "passed")
 #   cancelled          -> rerun       missing -> retrigger (close/reopen)
 #   pending            -> wait
-#   success + behind   -> advance (GitHub decides whether it needs an update)
+#   success + behind   -> update-branch (strict required checks demand freshness)
 #   success otherwise  -> advance (ready + auto-merge) / waiting-merge
 #
 # Env: GH_TOKEN (PAT or app token so pushes start workflows), GITHUB_REPOSITORY,
@@ -43,6 +43,11 @@ decide() {
     missing) echo retrigger; return ;;
     pending) echo wait; return ;;
   esac
+  # The active main ruleset uses strict required status checks. GitHub will not
+  # merge an auto-merge PR whose validated head is behind main, so update only
+  # after that head passed validation. The new SHA then waits through the
+  # pending/missing paths above; no update occurs while validation is pending.
+  [[ "$state" == behind ]] && { echo update-branch; return; }
   [[ "$state" == unknown ]] && { echo wait; return; }
   if [[ "$draft" == true || "$autom" != true ]]; then echo advance; else echo waiting-merge; fi
 }
@@ -250,6 +255,13 @@ process_pr() {
           && put_state "$n" "$(jq -c '.reopen = ((.reopen // 0) + 1)' <<<"$st")" "validation re-triggered for ${head:0:8}" || INFRA=1
       else
         escalate "$n" "$issue" "$head" "validation-never-ran" "No pull_request validation run exists for this head after 2 re-triggers. Check Actions is enabled and the push token can trigger workflows."
+      fi ;;
+    update-branch)
+      if api -X PUT "repos/${repo}/pulls/$n/update-branch" -f expected_head_sha="$head" >/dev/null 2>&1; then
+        st=$(jq -c --arg h "$head" '.branch_update_source_head = $h' <<<"$st")
+        put_state "$n" "$st" "strict required checks require an up-to-date branch; updated once and awaiting validation for the new head"
+      else
+        echo "PR #$n: required branch update was refused (head moved or conflict); next sweep re-evaluates"
       fi ;;
     advance)
       if [[ "$draft" == true ]]; then

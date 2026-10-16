@@ -536,6 +536,13 @@ public final class WorkoutSession {
     /// none was run (feedback batch 6). Surfaced in the summary alongside duration.
     public var warmupSeconds: Double = 0
     public var cooldownSeconds: Double = 0
+    /// Heart-rate samples (JSON `[HRSamplePoint]`, seconds since `date`) captured
+    /// during a strength session from the phone HRM/chest strap or the Watch.
+    /// Additive and defaulted for CloudKit + back-compat; "" when none.
+    public var hrSamplesData: String = ""
+    /// Guideline-minute / Z1–Z5 split (JSON `CardioMinuteSummary`) derived from
+    /// `hrSamplesData` with the same classifier cardio uses. "" when unavailable.
+    public var intensitySummaryData: String = ""
     /// Working load (canonical kg) prescribed by the coach when this session was
     /// launched via "Do this workout" (strength-pivot P5.3); 0 = none. Pre-fills the
     /// set keypad for the prescribed movement. Additive/defaulted for CloudKit + back-compat.
@@ -583,6 +590,44 @@ public final class WorkoutSession {
         self.scheduledWorkoutID = scheduledWorkoutID
         self.updatedAt = updatedAt
         self.originDevice = originDevice
+    }
+
+    public var hrSamplePoints: [HRSamplePoint] {
+        get {
+            guard let data = hrSamplesData.data(using: .utf8), !data.isEmpty else { return [] }
+            return (try? JSONDecoder().decode([HRSamplePoint].self, from: data)) ?? []
+        }
+        set {
+            guard !newValue.isEmpty, let data = try? JSONEncoder().encode(newValue) else {
+                hrSamplesData = ""
+                return
+            }
+            hrSamplesData = String(decoding: data, as: UTF8.self)
+        }
+    }
+
+    public var intensitySummary: CardioMinuteSummary? {
+        get {
+            guard let data = intensitySummaryData.data(using: .utf8), !data.isEmpty else { return nil }
+            return try? JSONDecoder().decode(CardioMinuteSummary.self, from: data)
+        }
+        set {
+            guard let newValue, let data = try? JSONEncoder().encode(newValue) else {
+                intensitySummaryData = ""
+                return
+            }
+            intensitySummaryData = String(decoding: data, as: UTF8.self)
+        }
+    }
+
+    /// Stores the session's HR samples and the guideline split they imply.
+    /// No samples → both cleared (no invented credit).
+    public func recordHeartRate(_ samples: [HRSamplePoint], profile: CardioIntensityProfile) {
+        hrSamplePoints = samples
+        guard !samples.isEmpty else { intensitySummary = nil; return }
+        let duration = max(duration, samples.map(\.t).max() ?? 0)
+        intensitySummary = CardioMinuteAccumulator.summarize(duration: duration, samples: samples, profile: profile)
+        updatedAt = Date()
     }
 
     public var plannedExerciseNames: [String] {

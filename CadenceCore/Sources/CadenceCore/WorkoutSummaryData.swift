@@ -258,7 +258,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             PartnerSummary(name: name,
                            exercises: lines(in: session) { $0.performedBy?.name == name && !($0.performedBy?.isMe ?? true) })
         }
-        let sortedHR = hrSamples.sorted { $0.t < $1.t }
+        let sortedHR = (hrSamples.isEmpty ? session.hrSamplePoints : hrSamples).sorted { $0.t < $1.t }
         let bpmValues = sortedHR.map(\.bpm)
         return WorkoutSummaryData(
             kind: .strength,
@@ -277,6 +277,7 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             volume: volume,
             volumeByPerformer: volumeByPerformer,
             hr: sortedHR.map { (t: $0.t, bpm: $0.bpm) },
+            cardioIntensity: session.intensitySummary,
             isLogged: session.isLogged,
             warmupSec: session.warmupSeconds,
             cooldownSec: session.cooldownSeconds

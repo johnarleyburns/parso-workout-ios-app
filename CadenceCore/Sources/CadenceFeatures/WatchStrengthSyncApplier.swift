@@ -15,13 +15,15 @@ public enum WatchStrengthSyncApplier {
     @discardableResult
     public static func apply(userInfo: [String: Any],
                              in context: ModelContext,
-                             phoneActiveID: UUID? = nil) throws -> AppliedAction {
+                             phoneActiveID: UUID? = nil,
+                             intensityProfile: CardioIntensityProfile? = nil) throws -> AppliedAction {
         guard let action = userInfo["action"] as? String else { return .ignored }
         switch action {
         case "log_set":
             return try applyLogSet(userInfo, in: context)
         case "end_session":
-            return try applyEndSession(userInfo, in: context, phoneActiveID: phoneActiveID)
+            return try applyEndSession(userInfo, in: context, phoneActiveID: phoneActiveID,
+                                       intensityProfile: intensityProfile)
         case "discard_session":
             return try applyDiscardSession(userInfo, in: context)
         case "delete_exercise":
@@ -79,7 +81,8 @@ public enum WatchStrengthSyncApplier {
 
     private static func applyEndSession(_ info: [String: Any],
                                         in context: ModelContext,
-                                        phoneActiveID: UUID?) throws -> AppliedAction {
+                                        phoneActiveID: UUID?,
+                                        intensityProfile: CardioIntensityProfile?) throws -> AppliedAction {
         guard let sessionID = uuid(info["session_id"]) else { return .ignored }
         guard WatchSessionEndPolicy.shouldApplyEnd(sessionID: sessionID, phoneActiveID: phoneActiveID) else {
             return .ignored
@@ -100,6 +103,11 @@ public enum WatchStrengthSyncApplier {
         session.endedAt = endedAt
         if let cooldown = info["cooldown_seconds"] as? Int {
             session.cooldownSeconds = Double(cooldown)
+        }
+        let samples = WatchStrengthHeartRate.decode(info[WatchStrengthHeartRate.transportKey])
+        if !samples.isEmpty {
+            // Idempotent: a redelivered end_session rewrites the same samples.
+            session.recordHeartRate(samples, profile: intensityProfile ?? .ageEstimated(age: nil))
         }
         session.updatedAt = Date()
         try context.save()

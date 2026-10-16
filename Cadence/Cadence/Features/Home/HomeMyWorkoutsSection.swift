@@ -11,6 +11,7 @@ struct HomeMyWorkoutsSection: View {
     let onOpenCompleted: (WorkoutsTodayPresenter.Row) -> Void
     let onStartScheduled: (ScheduledWorkout) -> Void
     let onShowMorePlanned: () -> Void
+    let onShowHistory: () -> Void
 
     private var todayItems: [PlannedWorkoutsPresenter.Item] { PlannedWorkoutsPresenter.today(plannedItems) }
 
@@ -29,26 +30,33 @@ struct HomeMyWorkoutsSection: View {
                     plannedRow(item, record: record)
                 }
             }
+            Divider().padding(.top, 4)
             if PlannedWorkoutsPresenter.showsMore(plannedItems) {
-                Divider().padding(.top, 4)
-                Button(action: onShowMorePlanned) {
-                    HStack {
-                        Text("Show more…")
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption)
-                    }
-                    .foregroundStyle(.tint)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home.myWorkouts.showMore")
+                jumpButton("Show planned", id: "home.myWorkouts.showMore", action: onShowMorePlanned)
             }
+            jumpButton("Show history", id: "home.myWorkouts.showHistory", action: onShowHistory)
         }
         .padding(LayoutMetrics.cardPadding)
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.myWorkouts")
+    }
+
+    private func jumpButton(_ title: LocalizedStringKey, id: String,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack {
+                Text(title)
+                Spacer()
+                Image(systemName: "chevron.right").font(.caption)
+            }
+            .foregroundStyle(.tint)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(id)
     }
 
     private func plannedRow(_ item: PlannedWorkoutsPresenter.Item,

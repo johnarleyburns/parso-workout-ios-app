@@ -38,7 +38,6 @@ struct WatchCardioSummaryView: View {
         let presentation = WatchCardioSummaryPresenter.present(hrSamples: summary.hrSamples)
         ScrollView {
           VStack(spacing: 8) {
-            Spacer()
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
 

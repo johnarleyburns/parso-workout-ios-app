@@ -35,8 +35,16 @@ swift test --package-path CadenceCore --parallel
 endstep
 
 step "iPhone + embedded Watch build"
+# Release configuration, same as the release archive, so deprecation warnings
+# the archive gate would reject surface here before merge.
+build_log="$(mktemp -t ci-validate-build.XXXXXX)"
 bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
-  -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
+  -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$build_log"
+endstep
+
+step "Owned warning gate (app build)"
+bash scripts/check-owned-warnings.sh "$build_log"
+bash scripts/test-check-owned-warnings.sh
 endstep
 
 step "Guardrails"

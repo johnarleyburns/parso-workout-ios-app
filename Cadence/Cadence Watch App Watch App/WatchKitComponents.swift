@@ -17,6 +17,10 @@ enum WatchTone {
     static let attention = Color.orange
     static let surface = Color(red: 0x1C / 255, green: 0x1F / 255, blue: 0x24 / 255)
     static let surfaceRaised = Color(red: 0x2A / 255, green: 0x2E / 255, blue: 0x35 / 255)
+    /// Brighter accent stop so rings and primary pills read as lit, not flat.
+    static let accentBright = Color(red: 0x9B / 255, green: 0xF5 / 255, blue: 0xC4 / 255)
+    static let accentGradient = LinearGradient(colors: [accentBright, accent], startPoint: .top, endPoint: .bottom)
+    static let ringGradient = AngularGradient(colors: [accent.opacity(0.55), accent, accentBright], center: .center)
 }
 
 /// §3 `MetricField`: one big number with its unit; outlined while it owns the Crown.
@@ -68,9 +72,11 @@ struct WatchPillStyle: ButtonStyle {
             .foregroundStyle(foreground)
             .frame(maxWidth: .infinity, minHeight: small ? 34 : 46)
             .padding(.horizontal, 6)
-            .background(Capsule().fill(background))
+            .background(Capsule().fill(fill))
             .contentShape(Capsule())
-            .opacity(configuration.isPressed ? 0.7 : 1)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
     }
 
     private var foreground: Color {
@@ -80,6 +86,10 @@ struct WatchPillStyle: ButtonStyle {
         case .destructive: .red
         case .light: .black
         }
+    }
+
+    private var fill: AnyShapeStyle {
+        kind == .primary ? AnyShapeStyle(WatchTone.accentGradient) : AnyShapeStyle(background)
     }
 
     private var background: Color {
@@ -195,6 +205,9 @@ struct WatchSetDots: View {
                 Circle()
                     .fill(color(dot))
                     .frame(width: 6, height: 6)
+                    .scaleEffect(dot == .current ? 1.35 : 1)
+                    .shadow(color: dot == .current ? WatchTone.accent.opacity(0.8) : .clear, radius: 3)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: dot)
             }
         }
         .accessibilityElement()
@@ -204,7 +217,7 @@ struct WatchSetDots: View {
     private func color(_ dot: WatchSetDot) -> Color {
         switch dot {
         case .done: WatchTone.accent
-        case .current: .white
+        case .current: WatchTone.accentBright
         case .upcoming: Color.white.opacity(0.25)
         }
     }

@@ -124,7 +124,6 @@ struct HomeView: View {
     #endif
     @State var confirmCancelPrevious = false
     @State var readinessPresented = false
-    @State var observationsExpanded = false
     @State var readinessExpanded = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     @State var coachSnapshotReady = false

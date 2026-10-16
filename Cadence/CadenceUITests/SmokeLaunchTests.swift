@@ -196,10 +196,8 @@ final class SmokeLaunchTests: CadenceUITestCase {
         // CTA is a full-width sibling below the card, not a child of it.
         XCTAssertFalse(app.staticTexts["Suggested Workout"].exists,
                        "Coach card still shows the removed Suggested Workout blurb")
-        XCTAssertTrue(app.scrollToHittableAndTap("home.observations.show"),
-                      "Home did not expose Observations")
         XCTAssertTrue(app.staticTexts["Observations"].waitForExistence(timeout: 5),
-                      "Observations did not expand")
+                      "Observations is not expanded by default")
         XCTAssertFalse(app.staticTexts["Coach’s Suggestions"].exists)
         XCTAssertFalse(app.staticTexts["Coach's Suggestions"].exists)
         XCTAssertFalse(app.staticTexts["Coach's Workout"].exists)

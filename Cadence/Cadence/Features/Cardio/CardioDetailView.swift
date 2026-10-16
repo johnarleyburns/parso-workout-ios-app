@@ -34,6 +34,20 @@ struct CardioDetailView: View {
             }
 
             let hr = workout.orderedHRSamples
+            if !hr.isEmpty {
+                Section("Heart Rate") {
+                    HRZoneChart(samples: hr.map { ($0.t, $0.bpm) },
+                                maxHR: CardioIntensityProfile.resolved(
+                                    userEnteredMaximumHR: settings.cardioMaximumHROverride,
+                                    age: settings.userAge).maximumHR ?? CardioMath.defaultMaxHR(age: settings.userAge))
+                    .frame(height: 180)
+                    .accessibilityIdentifier("cardioDetail.hrChart")
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Heart rate over time")
+                    .accessibilityValue(hrChartAXSummary(hr.map(\.bpm)))
+                }
+            }
+
             if let summary = workout.intensitySummary {
                 Section("Intensity") {
                     detailRow(String(localized: "Actual exercise"), "\(minutes(summary.actualDuration)) min")
@@ -90,20 +104,6 @@ struct CardioDetailView: View {
                     }
                 }
                 .accessibilityIdentifier("cardioDetail.activityDose")
-            }
-
-            if !hr.isEmpty {
-                Section("Heart Rate") {
-                    HRZoneChart(samples: hr.map { ($0.t, $0.bpm) },
-                                maxHR: CardioIntensityProfile.resolved(
-                                    userEnteredMaximumHR: settings.cardioMaximumHROverride,
-                                    age: settings.userAge).maximumHR ?? CardioMath.defaultMaxHR(age: settings.userAge))
-                    .frame(height: 180)
-                    .accessibilityIdentifier("cardioDetail.hrChart")
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("Heart rate over time")
-                    .accessibilityValue(hrChartAXSummary(hr.map(\.bpm)))
-                }
             }
 
             if let interval = workout.intervalSummary {

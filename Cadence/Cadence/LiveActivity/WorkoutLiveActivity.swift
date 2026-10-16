@@ -28,7 +28,8 @@ final class WorkoutLiveActivityCoordinator {
                                                                nextSetToken: nextSetToken)
         do {
             activity = try Activity.request(attributes: attributes,
-                                            content: ActivityContent(state: state, staleDate: LiveActivityReconcilePolicy.staleDate(from: Date())))
+                                            content: ActivityContent(state: state,
+                                                                     staleDate: WorkoutLiveActivityPolicy.staleDate(from: Date())))
         } catch {
             // A missing entitlement, disabled Live Activities setting, or a
             // rejected ActivityKit request must be diagnosable instead of
@@ -49,7 +50,8 @@ final class WorkoutLiveActivityCoordinator {
                                                                nextSetSummary: nextSetSummary,
                                                                nextSetToken: nextSetToken)
         Task { @MainActor [activity] in
-            await activity.update(ActivityContent(state: state, staleDate: LiveActivityReconcilePolicy.staleDate(from: Date())))
+            await activity.update(ActivityContent(state: state,
+                                                  staleDate: WorkoutLiveActivityPolicy.staleDate(from: Date())))
         }
     }
 
@@ -67,7 +69,14 @@ final class WorkoutLiveActivityCoordinator {
         if action == .endAll { endAllStale() }
     }
 
-    /// Ends every Live Activity this app owns. Called on launch and at the top
+    /// Launch/foreground reconciliation driven by the pure policy.
+    func reconcile(workoutIsActive: Bool) {
+        if WorkoutLiveActivityPolicy.reconciliation(workoutIsActive: workoutIsActive) == .endAllActivities {
+            endAllStale()
+        }
+    }
+
+    /// Ends every Live Activity this app owns. Called on launch (via `reconcile`), from `end`, and at the top
     /// of every `start` so an activity orphaned by a kill/background can never
     /// keep a stale timer on the lock screen (field-test batch 2026-08-20
     /// issue 5, 5B). `Activity.activities` returns only our own type and is

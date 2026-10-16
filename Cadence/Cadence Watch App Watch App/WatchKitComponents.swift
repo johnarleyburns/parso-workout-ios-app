@@ -33,9 +33,9 @@ struct WatchMetricField: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(alignment: .firstTextBaseline, spacing: 2) {
+            HStack(alignment: .center, spacing: 2) {
                 Text(value)
-                    .font(.system(.title, design: .rounded).weight(.bold))
+                    .font(.system(.title2, design: .rounded).weight(.bold))
                     .monospacedDigit()
                     .lineLimit(1)
                     .minimumScaleFactor(0.42)
@@ -44,7 +44,9 @@ struct WatchMetricField: View {
                 Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
                     .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(maxWidth: .infinity, minHeight: 46)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, minHeight: 44)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isFocused ? WatchTone.accentSoft : Color.clear))
             .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)

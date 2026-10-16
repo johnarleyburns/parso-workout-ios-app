@@ -104,6 +104,10 @@ struct RootTabView: View {
                     nextExercise: active.nextExercise,
                     nextSetSummary: active.nextSetSummary,
                     nextSetToken: active.nextSetToken)
+            } else {
+                // Heartbeat backstop: no active workout means no Live Activity.
+                WorkoutLiveActivityCoordinator.shared.reconcile(
+                    workoutIsActive: active.isActive, hasStrengthSession: active.strengthSession != nil)
             }
         }
         .onChange(of: active.isActive) { _, isActive in
@@ -137,6 +141,10 @@ struct RootTabView: View {
                     nextExercise: active.nextExercise,
                     nextSetSummary: active.nextSetSummary,
                     nextSetToken: active.nextSetToken)
+            } else {
+                // Launch cleanup: end any activity orphaned by a prior process.
+                WorkoutLiveActivityCoordinator.shared.reconcile(
+                    workoutIsActive: active.isActive, hasStrengthSession: active.strengthSession != nil)
             }
             // Clear the legacy weekly Today-plan projection from older builds.
             // Current Watch/widget projections are populated only from explicit

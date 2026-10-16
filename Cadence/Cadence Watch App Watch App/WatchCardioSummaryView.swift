@@ -11,6 +11,28 @@ struct WatchCardioSummaryView: View {
     let onSave: () -> Void
     let onDiscard: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchSettings
+
+    private var zoneMaxHR: Double {
+        CardioIntensityProfile.resolved(userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
+                                        age: watchSettings.userAge).maximumHR
+            ?? CardioMath.defaultMaxHR(age: watchSettings.userAge)
+    }
+
+    private var zoneDomain: ClosedRange<Double> {
+        HRZoneBands.domain(bpms: summary.hrSamples.map(\.bpm), maxHR: zoneMaxHR)
+    }
+
+    private func zoneColor(_ tint: HRZoneTint) -> Color {
+        switch tint {
+        case .zone1: .cyan
+        case .zone2: .green
+        case .zone3: .yellow
+        case .zone4: .orange
+        case .zone5: .red
+        case .neutral: .secondary
+        }
+    }
 
     var body: some View {
         let presentation = WatchCardioSummaryPresenter.present(hrSamples: summary.hrSamples)
@@ -27,15 +49,24 @@ struct WatchCardioSummaryView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 20)
                     .accessibilityIdentifier("watchSummary.hrHeading")
-                Chart(Array(presentation.hrSamples.enumerated()), id: \.offset) { _, sample in
-                    LineMark(x: .value("Elapsed", sample.t), y: .value("BPM", sample.bpm))
-                        .foregroundStyle(.red)
-                        .interpolationMethod(.catmullRom)
-                    if presentation.hrSamples.count == 1 {
-                        PointMark(x: .value("Elapsed", sample.t), y: .value("BPM", sample.bpm))
-                            .foregroundStyle(.red)
+                Chart {
+                    ForEach(HRZoneBands.bands(maxHR: zoneMaxHR, domain: zoneDomain), id: \.zone) { band in
+                        RectangleMark(yStart: .value("Zone start", band.lower),
+                                      yEnd: .value("Zone end", band.upper))
+                            .foregroundStyle(zoneColor(band.tint).opacity(0.3))
+                    }
+                    ForEach(Array(presentation.hrSamples.enumerated()), id: \.offset) { _, sample in
+                        LineMark(x: .value("Elapsed", sample.t), y: .value("BPM", sample.bpm))
+                            .foregroundStyle(.white)
+                            .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                            .interpolationMethod(.catmullRom)
+                        if presentation.hrSamples.count == 1 {
+                            PointMark(x: .value("Elapsed", sample.t), y: .value("BPM", sample.bpm))
+                                .foregroundStyle(.white)
+                        }
                     }
                 }
+                .chartYScale(domain: zoneDomain)
                 .chartXAxis(.hidden)
                 .chartYAxis { AxisMarks(position: .leading, values: .automatic(desiredCount: 2)) }
                 .frame(height: 82)

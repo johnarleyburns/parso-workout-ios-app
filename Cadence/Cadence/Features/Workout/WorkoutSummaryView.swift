@@ -338,14 +338,10 @@ struct WorkoutSummaryView: View {
     private var hrChart: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Heart Rate").font(.headline)
-            Chart {
-                ForEach(Array(data.hr.enumerated()), id: \.offset) { _, sample in
-                    LineMark(x: .value("Time", sample.t / 60),
-                             y: .value("BPM", sample.bpm))
-                        .foregroundStyle(.red)
-                }
-            }
-            .chartXAxisLabel("min")
+            HRZoneChart(samples: data.hr.map { ($0.t, $0.bpm) },
+                        maxHR: CardioIntensityProfile.resolved(
+                            userEnteredMaximumHR: settings.cardioMaximumHROverride,
+                            age: settings.userAge).maximumHR ?? CardioMath.defaultMaxHR(age: settings.userAge))
             .frame(height: 180)
             .accessibilityIdentifier("summary.hrChart")
             .accessibilityElement(children: .ignore)

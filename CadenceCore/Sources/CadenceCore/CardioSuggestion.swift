@@ -68,12 +68,16 @@ public struct CardioSuggestionInput: Codable, Equatable, Sendable {
     public let weeklyTargetMinutes: Double
     public let experience: ExperienceLevel
     public let asOf: Date
+    /// Modalities the user asked never to be suggested (injury, dislike, access).
+    public let excludedTypes: Set<CardioType>
 
     public init(history: [CardioSuggestionHistory] = [],
                 weeklyModerateEquivalentMinutes: Double,
                 weeklyTargetMinutes: Double = 150,
                 experience: ExperienceLevel = .intermediate,
-                asOf: Date = Date()) {
+                asOf: Date = Date(),
+                excludedTypes: Set<CardioType> = []) {
+        self.excludedTypes = excludedTypes
         self.history = history
         self.weeklyModerateEquivalentMinutes = max(0, weeklyModerateEquivalentMinutes)
         self.weeklyTargetMinutes = max(1, weeklyTargetMinutes)
@@ -94,6 +98,8 @@ public struct CardioSuggestion: Codable, Equatable, Hashable, Sendable, Identifi
     public let intervalRestSeconds: Int?
     public let rationale: String
     public let citationIDs: [String]
+    /// Plain-language observation about recent training that motivated the pick.
+    public let observation: String?
 
     public var id: String {
         "\(type.rawValue)-\(intensity.rawValue)-\(durationMinutes)"
@@ -106,7 +112,8 @@ public struct CardioSuggestion: Codable, Equatable, Hashable, Sendable, Identifi
                 warmupMinutes: Int = 5, cooldownMinutes: Int = 5,
                 intervalRounds: Int? = nil, intervalWorkSeconds: Int? = nil,
                 intervalRestSeconds: Int? = nil, rationale: String,
-                citationIDs: [String]) {
+                citationIDs: [String], observation: String? = nil) {
+        self.observation = observation
         self.type = type
         self.durationMinutes = max(1, durationMinutes)
         self.intensity = intensity
@@ -131,11 +138,25 @@ public enum CardioSuggestionGenerator {
     public static let minimumDurationMinutes = 20
     public static let maximumDurationMinutes = 45
 
+    /// Days without interval work before the generator recommends some.
+    public static let intervalGapDays = 14
+    /// Fallback order when history is empty or every past modality is excluded.
+    private static let fallbackTypes: [CardioType] = [
+        .run, .walk, .cycle, .elliptical, .rowing, .swim, .stairClimber
+    ]
+    private static let intervalCapable: Set<CardioType> = [
+        .run, .cycle, .rowing, .swim, .elliptical, .stairClimber, .hiit, .boxing
+    ]
+
     public static func generate(input: CardioSuggestionInput) -> CardioSuggestion? {
+        let allowed = { (type: CardioType) in type != .other && !input.excludedTypes.contains(type) }
         let usableHistory = input.history
-            .filter { $0.type != .other && $0.durationMinutes > 0 }
+            .filter { allowed($0.type) && $0.durationMinutes > 0 }
             .sorted { $0.start > $1.start }
-        let type = preferredType(from: usableHistory) ?? .run
+        // Preference first: the most recent allowed modality, else a fallback.
+        guard let type = usableHistory.first?.type ?? fallbackTypes.first(where: allowed) else {
+            return nil
+        }
         let remaining = max(0, input.weeklyTargetMinutes - input.weeklyModerateEquivalentMinutes)
         let established = input.experience != .beginner
             && usableHistory.count >= minimumIntervalHistoryCount
@@ -149,6 +170,31 @@ public enum CardioSuggestionGenerator {
         let recentIntervals = usableHistory.filter { $0.isInterval && $0.start >= windowStart }
         let shouldSuggestIntervals = established
             && recentIntervals.count >= minimumRecentIntervalSessions
+
+        let cutoff = input.asOf.addingTimeInterval(-Double(intervalGapDays) * 86_400)
+        let noRecentIntervals = !input.history.contains { $0.isInterval && $0.start >= cutoff }
+        let shortfall = remaining > 0
+        let observation: String? = shortfall
+            ? String(localized: "You are about \(Int(remaining.rounded())) minutes short of this week's cardio goal.", bundle: .module)
+            : nil
+
+        if established && noRecentIntervals && !shouldSuggestIntervals,
+           let intervalType = ([type] + usableHistory.map(\.type))
+            .first(where: { intervalCapable.contains($0) }) {
+            return CardioSuggestion(
+                type: intervalType,
+                durationMinutes: 35,
+                intensity: .interval,
+                indoor: true,
+                warmupMinutes: 5,
+                cooldownMinutes: 5,
+                intervalRounds: 4,
+                intervalWorkSeconds: 240,
+                intervalRestSeconds: 180,
+                rationale: String(localized: "Norwegian 4×4: you have not done interval work in the past \(intervalGapDays) days. Four 4-minute hard efforts with easy recovery are an evidence-based way to raise maximal oxygen uptake (VO₂max) in a short session, using your preferred \(intervalType.displayName.lowercased()).", bundle: .module),
+                citationIDs: ["hiitVo2max", "gillenSIT2016"],
+                observation: observation ?? String(localized: "No interval training in the past \(intervalGapDays) days.", bundle: .module))
+        }
 
         if shouldSuggestIntervals {
             let intervalType: CardioType = recentIntervals.first
@@ -164,7 +210,8 @@ public enum CardioSuggestionGenerator {
                 intervalWorkSeconds: 120,
                 intervalRestSeconds: 120,
                 rationale: String(localized: "You have an established cardio base and recent interval work. This keeps the interval dose bounded while giving you a clear session to review.", bundle: .module),
-                citationIDs: ["hiitVo2max"])
+                citationIDs: ["hiitVo2max"],
+                observation: observation)
         }
 
         let recentAverage = usableHistory.prefix(4).map(\.durationMinutes).reduce(0, +)
@@ -186,11 +233,7 @@ public enum CardioSuggestionGenerator {
             intensity: .moderate,
             indoor: true,
             rationale: rationale,
-            citationIDs: ["ekelundActivityMortality2016"])
-    }
-
-    private static func preferredType(from history: [CardioSuggestionHistory]) -> CardioType? {
-        let supported = history.first { $0.type != .other }?.type
-        return supported
+            citationIDs: ["ekelundActivityMortality2016"],
+            observation: observation)
     }
 }

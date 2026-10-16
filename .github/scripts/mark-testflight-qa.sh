@@ -32,7 +32,8 @@ for pr in "${!prs[@]}"; do
   issue=$(printf '%s\n' "$body" | sed -n 's/.*<!-- claude-issue:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
   [[ -n "$issue" ]] || { echo "PR #$pr has no claude-issue marker; skipping"; continue; }
   gh issue edit "$issue" --repo "$repo" --add-label ready-for-qa
-  gh issue comment "$issue" --repo "$repo" \
-    --body "**Ready for QA:** PR #$pr was included in a successful TestFlight upload at commit \`$sha\`. [Deployment run]($url). App Store Connect accepted the upload; Apple processing and tester availability may still be pending."
-  echo "Issue #$issue marked ready-for-qa (PR #$pr)"
+  # The traceability recorder owns the idempotent delivery comment.  Retain
+  # the historical upload-stage label for now, while its comment explicitly
+  # says that upload is not tester availability.
+  echo "Issue #$issue received legacy ready-for-qa upload label (PR #$pr)"
 done

@@ -41,6 +41,11 @@ Only `johnarleyburns`-authored issues. `.github` edits need `ai-ci-maintenance` 
 ## Observability
 Each maintenance run writes `pr-maintenance-report.json` (artifact + step summary): open Claude PRs, validating, repairing, behind, conflicted, waiting for merge, stopped. Post-merge outcome is commented on the merged PR by `ios.yml`'s `deployment-report`.
 
+## macOS capacity and simulator policy
+All macOS jobs use the shared, job-level `cadence-macos` concurrency group with `queue: max`. This is an intentionally conservative **one-job** repository-wide FIFO queue: GitHub-hosted runners expose no repository-owned capacity control and GitHub Actions has no atomic, fair two-permit semaphore. Up to 100 waiting jobs are retained rather than replaced. The Linux maintenance job does not take this permit. A true two-job cap requires a managed external lease coordinator (atomic acquire/release, TTL/heartbeat and crash recovery) or two dedicated self-hosted runner slots. Do not replace this group with two arbitrary slot names; that has a check-then-act race.
+
+CI only performs host SwiftPM tests and generic physical-device-target builds/archives. `scripts/check-ci-no-simulators.sh` rejects simulator-bearing CI commands statically, and `xcodebuild-safe.sh` rejects simulator destinations and `xcodebuild test` at runtime when `GITHUB_ACTIONS=true`. Local smoke targets remain local-only.
+
 ## Emergency pause
 Disable the *Claude PR Maintenance* and *Claude PR Conflict Repair* workflows in the Actions tab (or remove the secret `CLAUDE_WORKFLOW_TOKEN`: maintenance then fails loudly).
 

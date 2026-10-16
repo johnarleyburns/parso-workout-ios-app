@@ -13,6 +13,18 @@ for ((index = 1; index <= $#; index++)); do
       exit 2
       ;;
   esac
+
+  # CI must never start an iOS or watchOS simulator. Local smoke commands keep
+  # working, but a CI invocation fails before xcodebuild is allowed to launch.
+  if [[ "${GITHUB_ACTIONS:-}" == "true" && "${argument,,}" == *simulator* ]]; then
+    echo "xcodebuild-safe: simulator destinations are forbidden in CI" >&2
+    exit 2
+  fi
+
+  if [[ "${GITHUB_ACTIONS:-}" == "true" && ( "$argument" == "test" || "$argument" == "test-without-building" ) ]]; then
+    echo "xcodebuild-safe: xcodebuild simulator tests are forbidden in CI; use host SwiftPM tests and generic device builds" >&2
+    exit 2
+  fi
 done
 
 exec xcodebuild "$@"

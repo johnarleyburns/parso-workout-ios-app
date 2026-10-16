@@ -49,7 +49,7 @@ endstep
 
 step "Guardrails"
 for g in check-test-pyramid check-no-network check-history-safety check-watch-appicon \
-         check-watch-background-modes check-xcodebuild-platform check-release-safety; do
+         check-watch-background-modes check-xcodebuild-platform check-ci-no-simulators check-release-safety; do
   bash "scripts/$g.sh"
 done
 endstep

@@ -17,6 +17,14 @@ concurrency:
 jobs:
   core-tests:
     runs-on: xcode-27
+    # GitHub-hosted runners offer no repository-wide, two-permit semaphore.
+    # This supported job-level lock is the safe fallback: exactly one macOS job
+    # runs repository-wide. Do not make per-workflow "slot" groups; they race.
+    concurrency:
+      group: cadence-macos
+      cancel-in-progress: false
+      queue: max
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -72,6 +80,7 @@ jobs:
           bash scripts/check-watch-appicon.sh
           bash scripts/check-watch-background-modes.sh
           bash scripts/check-xcodebuild-platform.sh
+          bash scripts/check-ci-no-simulators.sh
           bash scripts/check-release-safety.sh
 
   # XCUITest smoke suites are intentionally NOT run in CI: simulator-based UI
@@ -80,10 +89,22 @@ jobs:
   # guardrails). UI smoke runs locally via `make smoke` and `make watch-smoke`.
 
   testflight-build:
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: read
     outputs:
       stage: ${{ steps.stage.outputs.stage }}
     needs: core-tests
     runs-on: xcode-27
+    concurrency:
+      group: cadence-macos
+      cancel-in-progress: false
+      queue: max
+    # Archives can legitimately be slower than a compile, but must not consume
+    # a permit forever if Xcode or an external signing service stops responding.
+    timeout-minutes: 150
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -195,6 +216,16 @@ jobs:
           TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
           set -eo pipefail
+          archive_diagnostics() {
+            status=$?
+            echo "::group::Archive diagnostics (exit $status)"
+            date -u
+            ps -axo pid,ppid,etime,command | grep -E '[x]codebuild|[s]wift|[x]cbuild' || true
+            tail -200 build.log 2>/dev/null || true
+            echo "::endgroup::"
+            return "$status"
+          }
+          trap archive_diagnostics ERR
           bash scripts/xcodebuild-safe.sh archive \
             -project Cadence/Cadence.xcodeproj \
             -scheme Cadence \
@@ -280,12 +311,24 @@ jobs:
             --apiKey "$APPSTORE_API_KEY_ID" \
             --apiIssuer "$APPSTORE_API_ISSUER_ID"
 
-      - name: Upload Build Log on Failure
-        if: failure()
+      - name: Record TestFlight delivery
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          APP_NAME: Cadence
+          ARCHIVED_APP: ./build/Cadence.xcarchive/Products/Applications/Cadence.app
+          ASC_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          ASC_KEY_PATH: /Users/runner/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
+        run: bash .github/scripts/record-testflight-delivery.sh
+
+      - name: Upload archive diagnostics
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-log
+          name: archive-diagnostics-${{ github.run_id }}
           path: build.log
+          if-no-files-found: ignore
           retention-days: 7
 
       - name: Record failing stage
@@ -355,7 +398,7 @@ jobs:
           if [[ "$TESTS" != success || "$BUILD" != success ]]; then
             echo "::error::$status"; exit 1
           fi
-      - name: Label deployed issues ready for QA
+      - name: Label uploaded issues ready for QA (legacy upload-stage behavior)
         if: ${{ needs.core-tests.result == 'success' && needs.testflight-build.result == 'success' && needs.testflight-build.outputs.stage == 'uploaded' }}
         env:
           GH_TOKEN: ${{ github.token }}

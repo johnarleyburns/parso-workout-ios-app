@@ -286,7 +286,8 @@ struct CardioPickerView: View {
     @ViewBuilder
     private var excludedTypesNote: some View {
         let excluded = settings.excludedCardioTypes.sorted { $0.rawValue < $1.rawValue }
-        if !excluded.isEmpty {
+        let excludedProtocols = settings.excludedHIITProtocolIDs.compactMap(HIITProtocol.find(id:))
+        if !excluded.isEmpty || !excludedProtocols.isEmpty {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Never suggested (you can still pick them below):")
                     .font(.footnote)
@@ -298,6 +299,15 @@ struct CardioPickerView: View {
                         Button("Allow again") { settings.setCardioTypeExcluded(type, false) }
                             .font(.footnote)
                             .accessibilityLabel("Allow \(type.displayName) in suggestions again")
+                    }
+                }
+                ForEach(excludedProtocols) { hiit in
+                    HStack {
+                        Text(hiit.name).font(.footnote)
+                        Spacer()
+                        Button("Allow again") { settings.setHIITProtocolExcluded(hiit.id, false) }
+                            .font(.footnote)
+                            .accessibilityLabel("Allow \(hiit.name) in suggestions again")
                     }
                 }
             }

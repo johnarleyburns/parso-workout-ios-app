@@ -118,6 +118,7 @@ public final class AppSettings {
         self.lastStrengthSettings = Self.readWorkoutSettings(defaults, "settings.lastStrengthSettings")
         self.lastCardioSettings = Self.readWorkoutSettings(defaults, "settings.lastCardioSettings")
         self.excludedCardioTypeRawValues = defaults.stringArray(forKey: "settings.excludedCardioTypes") ?? []
+        self.excludedHIITProtocolIDs = defaults.stringArray(forKey: "settings.excludedHIITProtocols") ?? []
         self.lastIntervalSettings = Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings")
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
@@ -283,6 +284,15 @@ public final class AppSettings {
     /// Cardio modalities the user never wants suggested (raw `CardioType` values).
     public var excludedCardioTypeRawValues: [String] {
         didSet { defaults.set(excludedCardioTypeRawValues, forKey: "settings.excludedCardioTypes") }
+    }
+    /// HIIT protocols (`HIITProtocol.id`) the user never wants suggested.
+    public var excludedHIITProtocolIDs: [String] {
+        didSet { defaults.set(excludedHIITProtocolIDs, forKey: "settings.excludedHIITProtocols") }
+    }
+    public func setHIITProtocolExcluded(_ id: String, _ excluded: Bool) {
+        var set = Set(excludedHIITProtocolIDs)
+        if excluded { set.insert(id) } else { set.remove(id) }
+        excludedHIITProtocolIDs = set.sorted()
     }
     public var excludedCardioTypes: Set<CardioType> {
         Set(excludedCardioTypeRawValues.compactMap(CardioType.init(rawValue:)))

@@ -39,7 +39,10 @@ struct HistoryView: View {
                 }
             } header: {
                 HStack {
-                    Text(showDeleted ? "Deleted" : "History")
+                    // Embedded in Progress, the tab bar already says "History".
+                    if !embedded || showDeleted {
+                        Text(showDeleted ? "Deleted" : "History")
+                    }
                     Spacer()
                     if !deletedSessions.isEmpty || !deletedCardio.isEmpty {
                         Button(showDeleted ? "Back" : "View Deleted") {
@@ -55,7 +58,7 @@ struct HistoryView: View {
                 }
             }
         }
-        .navigationTitle(embedded ? "Progress" : "History")
+        .modifier(HistoryChrome(embedded: embedded))
         .confirmationDialog("Delete this workout?",
                             isPresented: Binding(get: { sessionToDelete != nil },
                                                  set: { if !$0 { sessionToDelete = nil } }),
@@ -217,5 +220,18 @@ struct DeletedTag: View {
             .background(.red.opacity(0.15), in: Capsule())
             .foregroundStyle(.red)
             .accessibilityLabel("Deleted")
+    }
+}
+
+/// Standalone History owns its title; the Progress tab owns title and backdrop,
+/// so the embedded list adds neither (a nested title reset the Progress tab).
+private struct HistoryChrome: ViewModifier {
+    let embedded: Bool
+    func body(content: Content) -> some View {
+        if embedded {
+            content.scrollContentBackground(.hidden)
+        } else {
+            content.navigationTitle("History")
+        }
     }
 }

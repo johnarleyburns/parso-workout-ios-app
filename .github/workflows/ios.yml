@@ -80,6 +80,8 @@ jobs:
   # guardrails). UI smoke runs locally via `make smoke` and `make watch-smoke`.
 
   testflight-build:
+    outputs:
+      stage: ${{ steps.stage.outputs.stage }}
     needs: core-tests
     runs-on: xcode-27
     steps:
@@ -188,6 +190,7 @@ jobs:
           chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
 
       - name: Archive
+        id: archive
         env:
           TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
@@ -224,6 +227,7 @@ jobs:
           done
 
       - name: Check owned archive warnings
+        id: warnings
         if: success()
         run: bash scripts/check-owned-warnings.sh build.log
 
@@ -255,6 +259,7 @@ jobs:
           fi
 
       - name: Export IPA
+        id: export
         run: |
           set -eo pipefail
           xcodebuild -exportArchive \
@@ -263,6 +268,7 @@ jobs:
             -exportOptionsPlist ExportOptions.plist
 
       - name: Upload to TestFlight
+        id: upload
         env:
           APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
@@ -281,6 +287,24 @@ jobs:
           name: build-log
           path: build.log
           retention-days: 7
+
+      - name: Record failing stage
+        id: stage
+        if: always()
+        env:
+          ARCHIVE: ${{ steps.archive.outcome }}
+          WARNINGS: ${{ steps.warnings.outcome }}
+          EXPORT: ${{ steps.export.outcome }}
+          UPLOAD: ${{ steps.upload.outcome }}
+        run: |
+          stage=setup
+          if [[ "$UPLOAD" == success ]]; then stage=uploaded
+          elif [[ "$UPLOAD" == failure ]]; then stage=upload
+          elif [[ "$EXPORT" == failure ]]; then stage=export
+          elif [[ "$WARNINGS" == failure ]]; then stage=warnings
+          elif [[ "$ARCHIVE" == failure ]]; then stage=archive
+          fi
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
 
       - name: Cleanup
         if: always()
@@ -305,19 +329,26 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TESTS: ${{ needs.core-tests.result }}
           BUILD: ${{ needs.testflight-build.result }}
+          STAGE: ${{ needs.testflight-build.outputs.stage }}
           SHA: ${{ github.sha }}
         run: |
           if [[ "$TESTS" != success ]]; then
             status="FAILED at package tests/guardrails (code-related: needs a new protected repair PR; main is never rewritten)"
-          elif [[ "$BUILD" == success ]]; then
+          elif [[ "$BUILD" == success && "$STAGE" == uploaded ]]; then
             status="build archived, exported and uploaded to App Store Connect (processing/tester availability not yet confirmed)"
           else
-            status="FAILED at archive/export/TestFlight upload (result: $BUILD). Check the run log: signing, provisioning or App Store Connect failures need owner action"
+            case "$STAGE" in
+              archive) status="FAILED at archive compilation (code-related: see build log artifact; not a signing issue unless the log says so)" ;;
+              warnings) status="FAILED at the owned archive warning gate (code-related: fix the application-owned compiler warning; not a signing or App Store Connect problem)" ;;
+              export) status="FAILED at IPA export (check provisioning profiles/ExportOptions; owner action may be needed)" ;;
+              upload) status="FAILED at TestFlight upload (check App Store Connect API credentials/status; owner action may be needed)" ;;
+              *) status="FAILED before archive (setup: certificates, profiles, package resolution; job result: $BUILD)" ;;
+            esac
           fi
           url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
-          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" --jq '.[0].number // empty' || true)
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" --jq '.[0].number // empty' || { echo "::warning::could not look up PR"; true; })
           msg="**Post-merge deployment ($SHA):** $status. [Run]($url)"
-          if [[ -n "$pr" ]]; then gh pr comment "$pr" --body "$msg" || true; fi
+          if [[ -n "$pr" ]]; then gh pr comment "$pr" --repo "$GITHUB_REPOSITORY" --body "$msg" || echo "::warning::could not post PR comment"; fi
           echo "$msg" >> "$GITHUB_STEP_SUMMARY"
           if [[ "$TESTS" != success || "$BUILD" != success ]]; then
             echo "::error::$status"; exit 1

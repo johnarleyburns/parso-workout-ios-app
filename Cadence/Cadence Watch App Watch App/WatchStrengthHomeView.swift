@@ -28,11 +28,11 @@ struct WatchStrengthHomeView: View {
                 .buttonStyle(.plain)
                 .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(isCurrent(item.exercise) ? WatchTone.accentSoft : WatchTone.surface))
                 .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
-                .contextMenu {
-                    Button(role: .destructive) { exerciseToRemove = item.exercise } label: {
-                        Label("Remove exercise", systemImage: "trash")
-                    }
-                }
+                .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in
+                    WatchHaptics.tap()
+                    exerciseToRemove = item.exercise
+                })
+                .accessibilityAction(named: Text("Remove exercise")) { exerciseToRemove = item.exercise }
             }
 
             Button {

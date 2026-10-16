@@ -1,0 +1,36 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Cladiron Watch — This Week mockup</title>
+<style>
+  body{background:#111;color:#fff;font-family:-apple-system,system-ui,sans-serif;display:flex;flex-wrap:wrap;gap:24px;padding:24px}
+  figure{margin:0;text-align:center;font-size:12px;color:#aaa}
+  .watch{background:#000;border-radius:44px;border:4px solid #333;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px 6px;box-sizing:border-box}
+  .small{width:162px;height:197px}   /* 40/41 mm */
+  .large{width:205px;height:251px}   /* 46/49 mm */
+  .title{font-size:11px;color:#aaa;align-self:flex-start;margin-left:14px}
+  svg{display:block}
+  .legend{display:flex;width:100%;gap:4px;margin-top:2px}
+  .legend div{flex:1;text-align:center;line-height:1.05}
+  .legend b{display:block;font-size:11px}
+  .legend span{display:block;font-size:20px;font-weight:700}
+  .legend i{display:block;font-size:10px;color:#999;font-style:normal}
+  .dots{margin-top:3px;font-size:8px;color:#666;letter-spacing:3px}
+</style>
+<script>
+// Tones mirror WatchWeekRing.tone: red = 0, yellow < min, light blue min..<upper, green >= upper.
+const C={red:'#ff453a',yellow:'#ffd60a',lightBlue:'#73c7ff',green:'#30d158'};
+function tone(v,min,max){return v<=0?'red':v<min?'yellow':v<max?'lightBlue':'green'}
+function ring(r,v,min,max,w){const t=tone(v,min,max),p=max>0?Math.min(1,v/max):0,c=2*Math.PI*r;
+ return `<circle cx="50" cy="50" r="${r}" fill="none" stroke="${C[t]}" stroke-opacity=".25" stroke-width="${w}"/>
+ <circle cx="50" cy="50" r="${r}" fill="none" stroke="${C[t]}" stroke-width="${w}" stroke-linecap="round" stroke-dasharray="${p*c} ${c}" transform="rotate(-90 50 50)"/>`}
+function card(size,s,c,label){
+ const sm=size==='small',px=sm?96:124,
+  S={min:40,max:120},K={min:150,max:300};
+ return `<figure><div class="watch ${size}"><div class="title">This Week</div>
+ <svg width="${px}" height="${px}" viewBox="0 0 100 100">${ring(42,s,S.min,S.max,10)}${ring(26,c,K.min,K.max,10)}</svg>
+ <div class="legend"><div><b style="color:${C[tone(s,S.min,S.max)]}">Strength</b><span>${s}</span><i>Sets</i></div>
+ <div><b style="color:${C[tone(c,K.min,K.max)]}">Cardio</b><span>${c}</span><i>Min</i></div></div>
+ <div class="dots">○ ●</div></div><figcaption>${size} · ${label}</figcaption></figure>`}
+const cases=[[0,0,'both red (0)'],[18,70,'yellow strength / yellow cardio'],[75,210,'light blue / light blue'],[130,320,'green / green']];
+addEventListener('DOMContentLoaded',()=>{document.body.innerHTML=['small','large'].flatMap(z=>cases.map(c=>card(z,c[0],c[1],c[2]))).join('')})
+</script>

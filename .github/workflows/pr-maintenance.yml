@@ -32,7 +32,8 @@ concurrency:
 jobs:
   reconcile:
     if: >-
-      github.event_name != 'workflow_dispatch' || github.actor == 'johnarleyburns'
+      (github.event_name == 'workflow_dispatch' && github.actor == 'johnarleyburns') ||
+      (github.event_name != 'workflow_dispatch' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:

@@ -2,7 +2,7 @@ name: Claude PR Conflict Repair
 # Repairs exactly one PR per run (conflicts, branch freshness, failed
 # validation). Dispatched by "Claude PR Maintenance"; the owner may also
 # dispatch it by hand. It never decides readiness or merging.
-run-name: Repair PR #${{ inputs.pr_number }} (${{ github.event_name }})
+run-name: "Repair PR #${{ inputs.pr_number }} (${{ github.event_name }})"
 on:
   workflow_dispatch:
     inputs:

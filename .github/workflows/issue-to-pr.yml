@@ -1,4 +1,7 @@
 name: Claude Issue to Draft PR
+# Intake + implementation. Idempotent per issue (see issue-to-pr.sh). A later
+# owner-applied ai-ci-maintenance label resumes an issue waiting for authorization.
+run-name: Issue #${{ github.event.issue.number || inputs.issue_number }} (${{ github.event_name }}/${{ github.event.action }})
 on:
   issues:
     types: [opened, labeled]
@@ -9,23 +12,26 @@ on:
         required: true
         type: number
 permissions:
-  contents: write
+  contents: read
   issues: write
   pull-requests: write
+  actions: write
+# Serialize per issue so duplicate opened/labeled/dispatch events cannot race;
+# different issues proceed independently. A superseded pending duplicate is
+# harmless: the script is idempotent and the survivor sees any existing PR.
 concurrency:
-  group: claude-issue-agent-global
-  queue: max
+  group: claude-issue-${{ github.event.issue.number || inputs.issue_number }}
   cancel-in-progress: false
 jobs:
   implement:
     if: >-
       (github.event_name == 'workflow_dispatch' && github.actor == 'johnarleyburns') ||
       (github.event_name == 'issues' && github.event.action == 'opened' && github.event.issue.user.login == 'johnarleyburns') ||
-      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'ai-ready' && github.actor == 'johnarleyburns')
+      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.issue.user.login == 'johnarleyburns' && github.actor == 'johnarleyburns' && (github.event.label.name == 'ai-ready' || github.event.label.name == 'ai-ci-maintenance'))
     runs-on: xcode-27
     timeout-minutes: 120
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       ISSUE: ${{ github.event.issue.number || inputs.issue_number }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_MODEL: sonnet
@@ -33,7 +39,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
+          persist-credentials: false   # token is passed per git command, never stored for Claude
       - name: Install Claude Code
         run: |
           test -n "$CLAUDE_CODE_OAUTH_TOKEN"
@@ -45,8 +51,10 @@ jobs:
           test -n "$XCODE"
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - name: Implement and update draft PR
-        run: bash .github/scripts/issue-to-pr.sh
+      - name: Implement and open draft PR
+        run: |
+          cp .github/scripts/issue-to-pr.sh "$RUNNER_TEMP/issue-to-pr-runner.sh"
+          bash "$RUNNER_TEMP/issue-to-pr-runner.sh"
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4

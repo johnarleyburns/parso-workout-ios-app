@@ -62,7 +62,7 @@ final class WatchRedesignTests: XCTestCase {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         _ = try WorkoutRepository.seedStarterLibraryIfNeeded(context)
-        let model = WatchStrengthFlowModel(context: context, unit: .kilograms, cooldownDefault: 5, restDefault: 90)
+        let model = WatchStrengthFlowModel(context: context, unit: .kilograms, cooldownDefault: 5, restDefault: 30)
         let plan = WatchPlanPayload(strength: .init(
             exerciseNames: ["Bench Press"],
             prescriptions: [PlannedExercisePrescription(exerciseName: "Bench Press", sets: [
@@ -82,8 +82,8 @@ final class WatchRedesignTests: XCTestCase {
         XCTAssertTrue(try XCTUnwrap(model.setCardState).echoesChange)
 
         _ = model.logSet()
-        XCTAssertTrue(model.plannedRestApplied)
-        XCTAssertEqual(model.restTimer.remaining, 150)
+        XCTAssertFalse(model.plannedRestApplied)
+        XCTAssertEqual(model.restTimer.remaining, 30, "the user's default rest wins over plan rest (issue #49)")
         XCTAssertTrue(model.lastLoggedSetWasPR, "a first-ever working set is a PR")
     }
 

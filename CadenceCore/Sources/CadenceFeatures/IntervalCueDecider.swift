@@ -12,11 +12,14 @@ public struct IntervalCueDecider {
         case warning
         case countdownTick
         case phaseTransition(IntervalPhaseKind)
+        /// Final 3…1 seconds before a work interval starts; `3` is the cue to say "Get ready".
+        case getReady(Int)
     }
 
     private var lastWarnedPhase: Int?
     private var lastTickSecond = -1
     private var lastPhaseID: Int?
+    private var lastReadySecond = -1
 
     public init() {}
 
@@ -26,6 +29,7 @@ public struct IntervalCueDecider {
     public mutating func reset() {
         lastWarnedPhase = nil
         lastTickSecond = -1
+        lastReadySecond = -1
     }
 
     /// The cues to fire for the current tick, mutating internal guards so each cue
@@ -34,6 +38,7 @@ public struct IntervalCueDecider {
                               currentPhaseID: Int?,
                               phaseRemaining: TimeInterval,
                               phaseDuration: TimeInterval = 180,
+                              nextPhaseKind: IntervalPhaseKind? = nil,
                               isPaused: Bool,
                               isComplete: Bool) -> [Cue] {
         guard !isPaused, !isComplete else { return [] }
@@ -63,6 +68,16 @@ public struct IntervalCueDecider {
             lastTickSecond = secs
         } else if secs > 3 {
             lastTickSecond = -1
+        }
+
+        // "Get ready" countdown on the final 3 seconds before a work interval.
+        if phaseKind != .work, nextPhaseKind == .work, (1...3).contains(secs) {
+            if secs != lastReadySecond {
+                out.append(.getReady(secs))
+                lastReadySecond = secs
+            }
+        } else if secs > 3 {
+            lastReadySecond = -1
         }
 
         return out

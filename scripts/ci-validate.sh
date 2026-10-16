@@ -23,6 +23,9 @@ done < <(git ls-files '.github/workflows/*.yml')
 endstep
 
 step "Automation regression tests"
+if [[ -f scripts/tests/test-xcodebuild-safe.sh ]]; then
+  /bin/bash scripts/tests/test-xcodebuild-safe.sh
+fi
 if [[ -f scripts/tests/test-pr-maintenance.sh && -f .github/scripts/pr-maintenance.sh ]]; then
   bash scripts/tests/test-pr-maintenance.sh
 fi

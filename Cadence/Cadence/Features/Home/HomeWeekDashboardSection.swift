@@ -103,9 +103,9 @@ struct HomeWeekDashboardSection: View {
     }
 
     private var fillGapsButton: some View {
-        let behind = HomeDashboardPresenter.gapGroups(from: displayedVolumeRows)
+        let behind = HomeDashboardPresenter.gapTiers(from: displayedVolumeRows)
         return NavigationLink {
-            MuscleGroupQuickStartView(missing: behind, onStart: onStartWorkout)
+            MuscleGroupQuickStartView(tiers: behind, onStart: onStartWorkout)
         } label: {
             Label("Fill the gaps", systemImage: "plus.circle")
                 .frame(maxWidth: .infinity)

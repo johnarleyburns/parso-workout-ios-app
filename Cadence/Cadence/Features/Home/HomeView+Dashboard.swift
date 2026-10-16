@@ -229,7 +229,13 @@ extension HomeView {
                                 scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
                             }
                         },
-                        onExclude: { settings.setCardioTypeExcluded($0.type, true); suggestedCardio = nil })
+                        onSuggestAnother: { suggestAnotherCardio(skipping: $0) },
+                        onExclude: { selected in
+                            if let id = selected.protocolID {
+                                settings.setHIITProtocolExcluded(id, true)
+                            }
+                            suggestAnotherCardio(skipping: selected)
+                        })
                 }
             }
             .sheet(item: $suggestedWorkoutPlan) { plan in

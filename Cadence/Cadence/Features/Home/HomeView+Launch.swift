@@ -60,17 +60,8 @@ extension HomeView {
     /// suggestion opens the timer setup with its recommended duration; an
     /// established interval suggestion uses the existing interval runner.
     func launchSuggestedCardio(_ suggestion: CardioSuggestion) {
-        if suggestion.isInterval,
-           let rounds = suggestion.intervalRounds,
-           let work = suggestion.intervalWorkSeconds,
-           let rest = suggestion.intervalRestSeconds {
-            let plan = IntervalPlan.custom(
-                name: String(localized: "\(suggestion.type.displayName) for You"),
-                warmup: TimeInterval(suggestion.warmupMinutes * 60),
-                rounds: rounds,
-                work: TimeInterval(work),
-                rest: TimeInterval(rest),
-                cooldown: TimeInterval(suggestion.cooldownMinutes * 60))
+        if let id = suggestion.protocolID, let hiit = HIITProtocol.find(id: id) {
+            let plan = hiit.plan
             begin(.interval(IntervalLaunch(plan: plan,
                                             saveType: suggestion.type,
                                             captureHR: settings.useHRMonitoring)))

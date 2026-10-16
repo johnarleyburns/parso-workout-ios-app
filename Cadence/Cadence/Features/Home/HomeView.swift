@@ -100,6 +100,9 @@ struct HomeView: View {
     @State var suggestedWorkoutGeneration = SuggestionGenerationGate()
     @State var suggestedCardioTask: Task<Void, Never>?
     @State var suggestedCardio: CardioSuggestion?
+    /// HIIT protocols skipped with "Suggest another" during this Cardio for You session.
+    @State var lastSuggestedCardioInput: CardioSuggestionInput?
+    @State var skippedHIITProtocolIDs: Set<String> = []
     /// A generated strength plan is presented directly after the chooser sheet
     /// dismisses. Keeping it as a sheet item avoids racing a value navigation
     /// push against the nested Start Workout navigation stack.

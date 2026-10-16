@@ -337,6 +337,7 @@ public final class IntervalSetupModel {
         case .gibala: return .gibala()
         case .sit: return .sit()
         case .rehit: return .rehit()
+        case .gillen: return .gillen()
         case .tenTwentyThirty: return .tenTwentyThirty()
         }
     }
@@ -348,7 +349,7 @@ public final class IntervalSetupModel {
 }
 
 public enum HIITProtocol: String, CaseIterable, Codable, Sendable, Identifiable {
-    case tabata, norwegian4x4, gibala, sit, rehit, tenTwentyThirty
+    case tabata, norwegian4x4, gibala, sit, rehit, gillen, tenTwentyThirty
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
@@ -357,6 +358,7 @@ public enum HIITProtocol: String, CaseIterable, Codable, Sendable, Identifiable 
         case .gibala: return "Gibala"
         case .sit: return "SIT (Wingate)"
         case .rehit: return "REHIT"
+        case .gillen: return "Gillen"
         case .tenTwentyThirty: return "10-20-30"
         }
     }

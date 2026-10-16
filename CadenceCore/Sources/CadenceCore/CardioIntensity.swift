@@ -233,6 +233,10 @@ public enum CardioIntensityPolicy {
     public static let citationIDs = ["swainLeutholtz1997HRR", "acsmGarber2011AerobicGuidelines",
                                      "piercy2018PhysicalActivityGuidelines",
                                      "mezzani2013AerobicIntensity", "tanakaMaxHR2001"]
+    /// Evidence that resistance training itself induces a cardiorespiratory response.
+    public static let strengthCardioCitationIDs = ["squatCardiorespiratory2024", "resistanceCircuitBodyComp2021",
+                                                   "resistanceCircuitVo2max2017", "metabolicResistanceTraining2025",
+                                                   "circuitResistanceCardiac2022"]
 }
 
 public enum CardioIntensityClassifier {
@@ -465,7 +469,8 @@ public struct WeeklyCardioSummary: Codable, Equatable, Sendable {
 public enum WeeklyCardioAggregator {
     public static func summarize(_ workouts: [CardioWorkout], since: Date,
                                  profile: CardioIntensityProfile? = nil,
-                                 actualMinutesTarget: Double? = nil) -> WeeklyCardioSummary {
+                                 actualMinutesTarget: Double? = nil,
+                                 sessions: [WorkoutSession] = []) -> WeeklyCardioSummary {
         var actual = 0.0
         var below = 0.0
         var moderate = 0.0
@@ -495,6 +500,28 @@ public enum WeeklyCardioAggregator {
                 unclassified += duration / 60
                 continue
             }
+            below += summary.belowModerateDuration / 60
+            moderate += summary.moderateDuration / 60
+            vigorous += summary.vigorousDuration / 60
+            unclassified += summary.unclassifiedDuration / 60
+            for (zone, seconds) in summary.zoneDurations { zones[zone, default: 0] += seconds / 60 }
+        }
+        // Strength sessions with heart-rate data also induce a cardiorespiratory
+        // response; count them by the same HR guidelines. Sessions without HR data
+        // contribute nothing (no invented credit).
+        for session in sessions where session.deletedAt == nil && session.date >= since {
+            let points = session.hrSamplePoints
+            let summary: CardioMinuteSummary
+            if let profile, !points.isEmpty {
+                summary = CardioMinuteAccumulator.summarize(
+                    duration: max(session.duration, points.map(\.t).max() ?? 0),
+                    samples: points, profile: profile)
+            } else if let stored = session.intensitySummary {
+                summary = stored
+            } else {
+                continue
+            }
+            actual += summary.actualDuration / 60
             below += summary.belowModerateDuration / 60
             moderate += summary.moderateDuration / 60
             vigorous += summary.vigorousDuration / 60

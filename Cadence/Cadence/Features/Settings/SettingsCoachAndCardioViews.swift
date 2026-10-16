@@ -119,8 +119,11 @@ struct CardioIntensityScienceView: View {
             Section("Separate measurements") {
                 Text("Actual exercise minutes, guideline credit, training-zone time, and standardized MET-minutes are separate axes. MET-minutes describe population-level activity dose and do not replace guideline credit.")
             }
+            Section("Strength workouts") {
+                Text("Strength training also induces a cardiorespiratory response. When heart rate is recorded during a strength workout (from a chest strap or your Apple Watch), its minutes are classified with the same heart-rate-reserve rules and added to your weekly cardio minutes and zone totals. Without heart-rate data, a strength workout adds no cardio credit.")
+            }
             Section("Sources") {
-                ForEach(["swainLeutholtz1997HRR", "tanakaMaxHR2001", "piercy2018PhysicalActivityGuidelines", "compendium2024AdultPhysicalActivities"], id: \.self) { id in
+                ForEach(["swainLeutholtz1997HRR", "tanakaMaxHR2001", "piercy2018PhysicalActivityGuidelines", "compendium2024AdultPhysicalActivities"] + CardioIntensityPolicy.strengthCardioCitationIDs, id: \.self) { id in
                     if let citation = CitationRegistry.citation(forId: id) {
                         CitationLink(citation: citation, compact: true)
                     }

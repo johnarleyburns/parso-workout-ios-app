@@ -70,6 +70,22 @@ final class IntervalEngineTests: XCTestCase {
         XCTAssertEqual(plan.phases.last?.kind, .cooldown)
     }
 
+    func testGillenExpansion() {
+        let plan = IntervalPlan.gillen()
+        XCTAssertEqual(plan.name, "Gillen")
+        XCTAssertEqual(plan.phases.filter { $0.kind == .work }.count, 3)
+        XCTAssertTrue(plan.phases.filter { $0.kind == .work }.allSatisfy { $0.duration == 20 })
+        let rests = plan.phases.filter { $0.kind == .rest }
+        XCTAssertEqual(rests.count, 2)
+        XCTAssertTrue(rests.allSatisfy { $0.duration == 120 })
+        XCTAssertEqual(plan.phases.first?.kind, .warmup)
+        XCTAssertEqual(plan.phases.first?.duration, 120)
+        XCTAssertEqual(plan.phases.last?.kind, .cooldown)
+        XCTAssertEqual(plan.phases.last?.duration, 180)
+        XCTAssertEqual(plan.totalDuration, 600)
+        XCTAssertEqual(IntervalPlan.rehit().totalDuration, 460)
+    }
+
     func testTenTwentyThirtyExpansion() {
         let plan = IntervalPlan.tenTwentyThirty(sets: 3, reps: 5)
         // 3 sets × 5 reps × (moderate + sprint) work phases = 30 work phases.

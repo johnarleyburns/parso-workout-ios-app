@@ -71,6 +71,9 @@ struct IntervalSetupView: View {
             Preset(id: "rehit", title: "REHIT", subtitle: "2 × 20s sprint / 3 min",
                    description: String(localized: "Reduced-Exertion HIIT — just 2 all-out 20 s sprints in a single 10-minute session. One of the lowest time-commitment protocols shown to improve insulin sensitivity and VO₂max in previously inactive adults."),
                    citationIds: ["metcalfeREHIT2012"]) { .rehit() },
+            Preset(id: "gillen", title: "Gillen", subtitle: "3 × 20s all-out / 2 min",
+                   description: String(localized: "Stationary bicycle sprint-interval training (SIT): 2 min easy warm-up, three 20 s all-out sprints with 2 min easy recovery, then a 3 min cool-down — 10 minutes total. In a small trial of previously sedentary young men training three times a week for 12 weeks, it improved VO₂peak and cardiometabolic health similarly to moderate continuous cycling despite far less exercise time. All-out effort: opt-in, not for unprepared users, and distinct from REHIT."),
+                   citationIds: ["gillenSIT2016"]) { .gillen() },
         ]
     }
 

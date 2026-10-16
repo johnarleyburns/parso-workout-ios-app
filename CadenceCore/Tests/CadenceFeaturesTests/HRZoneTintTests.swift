@@ -58,3 +58,22 @@ final class HRZoneTintTests: XCTestCase {
         XCTAssertEqual(LiveHRPresenter.bpmText(0), "0")
     }
 }
+
+final class HRZoneBandsTests: XCTestCase {
+    func testBandsFollowUserMaxAndClipToDomain() {
+        let domain = HRZoneBands.domain(bpms: [100, 150], maxHR: 200)
+        XCTAssertEqual(domain, 100...200)
+        let bands = HRZoneBands.bands(maxHR: 200, domain: domain)
+        XCTAssertEqual(bands.map(\.zone), [1, 2, 3, 4, 5])
+        XCTAssertEqual(bands[0].lower, 100); XCTAssertEqual(bands[0].upper, 120)
+        XCTAssertEqual(bands[3].lower, 160); XCTAssertEqual(bands[3].upper, 180)
+        XCTAssertEqual(bands[4].upper, 200)
+        XCTAssertEqual(bands[4].tint, .zone5)
+    }
+
+    func testBandsOmitZonesOutsideDomain() {
+        let bands = HRZoneBands.bands(maxHR: 200, domain: 130...175)
+        XCTAssertEqual(bands.map(\.zone), [2, 3, 4])
+        XCTAssertTrue(HRZoneBands.bands(maxHR: 0, domain: 0...10).isEmpty)
+    }
+}

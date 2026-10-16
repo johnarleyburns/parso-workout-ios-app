@@ -243,6 +243,9 @@ struct HomeView: View {
             cardioMaximumHROverride: settings.cardioMaximumHROverride,
             overrideWeekKey: settings.coachPlanOverrideWeekKey)
     }
+    var todayCacheKey: HomeTodayCache.Key {
+        HomeTodayCache.Key(signature: coachSignature, day: Self.dayString())
+    }
     func buildCoachSnapshot() async -> HomeCoachSnapshot {
         let signpostID = OSSignpostID(log: Self.performanceLog)
         os_signpost(.begin, log: Self.performanceLog, name: "coachExtractionAndBuild", signpostID: signpostID)
@@ -297,7 +300,9 @@ struct HomeView: View {
         guard !model.isRestoringCloudKitHistory else { return }
         model.coachRefreshInProgress = true
         defer { model.coachRefreshInProgress = false }
+        let key = todayCacheKey
         coachSnapshot = await buildCoachSnapshot()
+        HomeTodayCache.store(coachSnapshot, for: key)
         coachSnapshotReady = true
         liveVolumeDelta = [:]
         cachedDashboard = makeDashboard()

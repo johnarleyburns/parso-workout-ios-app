@@ -104,7 +104,12 @@ extension HomeView {
             .task(id: HomeCoachTaskIdentity(
                 signature: coachSignature,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-                coachSnapshotReady = false
+                if let cached = HomeTodayCache.cachedSnapshot(for: todayCacheKey) {
+                    coachSnapshot = cached
+                    coachSnapshotReady = true
+                } else {
+                    coachSnapshotReady = false
+                }
                 await refreshCoachSnapshot()
             }
             .task(id: HomeActivityTaskIdentity(

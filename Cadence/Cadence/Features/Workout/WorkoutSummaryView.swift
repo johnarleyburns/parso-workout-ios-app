@@ -199,19 +199,15 @@ struct WorkoutSummaryView: View {
                 summaryRow(String(localized: "Standard MET-minutes"), "\(Int(metMinutes.rounded()))")
             }
             if !summary.zoneDurations.isEmpty {
-                Divider()
-                Text("Training zones").font(.caption.weight(.semibold))
-                ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
-                    summaryRow(zone.displayName, String(localized: "\(wholeMinutes(summary.zoneDurations[zone] ?? 0)) min"))
+                Text("Training zones").font(.caption.weight(.semibold)).padding(.top, 4)
+                ForEach(summary.zoneDurations.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) {
+                    summaryRow($0.displayName, String(localized: "\(wholeMinutes(summary.zoneDurations[$0] ?? 0)) min"))
                 }
             }
             if data.kind == .strength {
-                Text("Resistance training also raises heart rate. Minutes at moderate or vigorous heart rate during this workout count toward your weekly cardio minutes.")
-                    .font(.caption).foregroundStyle(.secondary)
-                ForEach(CardioIntensityPolicy.strengthCardioCitationIDs, id: \.self) { id in
-                    if let citation = CitationRegistry.citation(forId: id) {
-                        CitationLink(citation: citation, compact: true)
-                    }
+                Text("Resistance training also raises heart rate. Minutes at moderate or vigorous heart rate during this workout count toward your weekly cardio minutes.").font(.caption).foregroundStyle(.secondary)
+                ForEach(CardioIntensityPolicy.strengthCardioCitationIDs.compactMap(CitationRegistry.citation(forId:)), id: \.id) {
+                    CitationLink(citation: $0, compact: true)
                 }
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")

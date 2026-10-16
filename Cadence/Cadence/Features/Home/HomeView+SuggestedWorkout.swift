@@ -201,6 +201,8 @@ extension HomeView {
         let targetMinutes = dashboard.cardioDetail.targetMinutes
         let experience = settings.experienceLevel
         let excludedTypes = settings.excludedCardioTypes
+        let excludedProtocolIDs = Set(settings.excludedHIITProtocolIDs)
+        skippedHIITProtocolIDs = []
         cancelSuggestedCardioGeneration()
         suggestedCardioCalculating = true
         let task = Task {
@@ -210,6 +212,7 @@ extension HomeView {
                                             targetMinutes: targetMinutes,
                                             experience: experience,
                                             excludedTypes: excludedTypes,
+                                            excludedProtocolIDs: excludedProtocolIDs,
                                             asOf: Date())
             }.value
             guard !Task.isCancelled else { return }
@@ -231,6 +234,7 @@ extension HomeView {
         targetMinutes: Double,
         experience: ExperienceLevel,
         excludedTypes: Set<CardioType>,
+        excludedProtocolIDs: Set<String>,
         asOf: Date
     ) -> CardioSuggestionInput {
         let decoder = JSONDecoder()
@@ -272,7 +276,31 @@ extension HomeView {
                                      weeklyTargetMinutes: targetMinutes,
                                      experience: experience,
                                      asOf: asOf,
-                                     excludedTypes: excludedTypes)
+                                     excludedTypes: excludedTypes,
+                                     excludedProtocolIDs: excludedProtocolIDs,
+                                     skippedProtocolIDs: [])
+    }
+
+    /// "Suggest another": re-runs the calculation excluding every protocol
+    /// skipped so far in this session (not persisted).
+    func suggestAnotherCardio(skipping suggestion: CardioSuggestion) {
+        if let id = suggestion.protocolID { skippedHIITProtocolIDs.insert(id) }
+        let skipped = skippedHIITProtocolIDs
+        let excluded = Set(settings.excludedHIITProtocolIDs)
+        guard let base = lastSuggestedCardioInput else { return }
+        let input = CardioSuggestionInput(
+            history: base.history,
+            weeklyModerateEquivalentMinutes: base.weeklyModerateEquivalentMinutes,
+            weeklyTargetMinutes: base.weeklyTargetMinutes,
+            experience: base.experience, asOf: base.asOf,
+            excludedTypes: base.excludedTypes,
+            excludedProtocolIDs: excluded, skippedProtocolIDs: skipped)
+        if let next = CardioSuggestionGenerator.generate(input: input) {
+            suggestedCardio = next
+        } else {
+            suggestedCardio = nil
+            suggestedCardioFailure = String(localized: "No more HIIT protocols to suggest. Skipped ones return next time, and you can still pick cardio yourself.")
+        }
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
@@ -312,6 +340,7 @@ extension HomeView {
     }
 
     private func generateAndOpenSuggestedCardio(_ input: CardioSuggestionInput) {
+        lastSuggestedCardioInput = input
         cancelSuggestedCardioGeneration()
         suggestedCardioCalculating = true
         let task = Task {

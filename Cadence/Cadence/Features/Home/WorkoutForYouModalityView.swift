@@ -63,6 +63,7 @@ struct SuggestedCardioPreviewView: View {
     let suggestion: CardioSuggestion
     let onStart: (CardioSuggestion) -> Void
     let onSchedule: (CardioSuggestion) -> Void
+    var onSuggestAnother: ((CardioSuggestion) -> Void)? = nil
     var onExclude: ((CardioSuggestion) -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
@@ -77,9 +78,8 @@ struct SuggestedCardioPreviewView: View {
                         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
                         .accessibilityIdentifier("suggestedCardio.observation")
                 }
-                Label(suggestion.isInterval && suggestion.intervalWorkSeconds == 240
-                      ? "Norwegian 4×4 · \(suggestion.type.displayName)"
-                      : suggestion.type.displayName,
+                Label(suggestion.protocolName.map { "\($0) · \(suggestion.type.displayName)" }
+                      ?? suggestion.type.displayName,
                       systemImage: suggestion.type.symbol)
                     .font(.title2.weight(.bold))
                 HStack(spacing: 12) {
@@ -130,12 +130,25 @@ struct SuggestedCardioPreviewView: View {
                 .tint(.blue)
                 .accessibilityIdentifier("suggestedCardio.schedule")
 
-                if let onExclude {
+                if let onSuggestAnother {
+                    Button {
+                        onSuggestAnother(suggestion)
+                    } label: {
+                        Label("Suggest another", systemImage: "arrow.triangle.2.circlepath")
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("suggestedCardio.another")
+                    Text("Skips this one for now and recalculates. It may come back next time you open Cardio for You.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let onExclude, suggestion.protocolID != nil {
                     Button(role: .destructive) {
                         onExclude(suggestion)
-                        dismiss()
                     } label: {
-                        Text("Don't suggest \(suggestion.type.displayName) again")
+                        Text("Don't suggest \(suggestion.protocolName ?? suggestion.type.displayName) again")
                             .frame(maxWidth: .infinity)
                     }
                     .accessibilityIdentifier("suggestedCardio.exclude")

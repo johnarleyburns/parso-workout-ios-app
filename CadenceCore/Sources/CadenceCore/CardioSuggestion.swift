@@ -70,14 +70,22 @@ public struct CardioSuggestionInput: Codable, Equatable, Sendable {
     public let asOf: Date
     /// Modalities the user asked never to be suggested (injury, dislike, access).
     public let excludedTypes: Set<CardioType>
+    /// HIIT protocol ids (`HIITProtocol.id`) the user asked never to be suggested.
+    public let excludedProtocolIDs: Set<String>
+    /// HIIT protocol ids skipped with "Suggest another" in this screen session only.
+    public let skippedProtocolIDs: Set<String>
 
     public init(history: [CardioSuggestionHistory] = [],
                 weeklyModerateEquivalentMinutes: Double,
                 weeklyTargetMinutes: Double = 150,
                 experience: ExperienceLevel = .intermediate,
                 asOf: Date = Date(),
-                excludedTypes: Set<CardioType> = []) {
+                excludedTypes: Set<CardioType> = [],
+                excludedProtocolIDs: Set<String> = [],
+                skippedProtocolIDs: Set<String> = []) {
         self.excludedTypes = excludedTypes
+        self.excludedProtocolIDs = excludedProtocolIDs
+        self.skippedProtocolIDs = skippedProtocolIDs
         self.history = history
         self.weeklyModerateEquivalentMinutes = max(0, weeklyModerateEquivalentMinutes)
         self.weeklyTargetMinutes = max(1, weeklyTargetMinutes)
@@ -100,9 +108,12 @@ public struct CardioSuggestion: Codable, Equatable, Hashable, Sendable, Identifi
     public let citationIDs: [String]
     /// Plain-language observation about recent training that motivated the pick.
     public let observation: String?
+    /// Library HIIT protocol this suggestion is built from (`HIITProtocol.id`).
+    public let protocolID: String?
+    public let protocolName: String?
 
     public var id: String {
-        "\(type.rawValue)-\(intensity.rawValue)-\(durationMinutes)"
+        "\(protocolID ?? type.rawValue)-\(intensity.rawValue)-\(durationMinutes)"
     }
 
     public var isInterval: Bool { intensity == .interval }
@@ -112,8 +123,11 @@ public struct CardioSuggestion: Codable, Equatable, Hashable, Sendable, Identifi
                 warmupMinutes: Int = 5, cooldownMinutes: Int = 5,
                 intervalRounds: Int? = nil, intervalWorkSeconds: Int? = nil,
                 intervalRestSeconds: Int? = nil, rationale: String,
-                citationIDs: [String], observation: String? = nil) {
+                citationIDs: [String], observation: String? = nil,
+                protocolID: String? = nil, protocolName: String? = nil) {
         self.observation = observation
+        self.protocolID = protocolID
+        self.protocolName = protocolName
         self.type = type
         self.durationMinutes = max(1, durationMinutes)
         self.intensity = intensity
@@ -128,112 +142,93 @@ public struct CardioSuggestion: Codable, Equatable, Hashable, Sendable, Identifi
     }
 }
 
-/// Deterministic, conservative cardio suggestion logic. It uses only a value
-/// snapshot and can therefore run away from the SwiftUI render path.
+/// A documented HIIT protocol from the interval library, with the citations
+/// that back it. The Cardio for You suggestion only ever picks from these.
+public struct HIITProtocol: Sendable, Identifiable {
+    public let id: String
+    public let name: String
+    public let plan: IntervalPlan
+    public let citationIDs: [String]
+
+    /// Minutes of cardio credit: work phases count as vigorous (2x moderate
+    /// minutes); warm-up, rest/recovery and cool-down count as moderate (1x).
+    public var moderateEquivalentMinutes: Double {
+        plan.phases.reduce(0) { $0 + $1.duration / 60 * ($1.kind == .work ? 2 : 1) }
+    }
+    public var totalMinutes: Double { plan.totalDuration / 60 }
+
+    public static let library: [HIITProtocol] = [
+        HIITProtocol(id: "rehit", name: "REHIT", plan: .rehit(),
+                     citationIDs: ["metcalfeREHIT2012", "hiitVo2max"]),
+        HIITProtocol(id: "tabata", name: "Tabata", plan: .tabata(),
+                     citationIDs: ["tabata1996", "hiitVo2max"]),
+        HIITProtocol(id: "gibala", name: "Gibala", plan: .gibala(),
+                     citationIDs: ["gibala2006", "hiitVo2max"]),
+        HIITProtocol(id: "tenTwentyThirty", name: "10-20-30", plan: .tenTwentyThirty(),
+                     citationIDs: ["gunnarsson1020302012", "hiitVo2max"]),
+        HIITProtocol(id: "sit", name: "SIT (Wingate)", plan: .sit(),
+                     citationIDs: ["slothSIT2013", "gillenSIT2016"]),
+        HIITProtocol(id: "norwegian4x4", name: "Norwegian 4×4", plan: .norwegian4x4(),
+                     citationIDs: ["hiitVo2max", "gillenSIT2016"]),
+    ]
+
+    public static func find(id: String) -> HIITProtocol? { library.first { $0.id == id } }
+}
+
+/// Cardio for You: only ever suggests a documented HIIT protocol from
+/// `HIITProtocol.library` — never a custom interval workout.
 public enum CardioSuggestionGenerator {
-    public static let minimumIntervalHistoryCount = 3
-    public static let minimumIntervalBaseMinutes = 90.0
-    public static let intervalHabitWindowDays = 28
-    public static let minimumRecentIntervalSessions = 2
-    public static let minimumDurationMinutes = 20
-    public static let maximumDurationMinutes = 45
-
-    /// Days without interval work before the generator recommends some.
-    public static let intervalGapDays = 14
-    /// Fallback order when history is empty or every past modality is excluded.
-    private static let fallbackTypes: [CardioType] = [
-        .run, .walk, .cycle, .elliptical, .rowing, .swim, .stairClimber
-    ]
-    private static let intervalCapable: Set<CardioType> = [
-        .run, .cycle, .rowing, .swim, .elliptical, .stairClimber, .hiit, .boxing
-    ]
-
-    public static func generate(input: CardioSuggestionInput) -> CardioSuggestion? {
-        let allowed = { (type: CardioType) in type != .other && !input.excludedTypes.contains(type) }
-        let usableHistory = input.history
-            .filter { allowed($0.type) && $0.durationMinutes > 0 }
-            .sorted { $0.start > $1.start }
-        // Preference first: the most recent allowed modality, else a fallback.
-        guard let type = usableHistory.first?.type ?? fallbackTypes.first(where: allowed) else {
-            return nil
-        }
+    /// Average moderate-equivalent cardio minutes still needed per remaining
+    /// day of the calendar week, counting today.
+    public static func requiredMinutesPerDay(input: CardioSuggestionInput,
+                                             calendar: Calendar = .current) -> Double {
         let remaining = max(0, input.weeklyTargetMinutes - input.weeklyModerateEquivalentMinutes)
-        let established = input.experience != .beginner
-            && usableHistory.count >= minimumIntervalHistoryCount
-            && usableHistory.prefix(7).reduce(0) { $0 + $1.moderateEquivalentMinutes }
-                >= minimumIntervalBaseMinutes
-        // An interval habit (e.g. Tabata, Norwegian 4x4, REHIT) is any interval
-        // session in the recent window, even when the latest session was a run
-        // or ride — intervals are logged as HIIT/boxing and must not be starved
-        // just because they were not the very last workout.
-        let windowStart = input.asOf.addingTimeInterval(-Double(intervalHabitWindowDays) * 86_400)
-        let recentIntervals = usableHistory.filter { $0.isInterval && $0.start >= windowStart }
-        let shouldSuggestIntervals = established
-            && recentIntervals.count >= minimumRecentIntervalSessions
+        let today = calendar.startOfDay(for: input.asOf)
+        var daysLeft = 1
+        if let week = calendar.dateInterval(of: .weekOfYear, for: input.asOf) {
+            let d = calendar.dateComponents([.day], from: today, to: week.end).day ?? 1
+            daysLeft = max(1, d)
+        }
+        return remaining / Double(daysLeft)
+    }
 
-        let cutoff = input.asOf.addingTimeInterval(-Double(intervalGapDays) * 86_400)
-        let noRecentIntervals = !input.history.contains { $0.isInterval && $0.start >= cutoff }
-        let shortfall = remaining > 0
-        let observation: String? = shortfall
-            ? String(localized: "You are about \(Int(remaining.rounded())) minutes short of this week's cardio goal.", bundle: .module)
+    public static func generate(input: CardioSuggestionInput,
+                                calendar: Calendar = .current) -> CardioSuggestion? {
+        guard !input.excludedTypes.contains(.hiit) else { return nil }
+        let blocked = input.excludedProtocolIDs.union(input.skippedProtocolIDs)
+        let candidates = HIITProtocol.library.filter { !blocked.contains($0.id) }
+        guard !candidates.isEmpty else { return nil }
+
+        let perDay = requiredMinutesPerDay(input: input, calendar: calendar)
+        // Shortest protocol whose credit covers the daily need; if none can,
+        // the one giving the most credit.
+        let byLength = candidates.sorted { $0.totalMinutes < $1.totalMinutes }
+        let chosen = byLength.first { $0.moderateEquivalentMinutes >= perDay }
+            ?? candidates.max { $0.moderateEquivalentMinutes < $1.moderateEquivalentMinutes }!
+
+        let remaining = max(0, input.weeklyTargetMinutes - input.weeklyModerateEquivalentMinutes)
+        let observation: String? = remaining > 0
+            ? String(localized: "You are about \(Int(remaining.rounded())) minutes short of this week's cardio goal, roughly \(Int(perDay.rounded(.up))) minutes a day for the rest of the week.", bundle: .module)
             : nil
-
-        if established && noRecentIntervals && !shouldSuggestIntervals,
-           let intervalType = ([type] + usableHistory.map(\.type))
-            .first(where: { intervalCapable.contains($0) }) {
-            return CardioSuggestion(
-                type: intervalType,
-                durationMinutes: 35,
-                intensity: .interval,
-                indoor: true,
-                warmupMinutes: 5,
-                cooldownMinutes: 5,
-                intervalRounds: 4,
-                intervalWorkSeconds: 240,
-                intervalRestSeconds: 180,
-                rationale: String(localized: "Norwegian 4×4: you have not done interval work in the past \(intervalGapDays) days. Four 4-minute hard efforts with easy recovery are an evidence-based way to raise maximal oxygen uptake (VO₂max) in a short session, using your preferred \(intervalType.displayName.lowercased()).", bundle: .module),
-                citationIDs: ["hiitVo2max", "gillenSIT2016"],
-                observation: observation ?? String(localized: "No interval training in the past \(intervalGapDays) days.", bundle: .module))
-        }
-
-        if shouldSuggestIntervals {
-            let intervalType: CardioType = recentIntervals.first
-                .map { $0.type == .boxing ? .boxing : .hiit } ?? .hiit
-            return CardioSuggestion(
-                type: intervalType,
-                durationMinutes: 25,
-                intensity: .interval,
-                indoor: true,
-                warmupMinutes: 5,
-                cooldownMinutes: 5,
-                intervalRounds: 4,
-                intervalWorkSeconds: 120,
-                intervalRestSeconds: 120,
-                rationale: String(localized: "You have an established cardio base and recent interval work. This keeps the interval dose bounded while giving you a clear session to review.", bundle: .module),
-                citationIDs: ["hiitVo2max"],
-                observation: observation)
-        }
-
-        let recentAverage = usableHistory.prefix(4).map(\.durationMinutes).reduce(0, +)
-            / Double(max(1, min(4, usableHistory.count)))
-        let baseline = recentAverage > 0 ? recentAverage : 25
-        let targetDuration = remaining > 0 ? min(Double(maximumDurationMinutes), max(20, remaining)) : baseline
-        let duration = min(maximumDurationMinutes, max(minimumDurationMinutes, Int(targetDuration.rounded())))
-        let rationale: String
-        if usableHistory.isEmpty {
-            rationale = "A moderate indoor starter gives you a manageable way to build cardio history. You can switch to outdoors before starting."
-        } else if remaining > 0 {
-            rationale = String(localized: "This follows your recent \(type.displayName.lowercased()) history and contributes about \(duration) minutes toward this week's cardio gap.", bundle: .module)
-        } else {
-            rationale = String(localized: "Your weekly cardio target is covered, so this keeps your recent \(type.displayName.lowercased()) habit moving without adding unnecessary intensity.", bundle: .module)
-        }
+        let plan = chosen.plan
+        let work = plan.phases.first { $0.kind == .work }
+        let rest = plan.phases.first { $0.kind == .rest }
+        let warmup = plan.phases.first { $0.kind == .warmup }
+        let cooldown = plan.phases.last { $0.kind == .cooldown }
         return CardioSuggestion(
-            type: type,
-            durationMinutes: duration,
-            intensity: .moderate,
+            type: .hiit,
+            durationMinutes: Int(chosen.totalMinutes.rounded(.up)),
+            intensity: .interval,
             indoor: true,
-            rationale: rationale,
-            citationIDs: ["ekelundActivityMortality2016"],
-            observation: observation)
+            warmupMinutes: Int(((warmup?.duration ?? 0) / 60).rounded()),
+            cooldownMinutes: Int(((cooldown?.duration ?? 0) / 60).rounded()),
+            intervalRounds: plan.workRounds,
+            intervalWorkSeconds: work.map { Int($0.duration) },
+            intervalRestSeconds: rest.map { Int($0.duration) },
+            rationale: String(localized: "\(chosen.name) is the shortest documented HIIT protocol in the library that covers about \(Int(perDay.rounded(.up))) minutes of cardio a day (hard intervals count double). It runs \(Int(chosen.totalMinutes.rounded(.up))) minutes with a moderate warm-up, recovery and cool-down.", bundle: .module),
+            citationIDs: chosen.citationIDs,
+            observation: observation,
+            protocolID: chosen.id,
+            protocolName: chosen.name)
     }
 }

@@ -104,9 +104,9 @@ struct SuggestedCardioPreviewView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                ForEach(suggestion.citationIDs.compactMap(CitationRegistry.citation(forId:)), id: \.id) { citation in
-                    CitationLink(citation: citation, context: String(localized: "How this cardio suggestion is selected"), compact: true)
-                }
+                CoachSourcesLink(citationIds: suggestion.citationIDs,
+                                 contexts: Dictionary(suggestion.citationIDs.map { ($0, String(localized: "How this cardio suggestion is selected")) },
+                                                      uniquingKeysWith: { first, _ in first }))
 
                 Button {
                     onStart(suggestion)

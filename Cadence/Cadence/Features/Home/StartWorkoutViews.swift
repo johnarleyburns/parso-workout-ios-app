@@ -14,6 +14,7 @@ struct StartWorkoutView: View {
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     let recentCardioTypes: [WorkoutType]
     var onFillGaps: (() -> Void)? = nil
+    var onSuggestCardio: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -40,7 +41,8 @@ struct StartWorkoutView: View {
                                 recentCardioTypes: recentCardioTypes,
                                 onSelect: onStartCardio,
                                 onSchedule: onScheduleCardio,
-                                onOtherCardio: onOtherCardio)
+                                onOtherCardio: onOtherCardio,
+                                onSuggestCardio: onSuggestCardio)
                         } label: {
                             startActionLabel("Cardio", symbol: "figure.run", tint: .blue)
                         }
@@ -195,8 +197,10 @@ struct CardioPickerView: View {
     let onSelect: (WorkoutType) -> Void
     let onSchedule: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
+    var onSuggestCardio: (() -> Void)? = nil
     @State private var expanded = false
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
 
     private let cardioTypes: [WorkoutType] = [
         .run, .walk, .cycle, .rowing, .swim, .elliptical, .stairClimber,
@@ -218,6 +222,26 @@ struct CardioPickerView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
+                if mode == .start, let onSuggestCardio {
+                    Button {
+                        onSuggestCardio()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "wand.and.stars").font(.headline)
+                            Text("Suggest Cardio").font(.headline)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
+                        }
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 4)
+                        .cadenceActionLabel()
+                    }
+                    .buttonStyle(.bordered)
+                    .accessibilityIdentifier("pickCardio.suggestCardio")
+                    .accessibilityHint("Suggests one cardio session from your history and weekly goal, with the science behind it. You review it before starting.")
+                    excludedTypesNote
+                }
+
                 LazyVGrid(columns: columns, spacing: 12) {
                     ForEach(initialTypes) { type in cardioChoice(type) }
                 }
@@ -253,9 +277,32 @@ struct CardioPickerView: View {
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }
-        .navigationTitle(mode == .start ? "Cardio" : "Schedule Cardio")
+        .navigationTitle(mode == .start ? "Pick Cardio" : "Schedule Cardio")
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier(mode == .start ? "cardioPicker" : "cardioPicker.scheduleMode")
+    }
+
+    /// Transparency: lists modalities hidden from suggestions and lets the user undo.
+    @ViewBuilder
+    private var excludedTypesNote: some View {
+        let excluded = settings.excludedCardioTypes.sorted { $0.rawValue < $1.rawValue }
+        if !excluded.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Never suggested (you can still pick them below):")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                ForEach(excluded, id: \.self) { type in
+                    HStack {
+                        Text(type.displayName).font(.footnote)
+                        Spacer()
+                        Button("Allow again") { settings.setCardioTypeExcluded(type, false) }
+                            .font(.footnote)
+                            .accessibilityLabel("Allow \(type.displayName) in suggestions again")
+                    }
+                }
+            }
+            .accessibilityIdentifier("pickCardio.excludedTypes")
+        }
     }
 
     private func cardioChoice(_ type: WorkoutType) -> some View {

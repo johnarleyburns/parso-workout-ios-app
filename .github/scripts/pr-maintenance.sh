@@ -27,7 +27,7 @@ repo="${GITHUB_REPOSITORY:-}"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/${repo}/actions/runs/${GITHUB_RUN_ID:-0}"
 REPORT="${REPORT_FILE:-/tmp/pr-maintenance-report.json}"
 INFRA=0
-FIX_VERSION=126   # bump to re-migrate stops caused by a newly fixed automation defect
+FIX_VERSION=130   # bump to re-migrate stops caused by a newly fixed automation defect
 
 # decide <draft> <state> <validation> <automerge> <stopped> <attempts> [approval_tries]
 decide() {
@@ -126,8 +126,17 @@ escalate() { # n issue head kind detail
 }
 
 repair_active() {
-  gh run list --workflow pr-conflict-repair.yml --limit 100 --json displayTitle,status 2>/dev/null \
-    | jq -e --arg n "$1" 'any(.[]; (.status=="queued" or .status=="in_progress" or .status=="waiting" or .status=="pending") and (.displayTitle | test("PR #"+$n+"( |$)")))' >/dev/null
+  # The quoted workflow run-name must contain an unambiguous PR number.
+  local n="$1"
+  gh run list --workflow pr-conflict-repair.yml --limit 200 --json displayTitle,status 2>/dev/null \
+    | jq -e --arg title "Repair PR #${n} (" \
+      'any(.[]; (.status == "queued" or .status == "in_progress" or .status == "waiting" or .status == "pending" or .status == "requested") and (.displayTitle | startswith($title)))' >/dev/null
+}
+
+is_transient_merge_error() {
+  # GitHub may reject --auto while required checks are queued. Treat these
+  # as retryable, not as a permanent needs-human-review stop.
+  grep -Eqi 'required status check|status checks? (are |is )?(queued|pending|in.progress|expected)|checks? (are |is )?(queued|pending|in.progress|expected)' "$1"
 }
 
 process_pr() {
@@ -165,7 +174,7 @@ process_pr() {
   # staging, inherited TARGET_PR, premature action_required) get a fresh budget
   # once per FIX_VERSION. Security stops (restricted-conflict, etc.) are untouched.
   if [[ "$stopped" == true && "$(jq -r '.migrated_fix // 0' <<<"$st")" -lt "$FIX_VERSION" ]] \
-     && jq -e '(.escalated // []) | all(.[]; test("^(action-required|repair-exhausted|automation-infrastructure-failure):"))' <<<"$st" >/dev/null; then
+     && jq -e '(.escalated // []) | all(.[]; test("^(action-required|repair-exhausted|automation-infrastructure-failure|auto-merge-refused):"))' <<<"$st" >/dev/null; then
     st=$(jq -c --argjson v "$FIX_VERSION" --argjson a "$attempts" \
       '.migrated_fix = $v | .migrated_from_attempts = $a | .attempts = 0 | .approval_tries = 0 | .escalated = [] | del(.stopped_head)' <<<"$st")
     attempts=0; stopped=false
@@ -184,10 +193,24 @@ process_pr() {
   case "$action" in
     stopped|wait|waiting-merge) ;;
     repair)
-      if repair_active "$n"; then echo "PR #$n: repair already queued/running (coalesced)"; else
-        gh workflow run pr-conflict-repair.yml -f pr_number="$n" >/dev/null 2>&1 \
-          || { INFRA=1; echo "PR #$n: repair dispatch failed" >&2; return; }
-        put_state "$n" "$st" "repair dispatched ($state / validation $val)"
+      if repair_active "$n"; then
+        echo "PR #$n: repair already queued/running (coalesced)"
+      else
+        # Guard the brief gap between successful dispatch and GitHub indexing
+        # the run title; persist the guard in the existing PR status comment.
+        local now last
+        now=$(date +%s)
+        last=$(jq -r --arg h "$head" 'if .repair_dispatch_head == $h then (.repair_dispatch_epoch // 0) else 0 end' <<<"$st")
+        if (( now - last < 900 )); then
+          echo "PR #$n: repair was recently dispatched for this head; awaiting visibility/outcome"
+        else
+          gh workflow run pr-conflict-repair.yml -f pr_number="$n" >/dev/null 2>&1 \
+            || { INFRA=1; echo "PR #$n: repair dispatch failed" >&2; return; }
+          st=$(jq -c --arg h "$head" --argjson t "$now" \
+            '.repair_dispatch_head = $h | .repair_dispatch_epoch = $t' <<<"$st")
+          put_state "$n" "$st" "repair dispatched ($state / validation $val)" \
+            || { INFRA=1; echo "PR #$n: could not persist dispatch state" >&2; return; }
+        fi
       fi ;;
     exhausted) escalate "$n" "$issue" "$head" "repair-exhausted" "Validation=$val, branch state=$state after $attempts automated repair attempts." ;;
     resync-approval)
@@ -223,10 +246,25 @@ process_pr() {
       fi ;;
     advance)
       if [[ "$draft" == true ]]; then
-        gh pr ready "$n" >/dev/null 2>&1 || { escalate "$n" "$issue" "$head" "ready-refused" "GitHub refused to mark the PR ready."; return; }
+        # Marking ready emits ready_for_review; validation may queue again.
+        if ! gh pr ready "$n" >/tmp/pr-ready-$n.err 2>&1; then
+          escalate "$n" "$issue" "$head" "ready-refused" "$(tail -c 400 /tmp/pr-ready-$n.err)"
+          return
+        fi
+        put_state "$n" "$st" "marked ready; waiting for required validation before merging"
+        return
       fi
       if ! gh pr merge "$n" --auto "$(merge_flag)" --match-head-commit "$head" >/tmp/automerge-$n.err 2>&1; then
-        escalate "$n" "$issue" "$head" "auto-merge-refused" "$(tail -c 400 /tmp/automerge-$n.err)"
+        if is_transient_merge_error "/tmp/automerge-$n.err"; then
+          echo "PR #$n: merge deferred because required validation is queued/pending"
+          put_state "$n" "$st" "merge deferred: required validation pending (automatic retry next sweep)"
+        else
+          # Avoid permanently stopping a valid PR on a transient GraphQL
+          # merge/ruleset response. Re-evaluate it on the next sweep.
+          echo "PR #$n: auto-merge request refused; retrying next sweep: $(tail -c 400 /tmp/automerge-$n.err)"
+          put_state "$n" "$st" "auto-merge request refused; retrying next sweep"
+          INFRA=1
+        fi
       else
         put_state "$n" "$st" "ready; auto-merge enabled; waiting for required checks"
       fi ;;

@@ -6,6 +6,7 @@ import CadenceFeatures
 struct WatchCoolDownView: View {
     let model: WatchStrengthFlowModel
     @State private var timerController = WatchCooldownTimerController()
+    @Environment(WatchWorkoutManager.self) private var watchManager
 
     var body: some View {
         ZStack {
@@ -37,7 +38,7 @@ struct WatchCoolDownView: View {
             }
         }
         .onAppear {
-            timerController.start(model: model)
+            timerController.start(model: model, watchManager: watchManager)
         }
     }
 
@@ -47,6 +48,7 @@ struct WatchCoolDownView: View {
     }
 
     private func sendEndSession() {
+        model.recordHeartRate(watchManager.currentHRSamplesForSummary)
         guard let payload = model.endSessionPayload() else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
@@ -57,9 +59,11 @@ struct WatchCoolDownView: View {
 private final class WatchCooldownTimerController {
     private var timer: Timer?
     private weak var model: WatchStrengthFlowModel?
+    private weak var watchManager: WatchWorkoutManager?
 
-    func start(model: WatchStrengthFlowModel) {
+    func start(model: WatchStrengthFlowModel, watchManager: WatchWorkoutManager) {
         self.model = model
+        self.watchManager = watchManager
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated {
@@ -76,6 +80,7 @@ private final class WatchCooldownTimerController {
     }
 
     private func sendEndSession(_ model: WatchStrengthFlowModel) {
+        if let watchManager { model.recordHeartRate(watchManager.currentHRSamplesForSummary) }
         guard let payload = model.endSessionPayload() else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)

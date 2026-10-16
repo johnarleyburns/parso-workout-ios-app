@@ -332,10 +332,13 @@ public enum HomeDashboardPresenter {
             .init(id: $0.id, category: .safety, title: String(localized: "Recovery note", bundle: .module), message: $0.message,
                   citationID: $0.citationIds.first, sourceClaimKey: "warning:\($0.id)", priority: 100, confidence: 100)
         }
-        // Keep Home suggestions to evidence-backed warnings. The selected
-        // workout is rendered separately and does not compete with warnings.
-        candidates += snapshot.insights.filter { $0.severity == .attention }.map { insight in
-            let category: HomeSuggestion.Category = .volumeRecovery
+        // Every insight carries a citation. Attention insights are warnings;
+        // info insights (trends, what's going well, coaching advice) are shown
+        // as neutral progress observations ranked after the warnings, so the
+        // card is not empty on a day with nothing urgent. The cold-start
+        // placeholder is excluded: it is onboarding, not an observation.
+        candidates += snapshot.insights.filter { $0.kind != .coldStart }.map { insight in
+            let category: HomeSuggestion.Category = insight.severity == .attention ? .volumeRecovery : .progress
             return .init(id: insight.id, category: category, title: insight.title, message: insight.message,
                          citationID: insight.citation.id, sourceClaimKey: "insight:\(insight.id)",
                          priority: insight.severity.rawValue, confidence: snapshot.decision.confidence.rawValue)

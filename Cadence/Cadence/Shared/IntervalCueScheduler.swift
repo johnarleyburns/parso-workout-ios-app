@@ -54,12 +54,14 @@ final class IntervalCueScheduler {
             currentPhaseID: runner.currentPhaseID,
             phaseRemaining: runner.phaseRemaining,
             phaseDuration: runner.phaseDuration,
+            nextPhaseKind: runner.nextPhaseKind,
             isPaused: runner.isPaused,
             isComplete: runner.isComplete)
         for cue in cuesToFire {
             switch cue {
             case .warning: cues.warning()
             case .countdownTick: cues.countdownTick()
+            case .getReady(let second): cues.getReady(second: second)
             case .phaseTransition:
                 // iPhone interval UI fires transition cues immediately from the
                 // phase-ID change; the scheduler owns only timed cues here.

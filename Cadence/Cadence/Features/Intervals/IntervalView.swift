@@ -31,6 +31,9 @@ struct IntervalView: View {
     @State private var hrSamples: [HRSamplePoint] = []
     @State private var lastHRSecond = -1
     @State private var showSkipConfirmation = false
+    /// 3…1 pre-start countdown before the workout clock begins; nil once running.
+    @State private var preStartSecond: Int? = 3
+    @State private var preStartTask: Task<Void, Never>?
     private let tick = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     init(plan: IntervalPlan, saveType: CardioType, captureHR: Bool = false,
@@ -66,12 +69,52 @@ struct IntervalView: View {
         } else {
             runnerView
                 .keepAwake()
-                .onAppear {
-                    runner.restart()
-                    let scheduler = IntervalCueScheduler(runner: runner, cues: cues)
-                    cueScheduler = scheduler
-                    scheduler.start()
+                .overlay { countdownOverlay }
+                .onAppear { beginPreStart() }
+                .onDisappear { preStartTask?.cancel() }
+        }
+    }
+
+    /// The digit shown for the pre-start or pre-interval "get ready" countdown.
+    private var countdownDigit: Int? { preStartSecond ?? runner.startCountdownSecond }
+
+    @ViewBuilder
+    private var countdownOverlay: some View {
+        if let digit = countdownDigit {
+            ZStack {
+                Color.black.opacity(0.75).ignoresSafeArea()
+                VStack(spacing: 12) {
+                    Text("Get Ready").font(.title.weight(.heavy))
+                    Text("\(digit)")
+                        .scaledSystemFont(200, relativeTo: .largeTitle, weight: .black, design: .rounded)
+                        .monospacedDigit()
+                        .accessibilityIdentifier("interval.getReadyDigit")
                 }
+                .foregroundStyle(.white)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Get ready, \(digit)")
+        }
+    }
+
+    /// Counts 3-2-1 (visually, with tick + optional spoken "Get ready") before the
+    /// workout clock starts, then starts the runner and cue scheduler.
+    private func beginPreStart() {
+        guard preStartTask == nil else { return }
+        cues.spokenEnabled = settings.spokenCues
+        cues.isBoxing = saveType == .boxing
+        preStartTask = Task { @MainActor in
+            for second in stride(from: 3, through: 1, by: -1) {
+                preStartSecond = second
+                cues.getReady(second: second)
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                if Task.isCancelled { return }
+            }
+            preStartSecond = nil
+            runner.restart()
+            let scheduler = IntervalCueScheduler(runner: runner, cues: cues)
+            cueScheduler = scheduler
+            scheduler.start()
         }
     }
 

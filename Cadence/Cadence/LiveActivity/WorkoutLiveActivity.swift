@@ -55,10 +55,18 @@ final class WorkoutLiveActivityCoordinator {
         }
     }
 
+    /// Ends every owned activity, not just the one this process adopted: an
+    /// activity from a prior launch would otherwise keep its counter running.
     func end() {
-        // End every owned activity, not just the one this instance holds: after
-        // a relaunch `activity` is nil while the system still shows the old one.
         endAllStale()
+    }
+
+    /// Ends all owned activities when no strength workout is active.
+    func reconcile(workoutIsActive: Bool, hasStrengthSession: Bool) {
+        let action = LiveActivityReconcilePolicy.action(
+            workoutIsActive: workoutIsActive, hasStrengthSession: hasStrengthSession,
+            ownedActivityCount: Activity<WorkoutLiveActivityAttributes>.activities.count)
+        if action == .endAll { endAllStale() }
     }
 
     /// Launch/foreground reconciliation driven by the pure policy.

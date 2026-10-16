@@ -8,6 +8,12 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
+# Never cancel an in-flight release build (build numbers must stay monotonic);
+# later merges queue behind it.
+concurrency:
+  group: ios-main-release
+  cancel-in-progress: false
+
 jobs:
   core-tests:
     runs-on: xcode-27
@@ -281,3 +287,38 @@ jobs:
         run: |
           security delete-keychain build.keychain
           rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8
+
+  # Records the post-merge outcome on the merged PR. Uses only GITHUB_TOKEN with
+  # issue/PR comment scope and no release secrets. "Uploaded" means altool
+  # accepted the build; Apple processing / tester availability is NOT claimed.
+  deployment-report:
+    needs: [core-tests, testflight-build]
+    if: always() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Report deployment outcome
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TESTS: ${{ needs.core-tests.result }}
+          BUILD: ${{ needs.testflight-build.result }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [[ "$TESTS" != success ]]; then
+            status="FAILED at package tests/guardrails (code-related: needs a new protected repair PR; main is never rewritten)"
+          elif [[ "$BUILD" == success ]]; then
+            status="build archived, exported and uploaded to App Store Connect (processing/tester availability not yet confirmed)"
+          else
+            status="FAILED at archive/export/TestFlight upload (result: $BUILD). Check the run log: signing, provisioning or App Store Connect failures need owner action"
+          fi
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          pr=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/pulls" --jq '.[0].number // empty' || true)
+          msg="**Post-merge deployment ($SHA):** $status. [Run]($url)"
+          if [[ -n "$pr" ]]; then gh pr comment "$pr" --body "$msg" || true; fi
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+          if [[ "$TESTS" != success || "$BUILD" != success ]]; then
+            echo "::error::$status"; exit 1
+          fi

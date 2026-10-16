@@ -1,38 +1,29 @@
-
 name: PR Swift Validation
+# Read-only: no write token, no release/signing secrets. Runs the shared
+# scripts/ci-validate.sh so issue agent, repair agent and CI cannot drift.
 on:
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: pr-validation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   validate:
     runs-on: xcode-27
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Select stable Xcode
         run: |
           XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
           test -n "$XCODE"
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - name: Swift package tests
-        run: swift test --package-path CadenceCore --parallel
-      - name: Build iPhone and embedded Watch app
-        run: |
-          bash scripts/xcodebuild-safe.sh \
-            -project Cadence/Cadence.xcodeproj \
-            -scheme Cadence \
-            -destination 'generic/platform=iOS' \
-            CODE_SIGNING_ALLOWED=NO build
-      - name: Guardrails
-        run: |
-          bash scripts/check-test-pyramid.sh
-          bash scripts/check-no-network.sh
-          bash scripts/check-history-safety.sh
-          bash scripts/check-watch-appicon.sh
-          bash scripts/check-watch-background-modes.sh
-          bash scripts/check-xcodebuild-platform.sh
-          bash scripts/check-release-safety.sh
+      - name: Validate (shell, YAML, automation tests, Swift tests, builds, guardrails)
+        run: bash scripts/ci-validate.sh

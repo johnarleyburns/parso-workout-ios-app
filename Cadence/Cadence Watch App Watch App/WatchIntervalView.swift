@@ -107,11 +107,12 @@ struct WatchIntervalView: View {
             .padding(.horizontal, 6)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text("\(runner.phaseLabel), \(formatTime(runner.phaseRemaining)) left, \(titleLine)"))
+        .accessibilityLabel(Text("\(runner.phaseLabel), \(formatTime(runner.phaseRemaining)) left, \(titleLine), \(roundLabel)"))
     }
 
+    /// Stable header: the protocol being run ("HIIT · Tabata"); never changes between phases.
     private var titleLine: String {
-        "\(kind) · \(roundLabel)"
+        plan.name.caseInsensitiveCompare(kind) == .orderedSame ? kind : "\(kind) · \(plan.name)"
     }
 
     private var heartLine: some View {

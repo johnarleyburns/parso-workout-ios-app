@@ -111,27 +111,11 @@ struct WatchAddExerciseView: View {
                 }
                 if catalog.isLoaded {
                     let groupEntries = catalog.entries(in: selectedGroup)
-                    Section("Filter") {
-                        Picker("Type", selection: $filter.mechanics) {
-                            Text("Any").tag(Mechanics?.none)
-                            Text("Compound").tag(Mechanics?.some(.compound))
-                            Text("Isolation").tag(Mechanics?.some(.isolation))
-                        }
-                        .accessibilityIdentifier("watchAddExercise.filter.type")
-                        Picker("Equipment", selection: $filter.equipment) {
-                            Text("Any").tag(Equipment?.none)
-                            ForEach(filter.availableEquipment(in: groupEntries)) { item in
-                                Text(item.displayName).tag(Equipment?.some(item))
-                            }
-                        }
-                        .accessibilityIdentifier("watchAddExercise.filter.equipment")
-                    }
+                    WatchExerciseFilterSection(filter: $filter, entries: groupEntries)
                     let shown = filter.apply(to: groupEntries)
                     Section(selectedGroup.displayName) {
                         if shown.isEmpty {
-                            Text("No matches")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                            Text("No matches").font(.caption).foregroundStyle(.secondary)
                         }
                         ForEach(shown) { exercise in
                             exerciseButton(exercise)

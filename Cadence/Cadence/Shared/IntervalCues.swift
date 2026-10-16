@@ -88,6 +88,15 @@ final class IntervalCues {
         Haptics.play(.restEnding)
     }
 
+    /// One tick of the 3-2-1 "get ready" countdown before a workout/interval
+    /// starts. Speaks "Get ready" on the first tick when spoken cues are on.
+    func getReady(second: Int) {
+        activateSession()
+        TonePlayer.playTick()
+        Haptics.play(.restEnding)
+        if spokenEnabled, second == 3 { speak(String(localized: "Get ready")) }
+    }
+
     func completed() {
         if isBoxing {
             play(bell)

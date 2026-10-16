@@ -56,6 +56,18 @@ public final class IntervalRunner {
 
     public var currentPhaseID: Int? { current?.phase.id }
     public var phaseKind: IntervalPhaseKind? { current?.phase.kind }
+    /// Kind of the phase after the current one, if any.
+    public var nextPhaseKind: IntervalPhaseKind? {
+        guard let c = current, plan.phases.indices.contains(c.index + 1) else { return nil }
+        return plan.phases[c.index + 1].kind
+    }
+    /// 3…1 during the final three seconds before a work interval begins (the
+    /// Apple-Fitness-style "get ready" countdown); nil otherwise or while paused.
+    public var startCountdownSecond: Int? {
+        guard !isPaused, !isComplete, nextPhaseKind == .work, phaseKind != .work else { return nil }
+        let secs = Int(phaseRemaining.rounded(.up))
+        return (1...3).contains(secs) ? secs : nil
+    }
     public var phaseLabel: String { current?.phase.label ?? (isComplete ? String(localized: "Done", bundle: .module) : "") }
     public var phaseRemaining: TimeInterval { current?.phaseRemaining ?? 0 }
     public var phaseDuration: TimeInterval { current.map { $0.phase.duration + (phaseExtensions[$0.index] ?? 0) } ?? 0 }

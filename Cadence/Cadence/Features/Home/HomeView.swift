@@ -243,9 +243,7 @@ struct HomeView: View {
             cardioMaximumHROverride: settings.cardioMaximumHROverride,
             overrideWeekKey: settings.coachPlanOverrideWeekKey)
     }
-    var todayCacheKey: HomeTodayCache.Key {
-        HomeTodayCache.Key(signature: coachSignature, day: Self.dayString())
-    }
+    var todayCacheKey: HomeTodayCache.Key { .init(signature: coachSignature, day: Self.dayString()) }
     func buildCoachSnapshot() async -> HomeCoachSnapshot {
         let signpostID = OSSignpostID(log: Self.performanceLog)
         os_signpost(.begin, log: Self.performanceLog, name: "coachExtractionAndBuild", signpostID: signpostID)

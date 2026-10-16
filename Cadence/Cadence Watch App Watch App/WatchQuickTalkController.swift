@@ -62,7 +62,7 @@ final class WatchQuickTalkController {
         }
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.record, mode: .default, options: [])
+            try session.setCategory(.playAndRecord, mode: .default, options: [])
             try session.setActive(true)
             let url = FileManager.default.temporaryDirectory.appendingPathComponent("quicktalk-\(UUID().uuidString).m4a")
             let settings: [String: Any] = [
@@ -167,8 +167,11 @@ final class WatchQuickTalkController {
     }
 
     func requestPermission() {
-        AVAudioApplication.requestRecordPermission { [weak self] granted in
-            Task { @MainActor in self?.phase = granted ? .idle : .failed(code: "micDenied") }
+        // The callback-based API invokes its block on a background queue; a closure formed in this
+        // @MainActor class would trap on the isolation check. The async form resumes on the main actor.
+        Task { @MainActor [weak self] in
+            let granted = await AVAudioApplication.requestRecordPermission()
+            self?.phase = granted ? .idle : .failed(code: "micDenied")
         }
     }
 

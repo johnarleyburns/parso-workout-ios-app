@@ -66,6 +66,25 @@ final class CardioSuggestionTests: XCTestCase {
         XCTAssertEqual(result?.durationMinutes, 25)
     }
 
+    func testIntervalHabitSurfacesEvenWhenLatestSessionWasARun() {
+        var history = [CardioSuggestionHistory(
+            type: .run, durationMinutes: 30, moderateEquivalentMinutes: 30,
+            start: now)]
+        history += (1...3).map { index in
+            CardioSuggestionHistory(
+                type: .hiit, durationMinutes: 25, moderateEquivalentMinutes: 50,
+                intensity: .veryHard, isInterval: true,
+                start: now.addingTimeInterval(TimeInterval(-index * 3 * 86_400)))
+        }
+        let result = CardioSuggestionGenerator.generate(
+            input: CardioSuggestionInput(history: history,
+                                         weeklyModerateEquivalentMinutes: 0,
+                                         experience: .intermediate, asOf: now))
+
+        XCTAssertEqual(result?.type, .hiit)
+        XCTAssertEqual(result?.intensity, .interval)
+    }
+
     func testValueRoundTripAndCitationContract() throws {
         let input = CardioSuggestionInput(
             history: [CardioSuggestionHistory(type: .cycle, durationMinutes: 30,

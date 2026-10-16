@@ -12,7 +12,8 @@ fails=0
 eq() { [[ "$2" == "$3" ]] && echo "ok   $1" || { echo "FAIL $1: expected '$3' got '$2'"; fails=$((fails+1)); }; }
 
 # decide <draft> <state> <val> <automerge> <stopped> <attempts>
-eq "PR97 behind+success+automerge -> update-branch" "$(decide false behind success true false 0)" update-branch
+eq "behind+success+automerge -> waiting-merge"    "$(decide false behind success true false 0)" waiting-merge
+eq "behind+success -> advance before update"       "$(decide false behind success false false 0)" advance
 eq "draft success clean -> advance"                 "$(decide true clean success false false 0)" advance
 eq "ready success no automerge -> advance"          "$(decide false clean success false false 0)" advance
 eq "ready success automerge -> waiting-merge"       "$(decide false clean success true false 0)" waiting-merge
@@ -45,10 +46,17 @@ eq "success"                   "$(run completed success | validation_from_runs)"
 eq "failure"                   "$(run completed failure | validation_from_runs)" failed
 eq "action_required"           "$(run completed action_required | validation_from_runs)" action_required
 eq "cancelled"                 "$(run completed cancelled | validation_from_runs)" cancelled
-eq "latest run wins" "$(jq -nc '{workflow_runs:[{status:"completed",conclusion:"failure",created_at:"2026-01-01T00:00:00Z"},{status:"completed",conclusion:"success",created_at:"2026-01-02T00:00:00Z"}]}' | validation_from_runs)" success
+eq "successful plus redundant queued -> success" "$(jq -nc '{workflow_runs:[{status:"completed",conclusion:"success"},{status:"queued",conclusion:null}]}' | validation_from_runs)" success
+eq "failed plus successful -> success" "$(jq -nc '{workflow_runs:[{status:"completed",conclusion:"failure"},{status:"completed",conclusion:"success"}]}' | validation_from_runs)" success
+eq "stale SHA runs are absent -> missing" "$(echo '{"workflow_runs":[]}' | validation_from_runs)" missing
+eq "branch update error is recognized" "$(printf 'head branch is out of date; update branch' >"$PWD/.tmp-merge-error"; is_branch_update_required "$PWD/.tmp-merge-error" && echo yes || echo no)" yes
+rm -f .tmp-merge-error
+eq "auto merge confirmed" "$(echo '{"state":"open","auto_merge":{"enabled_by":{"login":"bot"}}}' | merge_confirmation)" enabled
+eq "immediate merge confirmed" "$(echo '{"state":"closed","merged_at":"2026-01-01T00:00:00Z","auto_merge":null}' | merge_confirmation)" merged
+eq "successful command but inactive is diagnosed" "$(echo '{"state":"open","auto_merge":null}' | merge_confirmation)" inactive
 
-# Mocked end-to-end sweep: PR #97 is behind with passing validation; a fork PR
-# and a non-Claude PR must be ignored; update-branch must be the only write.
+# Mocked end-to-end sweep: a behind PR with an already-enabled auto-merge must
+# not update its branch just because main advanced.
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 cat >"$tmp/gh" <<'MOCK'
 #!/usr/bin/env bash
@@ -74,7 +82,7 @@ repo=o/r; REPORT="$tmp/report.json"
 eq "sweep exit code" "$rc" 0
 [[ $rc -ne 0 ]] && cat "$tmp/out"
 grep -q 'update-branch' "$MOCK_LOG" && r=yes || r=no
-eq "PR97 update-branch invoked" "$r" yes
+eq "behind branch is not proactively updated" "$r" no
 grep -Eq 'pr (ready|merge|close)' "$MOCK_LOG" && r=yes || r=no
 eq "no ready/merge/close on behind PR" "$r" no
 eq "fork/non-Claude ignored" "$(jq '.open_claude_prs' "$tmp/report.json")" 1

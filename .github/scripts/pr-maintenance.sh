@@ -11,7 +11,7 @@
 #   action_required    -> escalate (GitHub approval policy; never "passed")
 #   cancelled          -> rerun       missing -> retrigger (close/reopen)
 #   pending            -> wait
-#   success + behind   -> update-branch      success + unknown -> wait
+#   success + behind   -> advance (GitHub decides whether it needs an update)
 #   success otherwise  -> advance (ready + auto-merge) / waiting-merge
 #
 # Env: GH_TOKEN (PAT or app token so pushes start workflows), GITHUB_REPOSITORY,
@@ -43,24 +43,37 @@ decide() {
     missing) echo retrigger; return ;;
     pending) echo wait; return ;;
   esac
-  [[ "$state" == behind ]] && { echo update-branch; return; }
   [[ "$state" == unknown ]] && { echo wait; return; }
   if [[ "$draft" == true || "$autom" != true ]]; then echo advance; else echo waiting-merge; fi
 }
 
 # validation_from_runs: stdin = workflow runs JSON for pr-validation.yml on the
-# head SHA (event=pull_request). Latest run wins.
+# head SHA (event=pull_request). A completed success is authoritative for the
+# required `validate` context even when a duplicate run for the same SHA is
+# still queued. GitHub's check rollup has the same context-level semantics.
 validation_from_runs() {
   jq -r '
-    (.workflow_runs // []) | sort_by(.created_at) | last // null
-    | if . == null then "missing"
-      elif .status != "completed" then "pending"
-      else (.conclusion // "") as $c
-        | if $c == "success" then "success"
-          elif $c == "action_required" then "action_required"
-          elif ($c == "cancelled" or $c == "skipped" or $c == "stale") then "cancelled"
-          else "failed" end
+    (.workflow_runs // []) as $runs
+    | if ($runs | length) == 0 then "missing"
+      elif any($runs[]; .status == "completed" and .conclusion == "success") then "success"
+      elif any($runs[]; .status != "completed") then "pending"
+      elif any($runs[]; .conclusion == "action_required") then "action_required"
+      elif any($runs[]; .conclusion == "failure" or .conclusion == "timed_out") then "failed"
+      else "cancelled"
       end'
+}
+
+is_branch_update_required() {
+  # Only update a branch when GitHub's merge evaluation explicitly says it is
+  # out of date. A compare-only "behind" result is insufficient: proactively
+  # updating every PR after each merge is what created the validation loop.
+  grep -Eqi 'out of date|update (the )?branch|head branch.*(behind|up.to.date)|base branch.*(behind|up.to.date)' "$1"
+}
+
+merge_confirmation() { # REST pull JSON -> merged|enabled|inactive
+  jq -r 'if .merged_at != null or .state == "closed" then "merged"
+         elif .auto_merge != null then "enabled"
+         else "inactive" end'
 }
 
 # effective_state <rest mergeable_state> <mergeable> <behind_by>: freshness and
@@ -238,12 +251,6 @@ process_pr() {
       else
         escalate "$n" "$issue" "$head" "validation-never-ran" "No pull_request validation run exists for this head after 2 re-triggers. Check Actions is enabled and the push token can trigger workflows."
       fi ;;
-    update-branch)
-      if api -X PUT "repos/${repo}/pulls/$n/update-branch" -f expected_head_sha="$head" >/dev/null 2>&1; then
-        put_state "$n" "$st" "branch updated with main; awaiting fresh validation"
-      else
-        echo "PR #$n: update-branch refused (head moved or conflict); next sweep re-evaluates"
-      fi ;;
     advance)
       if [[ "$draft" == true ]]; then
         # Marking ready emits ready_for_review; validation may queue again.
@@ -258,6 +265,14 @@ process_pr() {
         if is_transient_merge_error "/tmp/automerge-$n.err"; then
           echo "PR #$n: merge deferred because required validation is queued/pending"
           put_state "$n" "$st" "merge deferred: required validation pending (automatic retry next sweep)"
+        elif is_branch_update_required "/tmp/automerge-$n.err"; then
+          if api -X PUT "repos/${repo}/pulls/$n/update-branch" -f expected_head_sha="$head" >/dev/null 2>&1; then
+            st=$(jq -c --arg h "$head" '.branch_update_source_head = $h' <<<"$st")
+            put_state "$n" "$st" "GitHub required a branch update; updated once and awaiting validation for the new head"
+          else
+            echo "PR #$n: required branch update was refused; next sweep re-evaluates"
+            put_state "$n" "$st" "merge blocked: GitHub requires a branch update, but the update was not accepted yet"
+          fi
         else
           # Avoid permanently stopping a valid PR on a transient GraphQL
           # merge/ruleset response. Re-evaluate it on the next sweep.
@@ -266,7 +281,17 @@ process_pr() {
           INFRA=1
         fi
       else
-        put_state "$n" "$st" "ready; auto-merge enabled; waiting for required checks"
+        local post outcome
+        post=$(api "repos/${repo}/pulls/$n") || { INFRA=1; echo "PR #$n: cannot verify auto-merge request" >&2; return; }
+        outcome=$(merge_confirmation <<<"$post")
+        case "$outcome" in
+          merged) put_state "$n" "$st" "merged (GitHub merged immediately after required checks passed)" ;;
+          enabled) put_state "$n" "$st" "auto-merge requested and confirmed; waiting for GitHub merge eligibility" ;;
+          *)
+            echo "PR #$n: gh pr merge exited successfully but REST reports no merge or auto-merge request"
+            put_state "$n" "$st" "merge blocked: GitHub did not confirm auto-merge; retrying on the next sweep"
+            INFRA=1 ;;
+        esac
       fi ;;
   esac
 }

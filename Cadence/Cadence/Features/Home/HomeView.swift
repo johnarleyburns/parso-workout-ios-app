@@ -78,7 +78,6 @@ struct HomeView: View {
     @State var pendingPlan: EditablePlan?
     @State var captureHR = false
     @State var cardioPickerPresented = false
-    @State var plannedWorkoutsPresented = false
     @State var weightsStartPresented = false
     @State var fillGapsPresented = false
     @State var cardioGoalFor: CardioType?

@@ -18,10 +18,6 @@ extension HomeView {
               suggestedWorkoutTask == nil,
               sessions.filter({ $0.countsAsStrengthHistory }).count >= 2
         else { return }
-        if let cached = HomeTodayCache.cachedPlan(for: todayCacheKey) {
-            todaySuggestedPlan = cached
-            return
-        }
         requestSuggestedStrength(present: false)
     }
 
@@ -29,25 +25,38 @@ extension HomeView {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
-        let cacheKey = todayCacheKey
         guard request.failureMessage == nil else { return }
+        // Stable semantic fingerprint: never the view refresh token or task ids.
+        let fingerprint = TodaySuggestedWorkoutFingerprint.make(
+            input: request.input,
+            unitRaw: String(describing: request.unit),
+            warmupMinutes: request.warmupMinutes,
+            cooldownMinutes: request.cooldownMinutes,
+            extras: scheduledWorkouts.map {
+                "\($0.id)|\($0.scheduledDate.timeIntervalSince1970)|\($0.updatedAt.timeIntervalSince1970)|\($0.statusRaw)|\($0.payloadVersion)"
+            })
+        let store = HomeTodayCache.suggestionStore
+        let input = request.input
+        let unit = request.unit
+        let warmup = request.warmupMinutes
+        let cooldown = request.cooldownMinutes
         let task = Task {
-            let option = await Task.detached(priority: .userInitiated) {
-                SuggestedWorkoutGenerator.generatePersonalized(input: request.input)
-            }.value
-            guard !Task.isCancelled else { return }
+            // A durable hit returns without invoking the solver; concurrent
+            // callers for the same day + fingerprint share one generation.
+            let payload = await store.resolve(fingerprint: fingerprint) {
+                let option = await Task.detached(priority: .userInitiated) {
+                    SuggestedWorkoutGenerator.generatePersonalized(input: input)
+                }.value
+                guard option.isLaunchable else { return nil }
+                return TodaySuggestedPlanPayload(SuggestedWorkoutPresenter.editablePlan(
+                    for: option, unit: unit, warmupMinutes: warmup, cooldownMinutes: cooldown))
+            }
+            guard !Task.isCancelled, let payload else { return }
             await MainActor.run {
                 guard suggestedWorkoutTask != nil,
                       suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
-                guard option.isLaunchable else { return }
-                let plan = SuggestedWorkoutPresenter.editablePlan(
-                    for: option,
-                    unit: request.unit,
-                    warmupMinutes: request.warmupMinutes,
-                    cooldownMinutes: request.cooldownMinutes)
-                todaySuggestedPlan = plan
-                HomeTodayCache.store(plan, for: cacheKey)
+                todaySuggestedPlan = payload.makePlan()
             }
         }
         suggestedWorkoutTask = task

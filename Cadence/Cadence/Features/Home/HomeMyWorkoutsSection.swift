@@ -12,6 +12,8 @@ struct HomeMyWorkoutsSection: View {
     let onStartScheduled: (ScheduledWorkout) -> Void
     let onShowMorePlanned: () -> Void
 
+    @State private var detailPlan: EditablePlan?
+
     private var todayItems: [PlannedWorkoutsPresenter.Item] { PlannedWorkoutsPresenter.today(plannedItems) }
 
     var body: some View {
@@ -49,19 +51,41 @@ struct HomeMyWorkoutsSection: View {
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.myWorkouts")
+        .sheet(item: $detailPlan) { plan in
+            NavigationStack {
+                WorkoutPlanEditor(plan: plan, allowsStart: false, allowsSchedule: false,
+                                  onStart: { _ in })
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { detailPlan = nil }
+                        }
+                    }
+            }
+        }
     }
 
     private func plannedRow(_ item: PlannedWorkoutsPresenter.Item,
                             record: ScheduledWorkout) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "calendar").font(.caption).foregroundStyle(.teal)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(item.title).font(.subheadline.weight(.medium))
-                Text(item.detail).font(.caption2).foregroundStyle(.secondary)
+            Button {
+                detailPlan = try? ScheduledWorkoutStore.decode(record.payloadData,
+                                                               version: record.payloadVersion)
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "calendar").font(.caption).foregroundStyle(.teal)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(item.title).font(.subheadline.weight(.medium))
+                        Text(item.detail).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text("PLANNED")
+                        .font(.caption2.weight(.bold)).foregroundStyle(.teal)
+                }
+                .contentShape(Rectangle())
             }
-            Spacer()
-            Text("PLANNED")
-                .font(.caption2.weight(.bold)).foregroundStyle(.teal)
+            .buttonStyle(.plain)
+            .accessibilityHint("Shows workout details")
+            .accessibilityIdentifier("home.myWorkouts.detail.\(record.id.uuidString)")
             Button { onStartScheduled(record) } label: {
                 Image(systemName: "play.fill").font(.caption)
                     .frame(minWidth: 44, minHeight: 44)

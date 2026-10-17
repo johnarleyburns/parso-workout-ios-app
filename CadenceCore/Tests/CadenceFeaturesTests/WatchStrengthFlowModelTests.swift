@@ -665,7 +665,22 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.lastSyncPayload?["effort_value"] as? Double, 2)
     }
 
-    func testLogLastSetReturnsHomeWithoutRest() {
+    func testLogLastSetRestsThenAdvancesToNextExercise() {
+        let m = makeModel()
+        m.start()
+        let first = simpleExercise(named: "Last Set Press")
+        let second = simpleExercise(named: "Next Up Row")
+        m.startLogSet(for: second)
+        _ = m.logSet()
+        m.finishRest()
+        m.startLogSet(for: first)
+        _ = m.logLastSet()
+        XCTAssertEqual(m.stage, .rest)
+        m.finishRest()
+        XCTAssertNotEqual(m.stage, .keypad(first))
+    }
+
+    func testLogLastSetWithNoNextExerciseRestsThenHome() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "Last Set Press")
@@ -673,9 +688,11 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         _ = m.logLastSet()
 
+        XCTAssertEqual(m.stage, .rest)
+        m.finishRest()
         XCTAssertEqual(m.stage, .home)
         XCTAssertEqual(m.exerciseList.first?.setCount, 1)
-        XCTAssertEqual(m.restTimer.remaining, 0)
+        XCTAssertTrue(m.allExercisesCompletePrompt)
     }
 
     func testDeleteSetRemovesLocalSetAndEmitsPayload() {
@@ -712,7 +729,7 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertNotNil(replacement)
         XCTAssertEqual(m.session?.orderedSets.count, 1)
         XCTAssertEqual(m.session?.orderedSets.first?.reps, 6)
-        XCTAssertEqual(m.stage, .home)
+        XCTAssertEqual(m.stage, .rest)
     }
 
     func testDeleteExerciseRemovesPlannedNameSetsAndEmitsPayload() {

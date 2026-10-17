@@ -75,11 +75,6 @@ extension HomeView {
                     onFillGaps: openFillGapsFromStartWorkout,
                     onSuggestCardio: { requestSuggestedWorkout(.cardio) })
             }
-            .sheet(isPresented: $plannedWorkoutsPresented) {
-                NavigationStack {
-                    PlannedWorkoutsListView()
-                }
-            }
             .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) {
                 RecordCardioView(initialType: $0, tracksGPS: cardioTracksGPS,
                                  customTitle: otherCardioTitle, captureHR: captureHR,

@@ -60,21 +60,9 @@ struct CardioDetailView: View {
                     detailRow(String(localized: "Guideline credit"), "\(minutes(summary.moderateEquivalentMinutes * 60)) min")
                     detailRow(String(localized: "Method"), summary.method.displayName)
                     detailRow(String(localized: "Confidence"), summary.confidence.displayName)
-                    if let citation = CitationRegistry.citation(forId: "swainLeutholtz1997HRR") {
-                        CitationLink(citation: citation,
-                                     context: String(localized: "Heart-rate reserve (%HRR) estimates relative effort, which sets the moderate and vigorous bands. Guideline credit is separate from actual minutes and does not credit below-moderate work."),
-                                     compact: true)
-                    }
-                    if let citation = CitationRegistry.citation(forId: "piercy2018PhysicalActivityGuidelines") {
-                        CitationLink(citation: citation,
-                                     context: String(localized: "Guidelines: 150 moderate or 75 vigorous minutes per week; one vigorous minute counts as two moderate minutes."),
-                                     compact: true)
-                    }
-                    if let citation = CitationRegistry.citation(forId: "acsmGarber2011AerobicGuidelines") {
-                        CitationLink(citation: citation,
-                                     context: String(localized: "ACSM intensity classification by percent of heart-rate reserve or maximum heart rate."),
-                                     compact: true)
-                    }
+                    CoachSourcesLink(citationIds: CardioIntensityPolicy.citationIDs,
+                                     contexts: CardioIntensitySourceContexts.contexts,
+                                     identifier: "cardioDetail.intensity.science")
                 }
                 .accessibilityIdentifier("cardioDetail.intensity")
                 if !summary.zoneDurations.isEmpty {
@@ -265,4 +253,16 @@ private struct RouteMap: View {
                                     longitudeDelta: max(0.005, (maxLon - minLon) * 1.4))
         return MKCoordinateRegion(center: center, span: span)
     }
+}
+
+
+/// Shared "How this applies" copy for the single aggregated cardio-intensity science link.
+enum CardioIntensitySourceContexts {
+    static let contexts: [String: String] = [
+        "swainLeutholtz1997HRR": String(localized: "Heart-rate reserve (%HRR) estimates relative effort, which sets the moderate and vigorous bands. Guideline credit is separate from actual minutes and does not credit below-moderate work."),
+        "piercy2018PhysicalActivityGuidelines": String(localized: "Guidelines: 150 moderate or 75 vigorous minutes per week; one vigorous minute counts as two moderate minutes."),
+        "acsmGarber2011AerobicGuidelines": String(localized: "ACSM intensity classification by percent of heart-rate reserve or maximum heart rate."),
+        "mezzani2013AerobicIntensity": String(localized: "Consensus on expressing aerobic exercise intensity relative to heart-rate reserve and peak capacity."),
+        "tanakaMaxHR2001": String(localized: "Age-based estimate of maximum heart rate used when no measured maximum is available."),
+    ]
 }

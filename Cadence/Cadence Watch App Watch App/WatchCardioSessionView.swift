@@ -63,10 +63,6 @@ struct WatchCardioSessionView: View {
                 watchManager.finishCardioSession(save: false)
             }
         }
-        .alert("End Workout?", isPresented: $isShowingConfirmEnd) {
-            Button("End", role: .destructive) { prepareSummary() }
-            Button("Cancel", role: .cancel) {}
-        }
         .ownsWatchWorkoutSession()
     }
 
@@ -97,6 +93,10 @@ struct WatchCardioSessionView: View {
                     .tag(Page.heart)
             }
             .tabViewStyle(.page)
+            .alert("End Workout?", isPresented: $isShowingConfirmEnd) {
+                Button("End", role: .destructive) { prepareSummary() }
+                Button("Cancel", role: .cancel) {}
+            }
             .onAppear { update(metrics) }
             .onChange(of: context.date) { _, _ in update(metrics) }
         }
@@ -113,6 +113,7 @@ struct WatchCardioSessionView: View {
     }
 
     private func prepareSummary() {
+        isShowingConfirmEnd = false
         WatchWorkoutVoiceCoach.shared.speak(
             .workoutComplete, enabled: watchSettings.spokenCues)
         if let metrics { update(metrics) }

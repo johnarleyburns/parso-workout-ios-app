@@ -8,16 +8,12 @@ struct RepSchemePicker: View {
 
     @Environment(AppSettings.self) private var settings
 
-    private let presets: [(title: String, ladder: [Int], id: String)] = [
-        ("2 sets · 8-5", [8, 5], "repScheme.2x"),
-        ("3 sets · 12-10-8", [12, 10, 8], "repScheme.3x"),
-        ("4 sets · 12-10-8-6", [12, 10, 8, 6], "repScheme.4x"),
-    ]
+    private let presets = RepSchemePreset.all
 
     var body: some View {
         List {
             Section {
-                ForEach(presets, id: \.id) { preset in
+                ForEach(presets) { preset in
                     NavigationLink {
                         WorkoutPlanEditor(
                             plan: .from(plan: plan, ladder: preset.ladder, unit: settings.unit,
@@ -27,7 +23,7 @@ struct RepSchemePicker: View {
                     } label: {
                         Label(preset.title, systemImage: "list.number")
                     }
-                    .accessibilityIdentifier(preset.id)
+                    .accessibilityIdentifier(preset.accessibilityID)
                 }
                 NavigationLink {
                     CustomRepEditor(plan: plan, onEditorStart: onEditorStart)

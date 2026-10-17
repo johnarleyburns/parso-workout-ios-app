@@ -74,7 +74,8 @@ public enum WatchSetCardBuilder {
                             nextLifter: String?,
                             effortText: String?,
                             isWarmup: Bool,
-                            isNonWeighted: Bool = false) -> WatchSetCardState {
+                            isNonWeighted: Bool = false,
+                            isLastSet: Bool = false) -> WatchSetCardState {
         let dots = makeDots(planned: plannedWorkingSets.count, completed: completedWorkingSets)
         let weightText = isNonWeighted ? "—" : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
         let changed = isNonWeighted
@@ -84,7 +85,8 @@ public enum WatchSetCardBuilder {
             ? (isNonWeighted
                 ? String(localized: "Log \(currentReps) reps", bundle: .module)
                 : String(localized: "Log \(weightText) × \(currentReps)", bundle: .module))
-            : String(localized: "Log set", bundle: .module)
+            : (isLastSet ? String(localized: "Last set", bundle: .module)
+                         : String(localized: "Log set", bundle: .module))
         let last = lastTime.map { last -> String in
             let base = Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
             if let rpe = last.rpe {
@@ -200,7 +202,8 @@ extension WatchStrengthFlowModel {
             nextLifter: options.count > 1 ? nextLifter : nil,
             effortText: effort,
             isWarmup: isWarmupSet,
-            isNonWeighted: SessionViewModel.isNonWeighted(exercise))
+            isNonWeighted: SessionViewModel.isNonWeighted(exercise),
+            isLastSet: isLastPlannedSet(of: exercise))
     }
 
     /// Cycles the effort chip: none → 6 → 7 → 8 → 9 → 10 → none (S2).

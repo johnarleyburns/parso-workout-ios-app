@@ -155,6 +155,13 @@ struct WatchStrengthView: View {
                 .tag(Page.heart)
         }
         .tabViewStyle(.page)
+        .alert("All exercises complete, finish workout?", isPresented: Binding(
+            get: { model.allExercisesCompletePrompt },
+            set: { model.allExercisesCompletePrompt = $0 }
+        )) {
+            Button("Done") { finishWorkout() }
+            Button("Keep going", role: .cancel) {}
+        }
     }
 
     @ViewBuilder

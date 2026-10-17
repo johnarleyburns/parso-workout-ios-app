@@ -33,6 +33,11 @@ struct WatchSetKeypadView: View {
     var body: some View {
         if let card = model.setCardState {
             VStack(spacing: 3) {
+                Text(card.exerciseName)
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
                 // Dots and (with partners) who is lifting share one row, so the card fits under the title.
                 HStack(spacing: 6) {
                     WatchSetDots(dots: card.dots)
@@ -84,7 +89,7 @@ struct WatchSetKeypadView: View {
                 guard !Task.isCancelled else { return }
                 withAnimation { toastLastTime = nil }
             }
-            .navigationTitle(card.exerciseName)
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
@@ -168,11 +173,9 @@ struct WatchSetKeypadView: View {
             if card.isWarmup {
                 Label("Warm-up", systemImage: "flame.fill").font(.caption2).foregroundStyle(WatchTone.attention)
             }
-            Button { showingMore = true } label: { Image(systemName: "ellipsis")
-                .frame(minWidth: 44, minHeight: 44)
-            }
+            Button { showingMore = true } label: { Image(systemName: "ellipsis") }
                 .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-                .frame(minWidth: 52, minHeight: 44)
+                .frame(minWidth: 52)
                 .contentShape(Rectangle())
                 .accessibilityLabel(Text("More"))
                 .accessibilityIdentifier("watchSet.more")

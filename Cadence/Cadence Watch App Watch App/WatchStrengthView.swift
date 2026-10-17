@@ -275,7 +275,8 @@ struct WatchStrengthReviewView: View {
                     .buttonStyle(WatchPillStyle(kind: .primary))
                     .handGestureShortcut(.primaryAction)
                     .accessibilityIdentifier("watchStrength.save")
-                Button("Keep going", action: onKeepGoing).font(.footnote)
+                Button("Keep going", action: onKeepGoing)
+                    .buttonStyle(WatchPillStyle(kind: .secondary))
                     .accessibilityIdentifier("watchStrength.keepGoing")
             }
             .padding(.horizontal, 2)

@@ -394,9 +394,7 @@ struct WatchAddExerciseView: View {
                   query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
             searchResults = matches
             isSearching = false
-            // Results swapping in under a finger that is still scrolling or
-            // dismissing the keyboard must not register as a row tap.
-            listChangedAt = Date()
+            listChangedAt = Date() // swapped-in rows must not catch a scrolling finger
         }
     }
 }

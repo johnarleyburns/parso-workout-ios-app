@@ -15,6 +15,8 @@ extension HomeView {
     var fillGapsQuickStart: some View {
         MuscleGroupQuickStartView(tiers: fillGapMissingGroups) { session in
             _ = active.startStrength(session)
+        } onPlan: { plan in
+            workoutEditorPlan = plan
         }
     }
 

@@ -12,9 +12,13 @@ struct MuscleGroupQuickStartView: View {
     private var missing: [MuscleGroup] { tiers.all }
     /// Hands a ready-to-start session back to Home to launch (live) + dismiss.
     let onStart: (WorkoutSession) -> Void
+    /// Hands a draft plan back to Home so "Start with these" opens the Workout
+    /// Plan editor instead of launching the session immediately.
+    let onPlan: (EditablePlan) -> Void
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
     @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive }) private var exclusions: [ExerciseSuggestionExclusion]
@@ -117,11 +121,20 @@ struct MuscleGroupQuickStartView: View {
 
     private func buildFromSuggestions() {
         guard !allowedSuggestions.isEmpty else { return }
-        guard let s = try? WorkoutRepository.createSession(title: String(localized: "Workout"), in: context) else { return }
-        s.plannedExerciseNames = allowedSuggestions.map(\.name)
-        for name in allowedSuggestions { _ = try? WorkoutRepository.findOrCreateExercise(named: name.name, in: context) }
-        try? context.save()
-        startAfterDismiss(s)
+        var plan = EditablePlan.empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes)
+        plan.title = String(localized: "Workout")
+        plan.exercises = allowedSuggestions.map { template in
+            EditableExercise(
+                name: template.name,
+                sets: Array(repeating: EditableSet(targetReps: 10, targetWeight: nil), count: 3),
+                notes: "")
+        }
+        Haptics.selection()
+        dismiss()
+        Task { @MainActor in
+            await Task.yield()
+            onPlan(plan)
+        }
     }
 
     /// The destination is inside a NavigationStack. Starting the root

@@ -24,6 +24,7 @@ endstep
 
 step "Automation regression tests"
 bash scripts/tests/test-issue-pr-policy.sh
+bash scripts/tests/test-testflight-delivery-body.sh
 if [[ -f scripts/tests/test-xcodebuild-safe.sh ]]; then
   /bin/bash scripts/tests/test-xcodebuild-safe.sh
 fi

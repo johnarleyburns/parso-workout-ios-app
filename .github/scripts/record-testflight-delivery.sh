@@ -128,7 +128,7 @@ while IFS=$'\t' read -r issue _title; do
   body="$marker
 ## TestFlight upload accepted
 
-- App: **$APP_NAME** (`$bundle`)
+- App: **$APP_NAME** (\`$bundle\`)
 - Version/build: **$version ($build)**
 - Included by PR(s): $prs_text
 - Commit: \`$sha\`

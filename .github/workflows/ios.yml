@@ -59,6 +59,9 @@ jobs:
       - name: Check warning classifier fixtures
         run: bash scripts/test-check-owned-warnings.sh
 
+      - name: Check TestFlight reporting fixture
+        run: bash scripts/tests/test-testflight-delivery-body.sh
+
       - name: Test-pyramid guardrail
         run: bash scripts/check-test-pyramid.sh
 

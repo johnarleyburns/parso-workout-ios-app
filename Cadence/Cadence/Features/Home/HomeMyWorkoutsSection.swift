@@ -11,9 +11,8 @@ struct HomeMyWorkoutsSection: View {
     let onOpenCompleted: (WorkoutsTodayPresenter.Row) -> Void
     let onStartScheduled: (ScheduledWorkout) -> Void
     let onShowMorePlanned: () -> Void
+    let onShowPlannedDetail: (UUID) -> Void
     let onShowHistory: () -> Void
-
-    @State private var detailPlan: EditablePlan?
 
     private var todayItems: [PlannedWorkoutsPresenter.Item] { PlannedWorkoutsPresenter.today(plannedItems) }
 
@@ -43,17 +42,6 @@ struct HomeMyWorkoutsSection: View {
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .green)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.myWorkouts")
-        .sheet(item: $detailPlan) { plan in
-            NavigationStack {
-                WorkoutPlanEditor(plan: plan, allowsStart: false, allowsSchedule: false,
-                                  onStart: { _ in })
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { detailPlan = nil }
-                        }
-                    }
-            }
-        }
     }
 
     private func jumpButton(_ title: LocalizedStringKey, id: String,
@@ -76,8 +64,7 @@ struct HomeMyWorkoutsSection: View {
                             record: ScheduledWorkout) -> some View {
         HStack(spacing: 8) {
             Button {
-                detailPlan = try? ScheduledWorkoutStore.decode(record.payloadData,
-                                                               version: record.payloadVersion)
+                onShowPlannedDetail(record.id)
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: "calendar").font(.caption).foregroundStyle(.teal)

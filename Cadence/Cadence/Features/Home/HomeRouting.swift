@@ -45,6 +45,7 @@ enum WorkoutStartCue {
 enum HomeRoute: Hashable {
     case settings, coach, coachPreferences, savedWorkouts
     case history, plannedWorkouts
+    case plannedWorkoutDetail(UUID)
     case workoutEditor(EditablePlan)
     case customExercises
     case runAssessment(AssessmentKind)
@@ -133,6 +134,49 @@ enum HomeRouteFailure: Identifiable {
         switch self {
         case .scheduledWorkout:
             String(localized: "This scheduled workout could not be read. It is still saved, and you can try opening it again or edit it from Planned Workouts.")
+        }
+    }
+}
+
+/// Read-only preview of a scheduled workout. The route carries only the stable
+/// id; the record is resolved here so a deleted or undecodable payload shows
+/// the recoverable unavailable state instead of a blank destination.
+struct PlannedWorkoutDetailView: View {
+    let id: UUID
+    let onStart: (ScheduledWorkout) -> Void
+
+    @Query private var scheduled: [ScheduledWorkout]
+
+    var body: some View {
+        if let record = scheduled.first(where: { $0.id == id }),
+           let plan = try? ScheduledWorkoutStore.decode(record.payloadData, version: record.payloadVersion) {
+            List {
+                Section {
+                    LabeledContent("Warm-up", value: "\(plan.warmupMinutes) min")
+                    LabeledContent("Cool-down", value: "\(plan.cooldownMinutes) min")
+                }
+                Section("Exercises") {
+                    ForEach(plan.exercises) { exercise in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(exercise.name)
+                            Text("\(exercise.sets.count) sets").font(.caption).foregroundStyle(.secondary)
+                            if !exercise.notes.isEmpty {
+                                Text(exercise.notes).font(.caption).foregroundStyle(.secondary)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                }
+                Section {
+                    Button("Start workout") { onStart(record) }
+                        .accessibilityIdentifier("home.plannedDetail.start")
+                }
+            }
+            .navigationTitle(plan.title)
+            .navigationBarTitleDisplayMode(.inline)
+            .accessibilityIdentifier("home.plannedDetail")
+        } else {
+            MissingWorkoutRouteView()
         }
     }
 }

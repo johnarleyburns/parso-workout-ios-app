@@ -140,13 +140,12 @@ while IFS=$'\t' read -r issue _title; do
   else
     gh issue comment "$issue" --repo "$repo" --body "$body" >/dev/null
   fi
-  # New deployments wait for an actual assigned tester group.  Workout retains
-  # its separate legacy upload-stage label temporarily for compatibility.
-  if [[ "$availability" == Available\ to\ * ]]; then
-    gh label create ready-for-qa --repo "$repo" --color 0E8A16 \
-      --description 'Build is available to an assigned TestFlight tester group' --force >/dev/null
-    gh issue edit "$issue" --repo "$repo" --add-label ready-for-qa >/dev/null
-  fi
+  # An accepted upload is the delivery contract.  Apple processing and tester
+  # group availability remain visible in the status above, but must not delay
+  # the issue's QA handoff.
+  gh label create ready-for-qa --repo "$repo" --color 0E8A16 \
+    --description 'A successful TestFlight upload includes this issue' --force >/dev/null
+  gh issue edit "$issue" --repo "$repo" --add-label ready-for-qa >/dev/null
 done < "$issues_file"
 
 echo "Recorded TestFlight upload $bundle $version ($build) for $issue_count associated issue(s)."

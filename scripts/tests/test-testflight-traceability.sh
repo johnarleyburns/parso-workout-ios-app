@@ -8,4 +8,5 @@ rg -q 'CFBundleShortVersionString' "$script"
 rg -q 'CFBundleVersion' "$script"
 rg -q 'commits/\$commit/pulls' "$script"
 rg -q 'issues/comments/\$existing' "$script"
+! rg -q 'declare -A|\$\{[^}]*,,\}|mapfile|readarray' "$script"
 echo 'traceability static regression checks passed'

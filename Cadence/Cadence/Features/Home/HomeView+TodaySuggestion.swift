@@ -18,6 +18,10 @@ extension HomeView {
               suggestedWorkoutTask == nil,
               sessions.filter({ $0.countsAsStrengthHistory }).count >= 2
         else { return }
+        if let cached = HomeTodayCache.cachedPlan(for: todayCacheKey) {
+            todaySuggestedPlan = cached
+            return
+        }
         requestSuggestedStrength(present: false)
     }
 
@@ -25,6 +29,7 @@ extension HomeView {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
+        let cacheKey = todayCacheKey
         guard request.failureMessage == nil else { return }
         let task = Task {
             let option = await Task.detached(priority: .userInitiated) {
@@ -36,11 +41,13 @@ extension HomeView {
                       suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
                 guard option.isLaunchable else { return }
-                todaySuggestedPlan = SuggestedWorkoutPresenter.editablePlan(
+                let plan = SuggestedWorkoutPresenter.editablePlan(
                     for: option,
                     unit: request.unit,
                     warmupMinutes: request.warmupMinutes,
                     cooldownMinutes: request.cooldownMinutes)
+                todaySuggestedPlan = plan
+                HomeTodayCache.store(plan, for: cacheKey)
             }
         }
         suggestedWorkoutTask = task

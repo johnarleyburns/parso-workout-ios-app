@@ -175,6 +175,7 @@ struct WatchQuickTalkOverlay: View {
         case "micDenied": "Microphone is off"
         case "speechAssetsMissing": "Set up Quick Talk on iPhone"
         case "phoneReplyTimedOut": "iPhone did not respond"
+        case "transcriptionTimedOut": "iPhone couldn't transcribe in time"
         default: "Couldn't log by voice"
         }
     }
@@ -185,6 +186,7 @@ struct WatchQuickTalkOverlay: View {
         case "micDenied": "Allow the microphone for Cladiron in the Watch app on iPhone."
         case "speechAssetsMissing": "Open Cladiron on iPhone and use Quick Talk once to download the speech model."
         case "phoneReplyTimedOut": "Keep Cladiron open on iPhone and try again. You can also use Dictate in ⋯."
+        case "transcriptionTimedOut": "The iPhone received your clip but speech recognition took too long. Try a shorter phrase or use Dictate in ⋯."
         default: "Nothing was logged. Try again, or log with the buttons."
         }
     }

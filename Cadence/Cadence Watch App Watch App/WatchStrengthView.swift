@@ -169,7 +169,7 @@ struct WatchStrengthView: View {
         case .partners:
             WatchPartnersView(model: model)
         default:
-            WatchNextExerciseView(model: model, onPlan: { page = .plan })
+            WatchAddExerciseView(model: model)
         }
     }
 
@@ -249,40 +249,6 @@ struct WatchStrengthView: View {
             watchManager.startWorkout(type: "strength")
         }
         WatchWorkoutVoiceCoach.shared.speak(.workoutStarted(title: title), enabled: watchSettings.spokenCues)
-    }
-}
-
-/// M3 — between exercises: offer the next planned exercise (Double Tap), or the whole plan.
-struct WatchNextExerciseView: View {
-    let model: WatchStrengthFlowModel
-    let onPlan: () -> Void
-
-    var body: some View {
-        VStack(spacing: 8) {
-            if let next = nextExercise {
-                Image(systemName: "flag.checkered").font(.title3).foregroundStyle(WatchTone.accent)
-                Button { model.startLogSet(for: next) } label: { Text("Next · \(next.name)") }
-                    .buttonStyle(WatchPillStyle(kind: .primary))
-                    .handGestureShortcut(.primaryAction)
-                    .accessibilityIdentifier("watchStrength.nextExercise")
-            } else {
-                Text("Add an exercise to start").font(.headline).multilineTextAlignment(.center)
-                Button { model.goToAddExercise() } label: { Label("Add exercise", systemImage: "plus") }
-                    .buttonStyle(WatchPillStyle(kind: .primary))
-                    .handGestureShortcut(.primaryAction)
-            }
-            Button("All exercises", action: onPlan).font(.footnote)
-        }
-        .padding(.horizontal, 4)
-    }
-
-    /// The first planned exercise that still has planned sets to do.
-    private var nextExercise: Exercise? {
-        model.exerciseList.map(\.exercise).first { exercise in
-            let planned = model.plannedWorkingSets(for: exercise).count
-            return planned == 0 ? model.exerciseList.first { $0.exercise.id == exercise.id }?.setCount == 0
-                                : model.completedWorkingSets(for: exercise) < planned
-        }
     }
 }
 

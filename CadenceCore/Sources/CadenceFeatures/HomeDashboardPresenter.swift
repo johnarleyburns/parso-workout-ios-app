@@ -273,6 +273,35 @@ public enum HomeDashboardPresenter {
             .map(\.group)
     }
 
+    /// Gap groups split by severity, in priority order: no sets at all (missing),
+    /// some but under the minimum, then at/above minimum but under recommended.
+    public struct GapTiers: Equatable, Sendable {
+        public var missing: [MuscleGroup]
+        public var belowMinimum: [MuscleGroup]
+        public var belowRecommended: [MuscleGroup]
+        public init(missing: [MuscleGroup] = [], belowMinimum: [MuscleGroup] = [],
+                    belowRecommended: [MuscleGroup] = []) {
+            self.missing = missing
+            self.belowMinimum = belowMinimum
+            self.belowRecommended = belowRecommended
+        }
+        public var all: [MuscleGroup] { missing + belowMinimum + belowRecommended }
+    }
+
+    public static func gapTiers(from rows: [HomeDashboardState.VolumeRow]) -> GapTiers {
+        let ordered = Set(gapGroups(from: rows))
+        let byGroup = Dictionary(rows.map { ($0.group, $0) }, uniquingKeysWith: { a, _ in a })
+        let groups = gapGroups(from: rows).filter(ordered.contains)
+        var t = GapTiers()
+        for g in groups {
+            guard let r = byGroup[g] else { continue }
+            if r.zone == .building { t.belowRecommended.append(g) }
+            else if r.sets <= 0 { t.missing.append(g) }
+            else { t.belowMinimum.append(g) }
+        }
+        return t
+    }
+
     /// Every tracked muscle group, plus any untracked group the user has actually
     /// trained, alphabetically by displayed name.
     public static func volumeRows(setsByGroup: [MuscleGroup: Double],

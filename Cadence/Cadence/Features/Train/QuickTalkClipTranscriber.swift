@@ -16,7 +16,7 @@ enum QuickTalkClipTranscriber {
         defer { try? FileManager.default.removeItem(at: url) }
         do {
             try audio.write(to: url, options: .atomic)
-            let text = try await transcribeFile(url)
+            let text = try await withTimeout(seconds: replyDeadline) { try await transcribeFile(url) }
             guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
                 return [WatchSync.Key.quickTalkError: "noSpeech"]
             }
@@ -31,6 +31,25 @@ enum QuickTalkClipTranscriber {
 
     enum QuickTalkClipError: String, Error {
         case speechAssetsMissing
+        case transcriptionTimedOut
+    }
+
+    /// Must stay below the watch's own reply deadline so the watch gets a specific reason, not silence.
+    static let replyDeadline: TimeInterval = 20
+
+    /// Races `operation` against a deadline; the loser is cancelled.
+    private static func withTimeout<T: Sendable>(seconds: TimeInterval,
+                                                 _ operation: @escaping @Sendable () async throws -> T) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask { try await operation() }
+            group.addTask {
+                try await Task.sleep(for: .seconds(seconds))
+                throw QuickTalkClipError.transcriptionTimedOut
+            }
+            defer { group.cancelAll() }
+            guard let first = try await group.next() else { throw QuickTalkClipError.transcriptionTimedOut }
+            return first
+        }
     }
 
     private static func transcribeFile(_ url: URL) async throws -> String {
@@ -48,7 +67,12 @@ enum QuickTalkClipTranscriber {
             return text
         }
         let analyzer = SpeechAnalyzer(modules: [transcriber])
-        try await analyzer.start(inputAudioFile: file, finishAfterFile: true)
-        return try await collector.value
+        do {
+            try await analyzer.start(inputAudioFile: file, finishAfterFile: true)
+            return try await collector.value
+        } catch {
+            collector.cancel()
+            throw error
+        }
     }
 }

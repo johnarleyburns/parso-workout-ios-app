@@ -10,11 +10,14 @@ struct WatchStrengthHomeView: View {
     let onSelect: () -> Void
     @State private var pendingExerciseID: UUID?
     @State private var exerciseToRemove: Exercise?
+    /// Set when a long-press fires so the button's tap on finger-lift doesn't also navigate away.
+    @State private var longPressHandled = false
 
     var body: some View {
         List {
             ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
                 Button {
+                    if longPressHandled { longPressHandled = false; return }
                     WatchHaptics.tap()
                     pendingExerciseID = item.exercise.id
                     DispatchQueue.main.async {
@@ -30,7 +33,10 @@ struct WatchStrengthHomeView: View {
                 .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
                 .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in
                     WatchHaptics.tap()
+                    longPressHandled = true
                     exerciseToRemove = item.exercise
+                    // If no tap follows the long-press, don't swallow the user's next real tap.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { longPressHandled = false }
                 })
                 .accessibilityAction(named: Text("Remove exercise")) { exerciseToRemove = item.exercise }
             }

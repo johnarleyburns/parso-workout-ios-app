@@ -349,13 +349,23 @@ macos_work_pending() {
 }
 
 main() {
-  local prs n status runs
+  local prs n status runs orphan_jobs quarantine="${QUARANTINED_WORKFLOW_RUN_ID:-}"
   # The serialized reconciler admits work only when macOS workflows are idle.
   # Separate status queries keep old active jobs visible even after many runs.
   for status in in_progress queued pending waiting requested; do
     runs=$(api "repos/${repo}/actions/runs?status=${status}&per_page=100") || {
       echo 'Cannot verify macOS capacity; deferring all changes' >&2; exit 1;
     }
+    # Owner-reviewed exception for a GitHub orphan that cannot be cancelled.
+    # Never ignore an in-progress run or a run with an actual queued job.
+    if [[ "$status" == queued && "$quarantine" =~ ^[0-9]+$ ]] &&
+       jq -e --arg id "$quarantine" 'any(.workflow_runs[]?; (.id|tostring) == $id)' <<<"$runs" >/dev/null; then
+      orphan_jobs=$(api "repos/${repo}/actions/runs/$quarantine/jobs") || exit 1
+      if jq -e '.total_count == 0 and (.jobs|length) == 0' <<<"$orphan_jobs" >/dev/null; then
+        echo "Quarantined GitHub orphan $quarantine has zero jobs; ignoring its stale queue record"
+        runs=$(jq --arg id "$quarantine" '.workflow_runs |= map(select((.id|tostring) != $id))' <<<"$runs")
+      fi
+    fi
     if macos_work_pending <<<"$runs"; then
       echo "macOS work is $status; preserving release priority and deferring this batch"
       write_report

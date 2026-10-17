@@ -39,6 +39,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       TARGET_PR: ${{ inputs.pr_number }}
+      QUARANTINED_WORKFLOW_RUN_ID: ${{ vars.CLAUDE_QUARANTINED_WORKFLOW_RUN_ID }}
     steps:
       - uses: actions/checkout@v4
         with:

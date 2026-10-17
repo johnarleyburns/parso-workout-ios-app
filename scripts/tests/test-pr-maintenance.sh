@@ -69,10 +69,19 @@ echo "gh $*" >>"$MOCK_LOG"
 a="$*"
 case "$a" in
   *"actions/runs?status="*)
-    if [[ "${MOCK_BUSY:-}" == 1 ]]; then
+    if [[ "${MOCK_BUSY:-}" == orphan ]]; then
+      if [[ "$a" == *status=queued* ]]; then
+        echo '{"workflow_runs":[{"id":123,"path":".github/workflows/ios.yml"}]}'
+      else echo '{"workflow_runs":[]}'
+      fi
+    elif [[ "${MOCK_BUSY:-}" == 1 ]]; then
       echo '{"workflow_runs":[{"path":".github/workflows/ios.yml"}]}'
     elif [[ "${MOCK_BUSY:-}" == error ]]; then exit 1
     else echo '{"workflow_runs":[]}'
+    fi ;;
+  *"actions/runs/123/jobs"*)
+    if [[ "${MOCK_ORPHAN_HAS_JOB:-}" == 1 ]]; then echo '{"total_count":1,"jobs":[{"id":456}]}'
+    else echo '{"total_count":0,"jobs":[]}'
     fi ;;
   "pr list"*) printf '97\n5\n6\n' ;;
   "api repos/o/r/pulls/97") echo '{"state":"open","head":{"repo":{"full_name":"o/r"},"ref":"claude/issue-12-34","sha":"abc12345"},"body":"<!-- claude-issue:12 -->","draft":false,"mergeable_state":"behind","mergeable":true,"auto_merge":{"x":1},"labels":[]}' ;;
@@ -111,6 +120,19 @@ grep -q 'pr list' "$MOCK_LOG" && r=yes || r=no
 eq "active release prevents even starting the PR sweep" "$r" no
 ( export MOCK_BUSY=error; main >"$tmp/error-out" 2>&1 ); rc=$?
 eq "unreadable capacity fails closed" "$rc" 1
+: >"$MOCK_LOG"
+( export MOCK_BUSY=orphan QUARANTINED_WORKFLOW_RUN_ID=123; main >"$tmp/orphan-out" 2>&1 ); rc=$?
+eq "reviewed zero-job orphan permits the next batch" "$rc" 0
+grep -q 'update-branch' "$MOCK_LOG" && r=yes || r=no
+eq "orphan does not stall an otherwise idle pipeline" "$r" yes
+: >"$MOCK_LOG"
+( export MOCK_BUSY=orphan QUARANTINED_WORKFLOW_RUN_ID=123 MOCK_ORPHAN_HAS_JOB=1; main >"$tmp/orphan-job-out" 2>&1 ); rc=$?
+grep -q 'pr list' "$MOCK_LOG" && r=yes || r=no
+eq "quarantined run with a real job still blocks admission" "$r" no
+: >"$MOCK_LOG"
+( export MOCK_BUSY=1 QUARANTINED_WORKFLOW_RUN_ID=123; main >"$tmp/orphan-active-out" 2>&1 ); rc=$?
+grep -q 'pr list' "$MOCK_LOG" && r=yes || r=no
+eq "active jobs are never quarantined" "$r" no
 
 # Git: modify/delete conflict resolved by accepting main's deletion, filenames with spaces.
 if [[ -z "${SKIP_GIT_TESTS:-}" ]]; then

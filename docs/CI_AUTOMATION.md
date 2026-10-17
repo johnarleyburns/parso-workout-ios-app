@@ -6,6 +6,8 @@ Generated PRs open ready for review and immediately request auto-merge. Required
 
 Maintenance admits at most one PR action per sweep, oldest PR first, and defers whenever any macOS workflow is queued or running. Release completion and a five-minute fallback schedule resume the next batch. Behind branches receive one normal merge from main before stale cancelled or failed validation is retried. Active validations are never refreshed. Issue generation stays paused during backlog recovery.
 
+An owner-reviewed GitHub orphan can be named in `CLAUDE_QUARANTINED_WORKFLOW_RUN_ID`. This exception applies only to its queued record while the jobs API confirms zero jobs. Run 38986137043 is the incident exception: GitHub rejected cancel/force-cancel with 409 and deletion with 403 while a second dispatch of the same commit executed normally. Its metadata is backed up in `.git/scheduling-incident-20261016/`. Remove the variable when GitHub reconciles the orphan.
+
 ## Ownership
 | Responsibility | Owner |
 |---|---|

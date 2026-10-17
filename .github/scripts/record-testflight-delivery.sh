@@ -33,7 +33,7 @@ while IFS=$'\t' read -r id candidate; do
     break
   fi
 done < <(gh run list --repo "$repo" --workflow ios.yml --branch main --limit 100 \
-  --json databaseId,headSha,conclusion,event --jq '.[] | select(.event == "push" and .conclusion == "success") | [.databaseId, .headSha] | @tsv')
+  --json databaseId,headSha,conclusion,event --jq '.[] | select((.event == "push" or .event == "workflow_dispatch") and .conclusion == "success") | [.databaseId, .headSha] | @tsv')
 
 if [[ -n "$previous" ]]; then
   commits=$(gh api --paginate "repos/$repo/compare/$previous...$sha" --jq '.commits[].sha')

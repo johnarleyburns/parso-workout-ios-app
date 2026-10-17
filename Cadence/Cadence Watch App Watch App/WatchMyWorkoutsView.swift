@@ -18,6 +18,9 @@ struct WatchMyWorkoutsView: View {
                     .font(.caption2).foregroundStyle(.secondary)
             }
             ForEach(rows) { row in
+                NavigationLink {
+                    WatchMyWorkoutDetailView(row: row)
+                } label: {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(row.status == .planned ? "Planned" : "Done")
                         .font(.caption2.weight(.bold))
@@ -32,6 +35,7 @@ struct WatchMyWorkoutsView: View {
                     }
                 }
                 .accessibilityElement(children: .combine)
+                }
             }
         }
         .listStyle(.plain)
@@ -49,6 +53,42 @@ struct WatchMyWorkoutsView: View {
         history = sessions.filter { $0.endedAt != nil || $0.isLogged }.map {
             WatchMyWorkouts.HistoryInput(id: $0.id, title: $0.title, date: $0.date,
                                          setCount: $0.completedOwnerWorkingSetCount)
+        }
+    }
+}
+
+/// Summary/detail for a planned or completed workout row.
+struct WatchMyWorkoutDetailView: View {
+    let row: WatchMyWorkoutRow
+    @Environment(\.modelContext) private var context
+    @State private var lines: [String] = []
+
+    var body: some View {
+        List {
+            Text(row.status == .planned ? "Planned" : "Done")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(row.status == .planned ? WatchTone.accent : .secondary)
+            if let date = row.date {
+                Text(date, format: .dateTime.month().day().year())
+                    .font(.caption2).foregroundStyle(.secondary)
+                Text("\(row.setCount) sets").font(.caption2).foregroundStyle(.secondary)
+            }
+            ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                Text(line).font(.footnote)
+            }
+        }
+        .navigationTitle(row.title)
+        .task { load() }
+    }
+
+    private func load() {
+        guard row.status == .completed else { lines = row.exerciseNames; return }
+        guard let id = UUID(uuidString: String(row.id.dropFirst("done-".count))) else { return }
+        let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.id == id })
+        guard let session = (try? context.fetch(descriptor))?.first else { return }
+        lines = session.exercisesInOrder.map { ex in
+            let n = session.orderedSets.filter { $0.exercise?.id == ex.id && !$0.isWarmup && $0.isOwnerSet }.count
+            return "\(ex.name) · \(n) sets"
         }
     }
 }

@@ -75,7 +75,7 @@ final class WatchExerciseSelectionTests: XCTestCase {
         XCTAssertFalse(WatchExerciseFilter().isActive)
         let compound = WatchExerciseFilter(mechanics: .compound)
         XCTAssertEqual(compound.apply(to: entries).map(\.name), ["Squat", "Goblet Squat"])
-        XCTAssertEqual(compound.availableEquipment(in: entries), [.barbell, .dumbbell])
+        XCTAssertEqual(compound.availableEquipment, Equipment.allCases)
         XCTAssertEqual(WatchExerciseFilter(mechanics: .compound, equipment: .barbell).apply(to: entries).map(\.name), ["Squat"])
     }
 }

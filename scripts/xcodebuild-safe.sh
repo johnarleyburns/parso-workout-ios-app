@@ -16,8 +16,10 @@ for ((index = 1; index <= $#; index++)); do
 
   # CI must never start an iOS or watchOS simulator. Local smoke commands keep
   # working, but a CI invocation fails before xcodebuild is allowed to launch.
-  lowered="$(printf '%s' "$argument" | tr '[:upper:]' '[:lower:]')"
-  if [[ "${GITHUB_ACTIONS:-}" == "true" && "$lowered" == *simulator* ]]; then
+  # macOS still ships Bash 3.2.  `${value,,}` needs Bash 4+, so normalize with
+  # POSIX character classes instead of making the CI safety wrapper itself fail.
+  argument_lower=$(printf '%s' "$argument" | tr '[:upper:]' '[:lower:]')
+  if [[ "${GITHUB_ACTIONS:-}" == "true" && "$argument_lower" == *simulator* ]]; then
     echo "xcodebuild-safe: simulator destinations are forbidden in CI" >&2
     exit 2
   fi

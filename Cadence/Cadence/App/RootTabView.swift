@@ -152,6 +152,12 @@ struct RootTabView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             active.writeHeartbeat()
+            // End any Live Activity that outlived its workout (e.g. a finish
+            // while suspended could lose the async end) on every transition.
+            if !active.isActive {
+                WorkoutLiveActivityCoordinator.shared.reconcile(
+                    workoutIsActive: false, hasStrengthSession: false)
+            }
             guard phase == .active else { return }
             model.pushSettingsContext()
             if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {

@@ -88,19 +88,20 @@ struct HomePlannedWorkoutsSection: View {
 
     nonisolated static func item(_ input: PlannedWorkoutRowInput) -> PlannedWorkoutsPresenter.Item {
         let detail: String
+        let day = input.date.formatted(date: .abbreviated, time: .omitted)
         let time = ScheduledWorkoutDate.hasExplicitTime(input.date)
-            ? input.date.formatted(date: .omitted, time: .shortened)
-            : nil
+            ? "\(day) · \(input.date.formatted(date: .omitted, time: .shortened))"
+            : day
         if let cardio = try? ScheduledWorkoutStore.decodeCardioType(input.payloadData,
                                                                     version: input.payloadVersion) {
-            detail = [time, cardio.displayName].compactMap { $0 }.joined(separator: " · ")
+            detail = [time, cardio.displayName].joined(separator: " · ")
         } else if let plan = try? ScheduledWorkoutStore.decode(input.payloadData,
                                                                version: input.payloadVersion) {
             let sets = plan.exercises.reduce(0) { $0 + $1.sets.count }
             let body = String(localized: "Exercises: \(plan.exercises.count) · Sets: \(sets)")
-            detail = [time, body].compactMap { $0 }.joined(separator: " · ")
+            detail = [time, body].joined(separator: " · ")
         } else {
-            detail = [time, String(localized: "Workout plan")].compactMap { $0 }.joined(separator: " · ")
+            detail = [time, String(localized: "Workout plan")].joined(separator: " · ")
         }
         return PlannedWorkoutsPresenter.Item(id: input.id, date: input.date,
                                              title: input.title, detail: detail,

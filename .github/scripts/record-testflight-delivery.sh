@@ -33,7 +33,7 @@ while IFS=$'\t' read -r id candidate; do
     break
   fi
 done < <(gh run list --repo "$repo" --workflow ios.yml --branch main --limit 100 \
-  --json databaseId,headSha,conclusion,event --jq '.[] | select(.event == "push" and .conclusion == "success") | [.databaseId, .headSha] | @tsv')
+  --json databaseId,headSha,conclusion,event --jq '.[] | select((.event == "push" or .event == "workflow_dispatch") and .conclusion == "success") | [.databaseId, .headSha] | @tsv')
 
 if [[ -n "$previous" ]]; then
   commits=$(gh api --paginate "repos/$repo/compare/$previous...$sha" --jq '.commits[].sha')
@@ -43,33 +43,47 @@ else
   commits=$(git rev-list --reverse "$sha")
 fi
 
-declare -A prs=() issues=() titles=()
+trace_tmp=$(mktemp -d "${RUNNER_TEMP:-/tmp}/testflight-trace.XXXXXX")
+trap 'rm -rf "$trace_tmp"' EXIT
+prs_file="$trace_tmp/prs"
+issues_file="$trace_tmp/issues"
 while IFS= read -r commit; do
   [[ -n "$commit" ]] || continue
-  while IFS= read -r pr; do [[ -n "$pr" ]] && prs["$pr"]=1; done < <(
+  while IFS= read -r pr; do [[ -n "$pr" ]] && printf '%s\n' "$pr" >> "$prs_file"; done < <(
     gh api "repos/$repo/commits/$commit/pulls" --jq \
       '.[] | select(.merged_at != null and .base.ref == "main") | .number')
 done <<< "$commits"
+sort -nu "$prs_file" -o "$prs_file" 2>/dev/null || : > "$prs_file"
 
-for pr in "${!prs[@]}"; do
+while IFS= read -r pr; do
+  [[ -n "$pr" ]] || continue
   # closingIssuesReferences is GitHub's PR-to-issue association.  Do not infer
   # issues from commit subjects; that loses squash and multi-issue PRs.
   query='query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number){closingIssuesReferences(first:100){nodes{number title}}}}}'
   owner=${repo%%/*}; name=${repo#*/}
   while IFS=$'\t' read -r issue title; do
     [[ -n "$issue" ]] || continue
-    issues["$issue"]=1; titles["$issue"]=$title
+    printf '%s\t%s\n' "$issue" "$title" >> "$issues_file"
   done < <(gh api graphql -f query="$query" -F owner="$owner" -F name="$name" -F number="$pr" \
     --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[] | [.number, .title] | @tsv')
-done
+  # Older generated PRs used this durable marker but did not include a GitHub
+  # closing keyword.  Retain it as a fallback so an accepted build reaches the
+  # originating issue without changing the issue's open/closed state.
+  marker_issue=$(gh api "repos/$repo/pulls/$pr" --jq '.body // ""' \
+    | sed -n 's/.*<!-- claude-issue:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
+  [[ -z "$marker_issue" ]] || printf '%s\t%s\n' "$marker_issue" 'Claude-generated issue' >> "$issues_file"
+done < "$prs_file"
+sort -t $'\t' -k1,1n -u "$issues_file" -o "$issues_file" 2>/dev/null || : > "$issues_file"
+issue_count=$(wc -l < "$issues_file" | tr -d ' ')
+prs_text=$(awk '{printf "#%s ", $1}' "$prs_file")
 
 notes="$RUNNER_TEMP/testflight-notes-${build}.txt"
 {
   printf '%s — %s (%s)\n\nIncluded fixes:\n' "$APP_NAME" "$version" "$build"
-  for issue in $(printf '%s\n' "${!issues[@]}" | sort -n); do
-    printf -- '- #%s — %s\n' "$issue" "${titles[$issue]}"
-  done
-  [[ ${#issues[@]} -gt 0 ]] || printf '%s\n' '- No GitHub issues were associated with the merged commits.'
+  while IFS=$'\t' read -r issue title; do
+    [[ -n "$issue" ]] && printf -- '- #%s — %s\n' "$issue" "$title"
+  done < "$issues_file"
+  [[ "$issue_count" -gt 0 ]] || printf '%s\n' '- No GitHub issues were associated with the merged commits.'
   printf '\nGit commit: %s\n' "$sha"
 } > "$notes"
 head -c 4000 "$notes" > "$notes.limited" && mv "$notes.limited" "$notes"
@@ -112,16 +126,17 @@ if [[ -n "${ASC_KEY_ID:-}" && -n "${ASC_ISSUER_ID:-}" && -n "${ASC_KEY_PATH:-}" 
   fi
 fi
 
-for issue in "${!issues[@]}"; do
+while IFS=$'\t' read -r issue _title; do
+  [[ -n "$issue" ]] || continue
   # Do not re-label or duplicate a historical record on a rerun of this build.
   existing=$(gh api --paginate "repos/$repo/issues/$issue/comments" --jq \
     ".[] | select(.body | contains(\"$marker\")) | .id" | head -1 || true)
   body="$marker
 ## TestFlight upload accepted
 
-- App: **$APP_NAME** (`$bundle`)
+- App: **$APP_NAME** (\`$bundle\`)
 - Version/build: **$version ($build)**
-- Included by PR(s): $(printf '#%s ' "${!prs[@]}")
+- Included by PR(s): $prs_text
 - Commit: \`$sha\`
 - Uploaded: $uploaded_at
 - Status: **$availability**
@@ -131,13 +146,12 @@ for issue in "${!issues[@]}"; do
   else
     gh issue comment "$issue" --repo "$repo" --body "$body" >/dev/null
   fi
-  # New deployments wait for an actual assigned tester group.  Workout retains
-  # its separate legacy upload-stage label temporarily for compatibility.
-  if [[ "$availability" == Available\ to\ * ]]; then
-    gh label create ready-for-qa --repo "$repo" --color 0E8A16 \
-      --description 'Build is available to an assigned TestFlight tester group' --force >/dev/null
-    gh issue edit "$issue" --repo "$repo" --add-label ready-for-qa >/dev/null
-  fi
-done
+  # An accepted upload is the delivery contract.  Apple processing and tester
+  # group availability remain visible in the status above, but must not delay
+  # the issue's QA handoff.
+  gh label create ready-for-qa --repo "$repo" --color 0E8A16 \
+    --description 'A successful TestFlight upload includes this issue' --force >/dev/null
+  gh issue edit "$issue" --repo "$repo" --add-label ready-for-qa >/dev/null
+done < "$issues_file"
 
-echo "Recorded TestFlight upload $bundle $version ($build) for ${#issues[@]} associated issue(s)."
+echo "Recorded TestFlight upload $bundle $version ($build) for $issue_count associated issue(s)."

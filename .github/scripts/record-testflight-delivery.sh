@@ -66,6 +66,12 @@ while IFS= read -r pr; do
     printf '%s\t%s\n' "$issue" "$title" >> "$issues_file"
   done < <(gh api graphql -f query="$query" -F owner="$owner" -F name="$name" -F number="$pr" \
     --jq '.data.repository.pullRequest.closingIssuesReferences.nodes[] | [.number, .title] | @tsv')
+  # Older generated PRs used this durable marker but did not include a GitHub
+  # closing keyword.  Retain it as a fallback so an accepted build reaches the
+  # originating issue without changing the issue's open/closed state.
+  marker_issue=$(gh api "repos/$repo/pulls/$pr" --jq '.body // ""' \
+    | sed -n 's/.*<!-- claude-issue:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
+  [[ -z "$marker_issue" ]] || printf '%s\t%s\n' "$marker_issue" 'Claude-generated issue' >> "$issues_file"
 done < "$prs_file"
 sort -t $'\t' -k1,1n -u "$issues_file" -o "$issues_file" 2>/dev/null || : > "$issues_file"
 issue_count=$(wc -l < "$issues_file" | tr -d ' ')

@@ -63,6 +63,7 @@ struct ConsistencyHeatmapView: View {
                         ForEach(week) { cell in
                             RoundedRectangle(cornerRadius: 3, style: .continuous)
                                 .fill(color(for: cell.shade))
+                                .overlay { glyph(for: cell.shade, size: 13) }
                                 .frame(width: 13, height: 13)
                                 .accessibilityLabel(cell.accessibilityLabel)
                         }
@@ -79,11 +80,33 @@ struct ConsistencyHeatmapView: View {
             ForEach(ConsistencyHeatmapPresenter.Shade.allCases, id: \.rawValue) { shade in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .fill(color(for: shade))
+                    .overlay { glyph(for: shade, size: 11) }
                     .frame(width: 11, height: 11)
             }
             Text("More").font(.caption2).foregroundStyle(.tertiary)
         }
         .accessibilityHidden(true)
+    }
+
+    /// Non-colour encoding: 0–4 pips (rest = empty) so the five levels differ by shape, not only lightness.
+    @ViewBuilder private func glyph(for shade: ConsistencyHeatmapPresenter.Shade, size: CGFloat) -> some View {
+        let pips: Int = switch shade {
+        case .none: 0
+        case .light: 1
+        case .medium: 2
+        case .strong: 3
+        case .peak: 4
+        }
+        if pips > 0 {
+            let grid = Array(0..<pips)
+            let dot = size * 0.2
+            LazyVGrid(columns: [GridItem(.fixed(dot), spacing: 1), GridItem(.fixed(dot), spacing: 1)], spacing: 1) {
+                ForEach(grid, id: \.self) { _ in
+                    Circle().fill(pips >= 3 ? Color.white : Color.primary).frame(width: dot, height: dot)
+                }
+            }
+            .accessibilityHidden(true)
+        }
     }
 
     private func color(for shade: ConsistencyHeatmapPresenter.Shade) -> Color {

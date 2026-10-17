@@ -10,6 +10,7 @@ struct PreWorkoutCountdownView: View {
 
     @State private var remaining: Int
     @State private var scale = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var paused = false
     @State private var showSkipConfirmation = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -69,8 +70,10 @@ struct PreWorkoutCountdownView: View {
         .onAppear { if remaining <= 0 { onStart() } }
         .onReceive(tick) { _ in
             guard !paused, remaining > 0 else { return }
-            withAnimation(.easeOut(duration: 0.2)) { scale = 1.25 }
-            withAnimation(.easeIn(duration: 0.6).delay(0.2)) { scale = 1.0 }
+            if !reduceMotion {
+                withAnimation(.easeOut(duration: 0.2)) { scale = 1.25 }
+                withAnimation(.easeIn(duration: 0.6).delay(0.2)) { scale = 1.0 }
+            }
             remaining -= 1
             if remaining <= 0 { onStart() }
         }

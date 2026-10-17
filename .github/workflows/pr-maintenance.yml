@@ -6,7 +6,7 @@ name: Claude PR Maintenance
 # dispatch repair, escalate). See docs/CI_AUTOMATION.md.
 on:
   workflow_run:
-    workflows: ["PR Swift Validation", "Claude PR Conflict Repair", "Claude Issue to Draft PR"]
+    workflows: ["PR Swift Validation", "Claude PR Conflict Repair", "Claude Issue to PR"]
     types: [completed]
   push:
     branches: [main]

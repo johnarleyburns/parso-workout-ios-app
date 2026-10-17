@@ -2,6 +2,8 @@
 
 Code is the source of truth; this is the operator's map.
 
+Generated PRs open ready for review and immediately request auto-merge. Required checks and branch protection still determine merge eligibility. A refused auto-merge request leaves the PR open for reconciliation; it never falls back to an immediate merge.
+
 ## Ownership
 | Responsibility | Owner |
 |---|---|

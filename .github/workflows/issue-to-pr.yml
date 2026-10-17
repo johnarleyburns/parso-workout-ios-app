@@ -1,4 +1,4 @@
-name: Claude Issue to Draft PR
+name: Claude Issue to PR
 # Intake + implementation. Idempotent per issue (see issue-to-pr.sh). A later
 # owner-applied ai-ci-maintenance label resumes an issue waiting for authorization.
 run-name: Issue #${{ github.event.issue.number || inputs.issue_number }} (${{ github.event_name }}/${{ github.event.action }})

@@ -2,6 +2,12 @@
 
 Code is the source of truth; this is the operator's map.
 
+Generated PRs open ready for review and immediately request auto-merge. Required checks and branch protection still determine merge eligibility. A refused auto-merge request leaves the PR open for reconciliation; it never falls back to an immediate merge.
+
+Maintenance admits at most one PR action per sweep, oldest PR first, and defers whenever any macOS workflow is queued or running. Release completion and a five-minute fallback schedule resume the next batch. Behind branches receive one normal merge from main before stale cancelled or failed validation is retried. Active validations are never refreshed. Issue generation stays paused during backlog recovery.
+
+An owner-reviewed GitHub orphan can be named in `CLAUDE_QUARANTINED_WORKFLOW_RUN_ID`. This exception applies only to its queued record while the jobs API confirms zero jobs. Run 38986137043 is the incident exception: GitHub rejected cancel/force-cancel with 409 and deletion with 403 while a second dispatch of the same commit executed normally. Its metadata is backed up in `.git/scheduling-incident-20261016/`. Remove the variable when GitHub reconciles the orphan.
+
 ## Ownership
 | Responsibility | Owner |
 |---|---|
@@ -42,7 +48,7 @@ Only `johnarleyburns`-authored issues. `.github` edits need `ai-ci-maintenance` 
 Each maintenance run writes `pr-maintenance-report.json` (artifact + step summary): open Claude PRs, validating, repairing, behind, conflicted, waiting for merge, stopped. Post-merge outcome is commented on the merged PR by `ios.yml`'s `deployment-report`.
 
 ## macOS capacity and simulator policy
-All macOS jobs use the shared, job-level `cadence-macos` concurrency group with `queue: max`. This is an intentionally conservative **one-job** repository-wide FIFO queue: GitHub-hosted runners expose no repository-owned capacity control and GitHub Actions has no atomic, fair two-permit semaphore. Up to 100 waiting jobs are retained rather than replaced. The Linux maintenance job does not take this permit. A true two-job cap requires a managed external lease coordinator (atomic acquire/release, TTL/heartbeat and crash recovery) or two dedicated self-hosted runner slots. Do not replace this group with two arbitrary slot names; that has a check-then-act race.
+macOS jobs use GitHub-hosted runner capacity without a shared job-level concurrency group. Workflow-level locks still serialize releases and writers for each PR or issue, and validation cancels superseded runs for the same PR. During scheduling recovery, keep maintenance, conflict repair, and issue generation disabled and dispatch validations in small batches only after confirming runner assignment and completion. Do not bulk rebase branches or dispatch replacement runs to clear a queue.
 
 CI only performs host SwiftPM tests and generic physical-device-target builds/archives. `scripts/check-ci-no-simulators.sh` rejects simulator-bearing CI commands statically, and `xcodebuild-safe.sh` rejects simulator destinations and `xcodebuild test` at runtime when `GITHUB_ACTIONS=true`. Local smoke targets remain local-only.
 

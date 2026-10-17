@@ -131,3 +131,23 @@ public enum WatchExerciseSearchPresenter {
         return resultCount == 0 ? .noMatches : .matches
     }
 }
+
+/// The rep-scheme presets offered identically on iPhone and Apple Watch.
+public struct RepSchemePreset: Equatable, Sendable, Identifiable {
+    public let ladder: [Int]
+    public var id: String { ladder.map(String.init).joined(separator: "-") }
+    public var title: String { "\(ladder.count) sets · \(id)" }
+    /// Stable accessibility identifier (legacy ids kept for the original three).
+    public var accessibilityID: String {
+        switch ladder {
+        case [8, 5]: return "repScheme.2x"
+        case [12, 10, 8]: return "repScheme.3x"
+        case [12, 10, 8, 6]: return "repScheme.4x"
+        default: return "repScheme.\(id)"
+        }
+    }
+
+    public static let all: [RepSchemePreset] =
+        [RepSchemePreset(ladder: [8, 5])]
+        + WatchRepPattern.popular.map { RepSchemePreset(ladder: $0.reps) }
+}

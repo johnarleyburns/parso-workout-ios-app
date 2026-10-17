@@ -23,10 +23,6 @@ struct WatchWeekView: View {
                     legend(rings[0], unit: String(localized: "Sets"), title: String(localized: "Strength"))
                     legend(rings[1], unit: String(localized: "Min"), title: String(localized: "Cardio"))
                 }
-                if summary == nil {
-                    Text("Open Cladiron on iPhone to sync.")
-                        .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

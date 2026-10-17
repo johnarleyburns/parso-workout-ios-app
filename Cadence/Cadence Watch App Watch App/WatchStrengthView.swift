@@ -8,12 +8,11 @@ import CadenceFeatures
 
 /// Watch redesign §5 P1–P4 (decision D-W1) — the workout pager, Apple Workout's grammar applied to
 /// lifting: Controls ◂ Set Card ▸ Plan ▸ Heart. It always returns to the Set Card. Pausing never
-/// leaves the workout; Finish always reviews before saving (F1).
+/// leaves the workout; Finish starts the cool-down, then the Saved summary follows (F1).
 struct WatchStrengthView: View {
     @State private var flowModel: WatchStrengthFlowModel?
     @State private var shouldStopWorkoutOnDisappear = false
     @State private var page: Page = .main
-    @State private var reviewing = false
     @State private var talk = WatchQuickTalkController()
     @State private var moment: Moment?
 
@@ -99,16 +98,22 @@ struct WatchStrengthView: View {
             watchManager.togglePause()
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkFinish)) { _ in
-            reviewing = true
+            finishWorkout()
         }
         .onChange(of: WatchLaunchRequests.shared.talkRequest) { _, _ in
             // D-W5: the Action Button during a workout = Talk.
-            guard flowModel != nil, !reviewing else { return }
+            guard flowModel != nil else { return }
             page = .main
             talk.startListening()
         }
         .navigationBarBackButtonHidden(true)
         .ownsWatchWorkoutSession()
+    }
+
+    /// Finish goes straight to the cool-down; the review/Saved summary comes after it.
+    private func finishWorkout() {
+        WatchHaptics.success()
+        flowModel?.finish()
     }
 
     @ViewBuilder
@@ -125,21 +130,13 @@ struct WatchStrengthView: View {
         case .discarded, .idle:
             EmptyView()
         default:
-            if reviewing {
-                WatchStrengthReviewView(model: model, onSave: {
-                    reviewing = false
-                    WatchHaptics.success()
-                    model.finish()
-                }, onKeepGoing: { reviewing = false })
-            } else {
-                pager(model)
-            }
+            pager(model)
         }
     }
 
     private func pager(_ model: WatchStrengthFlowModel) -> some View {
         TabView(selection: $page) {
-            WatchStrengthControlsPage(model: model, onFinish: { reviewing = true }, onPartners: {
+            WatchStrengthControlsPage(model: model, onFinish: { finishWorkout() }, onPartners: {
                 model.goToPartners()
             })
             .tag(Page.controls)

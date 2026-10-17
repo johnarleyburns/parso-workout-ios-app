@@ -296,7 +296,7 @@ struct HomeView: View {
         guard !model.isRestoringCloudKitHistory else { return }
         model.coachRefreshInProgress = true
         defer { model.coachRefreshInProgress = false }
-        coachSnapshot = await buildCoachSnapshot()
+        coachSnapshot = await buildAndCacheCoachSnapshot()
         coachSnapshotReady = true
         liveVolumeDelta = [:]
         cachedDashboard = makeDashboard()

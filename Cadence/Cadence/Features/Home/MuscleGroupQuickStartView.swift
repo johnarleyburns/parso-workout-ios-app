@@ -8,7 +8,8 @@ import CadenceFeatures
 /// workouts** ranked by how many of the missing groups they cover (tap → reuse it),
 /// then offers a fresh session built from catalog **suggestions** that fill the gaps.
 struct MuscleGroupQuickStartView: View {
-    let missing: [MuscleGroup]
+    let tiers: HomeDashboardPresenter.GapTiers
+    private var missing: [MuscleGroup] { tiers.all }
     /// Hands a ready-to-start session back to Home to launch (live) + dismiss.
     let onStart: (WorkoutSession) -> Void
 
@@ -35,11 +36,15 @@ struct MuscleGroupQuickStartView: View {
         NavigationStack {
             List {
                 Section {
-                    Text(missing.isEmpty
-                         ? String(localized: "You've hit every muscle group this week 💪")
-                         : String(localized: "Missing: ") + missing.map(\.displayName).joined(separator: ", "))
-                        .font(.subheadline).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("groupQuick.missing")
+                    if missing.isEmpty {
+                        Text("You've hit every muscle group this week 💪")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("groupQuick.missing")
+                    } else {
+                        tierRow(String(localized: "Missing: "), tiers.missing, id: "groupQuick.missing")
+                        tierRow(String(localized: "Below minimum: "), tiers.belowMinimum, id: "groupQuick.belowMinimum")
+                        tierRow(String(localized: "Below recommended: "), tiers.belowRecommended, id: "groupQuick.belowRecommended")
+                    }
                 }
 
                 if !allowedSuggestions.isEmpty {
@@ -93,11 +98,15 @@ struct MuscleGroupQuickStartView: View {
                 ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
                 suggestions = ExerciseLibrary.suggestions(forMissing: missing, limit: max(6, missing.count))
             }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("groupQuick.cancel")
-                }
-            }
+        }
+    }
+
+    @ViewBuilder
+    private func tierRow(_ label: String, _ groups: [MuscleGroup], id: String) -> some View {
+        if !groups.isEmpty {
+            Text(label + groups.map(\.displayName).joined(separator: ", "))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .accessibilityIdentifier(id)
         }
     }
 

@@ -208,6 +208,10 @@ struct WorkoutSummaryView: View {
                 Text("Resistance training also raises heart rate. Minutes at moderate or vigorous heart rate during this workout count toward your weekly cardio minutes.").font(.caption).foregroundStyle(.secondary)
                 CoachSourcesLink(citationIds: CardioIntensityPolicy.strengthCardioCitationIDs,
                                  identifier: "progress.card.citation")
+            } else if data.kind == .cardio {
+                CoachSourcesLink(citationIds: CardioIntensityPolicy.citationIDs,
+                                 contexts: CardioIntensitySourceContexts.contexts,
+                                 identifier: "summary.cardio.intensity.science")
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)

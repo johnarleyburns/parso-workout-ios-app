@@ -128,3 +128,52 @@ public struct DaySummary: Equatable, Sendable {
         self.exercises = exercises
     }
 }
+
+/// Progress detail for the Today hero while a strength workout is in progress:
+/// per-exercise "done / planned" sets plus an elapsed-time and totals line.
+public enum InProgressWorkoutPresenter {
+    public struct Progress: Equatable, Sendable {
+        public let lines: [TodayHero.Line]
+        public let doneSets: Int
+        public let plannedSets: Int
+        public let elapsedMinutes: Int
+    }
+
+    public static func progress(session: WorkoutSession, now: Date = Date()) -> Progress {
+        let ownerPlan = session.plannedPerformerPrescriptions.first { $0.performerID == nil }
+        var planned: [(name: String, sets: Int)] = ownerPlan?.exercises.map {
+            ($0.exerciseName, $0.sets.count)
+        } ?? []
+        let done = session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }
+        var counts: [String: Int] = [:]
+        var order: [String] = []
+        for set in done {
+            guard let name = set.exercise?.name else { continue }
+            if counts[name] == nil { order.append(name) }
+            counts[name, default: 0] += 1
+        }
+        for name in order where !planned.contains(where: { $0.name.caseInsensitiveCompare(name) == .orderedSame }) {
+            planned.append((name, 0))
+        }
+        func doneCount(_ name: String) -> Int {
+            counts.first { $0.key.caseInsensitiveCompare(name) == .orderedSame }?.value ?? 0
+        }
+        let lines = planned.map { entry -> TodayHero.Line in
+            let d = doneCount(entry.name)
+            let detail = entry.sets > 0
+                ? String(localized: "\(d) / \(entry.sets) sets", bundle: .module)
+                : String(localized: "\(d) sets", bundle: .module)
+            return TodayHero.Line(name: entry.name, detail: detail)
+        }
+        let plannedTotal = planned.reduce(0) { $0 + max($1.sets, doneCount($1.name)) }
+        let elapsed = Int(max(0, now.timeIntervalSince(session.date)) / 60)
+        return Progress(lines: lines, doneSets: done.count, plannedSets: plannedTotal,
+                        elapsedMinutes: elapsed)
+    }
+
+    public static func summary(_ p: Progress) -> String {
+        p.plannedSets > 0
+            ? String(localized: "\(p.elapsedMinutes) min elapsed · \(p.doneSets) of \(p.plannedSets) sets done", bundle: .module)
+            : String(localized: "\(p.elapsedMinutes) min elapsed · \(p.doneSets) sets done", bundle: .module)
+    }
+}

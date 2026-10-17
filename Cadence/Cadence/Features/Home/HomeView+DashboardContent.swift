@@ -90,12 +90,12 @@ extension HomeView {
                           plan: scheduledPlan, history: sessions)?.minutes,
                       exercises: heroLines(scheduledPlan), reason: nil)
         }
-        let inProgress = activeSession.map {
-            TodayHero(kind: .inProgress,
-                      title: $0.title.isEmpty ? String(localized: "Resume your workout") : $0.title,
-                      estimatedMinutes: Int(max(0, $0.duration) / 60),
-                      exercises: heroLines(EditablePlan.from(session: $0)),
-                      reason: nil)
+        let inProgress = activeSession.map { session -> TodayHero in
+            let progress = InProgressWorkoutPresenter.progress(session: session)
+            return TodayHero(kind: .inProgress,
+                             title: session.title.isEmpty ? String(localized: "Resume your workout") : session.title,
+                             exercises: progress.lines,
+                             reason: InProgressWorkoutPresenter.summary(progress))
         }
         let today = Calendar.current.startOfDay(for: Date())
         let completedToday = sessions

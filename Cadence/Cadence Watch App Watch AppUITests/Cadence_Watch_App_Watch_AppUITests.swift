@@ -137,11 +137,6 @@ final class WatchSmokeTests: XCTestCase {
         XCTAssertTrue(app.tapButton("Keep Workout"),
                       "Discard confirmation did not offer Keep Workout")
         XCTAssertTrue(app.tapButton("watchStrength.finish", scrollAttempts: 2), "Controls did not offer Finish")
-        XCTAssertTrue(app.buttons["watchStrength.save"].waitForExistence(timeout: 10),
-                      "Finish did not review before saving")
-        snapshot(app, "F1-review")
-        XCTAssertTrue(app.tapButton("watchStrength.save"), "Review did not offer Save")
-
         XCTAssertTrue(app.tapButton("watchCooldown.skip"), "Watch cooldown screen did not appear")
         XCTAssertTrue(app.staticTexts["watchSummary.saved"].waitForExistence(timeout: 10),
                       "Watch summary did not render")

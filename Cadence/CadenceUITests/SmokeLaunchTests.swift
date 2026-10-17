@@ -589,6 +589,17 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
                       "Returning from Planned Workouts did not land on Home")
 
+        // Planned-workout preview is a pushed read-only detail, not a sheet.
+        let detail = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'home.myWorkouts.detail.'")).firstMatch
+        if detail.exists {
+            detail.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["home.plannedDetail"].waitForExistence(timeout: 10),
+                          "Planned workout preview did not push a detail screen")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            XCTAssertTrue(app.descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10),
+                          "Returning from planned detail did not land on Home")
+        }
+
         XCTAssertFalse(app.buttons["tab.plan"].exists,
                        "Retired Plan tab is still exposed")
 

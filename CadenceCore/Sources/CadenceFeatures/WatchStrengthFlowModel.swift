@@ -46,6 +46,7 @@ public final class WatchStrengthFlowModel {
         case keypad(Exercise)
         case partners
         case rest
+        case warmup(TimeInterval)
         case cooldown(TimeInterval)
         case summary
         case discarded
@@ -64,6 +65,7 @@ public final class WatchStrengthFlowModel {
     public private(set) var currentPerformerIndex: Int = 0
     public private(set) var restTimer: RestTimerModel
     public private(set) var cooldownTimerModel: RestTimerModel
+    public private(set) var warmupTimerModel: RestTimerModel
     public private(set) var volume: Double = 0
     public private(set) var setCount: Int = 0
     public private(set) var exerciseCount: Int = 0
@@ -87,6 +89,7 @@ public final class WatchStrengthFlowModel {
 
     public let unit: MeasurementUnitPreference
     let cooldownDefault: Int
+    let warmupDefault: Int
     let restDefault: Int
     private let context: ModelContext
     private var exercisePendingAfterRest: Exercise?
@@ -104,13 +107,15 @@ public final class WatchStrengthFlowModel {
     private var priorSetsByExerciseAndPerformer: [String: [SetEntry]] = [:]
 
     public init(context: ModelContext, unit: MeasurementUnitPreference = .kilograms,
-                cooldownDefault: Int = 5, restDefault: Int = 90) {
+                cooldownDefault: Int = 5, restDefault: Int = 90, warmupDefault: Int = 0) {
         self.context = context
         self.unit = unit
         self.cooldownDefault = cooldownDefault
+        self.warmupDefault = warmupDefault
         self.restDefault = restDefault
         self.restTimer = RestTimerModel()
         self.cooldownTimerModel = RestTimerModel()
+        self.warmupTimerModel = RestTimerModel()
     }
 
     public func start(resuming existingSession: WorkoutSession? = nil,
@@ -491,6 +496,26 @@ public final class WatchStrengthFlowModel {
         }
         stage = .cooldown(TimeInterval(cooldownDefault * 60))
         cooldownTimerModel.start(seconds: cooldownDefault * 60)
+    }
+
+    /// Opens the optional warm-up countdown before the first set. No-op when the
+    /// warm-up length is 0 or a session is already under way.
+    @discardableResult
+    public func beginWarmup() -> Bool {
+        guard warmupDefault > 0, session?.orderedSets.isEmpty ?? true else { return false }
+        stage = .warmup(TimeInterval(warmupDefault * 60))
+        warmupTimerModel.start(seconds: warmupDefault * 60)
+        return true
+    }
+
+    /// Ends the warm-up (finished or skipped), recording the time actually used.
+    public func endWarmup() {
+        guard case .warmup = stage else { return }
+        let used = max(0, TimeInterval(warmupDefault * 60) - TimeInterval(warmupTimerModel.remaining))
+        session?.warmupSeconds = used
+        try? context.save()
+        warmupTimerModel.start(seconds: 0)
+        stage = .home
     }
 
     public func skipCooldown() {

@@ -2,14 +2,16 @@ import Foundation
 import SwiftUI
 import CadenceFeatures
 
-/// Process-lifetime cache of Today's coach snapshot and suggested workout so
+/// Process-lifetime cache of Today's coach snapshot so
 /// revisiting the tab shows the last result immediately instead of a spinner.
 /// Entries are valid only for the same day and the same coach signature, so a
 /// completed workout or a changed preference invalidates them.
 @MainActor
 enum HomeTodayCache {
     private static var snapshot: (key: Key, value: HomeCoachSnapshot)?
-    private static var plan: (key: Key, value: EditablePlan)?
+    /// Durable same-local-day Today suggestion cache (see `TodaySuggestedWorkoutCacheStore`).
+    static let suggestionStore = TodaySuggestedWorkoutCacheStore(
+        fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL())
 
     struct Key: Equatable {
         let signature: HomeCoachModel.Signature
@@ -22,14 +24,6 @@ enum HomeTodayCache {
 
     static func store(_ value: HomeCoachSnapshot, for key: Key) {
         snapshot = (key, value)
-    }
-
-    static func cachedPlan(for key: Key) -> EditablePlan? {
-        plan?.key == key ? plan?.value : nil
-    }
-
-    static func store(_ value: EditablePlan, for key: Key) {
-        plan = (key, value)
     }
 }
 

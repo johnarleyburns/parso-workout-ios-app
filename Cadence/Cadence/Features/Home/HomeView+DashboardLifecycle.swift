@@ -137,6 +137,7 @@ extension HomeView {
             }
             .onChange(of: historyRefreshToken) { _, _ in
                 todaySuggestedPlan = nil
+                Task { await HomeTodayCache.suggestionStore.invalidate() }
                 // A completion invalidates the request snapshot as well as
                 // the rendered plan. The detached solver may still be running;
                 // cancel it and invalidate its generation so its pre-completion

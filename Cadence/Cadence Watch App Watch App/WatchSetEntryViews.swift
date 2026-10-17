@@ -20,7 +20,7 @@ struct WatchWeightEntryView: View {
             Section {
                 Button { directEntry = true } label: {
                     VStack(spacing: 2) {
-                        Text(Format.weightValue(value, unit: unit, decimals: 1))
+                        Text(verbatim: "\(Format.weightValue(value, unit: unit, decimals: 1)) \(unit.abbreviation)")
                             .font(.system(.largeTitle, design: .rounded).weight(.bold))
                             .monospacedDigit()
                             .lineLimit(1).minimumScaleFactor(0.55)
@@ -38,14 +38,11 @@ struct WatchWeightEntryView: View {
                         Text("\(plateText(option)) \(unit.abbreviation)").tag(option)
                     }
                 }
-                HStack(spacing: 8) {
-                    Button { adjust(-plate) } label: { Label("Sub", systemImage: "minus").lineLimit(1) }
-                        .accessibilityLabel("Subtract")
-                        .accessibilityIdentifier("watchWeight.minusPlate")
-                    Button { adjust(plate) } label: { Label("Add", systemImage: "plus") }
-                        .accessibilityIdentifier("watchWeight.plusPlate")
-                }
-                .buttonStyle(.bordered)
+                // Separate rows: two buttons in one List row can both fire on a single tap.
+                Button { adjust(-plate) } label: { Label("Subtract \(plateText(plate)) \(unit.abbreviation)", systemImage: "minus").lineLimit(1) }
+                    .accessibilityIdentifier("watchWeight.minusPlate")
+                Button { adjust(plate) } label: { Label("Add \(plateText(plate)) \(unit.abbreviation)", systemImage: "plus").lineLimit(1) }
+                    .accessibilityIdentifier("watchWeight.plusPlate")
             }
         }
         .navigationTitle("Weight")

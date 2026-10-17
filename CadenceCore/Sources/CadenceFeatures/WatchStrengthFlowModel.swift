@@ -90,6 +90,9 @@ public final class WatchStrengthFlowModel {
     let restDefault: Int
     private let context: ModelContext
     private var exercisePendingAfterRest: Exercise?
+
+    /// Set when "Last Set" logs the final set of the whole plan; the watch asks Done / Keep going.
+    public var allExercisesCompletePrompt = false
     private var planPayload: WatchPlanPayload?
 
     /// In-memory name → Exercise catalog, loaded once per flow so the per-tap
@@ -325,14 +328,34 @@ public final class WatchStrengthFlowModel {
     public func goBackToHome() { stage = .home }
 
     public func logSet() -> SetEntry? {
-        logCurrentSet(goToRest: true)
+        guard case .keypad(let exercise) = stage else { return nil }
+        return logCurrentSet(finishingExercise: isLastPlannedSet(of: exercise))
     }
 
+    /// Logs the set, rests, then moves on to the next exercise instead of returning here.
     public func logLastSet() -> SetEntry? {
-        logCurrentSet(goToRest: false)
+        let set = logCurrentSet(finishingExercise: true)
+        allExercisesCompletePrompt = set != nil && exercisePendingAfterRest == nil
+        return set
     }
 
-    private func logCurrentSet(goToRest: Bool) -> SetEntry? {
+    /// True when the card is on the final planned working set of its exercise.
+    public func isLastPlannedSet(of exercise: Exercise) -> Bool {
+        let planned = plannedWorkingSets(for: exercise).count
+        return planned > 0 && !isWarmupSet && completedWorkingSets(for: exercise) + 1 >= planned
+    }
+
+    /// The first exercise (other than `excluding`) that still has planned sets to do.
+    public func nextExercise(excluding current: Exercise? = nil) -> Exercise? {
+        exerciseList.map(\.exercise).first { exercise in
+            if exercise.id == current?.id { return false }
+            let planned = plannedWorkingSets(for: exercise).count
+            return planned == 0 ? (exerciseList.first { $0.exercise.id == exercise.id }?.setCount ?? 0) == 0
+                                : completedWorkingSets(for: exercise) < planned
+        }
+    }
+
+    private func logCurrentSet(finishingExercise: Bool) -> SetEntry? {
         guard case .keypad(let exercise) = stage else { return nil }
 
         ensureSession()
@@ -371,16 +394,13 @@ public final class WatchStrengthFlowModel {
                 setCount += 1
             }
             updateExerciseListAfterLogging(exercise)
-            if goToRest {
-                exercisePendingAfterRest = exercise
+            do {
+                exercisePendingAfterRest = finishingExercise ? nextExercise(excluding: exercise) : exercise
                 // Issue #49: the user's chosen default rest always wins over a
                 // coach-generated per-set rest, matching the phone's rest timer.
                 plannedRestApplied = false
                 restTimer.start(seconds: restDefault)
                 stage = .rest
-            } else {
-                exercisePendingAfterRest = nil
-                stage = .home
             }
             return set
         } catch {

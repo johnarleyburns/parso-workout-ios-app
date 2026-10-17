@@ -146,7 +146,7 @@ final class WatchQuickTalkController {
         // can remain on “Connecting to iPhone…” forever after a phone wake or
         // SpeechAnalyzer failure.
         replyTimeoutTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(15))
+            try? await Task.sleep(for: .seconds(30))
             guard !Task.isCancelled, let self,
                   case .transcribing(.iPhone) = self.phase else { return }
             self.phase = .failed(code: "phoneReplyTimedOut")

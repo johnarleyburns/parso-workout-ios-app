@@ -15,6 +15,11 @@ extension HomeView {
                 case .settings: SettingsView()
                 case .history: HistoryView(path: pathBinding)
                 case .plannedWorkouts: PlannedWorkoutsListView()
+                case .plannedWorkoutDetail(let id):
+                    PlannedWorkoutDetailView(id: id, onStart: { record in
+                        path = NavigationPath()
+                        startScheduledWorkout(record)
+                    })
                 case .savedWorkouts:
                     TemplatesView(onStart: { plan in
                         path = NavigationPath()

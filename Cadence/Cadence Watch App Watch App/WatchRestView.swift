@@ -119,7 +119,9 @@ struct WatchRestView: View {
                 }
                 .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
                 .accessibilityLabel(Text("Add 30 seconds"))
-                if talk.isPhoneReachable {
+                if !WatchQuickTalkController.isEnabled {
+                    EmptyView()
+                } else if talk.isPhoneReachable {
                     Button { talk.startListening() } label: { Image(systemName: "mic.fill") }
                         .buttonStyle(WatchPillStyle(kind: .light, small: true))
                         .accessibilityLabel(Text("Talk"))

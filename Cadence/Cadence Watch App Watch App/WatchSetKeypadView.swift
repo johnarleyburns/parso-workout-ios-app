@@ -62,7 +62,7 @@ struct WatchSetKeypadView: View {
                     secondaryRow(card)
                     logButton(card)
                     // The teaching hint gives way to the lifter row when partners take the space.
-                    if card.lifterText == nil {
+                    if WatchQuickTalkController.isEnabled, card.lifterText == nil {
                         Text(talk.isPhoneReachable ? "Hold to talk" : "iPhone not nearby — dictate in ⋯")
                             .font(.caption2).foregroundStyle(.secondary)
                             .lineLimit(1).minimumScaleFactor(0.7)
@@ -108,7 +108,6 @@ struct WatchSetKeypadView: View {
                 WatchRepsEntryView(value: $bindableModel.currentReps)
             }
             .accessibilityAction(named: Text("Log set")) { log() }
-            .accessibilityAction(named: Text("Talk")) { talk.startListening() }
             .accessibilityAction(named: Text("More")) { showingMore = true }
         }
     }
@@ -199,6 +198,7 @@ struct WatchSetKeypadView: View {
         .disabled(isLogging)
         .handGestureShortcut(.primaryAction)
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+            guard WatchQuickTalkController.isEnabled else { return }
             guard talk.isPhoneReachable else { showingMore = true; return }
             holdStartedTalk = true
             talk.startListening()
@@ -213,7 +213,6 @@ struct WatchSetKeypadView: View {
             }
         })
         .accessibilityIdentifier("logSetButton")
-        .accessibilityHint(Text("Hold to log by voice"))
     }
 
     private func log() {
@@ -267,7 +266,7 @@ struct WatchSetMoreView: View {
             }
 
             Section {
-                if !talk.isPhoneReachable {
+                if WatchQuickTalkController.isEnabled, !talk.isPhoneReachable {
                     TextField("Dictate a set", text: $dictation)
                         .onSubmit {
                             let text = dictation

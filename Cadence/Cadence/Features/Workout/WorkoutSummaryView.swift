@@ -206,9 +206,12 @@ struct WorkoutSummaryView: View {
             }
             if data.kind == .strength {
                 Text("Resistance training also raises heart rate. Minutes at moderate or vigorous heart rate during this workout count toward your weekly cardio minutes.").font(.caption).foregroundStyle(.secondary)
-                ForEach(CardioIntensityPolicy.strengthCardioCitationIDs.compactMap(CitationRegistry.citation(forId:)), id: \.id) {
-                    CitationLink(citation: $0, compact: true)
-                }
+                CoachSourcesLink(citationIds: CardioIntensityPolicy.strengthCardioCitationIDs,
+                                 identifier: "progress.card.citation")
+            } else if data.kind == .cardio {
+                CoachSourcesLink(citationIds: CardioIntensityPolicy.citationIDs,
+                                 contexts: CardioIntensitySourceContexts.contexts,
+                                 identifier: "summary.cardio.intensity.science")
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)

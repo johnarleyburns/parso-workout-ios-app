@@ -159,9 +159,13 @@ public struct StrengthWorkoutSummary: Codable, Equatable, Sendable {
     /// Plain metadata prepared by CadenceCore. The iOS HealthKit adapter turns
     /// it into HealthKit-safe values; partner identities are never included.
     public var metadata: [String: String]
+    /// Apple workout effort score (1...10) written so Training Load has data.
+    public var effortScore: Double?
     public init(id: UUID, start: Date, end: Date, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], avgHR: Double? = nil, maxHR: Double? = nil,
-                metadata: [String: String] = [:], updatedAt: Date? = nil) {
+                metadata: [String: String] = [:], updatedAt: Date? = nil,
+                effortScore: Double? = nil) {
+        self.effortScore = effortScore
         self.id = id; self.start = start; self.end = end; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.avgHR = avgHR; self.maxHR = maxHR
         self.metadata = metadata; self.updatedAt = updatedAt
@@ -192,6 +196,8 @@ public struct CardioWorkoutSummary: Codable, Equatable, Sendable {
     public var metEstimate: METEstimate?
     /// Source-row version used by the HealthKit sync identifier contract.
     public var updatedAt: Date?
+    /// Apple workout effort score (1...10) written so Training Load has data.
+    public var effortScore: Double?
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 hrSamples: [HRSamplePoint] = [], route: [LocationFix] = [],
@@ -200,7 +206,9 @@ public struct CardioWorkoutSummary: Codable, Equatable, Sendable {
                 targetDistanceMeters: Double? = nil,
                 intensityProfile: CardioIntensityProfile? = nil,
                 intensitySummary: CardioMinuteSummary? = nil,
-                metEstimate: METEstimate? = nil, updatedAt: Date? = nil) {
+                metEstimate: METEstimate? = nil, updatedAt: Date? = nil,
+                effortScore: Double? = nil) {
+        self.effortScore = effortScore
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.hrSamples = hrSamples; self.route = route

@@ -7,13 +7,13 @@ import CadenceFeatures
 /// existing "Fill the gaps" button share one start boundary.
 extension HomeView {
     /// The tracked muscle groups most behind this week.
-    var fillGapMissingGroups: [MuscleGroup] {
-        HomeDashboardPresenter.gapGroups(from: dashboard.volume)
+    var fillGapMissingGroups: HomeDashboardPresenter.GapTiers {
+        HomeDashboardPresenter.gapTiers(from: dashboard.volume)
     }
 
     @ViewBuilder
     var fillGapsQuickStart: some View {
-        MuscleGroupQuickStartView(missing: fillGapMissingGroups) { session in
+        MuscleGroupQuickStartView(tiers: fillGapMissingGroups) { session in
             _ = active.startStrength(session)
         }
     }

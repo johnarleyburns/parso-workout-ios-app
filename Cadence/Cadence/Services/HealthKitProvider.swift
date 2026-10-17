@@ -51,6 +51,7 @@ final class HealthKitProvider: HealthDataProviding {
         for id in ids { if let t = HKObjectType.quantityType(forIdentifier: id) { types.insert(t) } }
         if let sleep = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) { types.insert(sleep) }
         types.insert(HKSeriesType.workoutRoute())
+        if #available(iOS 18.0, *) { types.insert(HKQuantityType(.workoutEffortScore)) }
         return types
     }
 
@@ -590,10 +591,24 @@ final class HealthKitProvider: HealthDataProviding {
             try await addOwnerSetActivities(to: builder, summary: summary)
             try await builder.endCollection(at: summary.end)
             let workout = try await builder.finishWorkout()
+            if let workout { await relateEffort(summary.effortScore, to: workout) }
             return workout?.uuid
         } catch {
             return nil
         }
+    }
+
+    /// Writes Apple's workout effort score and relates it to the workout so the
+    /// Health app's Training Load has data. Best-effort: failure never fails the save.
+    private func relateEffort(_ score: Double?, to workout: HKWorkout) async {
+        guard let score, #available(iOS 18.0, *) else { return }
+        let sample = HKQuantitySample(type: HKQuantityType(.workoutEffortScore),
+                                      quantity: HKQuantity(unit: .appleEffortScore(), doubleValue: score),
+                                      start: workout.startDate, end: workout.endDate)
+        do {
+            try await store.save(sample)
+            try await store.relateWorkoutEffortSample(sample, with: workout, activity: nil)
+        } catch {}
     }
 
     // MARK: Write summary cardio workout (FR-2.5)
@@ -638,6 +653,7 @@ final class HealthKitProvider: HealthDataProviding {
             if !samples.isEmpty { try await builder.addSamples(samples) }
             try await builder.endCollection(at: summary.end)
             let workout = try await builder.finishWorkout()
+            if let workout { await relateEffort(summary.effortScore, to: workout) }
 
             // Phase 2 — attach GPS route (FR-2.5).
             if let hkWorkout = workout, !summary.route.isEmpty {

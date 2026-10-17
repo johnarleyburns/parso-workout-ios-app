@@ -84,7 +84,7 @@ extension HomeView {
                 selectWorkoutPresented = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
-                plannedWorkoutsPresented = true
+                path.append(HomeRoute.plannedWorkouts)
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceLogSetRequested)) { note in
                 guard let request = note.object as? CadencePlatformRequestStore.LogSetRequest else { return }
@@ -104,7 +104,12 @@ extension HomeView {
             .task(id: HomeCoachTaskIdentity(
                 signature: coachSignature,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-                coachSnapshotReady = false
+                if let cached = HomeTodayCache.cachedSnapshot(for: todayCacheKey) {
+                    coachSnapshot = cached
+                    coachSnapshotReady = true
+                } else {
+                    coachSnapshotReady = false
+                }
                 await refreshCoachSnapshot()
             }
             .task(id: HomeActivityTaskIdentity(
@@ -132,6 +137,7 @@ extension HomeView {
             }
             .onChange(of: historyRefreshToken) { _, _ in
                 todaySuggestedPlan = nil
+                Task { await HomeTodayCache.suggestionStore.invalidate() }
                 // A completion invalidates the request snapshot as well as
                 // the rendered plan. The detached solver may still be running;
                 // cancel it and invalidate its generation so its pre-completion

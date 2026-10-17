@@ -518,12 +518,13 @@ public enum WatchSync {
         }
 
         public static func from(context: [String: Any]) -> WeekSummary? {
-            guard let sets = context[Key.weekSets] as? Double,
-                  let cardio = context[Key.weekCardioMinutes] as? Double else { return nil }
+            func number(_ key: String) -> Double? { (context[key] as? NSNumber)?.doubleValue }
+            guard let sets = number(Key.weekSets),
+                  let cardio = number(Key.weekCardioMinutes) else { return nil }
             return WeekSummary(
                 sets: sets,
-                setsMinimum: (context[Key.weekSetsMinimum] as? Double) ?? 0,
-                setsTarget: (context[Key.weekSetsTarget] as? Double) ?? 0,
+                setsMinimum: number(Key.weekSetsMinimum) ?? 0,
+                setsTarget: number(Key.weekSetsTarget) ?? 0,
                 cardioMinutes: cardio,
                 updatedAt: (context[Key.weekUpdatedAt] as? Date) ?? Date())
         }

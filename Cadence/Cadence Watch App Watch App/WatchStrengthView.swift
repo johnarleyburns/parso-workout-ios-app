@@ -8,12 +8,11 @@ import CadenceFeatures
 
 /// Watch redesign §5 P1–P4 (decision D-W1) — the workout pager, Apple Workout's grammar applied to
 /// lifting: Controls ◂ Set Card ▸ Plan ▸ Heart. It always returns to the Set Card. Pausing never
-/// leaves the workout; Finish always reviews before saving (F1).
+/// leaves the workout; Finish starts the cool-down, then the Saved summary follows (F1).
 struct WatchStrengthView: View {
     @State private var flowModel: WatchStrengthFlowModel?
     @State private var shouldStopWorkoutOnDisappear = false
     @State private var page: Page = .main
-    @State private var reviewing = false
     @State private var talk = WatchQuickTalkController()
     @State private var moment: Moment?
 
@@ -99,16 +98,22 @@ struct WatchStrengthView: View {
             watchManager.togglePause()
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkFinish)) { _ in
-            reviewing = true
+            finishWorkout()
         }
         .onChange(of: WatchLaunchRequests.shared.talkRequest) { _, _ in
             // D-W5: the Action Button during a workout = Talk.
-            guard flowModel != nil, !reviewing else { return }
+            guard flowModel != nil else { return }
             page = .main
             talk.startListening()
         }
         .navigationBarBackButtonHidden(true)
         .ownsWatchWorkoutSession()
+    }
+
+    /// Finish goes straight to the cool-down; the review/Saved summary comes after it.
+    private func finishWorkout() {
+        WatchHaptics.success()
+        flowModel?.finish()
     }
 
     @ViewBuilder
@@ -125,21 +130,13 @@ struct WatchStrengthView: View {
         case .discarded, .idle:
             EmptyView()
         default:
-            if reviewing {
-                WatchStrengthReviewView(model: model, onSave: {
-                    reviewing = false
-                    WatchHaptics.success()
-                    model.finish()
-                }, onKeepGoing: { reviewing = false })
-            } else {
-                pager(model)
-            }
+            pager(model)
         }
     }
 
     private func pager(_ model: WatchStrengthFlowModel) -> some View {
         TabView(selection: $page) {
-            WatchStrengthControlsPage(model: model, onFinish: { reviewing = true }, onPartners: {
+            WatchStrengthControlsPage(model: model, onFinish: { finishWorkout() }, onPartners: {
                 model.goToPartners()
             })
             .tag(Page.controls)
@@ -158,6 +155,13 @@ struct WatchStrengthView: View {
                 .tag(Page.heart)
         }
         .tabViewStyle(.page)
+        .alert("All exercises complete, finish workout?", isPresented: Binding(
+            get: { model.allExercisesCompletePrompt },
+            set: { model.allExercisesCompletePrompt = $0 }
+        )) {
+            Button("Done") { finishWorkout() }
+            Button("Keep going", role: .cancel) {}
+        }
     }
 
     @ViewBuilder
@@ -172,7 +176,7 @@ struct WatchStrengthView: View {
         case .partners:
             WatchPartnersView(model: model)
         default:
-            WatchNextExerciseView(model: model, onPlan: { page = .plan })
+            WatchAddExerciseView(model: model)
         }
     }
 
@@ -265,40 +269,6 @@ struct WatchStrengthView: View {
     }
 }
 
-/// M3 — between exercises: offer the next planned exercise (Double Tap), or the whole plan.
-struct WatchNextExerciseView: View {
-    let model: WatchStrengthFlowModel
-    let onPlan: () -> Void
-
-    var body: some View {
-        VStack(spacing: 8) {
-            if let next = nextExercise {
-                Image(systemName: "flag.checkered").font(.title3).foregroundStyle(WatchTone.accent)
-                Button { model.startLogSet(for: next) } label: { Text("Next · \(next.name)") }
-                    .buttonStyle(WatchPillStyle(kind: .primary))
-                    .handGestureShortcut(.primaryAction)
-                    .accessibilityIdentifier("watchStrength.nextExercise")
-            } else {
-                Text("Add an exercise to start").font(.headline).multilineTextAlignment(.center)
-                Button { model.goToAddExercise() } label: { Label("Add exercise", systemImage: "plus") }
-                    .buttonStyle(WatchPillStyle(kind: .primary))
-                    .handGestureShortcut(.primaryAction)
-            }
-            Button("All exercises", action: onPlan).font(.footnote)
-        }
-        .padding(.horizontal, 4)
-    }
-
-    /// The first planned exercise that still has planned sets to do.
-    private var nextExercise: Exercise? {
-        model.exerciseList.map(\.exercise).first { exercise in
-            let planned = model.plannedWorkingSets(for: exercise).count
-            return planned == 0 ? model.exerciseList.first { $0.exercise.id == exercise.id }?.setCount == 0
-                                : model.completedWorkingSets(for: exercise) < planned
-        }
-    }
-}
-
 /// F1 — review before saving: time, sets, volume, PRs; Save is explicit, Keep going goes back.
 struct WatchStrengthReviewView: View {
     let model: WatchStrengthFlowModel
@@ -319,7 +289,8 @@ struct WatchStrengthReviewView: View {
                     .buttonStyle(WatchPillStyle(kind: .primary))
                     .handGestureShortcut(.primaryAction)
                     .accessibilityIdentifier("watchStrength.save")
-                Button("Keep going", action: onKeepGoing).font(.footnote)
+                Button("Keep going", action: onKeepGoing)
+                    .buttonStyle(WatchPillStyle(kind: .secondary))
                     .accessibilityIdentifier("watchStrength.keepGoing")
             }
             .padding(.horizontal, 2)

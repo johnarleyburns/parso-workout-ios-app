@@ -17,13 +17,6 @@ concurrency:
 jobs:
   core-tests:
     runs-on: xcode-27
-    # GitHub-hosted runners offer no repository-wide, two-permit semaphore.
-    # This supported job-level lock is the safe fallback: exactly one macOS job
-    # runs repository-wide. Do not make per-workflow "slot" groups; they race.
-    concurrency:
-      group: cadence-macos
-      cancel-in-progress: false
-      queue: max
     timeout-minutes: 90
     steps:
       - name: Checkout
@@ -66,6 +59,9 @@ jobs:
       - name: Check warning classifier fixtures
         run: bash scripts/test-check-owned-warnings.sh
 
+      - name: Check TestFlight reporting fixture
+        run: bash scripts/tests/test-testflight-delivery-body.sh
+
       - name: Test-pyramid guardrail
         run: bash scripts/check-test-pyramid.sh
 
@@ -98,10 +94,6 @@ jobs:
       stage: ${{ steps.stage.outputs.stage }}
     needs: core-tests
     runs-on: xcode-27
-    concurrency:
-      group: cadence-macos
-      cancel-in-progress: false
-      queue: max
     # Archives can legitimately be slower than a compile, but must not consume
     # a permit forever if Xcode or an external signing service stops responding.
     timeout-minutes: 150

@@ -241,7 +241,7 @@ private struct WatchRepSchemePicker: View {
 
     var body: some View {
         List {
-            Section("Rep Scheme") {
+            Section("Rep Pattern") {
                 ForEach(presets) { preset in
                     NavigationLink {
                         WatchStrengthView(

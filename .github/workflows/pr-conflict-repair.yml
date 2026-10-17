@@ -27,11 +27,6 @@ jobs:
   repair:
     if: github.actor == 'johnarleyburns' || github.actor == 'github-actions[bot]'
     runs-on: xcode-27
-    # Shared, repository-wide macOS permit; keep the per-PR workflow lock above.
-    concurrency:
-      group: cadence-macos
-      cancel-in-progress: false
-      queue: max
     timeout-minutes: 180
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}

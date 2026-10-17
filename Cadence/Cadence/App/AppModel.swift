@@ -902,7 +902,11 @@ extension AppModel {
     }
 
     fileprivate func watchStateChanged(installed: Bool) {
+        let becameInstalled = installed && !watchAppInstalled
         watchAppInstalled = installed
+        // Anything published while the Watch app was missing was dropped, so resend settings, the
+        // Today plan and the This Week totals once it appears.
+        if becameInstalled { pushSettingsContext(force: true) }
     }
 
     fileprivate func watchReachabilityChanged(reachable: Bool) {

@@ -420,7 +420,9 @@ public enum HealthBackupEncoder {
             avgHR: bpm.isEmpty ? nil : bpm.reduce(0, +) / Double(bpm.count),
             maxHR: bpm.max(),
             metadata: CladironHealthBackup.strengthMetadata(for: session),
-            updatedAt: session.updatedAt)
+            updatedAt: session.updatedAt,
+            effortScore: WorkoutEffort.strengthScore(
+                workingSetRPEs: sets.filter { !$0.isWarmup }.compactMap(\.rpe)))
     }
 
     public static func cardioSummary(for cardio: CardioWorkout) -> CardioWorkoutSummary {
@@ -442,7 +444,8 @@ public enum HealthBackupEncoder {
                             method: cardio.metMethodRaw.flatMap(METEstimationMethod.init(rawValue:)) ?? .unavailable,
                             basis: cardio.metBasisRaw.flatMap(METBasis.init(rawValue:)) ?? .standardCompendium,
                             confidence: .estimated, sourceCitationIDs: [])
-            }, updatedAt: cardio.updatedAt)
+            }, updatedAt: cardio.updatedAt,
+            effortScore: WorkoutEffort.cardioScore(cardio.intensitySummary))
     }
 
     public static func assessmentPayload(for assessment: Assessment) -> HealthAssessmentPayload {

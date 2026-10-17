@@ -122,6 +122,7 @@ struct WatchRootView: View {
             TabView {
                 launcherList
                 WatchWeekView(summary: watchManager.weekSummary)
+                WatchMyWorkoutsView(plan: watchManager.todayPlan)
             }
             .tabViewStyle(.page)
             .navigationTitle("Cladiron")

@@ -6,8 +6,9 @@ struct HomeWeekDashboardSection: View {
     let dashboard: HomeDashboardState
     @Binding var detailSelection: WeeklyDetailSelection
     @Binding var muscleMapPanel: MuscleMapPanel
-    let strengthEntries: [TodayActivityPresenter.Entry]
-    let cardioEntries: [TodayActivityPresenter.Entry]
+    let plannedItems: [PlannedWorkoutsPresenter.Item]
+    let inProgressSessions: [WorkoutSession]
+    let completedEntries: [TodayActivityPresenter.Entry]
     let muscleHistory: [HomeMuscleHistory]
     let muscleHistoryByPerformer: [String: [HomeMuscleHistory]]
     let weeklyVolumeByPerformer: [String: [MuscleGroup: Double]]
@@ -16,6 +17,8 @@ struct HomeWeekDashboardSection: View {
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
+    let onOpenPlanned: (UUID) -> Void
+    let onResumeWorkout: (WorkoutSession) -> Void
     let onStartWorkout: (WorkoutSession) -> Void
     @State var volumeWarningMessage: String?
     /// A fresh identity on every selection lets SwiftUI present the detail sheet
@@ -58,11 +61,11 @@ struct HomeWeekDashboardSection: View {
             }
             .id(WeeklyDetailMode.muscleMap)
             sectionCard {
-                disclosureRow(title: String(localized: "Strength"), value: dashboard.strength.displayText,
+                disclosureRow(title: String(localized: "My Workouts"), value: dashboard.strength.displayText,
                               progress: dashboard.strength.normalized,
                               tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
                               mode: .strength, identifier: "home.week.strength") {
-                    workoutGroup(title: String(localized: "Strength"), entries: strengthEntries)
+                    myWorkoutsList
                 }
             }
             .id(WeeklyDetailMode.strength)
@@ -72,7 +75,6 @@ struct HomeWeekDashboardSection: View {
                               tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
                               mode: .cardio, identifier: "home.week.cardio") {
                     VStack(alignment: .leading, spacing: 10) {
-                        workoutGroup(title: String(localized: "Cardio"), entries: cardioEntries)
                         cardioMinutes
                         if let dose = dashboard.activityDose { activityDose(dose) }
                     }
@@ -365,21 +367,52 @@ struct HomeWeekDashboardSection: View {
         .accessibilityIdentifier("home.week.activityDose")
     }
 
-    @ViewBuilder
-    private func workoutGroup(title: String, entries: [TodayActivityPresenter.Entry]) -> some View {
+    private var myWorkoutsList: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if entries.isEmpty {
-                Text("No \(title.lowercased()) workouts this week.")
+            if plannedItems.isEmpty && inProgressSessions.isEmpty && completedEntries.isEmpty {
+                Text("No workouts this week.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    if index > 0 { Divider().padding(.leading, 40) }
-                    HomeWeekWorkoutRow(entry: entry) { onOpenWorkout(entry) }
+            }
+            ForEach(plannedItems) { item in
+                Button { Haptics.selection(); onOpenPlanned(item.id) } label: {
+                    myWorkoutRow(title: item.title, detail: item.detail, badge: "PLANNED", badgeTint: .teal)
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows workout details")
+                .accessibilityIdentifier("home.week.planned.\(item.id.uuidString)")
+            }
+            ForEach(inProgressSessions, id: \.id) { session in
+                Button { onResumeWorkout(session) } label: {
+                    myWorkoutRow(title: session.title.isEmpty ? String(localized: "Strength session") : session.title,
+                                 detail: String(localized: "\(session.orderedSets.count) sets logged"),
+                                 badge: "IN PROGRESS", badgeTint: .orange)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Resumes the workout")
+                .accessibilityIdentifier("home.week.inProgress.\(session.id.uuidString)")
+            }
+            ForEach(completedEntries) { entry in
+                HomeWeekWorkoutRow(entry: entry) { onOpenWorkout(entry) }
             }
         }
-        .accessibilityIdentifier("home.week.group.\(title.lowercased())")
+        .accessibilityIdentifier("home.week.group.myworkouts")
     }
 
+    private func myWorkoutRow(title: String, detail: String, badge: String, badgeTint: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "calendar").font(.caption).foregroundStyle(badgeTint)
+                .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title).font(.subheadline.weight(.medium))
+                Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer()
+            Text(badge).font(.caption2.weight(.bold)).foregroundStyle(badgeTint)
+            Image(systemName: "chevron.right").font(.caption2.weight(.semibold)).foregroundStyle(.tertiary)
+        }
+        .padding(.vertical, 8)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
 }

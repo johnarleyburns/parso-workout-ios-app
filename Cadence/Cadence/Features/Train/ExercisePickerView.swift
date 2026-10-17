@@ -11,7 +11,7 @@ struct ExercisePickerView: View {
             switch self {
             case .add: return String(localized: "Add Exercise")
             case .swap: return String(localized: "Swap Exercise")
-            case .use: return String(localized: "Choose Exercise")
+            case .use: return String(localized: "Find Exercise")
             }
         }
 

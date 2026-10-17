@@ -22,12 +22,20 @@ struct WatchStrengthStartView: View {
     var body: some View {
         List {
             Section {
-                NavigationLink {
-                    WatchCustomStrengthSetupView()
-                } label: {
-                    Label("Custom", systemImage: "plus.circle.fill")
+                ForEach(WatchLiftSources.menuOrder, id: \.self) { source in
+                    NavigationLink {
+                        switch source {
+                        case .suggest: WatchSuggestReviewView()
+                        case .previous: WatchPreviousListView()
+                        case .custom: WatchCustomStrengthSetupView()
+                        }
+                    } label: {
+                        Label(source.title, systemImage: source.systemImage)
+                    }
+                    .accessibilityLabel(source.accessibilityLabel)
+                    .accessibilityHint(source.accessibilityHint)
+                    .accessibilityIdentifier(source.accessibilityIdentifier)
                 }
-                .accessibilityIdentifier("watchStrength.custom")
             }
 
             Section("Prescriptions") {

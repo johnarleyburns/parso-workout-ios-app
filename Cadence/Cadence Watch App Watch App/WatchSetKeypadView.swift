@@ -21,6 +21,7 @@ struct WatchSetKeypadView: View {
     @State private var showingRepsEntry = false
     @State private var holdStartedTalk = false
     @State private var isLogging = false
+    @State private var toastLastTime: String?
 
     init(model: WatchStrengthFlowModel, talk: WatchQuickTalkController) {
         self.bindableModel = model
@@ -57,9 +58,6 @@ struct WatchSetKeypadView: View {
                 }
                 fields(card)
                 if !isLuminanceReduced {
-                    if let last = card.lastTimeText {
-                        Text(last).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }
                     if let line = card.planLine { WatchCoachLineView(line: line) }
                     secondaryRow(card)
                     logButton(card)
@@ -73,6 +71,24 @@ struct WatchSetKeypadView: View {
                 }
             }
             .padding(.horizontal, 4)
+            // "Last time" is a transient toast so it never pushes the weight/reps rows into the title.
+            .overlay(alignment: .top) {
+                if let toastLastTime {
+                    Text(toastLastTime)
+                        .font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Capsule().fill(.regularMaterial))
+                        .transition(.opacity)
+                        .accessibilityIdentifier("watchSet.lastTimeToast")
+                }
+            }
+            .task(id: card.lastTimeText) {
+                guard let last = card.lastTimeText else { toastLastTime = nil; return }
+                withAnimation { toastLastTime = last }
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                withAnimation { toastLastTime = nil }
+            }
             .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .focusable()

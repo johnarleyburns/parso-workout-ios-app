@@ -4,7 +4,7 @@ set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 trace=$(mktemp)
 trap 'rm -f "$trace"' EXIT
-source <(sed -n '/^make_pr() {/,/^}/p' "$root/.github/scripts/issue-to-pr.sh")
+eval "$(sed -n '/^make_pr() {/,/^}/p' "$root/.github/scripts/issue-to-pr.sh")"
 title='Policy regression'
 marker='<!-- claude-issue:1 -->'
 ISSUE=1

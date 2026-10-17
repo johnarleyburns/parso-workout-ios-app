@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 import CadenceFeatures
 
 /// Process-lifetime cache of Today's coach snapshot and suggested workout so
@@ -29,5 +30,16 @@ enum HomeTodayCache {
 
     static func store(_ value: EditablePlan, for key: Key) {
         plan = (key, value)
+    }
+}
+
+extension HomeView {
+    var todayCacheKey: HomeTodayCache.Key { .init(signature: coachSignature, day: Self.dayString()) }
+
+    func buildAndCacheCoachSnapshot() async -> HomeCoachSnapshot {
+        let key = todayCacheKey
+        let snapshot = await buildCoachSnapshot()
+        HomeTodayCache.store(snapshot, for: key)
+        return snapshot
     }
 }

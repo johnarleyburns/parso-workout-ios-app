@@ -327,6 +327,13 @@ extension HomeView {
             path.append(HistorySummaryRoute.cardio(id))
         }
     }
+    func resumeWeekSession(_ session: WorkoutSession) {
+        Haptics.selection()
+        if active.strengthSession == nil {
+            active.adopt(session, heartbeat: WorkoutHeartbeatStore.read())
+        }
+        active.present()
+    }
     func resumeCard(_ session: WorkoutSession) -> some View {
         Button {
             Haptics.selection()

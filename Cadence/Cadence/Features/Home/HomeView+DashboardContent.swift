@@ -44,7 +44,8 @@ extension HomeView {
             plannedItems: cachedScheduledItems,
             onOpenCompleted: openTodayWorkout,
             onStartScheduled: startScheduledWorkout,
-            onShowMorePlanned: { plannedWorkoutsPresented = true },
+            onShowMorePlanned: { path.append(HomeRoute.plannedWorkouts) },
+            onShowPlannedDetail: { path.append(HomeRoute.plannedWorkoutDetail($0)) },
             onShowHistory: { path.append(HomeRoute.history) })
     }
 

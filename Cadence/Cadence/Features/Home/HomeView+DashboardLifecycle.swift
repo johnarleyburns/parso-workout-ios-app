@@ -84,7 +84,7 @@ extension HomeView {
                 selectWorkoutPresented = true
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
-                plannedWorkoutsPresented = true
+                path.append(HomeRoute.plannedWorkouts)
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceLogSetRequested)) { note in
                 guard let request = note.object as? CadencePlatformRequestStore.LogSetRequest else { return }

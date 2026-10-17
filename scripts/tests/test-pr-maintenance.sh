@@ -27,6 +27,8 @@ eq "draft dirty action_required -> repair"         "$(decide true dirty action_r
 eq "cancelled -> rerun"                             "$(decide false clean cancelled false false 0)" rerun
 eq "missing check -> retrigger"                     "$(decide false clean missing false false 0)" retrigger
 eq "pending -> wait"                                "$(decide false behind pending true false 0)" wait
+eq "behind cancelled -> update current infrastructure" "$(decide false behind cancelled true false 0)" update-branch
+eq "behind failed -> update before repair"           "$(decide false behind failed true false 0)" update-branch
 eq "unknown mergeability -> wait"                   "$(decide false unknown success true false 0)" wait
 eq "stopped head -> stopped"                        "$(decide false dirty failed false true 3)" stopped
 
@@ -54,6 +56,9 @@ rm -f .tmp-merge-error
 eq "auto merge confirmed" "$(echo '{"state":"open","auto_merge":{"enabled_by":{"login":"bot"}}}' | merge_confirmation)" enabled
 eq "immediate merge confirmed" "$(echo '{"state":"closed","merged_at":"2026-01-01T00:00:00Z","auto_merge":null}' | merge_confirmation)" merged
 eq "successful command but inactive is diagnosed" "$(echo '{"state":"open","auto_merge":null}' | merge_confirmation)" inactive
+eq "active release reserves capacity" "$(echo '{"workflow_runs":[{"path":".github/workflows/ios.yml"}]}' | macos_work_pending && echo busy || echo idle)" busy
+eq "maintenance does not reserve macOS capacity" "$(echo '{"workflow_runs":[{"path":".github/workflows/pr-maintenance.yml"}]}' | macos_work_pending && echo busy || echo idle)" idle
+eq "idle queue admits one batch" "$(echo '{"workflow_runs":[]}' | macos_work_pending && echo busy || echo idle)" idle
 
 # Mocked end-to-end sweep: a successfully validated branch behind strict
 # required checks must update once, then wait for the resulting SHA.
@@ -63,6 +68,12 @@ cat >"$tmp/gh" <<'MOCK'
 echo "gh $*" >>"$MOCK_LOG"
 a="$*"
 case "$a" in
+  *"actions/runs?status="*)
+    if [[ "${MOCK_BUSY:-}" == 1 ]]; then
+      echo '{"workflow_runs":[{"path":".github/workflows/ios.yml"}]}'
+    elif [[ "${MOCK_BUSY:-}" == error ]]; then exit 1
+    else echo '{"workflow_runs":[]}'
+    fi ;;
   "pr list"*) printf '97\n5\n6\n' ;;
   "api repos/o/r/pulls/97") echo '{"state":"open","head":{"repo":{"full_name":"o/r"},"ref":"claude/issue-12-34","sha":"abc12345"},"body":"<!-- claude-issue:12 -->","draft":false,"mergeable_state":"behind","mergeable":true,"auto_merge":{"x":1},"labels":[]}' ;;
   "api repos/o/r/pulls/5") echo '{"state":"open","head":{"repo":{"full_name":"fork/r"},"ref":"claude/issue-1-1","sha":"f"},"body":"<!-- claude-issue:1 -->","draft":false,"labels":[]}' ;;
@@ -87,6 +98,19 @@ grep -Eq 'pr (ready|merge|close)' "$MOCK_LOG" && r=yes || r=no
 eq "no ready/merge/close on behind PR" "$r" no
 eq "fork/non-Claude ignored" "$(jq '.open_claude_prs' "$tmp/report.json")" 1
 eq "behind counted" "$(jq '.behind' "$tmp/report.json")" 1
+: >"$MOCK_LOG"
+ACTIONS_STARTED=1
+process_pr 97 >"$tmp/budget-out" 2>&1
+grep -q 'update-branch' "$MOCK_LOG" && r=yes || r=no
+eq "exhausted batch budget never updates another branch" "$r" no
+ACTIONS_STARTED=0
+: >"$MOCK_LOG"
+( export MOCK_BUSY=1; main >"$tmp/busy-out" 2>&1 ); rc=$?
+eq "active release defers reconciliation successfully" "$rc" 0
+grep -q 'pr list' "$MOCK_LOG" && r=yes || r=no
+eq "active release prevents even starting the PR sweep" "$r" no
+( export MOCK_BUSY=error; main >"$tmp/error-out" 2>&1 ); rc=$?
+eq "unreadable capacity fails closed" "$rc" 1
 
 # Git: modify/delete conflict resolved by accepting main's deletion, filenames with spaces.
 if [[ -z "${SKIP_GIT_TESTS:-}" ]]; then

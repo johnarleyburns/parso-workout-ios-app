@@ -27,12 +27,18 @@ repo="${GITHUB_REPOSITORY:-}"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/${repo}/actions/runs/${GITHUB_RUN_ID:-0}"
 REPORT="${REPORT_FILE:-/tmp/pr-maintenance-report.json}"
 INFRA=0
+ACTIONS_STARTED=0
 FIX_VERSION=130   # bump to re-migrate stops caused by a newly fixed automation defect
 
 # decide <draft> <state> <validation> <automerge> <stopped> <attempts> [approval_tries]
 decide() {
   local draft="$1" state="$2" val="$3" autom="$4" stopped="$5" attempts="$6" atries="${7:-0}"
   [[ "$stopped" == true ]] && { echo stopped; return; }
+  [[ "$val" == pending ]] && { echo wait; return; }
+  # Refresh outdated infrastructure once before retrying a stale failed head.
+  if [[ "$state" == behind && "$val" != action_required ]]; then
+    echo update-branch; return
+  fi
   if [[ "$state" == dirty || "$val" == failed ]]; then
     (( attempts >= max_attempts )) && echo exhausted || echo repair
     return
@@ -44,9 +50,8 @@ decide() {
     pending) echo wait; return ;;
   esac
   # The active main ruleset uses strict required status checks. GitHub will not
-  # merge an auto-merge PR whose validated head is behind main, so update only
-  # after that head passed validation. The new SHA then waits through the
-  # pending/missing paths above; no update occurs while validation is pending.
+  # merge an auto-merge PR whose validated head is behind main. The early
+  # behind branch above handles freshness; pending validation always waits.
   [[ "$state" == behind ]] && { echo update-branch; return; }
   [[ "$state" == unknown ]] && { echo wait; return; }
   if [[ "$draft" == true || "$autom" != true ]]; then echo advance; else echo waiting-merge; fi
@@ -205,6 +210,16 @@ process_pr() {
   fi
   action=$(decide "$draft" "$state" "$val" "$autom" "$stopped" "$attempts" "$(jq -r '.approval_tries // 0' <<<"$st")")
   echo "PR #$n: head=${head:0:8} state=$state validation=$val draft=$draft auto_merge=$autom attempts=$attempts -> $action"
+  case "$action" in
+    stopped|wait|waiting-merge) ;;
+    *)
+      if (( ACTIONS_STARTED >= 1 )); then
+        echo "PR #$n: deferred until the next controlled batch"
+        record "$n" "$state" "$val" deferred
+        return
+      fi
+      ACTIONS_STARTED=$((ACTIONS_STARTED + 1)) ;;
+  esac
   record "$n" "$state" "$val" "$action"
   dry && return 0
 
@@ -328,10 +343,27 @@ write_report() {
   fi
 }
 
+macos_work_pending() {
+  jq -e 'any(.workflow_runs[]?;
+    (.path // "" | test("/(ios|pr-validation|pr-conflict-repair|issue-to-pr)\\.yml$")))' >/dev/null
+}
+
 main() {
-  local prs n
+  local prs n status runs
+  # The serialized reconciler admits work only when macOS workflows are idle.
+  # Separate status queries keep old active jobs visible even after many runs.
+  for status in in_progress queued pending waiting requested; do
+    runs=$(api "repos/${repo}/actions/runs?status=${status}&per_page=100") || {
+      echo 'Cannot verify macOS capacity; deferring all changes' >&2; exit 1;
+    }
+    if macos_work_pending <<<"$runs"; then
+      echo "macOS work is $status; preserving release priority and deferring this batch"
+      write_report
+      exit 0
+    fi
+  done
   if [[ -n "${TARGET_PR:-}" ]]; then prs="$TARGET_PR"
-  else prs=$(gh pr list --state open --base main --limit 200 --json number --jq '.[].number') || { echo 'cannot list PRs' >&2; exit 1; }
+  else prs=$(gh pr list --state open --base main --limit 200 --json number --jq 'sort_by(.number) | .[].number') || { echo 'cannot list PRs' >&2; exit 1; }
   fi
   for n in $prs; do process_pr "$n"; done
   write_report

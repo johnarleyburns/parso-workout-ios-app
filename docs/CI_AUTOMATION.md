@@ -4,6 +4,8 @@ Code is the source of truth; this is the operator's map.
 
 Generated PRs open ready for review and immediately request auto-merge. Required checks and branch protection still determine merge eligibility. A refused auto-merge request leaves the PR open for reconciliation; it never falls back to an immediate merge.
 
+Maintenance admits at most one PR action per sweep, oldest PR first, and defers whenever any macOS workflow is queued or running. Release completion and a five-minute fallback schedule resume the next batch. Behind branches receive one normal merge from main before stale cancelled or failed validation is retried. Active validations are never refreshed. Issue generation stays paused during backlog recovery.
+
 ## Ownership
 | Responsibility | Owner |
 |---|---|

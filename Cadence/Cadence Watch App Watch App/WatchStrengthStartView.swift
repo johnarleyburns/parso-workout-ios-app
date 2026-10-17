@@ -237,16 +237,12 @@ private struct WatchCustomStrengthLaunchConfig: Hashable, Identifiable {
 private struct WatchRepSchemePicker: View {
     let plan: WorkoutPlan
 
-    private let presets: [(title: String, ladder: [Int])] = [
-        ("2 sets · 8-5", [8, 5]),
-        ("3 sets · 12-10-8", [12, 10, 8]),
-        ("4 sets · 12-10-8-6", [12, 10, 8, 6]),
-    ]
+    private let presets = RepSchemePreset.all
 
     var body: some View {
         List {
             Section("Rep Scheme") {
-                ForEach(presets, id: \.title) { preset in
+                ForEach(presets) { preset in
                     NavigationLink {
                         WatchStrengthView(
                             title: plan.displayTitle,

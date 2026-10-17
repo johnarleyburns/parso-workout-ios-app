@@ -44,7 +44,7 @@ struct WatchAddExerciseView: View {
                 picker
             }
         }
-        .navigationTitle(showingCustomExercise ? String(localized: "Custom Exercise") : selectedExercise?.name ?? selectedGroup?.displayName ?? String(localized: "Add Exercise"))
+        .navigationTitle(showingCustomExercise ? String(localized: "Custom Exercise") : selectedGroup?.displayName ?? String(localized: "Add Exercise"))
         .task(id: newestExercise.first?.updatedAt) {
             catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

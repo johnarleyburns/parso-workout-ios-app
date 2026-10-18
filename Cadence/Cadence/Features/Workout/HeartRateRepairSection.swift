@@ -35,6 +35,7 @@ struct HeartRateRepairSection: View {
                     Button("Restore previous measurements") {
                         if HeartRateRepair.restorePrevious(session, save: { try modelContext.save() }) {
                             announce(String(localized: "Previous measurements restored."))
+                            NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
                         }
                     }
                     .accessibilityHint(String(localized: "Undoes the last Apple Health reload for this workout."))

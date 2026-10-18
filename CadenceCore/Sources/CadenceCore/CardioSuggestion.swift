@@ -205,6 +205,10 @@ public enum CardioSuggestionGenerator {
     public static func requiredMinutesPerDay(input: CardioSuggestionInput,
                                              calendar: Calendar = .current) -> Double {
         let remaining = max(0, input.weeklyTargetMinutes - input.weeklyModerateEquivalentMinutes)
+        // The training week starts on Monday regardless of locale.
+        var calendar = calendar
+        calendar.firstWeekday = 2
+        calendar.minimumDaysInFirstWeek = 4
         let today = calendar.startOfDay(for: input.asOf)
         var daysLeft = 1
         if let week = calendar.dateInterval(of: .weekOfYear, for: input.asOf) {

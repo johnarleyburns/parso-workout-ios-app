@@ -119,12 +119,7 @@ public struct WatchExerciseFilter: Equatable, Sendable {
         }
     }
 
-    /// Equipment present in `entries` that also satisfies the mechanics choice,
-    /// so the equipment picker never offers an option that yields an empty list.
-    public func availableEquipment(in entries: [ExerciseCatalogEntry]) -> [Equipment] {
-        let present = Set(entries
-            .filter { mechanics == nil || $0.mechanicsValue == mechanics }
-            .compactMap(\.equipmentValue))
-        return Equipment.allCases.filter(present.contains)
-    }
+    /// The full equipment roster, so the picker always offers every option
+    /// (dumbbell, barbell, ...) regardless of what the current list contains.
+    public var availableEquipment: [Equipment] { Equipment.allCases }
 }

@@ -1,10 +1,10 @@
 name: Claude Issue to PR
-# Intake + implementation. New issues enter the capacity-aware backlog; a later
-# ai-ready label admits exactly one when macOS is idle. Idempotent per issue.
+# Intake + implementation. The capacity-aware reconciler explicitly dispatches
+# ai-ready work; labels are queue state, not an event trigger. Idempotent per issue.
 run-name: Issue #${{ github.event.issue.number || inputs.issue_number }} (${{ github.event_name }}/${{ github.event.action }})
 on:
   issues:
-    types: [opened, labeled]
+    types: [labeled]
   workflow_dispatch:
     inputs:
       issue_number:
@@ -26,7 +26,7 @@ jobs:
   implement:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.issue.user.login == 'johnarleyburns' && (github.actor == 'johnarleyburns' || github.actor == 'github-actions[bot]') && (github.event.label.name == 'ai-ready' || github.event.label.name == 'ai-ci-maintenance'))
+      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.issue.user.login == 'johnarleyburns' && (github.actor == 'johnarleyburns' || github.actor == 'github-actions[bot]') && github.event.label.name == 'ai-ci-maintenance')
     runs-on: xcode-27
     timeout-minutes: 120
     env:

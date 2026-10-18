@@ -200,6 +200,9 @@ extension HomeView {
             onResumeWorkout: resumeWeekSession,
             onStartWorkout: { session in
                 _ = active.startStrength(session)
+            },
+            onPlanWorkout: { plan in
+                workoutEditorPlan = plan
             })
     }
 

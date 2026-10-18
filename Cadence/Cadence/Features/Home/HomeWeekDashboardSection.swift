@@ -20,6 +20,7 @@ struct HomeWeekDashboardSection: View {
     let onOpenPlanned: (UUID) -> Void
     let onResumeWorkout: (WorkoutSession) -> Void
     let onStartWorkout: (WorkoutSession) -> Void
+    let onPlanWorkout: (EditablePlan) -> Void
     @State var volumeWarningMessage: String?
     /// A fresh identity on every selection lets SwiftUI present the detail sheet
     /// again even when the user taps the same muscle after dismissing it.
@@ -107,7 +108,7 @@ struct HomeWeekDashboardSection: View {
     private var fillGapsButton: some View {
         let behind = HomeDashboardPresenter.gapTiers(from: displayedVolumeRows)
         return NavigationLink {
-            MuscleGroupQuickStartView(tiers: behind, onStart: onStartWorkout)
+            MuscleGroupQuickStartView(tiers: behind, onStart: onStartWorkout, onPlan: onPlanWorkout)
         } label: {
             Label("Fill the gaps", systemImage: "plus.circle")
                 .frame(maxWidth: .infinity)

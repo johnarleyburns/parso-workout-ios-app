@@ -6,8 +6,9 @@ struct HomeWeekDashboardSection: View {
     let dashboard: HomeDashboardState
     @Binding var detailSelection: WeeklyDetailSelection
     @Binding var muscleMapPanel: MuscleMapPanel
-    let strengthEntries: [TodayActivityPresenter.Entry]
-    let cardioEntries: [TodayActivityPresenter.Entry]
+    let plannedItems: [PlannedWorkoutsPresenter.Item]
+    let inProgressSessions: [WorkoutSession]
+    let completedEntries: [TodayActivityPresenter.Entry]
     let muscleHistory: [HomeMuscleHistory]
     let muscleHistoryByPerformer: [String: [HomeMuscleHistory]]
     let weeklyVolumeByPerformer: [String: [MuscleGroup: Double]]
@@ -16,7 +17,10 @@ struct HomeWeekDashboardSection: View {
     let totalVolumeKg: Double
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
+    let onOpenPlanned: (UUID) -> Void
+    let onResumeWorkout: (WorkoutSession) -> Void
     let onStartWorkout: (WorkoutSession) -> Void
+    let onPlanWorkout: (EditablePlan) -> Void
     @State var volumeWarningMessage: String?
     /// A fresh identity on every selection lets SwiftUI present the detail sheet
     /// again even when the user taps the same muscle after dismissing it.
@@ -58,11 +62,11 @@ struct HomeWeekDashboardSection: View {
             }
             .id(WeeklyDetailMode.muscleMap)
             sectionCard {
-                disclosureRow(title: String(localized: "Strength"), value: dashboard.strength.displayText,
+                disclosureRow(title: String(localized: "My Workouts"), value: dashboard.strength.displayText,
                               progress: dashboard.strength.normalized,
                               tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
                               mode: .strength, identifier: "home.week.strength") {
-                    workoutGroup(title: String(localized: "Strength"), entries: strengthEntries)
+                    myWorkoutsList
                 }
             }
             .id(WeeklyDetailMode.strength)
@@ -72,7 +76,6 @@ struct HomeWeekDashboardSection: View {
                               tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
                               mode: .cardio, identifier: "home.week.cardio") {
                     VStack(alignment: .leading, spacing: 10) {
-                        workoutGroup(title: String(localized: "Cardio"), entries: cardioEntries)
                         cardioMinutes
                         if let dose = dashboard.activityDose { activityDose(dose) }
                     }
@@ -103,9 +106,9 @@ struct HomeWeekDashboardSection: View {
     }
 
     private var fillGapsButton: some View {
-        let behind = HomeDashboardPresenter.gapGroups(from: displayedVolumeRows)
+        let behind = HomeDashboardPresenter.gapTiers(from: displayedVolumeRows)
         return NavigationLink {
-            MuscleGroupQuickStartView(missing: behind, onStart: onStartWorkout)
+            MuscleGroupQuickStartView(tiers: behind, onStart: onStartWorkout, onPlan: onPlanWorkout)
         } label: {
             Label("Fill the gaps", systemImage: "plus.circle")
                 .frame(maxWidth: .infinity)
@@ -337,49 +340,4 @@ struct HomeWeekDashboardSection: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.week.cardioMinutes")
     }
-
-    private func activityDose(_ dose: WeeklyActivitySummary) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Activity Dose")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.purple)
-            HStack {
-                Text("Actual activity")
-                Spacer()
-                Text("\(Int(dose.actualActivityMinutes.rounded())) min")
-                    .monospacedDigit().foregroundStyle(.secondary)
-            }
-            HStack {
-                Text("Standard MET-minutes")
-                Spacer()
-                Text("\(Int(dose.totalStandardMETMinutes.rounded()))")
-                    .monospacedDigit().foregroundStyle(.secondary)
-            }
-            if let citation = CitationRegistry.citation(forId: "compendium2024AdultPhysicalActivities") {
-                CitationLink(citation: citation,
-                             context: "MET-minutes are a separate standardized activity-dose estimate; they are not a replacement for cardio guideline credit.",
-                             compact: true)
-            }
-        }
-        .font(.caption)
-        .accessibilityIdentifier("home.week.activityDose")
-    }
-
-    @ViewBuilder
-    private func workoutGroup(title: String, entries: [TodayActivityPresenter.Entry]) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            if entries.isEmpty {
-                Text("No \(title.lowercased()) workouts this week.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    if index > 0 { Divider().padding(.leading, 40) }
-                    HomeWeekWorkoutRow(entry: entry) { onOpenWorkout(entry) }
-                }
-            }
-        }
-        .accessibilityIdentifier("home.week.group.\(title.lowercased())")
-    }
-
 }

@@ -152,6 +152,12 @@ struct RootTabView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             active.writeHeartbeat()
+            // End any Live Activity that outlived its workout (e.g. a finish
+            // while suspended could lose the async end) on every transition.
+            if !active.isActive {
+                WorkoutLiveActivityCoordinator.shared.reconcile(
+                    workoutIsActive: false, hasStrengthSession: false)
+            }
             guard phase == .active else { return }
             model.pushSettingsContext()
             if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {
@@ -197,7 +203,7 @@ struct RootTabView: View {
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
                     AdaptiveProgressRoot()
                 }
-                SwiftUI.Tab(value: .search, role: .search) { ExercisePickerView(action: .use, showsPickAction: false) { _ in } }
+                SwiftUI.Tab("Find", systemImage: "magnifyingglass", value: .search, role: .search) { ExercisePickerView(action: .use, showsPickAction: false) { _ in } }
             }
             .modifier(MinimizeTabBarOnScrollDown())
             .modifier(LiveWorkoutTabAccessory(active: active))

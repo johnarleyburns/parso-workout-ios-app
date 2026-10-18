@@ -149,6 +149,23 @@ public struct HIITProtocol: Sendable, Identifiable {
     public let name: String
     public let plan: IntervalPlan
     public let citationIDs: [String]
+    /// Short setup subtitle (e.g. "3 × 20s all-out / 2 min"), when the protocol has one.
+    public let subtitle: String?
+    /// Equipment cue shown with the protocol (e.g. stationary bicycle).
+    public let modalityCue: String?
+    /// All-out sprint protocols are opt-in: never suggested to beginners.
+    public let isOptInSprint: Bool
+
+    public init(id: String, name: String, plan: IntervalPlan, citationIDs: [String],
+                subtitle: String? = nil, modalityCue: String? = nil, isOptInSprint: Bool = false) {
+        self.id = id
+        self.name = name
+        self.plan = plan
+        self.citationIDs = citationIDs
+        self.subtitle = subtitle
+        self.modalityCue = modalityCue
+        self.isOptInSprint = isOptInSprint
+    }
 
     /// Minutes of cardio credit: work phases count as vigorous (2x moderate
     /// minutes); warm-up, rest/recovery and cool-down count as moderate (1x).
@@ -160,6 +177,11 @@ public struct HIITProtocol: Sendable, Identifiable {
     public static let library: [HIITProtocol] = [
         HIITProtocol(id: "rehit", name: "REHIT", plan: .rehit(),
                      citationIDs: ["metcalfeREHIT2012", "hiitVo2max"]),
+        HIITProtocol(id: "gillen", name: "Gillen", plan: .gillen(),
+                     citationIDs: ["gillenSIT2016"],
+                     subtitle: "3 × 20s all-out / 2 min",
+                     modalityCue: String(localized: "Stationary bicycle", bundle: .module),
+                     isOptInSprint: true),
         HIITProtocol(id: "tabata", name: "Tabata", plan: .tabata(),
                      citationIDs: ["tabata1996", "hiitVo2max"]),
         HIITProtocol(id: "gibala", name: "Gibala", plan: .gibala(),
@@ -183,6 +205,10 @@ public enum CardioSuggestionGenerator {
     public static func requiredMinutesPerDay(input: CardioSuggestionInput,
                                              calendar: Calendar = .current) -> Double {
         let remaining = max(0, input.weeklyTargetMinutes - input.weeklyModerateEquivalentMinutes)
+        // The training week starts on Monday regardless of locale.
+        var calendar = calendar
+        calendar.firstWeekday = 2
+        calendar.minimumDaysInFirstWeek = 4
         let today = calendar.startOfDay(for: input.asOf)
         var daysLeft = 1
         if let week = calendar.dateInterval(of: .weekOfYear, for: input.asOf) {
@@ -196,7 +222,9 @@ public enum CardioSuggestionGenerator {
                                 calendar: Calendar = .current) -> CardioSuggestion? {
         guard !input.excludedTypes.contains(.hiit) else { return nil }
         let blocked = input.excludedProtocolIDs.union(input.skippedProtocolIDs)
-        let candidates = HIITProtocol.library.filter { !blocked.contains($0.id) }
+        let candidates = HIITProtocol.library.filter {
+            !blocked.contains($0.id) && !($0.isOptInSprint && input.experience == .beginner)
+        }
         guard !candidates.isEmpty else { return nil }
 
         let perDay = requiredMinutesPerDay(input: input, calendar: calendar)

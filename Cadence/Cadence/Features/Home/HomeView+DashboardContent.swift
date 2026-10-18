@@ -37,15 +37,11 @@ extension HomeView {
             .accessibilityIdentifier("week.closeMoment")
         }
         todayHeroCard
-        HomeWeekRingsCard(dashboard: dashboard)
-        HomeMyWorkoutsSection(
-            completed: workoutsTodayRows,
-            scheduled: scheduledWorkouts,
-            plannedItems: cachedScheduledItems,
-            onOpenCompleted: openTodayWorkout,
-            onStartScheduled: startScheduledWorkout,
-            onShowMorePlanned: { plannedWorkoutsPresented = true },
-            onShowHistory: { path.append(HomeRoute.history) })
+        HomeWeekRingsCard(
+            dashboard: dashboard,
+            summary: ThisWeekWorkoutsPresenter.summary(
+                planned: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems).count,
+                done: cachedWeekStrengthEntries.count + cachedWeekCardioEntries.count))
     }
 
     private var todayHeroCard: some View {
@@ -89,12 +85,12 @@ extension HomeView {
                           plan: scheduledPlan, history: sessions)?.minutes,
                       exercises: heroLines(scheduledPlan), reason: nil)
         }
-        let inProgress = activeSession.map {
-            TodayHero(kind: .inProgress,
-                      title: $0.title.isEmpty ? String(localized: "Resume your workout") : $0.title,
-                      estimatedMinutes: Int(max(0, $0.duration) / 60),
-                      exercises: heroLines(EditablePlan.from(session: $0)),
-                      reason: nil)
+        let inProgress = activeSession.map { session -> TodayHero in
+            let progress = InProgressWorkoutPresenter.progress(session: session)
+            return TodayHero(kind: .inProgress,
+                             title: session.title.isEmpty ? String(localized: "Resume your workout") : session.title,
+                             exercises: progress.lines,
+                             reason: InProgressWorkoutPresenter.summary(progress))
         }
         let today = Calendar.current.startOfDay(for: Date())
         let completedToday = sessions
@@ -189,8 +185,9 @@ extension HomeView {
             dashboard: dashboard,
             detailSelection: $weeklyDetailSelection,
             muscleMapPanel: $weeklyMuscleMapPanel,
-            strengthEntries: weekActivity.strength,
-            cardioEntries: weekActivity.cardio,
+            plannedItems: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems),
+            inProgressSessions: ThisWeekWorkoutsPresenter.inProgressThisWeek(sessions: sessions),
+            completedEntries: homeWeekHistoryEntries,
             muscleHistory: cachedMuscleHistory,
             muscleHistoryByPerformer: cachedMuscleHistoryByPerformer,
             weeklyVolumeByPerformer: cachedWeeklyVolumeByPerformer,
@@ -199,8 +196,13 @@ extension HomeView {
             totalVolumeKg: weeklyVolumeKg,
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,
+            onOpenPlanned: { path.append(HomeRoute.plannedWorkoutDetail($0)) },
+            onResumeWorkout: resumeWeekSession,
             onStartWorkout: { session in
                 _ = active.startStrength(session)
+            },
+            onPlanWorkout: { plan in
+                workoutEditorPlan = plan
             })
     }
 

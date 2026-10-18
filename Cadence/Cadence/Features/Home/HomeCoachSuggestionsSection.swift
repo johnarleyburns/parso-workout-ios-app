@@ -31,10 +31,9 @@ struct HomeCoachSuggestionsSection: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .purple)
         .overlay(alignment: .topTrailing) {
-            MuscleFocusThumbnail(group: focusGroup)
+            MuscleFocusThumbnail(count: suggestions.count)
                 .padding(Self.illustrationInset)
                 .allowsHitTesting(false)
-                .accessibilityHidden(true)
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.observations.card")

@@ -115,13 +115,14 @@ struct WatchRootView: View {
     }
 
     /// Watch redesign §5 T1–T4 — Today: one hero (resume / today's plan / rest day), two tiles
-    /// (Quick lift · Cardio), settings behind ⚙︎. Double Tap = the hero's primary action.
+    /// (Lift · Cardio), settings behind ⚙︎. Double Tap = the hero's primary action.
     private var launcher: some View {
         NavigationStack {
             // Page 1 is Today; swipe left for This Week (HIG: peer pages in a page-style TabView).
             TabView {
                 launcherList
                 WatchWeekView(summary: watchManager.weekSummary)
+                WatchMyWorkoutsView(plan: watchManager.todayPlan)
             }
             .tabViewStyle(.page)
             .navigationTitle("Cladiron")
@@ -174,10 +175,10 @@ struct WatchRootView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
             // Two tiles in one row: plain Buttons with their own destinations, because a List row
-            // with two NavigationLinks activates as one (tapping Quick lift opened Cardio).
+            // with two NavigationLinks activates as one (tapping Lift opened Cardio).
             HStack(spacing: 6) {
                 Button { startingQuickLift = true } label: {
-                    tile(title: "Quick lift", systemImage: "dumbbell.fill")
+                    tile(title: "Lift", systemImage: "dumbbell.fill")
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier("watch.startStrength")

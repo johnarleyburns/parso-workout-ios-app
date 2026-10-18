@@ -8,12 +8,17 @@ import CadenceFeatures
 /// workouts** ranked by how many of the missing groups they cover (tap → reuse it),
 /// then offers a fresh session built from catalog **suggestions** that fill the gaps.
 struct MuscleGroupQuickStartView: View {
-    let missing: [MuscleGroup]
+    let tiers: HomeDashboardPresenter.GapTiers
+    private var missing: [MuscleGroup] { tiers.all }
     /// Hands a ready-to-start session back to Home to launch (live) + dismiss.
     let onStart: (WorkoutSession) -> Void
+    /// Hands a draft plan back to Home so "Start with these" opens the Workout
+    /// Plan editor instead of launching the session immediately.
+    let onPlan: (EditablePlan) -> Void
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppSettings.self) private var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
     @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive }) private var exclusions: [ExerciseSuggestionExclusion]
@@ -35,11 +40,15 @@ struct MuscleGroupQuickStartView: View {
         NavigationStack {
             List {
                 Section {
-                    Text(missing.isEmpty
-                         ? String(localized: "You've hit every muscle group this week 💪")
-                         : String(localized: "Missing: ") + missing.map(\.displayName).joined(separator: ", "))
-                        .font(.subheadline).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("groupQuick.missing")
+                    if missing.isEmpty {
+                        Text("You've hit every muscle group this week 💪")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .accessibilityIdentifier("groupQuick.missing")
+                    } else {
+                        tierRow(String(localized: "Missing: "), tiers.missing, id: "groupQuick.missing")
+                        tierRow(String(localized: "Below minimum: "), tiers.belowMinimum, id: "groupQuick.belowMinimum")
+                        tierRow(String(localized: "Below recommended: "), tiers.belowRecommended, id: "groupQuick.belowRecommended")
+                    }
                 }
 
                 if !allowedSuggestions.isEmpty {
@@ -93,11 +102,15 @@ struct MuscleGroupQuickStartView: View {
                 ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
                 suggestions = ExerciseLibrary.suggestions(forMissing: missing, limit: max(6, missing.count))
             }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("groupQuick.cancel")
-                }
-            }
+        }
+    }
+
+    @ViewBuilder
+    private func tierRow(_ label: String, _ groups: [MuscleGroup], id: String) -> some View {
+        if !groups.isEmpty {
+            Text(label + groups.map(\.displayName).joined(separator: ", "))
+                .font(.subheadline).foregroundStyle(.secondary)
+                .accessibilityIdentifier(id)
         }
     }
 
@@ -108,11 +121,20 @@ struct MuscleGroupQuickStartView: View {
 
     private func buildFromSuggestions() {
         guard !allowedSuggestions.isEmpty else { return }
-        guard let s = try? WorkoutRepository.createSession(title: String(localized: "Workout"), in: context) else { return }
-        s.plannedExerciseNames = allowedSuggestions.map(\.name)
-        for name in allowedSuggestions { _ = try? WorkoutRepository.findOrCreateExercise(named: name.name, in: context) }
-        try? context.save()
-        startAfterDismiss(s)
+        var plan = EditablePlan.empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes)
+        plan.title = String(localized: "Workout")
+        plan.exercises = allowedSuggestions.map { template in
+            EditableExercise(
+                name: template.name,
+                sets: Array(repeating: EditableSet(targetReps: 10, targetWeight: nil), count: 3),
+                notes: "")
+        }
+        Haptics.selection()
+        dismiss()
+        Task { @MainActor in
+            await Task.yield()
+            onPlan(plan)
+        }
     }
 
     /// The destination is inside a NavigationStack. Starting the root

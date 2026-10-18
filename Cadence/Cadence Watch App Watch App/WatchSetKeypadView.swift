@@ -21,6 +21,7 @@ struct WatchSetKeypadView: View {
     @State private var showingRepsEntry = false
     @State private var holdStartedTalk = false
     @State private var isLogging = false
+    @State private var toastLastTime: String?
 
     init(model: WatchStrengthFlowModel, talk: WatchQuickTalkController) {
         self.bindableModel = model
@@ -32,6 +33,11 @@ struct WatchSetKeypadView: View {
     var body: some View {
         if let card = model.setCardState {
             VStack(spacing: 3) {
+                Text(card.exerciseName)
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
                 // Dots and (with partners) who is lifting share one row, so the card fits under the title.
                 HStack(spacing: 6) {
                     WatchSetDots(dots: card.dots)
@@ -52,14 +58,11 @@ struct WatchSetKeypadView: View {
                 }
                 fields(card)
                 if !isLuminanceReduced {
-                    if let last = card.lastTimeText {
-                        Text(last).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
-                    }
                     if let line = card.planLine { WatchCoachLineView(line: line) }
                     secondaryRow(card)
                     logButton(card)
                     // The teaching hint gives way to the lifter row when partners take the space.
-                    if card.lifterText == nil {
+                    if WatchQuickTalkController.isEnabled, card.lifterText == nil {
                         Text(talk.isPhoneReachable ? "Hold to talk" : "iPhone not nearby — dictate in ⋯")
                             .font(.caption2).foregroundStyle(.secondary)
                             .lineLimit(1).minimumScaleFactor(0.7)
@@ -68,7 +71,25 @@ struct WatchSetKeypadView: View {
                 }
             }
             .padding(.horizontal, 4)
-            .navigationTitle(card.exerciseName)
+            // "Last time" is a transient toast so it never pushes the weight/reps rows into the title.
+            .overlay(alignment: .top) {
+                if let toastLastTime {
+                    Text(toastLastTime)
+                        .font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Capsule().fill(.regularMaterial))
+                        .transition(.opacity)
+                        .accessibilityIdentifier("watchSet.lastTimeToast")
+                }
+            }
+            .task(id: card.lastTimeText) {
+                guard let last = card.lastTimeText else { toastLastTime = nil; return }
+                withAnimation { toastLastTime = last }
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                withAnimation { toastLastTime = nil }
+            }
+            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
@@ -87,7 +108,6 @@ struct WatchSetKeypadView: View {
                 WatchRepsEntryView(value: $bindableModel.currentReps)
             }
             .accessibilityAction(named: Text("Log set")) { log() }
-            .accessibilityAction(named: Text("Talk")) { talk.startListening() }
             .accessibilityAction(named: Text("More")) { showingMore = true }
         }
     }
@@ -152,11 +172,9 @@ struct WatchSetKeypadView: View {
             if card.isWarmup {
                 Label("Warm-up", systemImage: "flame.fill").font(.caption2).foregroundStyle(WatchTone.attention)
             }
-            Button { showingMore = true } label: { Image(systemName: "ellipsis")
-                .frame(minWidth: 44, minHeight: 44)
-            }
+            Button { showingMore = true } label: { Image(systemName: "ellipsis") }
                 .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-                .frame(minWidth: 52, minHeight: 44)
+                .frame(minWidth: 52)
                 .contentShape(Rectangle())
                 .accessibilityLabel(Text("More"))
                 .accessibilityIdentifier("watchSet.more")
@@ -180,6 +198,7 @@ struct WatchSetKeypadView: View {
         .disabled(isLogging)
         .handGestureShortcut(.primaryAction)
         .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
+            guard WatchQuickTalkController.isEnabled else { return }
             guard talk.isPhoneReachable else { showingMore = true; return }
             holdStartedTalk = true
             talk.startListening()
@@ -194,7 +213,6 @@ struct WatchSetKeypadView: View {
             }
         })
         .accessibilityIdentifier("logSetButton")
-        .accessibilityHint(Text("Hold to log by voice"))
     }
 
     private func log() {
@@ -248,7 +266,7 @@ struct WatchSetMoreView: View {
             }
 
             Section {
-                if !talk.isPhoneReachable {
+                if WatchQuickTalkController.isEnabled, !talk.isPhoneReachable {
                     TextField("Dictate a set", text: $dictation)
                         .onSubmit {
                             let text = dictation

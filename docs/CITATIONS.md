@@ -591,6 +591,12 @@ Five-Fold Lower Exercise Volume and Time Commitment.* **PLOS ONE 11(4).**
 
 - **Used by:** `CardioSuggestionGenerator` — the Suggest Cardio "Norwegian 4×4" pick, shown
   with `hiitVo2max` when the user has had no interval work in 14 days.
+- **Also used by:** the **Gillen** preset (`IntervalPlan.gillen()`, 3 × 20 s all-out / 2 min easy,
+  stationary bicycle, 10 min total) in the phone and Watch HIIT libraries and Cardio for You.
+  Small trial of previously sedentary young men, 3 sessions/week for 12 weeks; SIT matched
+  moderate-continuous cycling on VO₂peak and cardiometabolic outcomes. Opt-in only: never
+  suggested to beginners, honours excluded protocols; not a post-lifting or universal
+  prescription and not interchangeable with REHIT.
 - **What it supports:** short interval sessions are a time-efficient route to
   cardiometabolic fitness. The suggestion is always reviewed, never auto-applied.
 

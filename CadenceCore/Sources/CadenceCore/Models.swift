@@ -620,6 +620,14 @@ public final class WorkoutSession {
         }
     }
 
+    /// Overrides the cardio minutes with hand-entered moderate / vigorous minutes
+    /// (HR link failed). Drops the HR-derived split so it can't contradict them.
+    public func setManualCardioMinutes(moderate: Int, vigorous: Int) {
+        intensitySummary = (intensitySummary ?? .manual(moderate: 0, vigorous: 0, sessionDuration: duration))
+            .withManualMinutes(moderate: moderate, vigorous: vigorous)
+        updatedAt = Date()
+    }
+
     /// Stores the session's HR samples and the guideline split they imply.
     /// No samples → both cleared (no invented credit).
     public func recordHeartRate(_ samples: [HRSamplePoint], profile: CardioIntensityProfile) {

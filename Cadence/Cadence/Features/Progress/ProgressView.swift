@@ -73,6 +73,7 @@ struct TrainingProgressView: View {
                     if let session = sessions.first(where: { $0.id == id }) {
                         WorkoutSummaryView(data: .from(session: session),
                                            onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) },
+                                           repairSession: session,
                     onEditCardioMinutes: { mod, vig in
                         session.setManualCardioMinutes(moderate: mod, vigorous: vig)
                         try? modelContext.save()

@@ -84,6 +84,13 @@ extension WatchWorkoutManager {
         relaySchedule.reset()
     }
 
+    /// Persists a physiological reading exactly once (see `WatchHeartRateSampleRecorder`).
+    /// Relay heartbeats/retries never call this.
+    func recordHeartRateSample(_ bpm: Double, sampleEnd: Date?) {
+        guard let start = cardioSessionStart ?? sessionStart else { return }
+        hrRecorder.record(bpm: bpm, sampleEnd: sampleEnd, now: Date(), sessionStart: start)
+    }
+
     // MARK: - Watch display refresh
 
     /// Refreshes the Watch's own heart-rate display every second while the
@@ -129,8 +136,10 @@ extension WatchWorkoutManager {
     /// Updates the displayed value from the builder without relaying it; the
     /// caller sends.
     private func refreshHeartRateFromBuilder() {
-        guard hrSource == .appleWatch, let reading = latestBuilderHeartRate(),
-              relaySchedule.observeReading(endingAt: reading.sampleEnd, uptime: uptimeNow) else { return }
+        guard hrSource == .appleWatch, let reading = latestBuilderHeartRate() else { return }
+        // Runs with the screen off too, so sparse builder callbacks never lose a sample.
+        recordHeartRateSample(reading.bpm, sampleEnd: reading.sampleEnd)
+        guard relaySchedule.observeReading(endingAt: reading.sampleEnd, uptime: uptimeNow) else { return }
         currentBPM = reading.bpm
     }
 

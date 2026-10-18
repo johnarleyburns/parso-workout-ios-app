@@ -37,16 +37,11 @@ extension HomeView {
             .accessibilityIdentifier("week.closeMoment")
         }
         todayHeroCard
-        HomeWeekRingsCard(dashboard: dashboard)
-        HomeMyWorkoutsSection(
-            completed: workoutsTodayRows,
-            scheduled: scheduledWorkouts,
-            plannedItems: cachedScheduledItems,
-            onOpenCompleted: openTodayWorkout,
-            onStartScheduled: startScheduledWorkout,
-            onShowMorePlanned: { path.append(HomeRoute.plannedWorkouts) },
-            onShowPlannedDetail: { path.append(HomeRoute.plannedWorkoutDetail($0)) },
-            onShowHistory: { path.append(HomeRoute.history) })
+        HomeWeekRingsCard(
+            dashboard: dashboard,
+            summary: ThisWeekWorkoutsPresenter.summary(
+                planned: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems).count,
+                done: cachedWeekStrengthEntries.count + cachedWeekCardioEntries.count))
     }
 
     private var todayHeroCard: some View {
@@ -190,8 +185,9 @@ extension HomeView {
             dashboard: dashboard,
             detailSelection: $weeklyDetailSelection,
             muscleMapPanel: $weeklyMuscleMapPanel,
-            strengthEntries: weekActivity.strength,
-            cardioEntries: weekActivity.cardio,
+            plannedItems: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems),
+            inProgressSessions: ThisWeekWorkoutsPresenter.inProgressThisWeek(sessions: sessions),
+            completedEntries: homeWeekHistoryEntries,
             muscleHistory: cachedMuscleHistory,
             muscleHistoryByPerformer: cachedMuscleHistoryByPerformer,
             weeklyVolumeByPerformer: cachedWeeklyVolumeByPerformer,
@@ -200,6 +196,8 @@ extension HomeView {
             totalVolumeKg: weeklyVolumeKg,
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,
+            onOpenPlanned: { path.append(HomeRoute.plannedWorkoutDetail($0)) },
+            onResumeWorkout: resumeWeekSession,
             onStartWorkout: { session in
                 _ = active.startStrength(session)
             })

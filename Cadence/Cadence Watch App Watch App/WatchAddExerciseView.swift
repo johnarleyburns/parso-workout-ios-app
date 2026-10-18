@@ -44,7 +44,8 @@ struct WatchAddExerciseView: View {
                 picker
             }
         }
-        .navigationTitle(showingCustomExercise ? String(localized: "Custom Exercise") : selectedExercise?.name ?? selectedGroup?.displayName ?? String(localized: "Add Exercise"))
+        // No title: it only costs vertical space on the small screen.
+        .navigationTitle("")
         .task(id: newestExercise.first?.updatedAt) {
             catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -162,7 +163,11 @@ struct WatchAddExerciseView: View {
                             WatchHaptics.tap()
                             listChangedAt = Date()
                             selectedGroup = group
-                        } label: { Text(group.displayName) }
+                        } label: {
+                            Text(group.displayName)
+                                .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+                                .contentShape(Rectangle())
+                        }
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("watchAddExercise.category.\(group.rawValue)")
                     }
@@ -298,12 +303,14 @@ struct WatchAddExerciseView: View {
                 .padding()
             }
         } else {
-            VStack(spacing: 10) {
-                Text(exercise.name)
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                quickActions(exercise)
-                    .padding(.horizontal)
+            ScrollView {
+                VStack(spacing: 10) {
+                    WatchMarqueeText(text: exercise.name)
+                        .padding(.top, 12)
+                    quickActions(exercise)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 28)
             }
         }
     }
@@ -347,12 +354,14 @@ struct WatchAddExerciseView: View {
     /// Rows are plain values; the stored exercise is read only when tapped.
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
         Button {
-            guard Date().timeIntervalSince(listChangedAt) > 0.5 else { return }
+            guard Date().timeIntervalSince(listChangedAt) > 0.8 else { return }
             WatchHaptics.tap()
             selectedExercise = ExerciseCatalogSnapshot.exercise(id: exercise.id, in: context)
         } label: {
             Text(exercise.name)
                 .lineLimit(2)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("watchAddExercise.row.\(exercise.name)")
@@ -385,6 +394,7 @@ struct WatchAddExerciseView: View {
                   query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
             searchResults = matches
             isSearching = false
+            listChangedAt = Date() // swapped-in rows must not catch a scrolling finger
         }
     }
 }

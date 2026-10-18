@@ -17,7 +17,7 @@ struct WatchExerciseFilterSection: View {
             .accessibilityIdentifier("watchAddExercise.filter.type")
             Picker("Equipment", selection: $filter.equipment) {
                 Text("Any").tag(Equipment?.none)
-                ForEach(filter.availableEquipment(in: entries)) { item in
+                ForEach(filter.availableEquipment) { item in
                     Text(item.displayName).tag(Equipment?.some(item))
                 }
             }

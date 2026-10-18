@@ -47,6 +47,16 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertTrue(gaps.contains(.biceps))
     }
 
+    func testGapTiersSeparateMissingBelowMinimumAndBelowRecommended() {
+        let rows = HomeDashboardPresenter.volumeRows(
+            setsByGroup: [.chest: 12, .biceps: 2, .triceps: 5], tracked: MuscleGroup.defaultTracked)
+        let tiers = HomeDashboardPresenter.gapTiers(from: rows)
+        XCTAssertTrue(tiers.missing.contains(.abductors))
+        XCTAssertEqual(tiers.belowMinimum, [.biceps])
+        XCTAssertEqual(tiers.belowRecommended, [.triceps])
+        XCTAssertFalse(tiers.all.contains(.chest))
+    }
+
     func testVolumeRowsUseTheSharedWeeklySetZonesAndCitation() throws {
         let below = try dashboard(chestSets: 3, now: Date()).volume.first { $0.group == .chest }
         let building = try dashboard(chestSets: 4, now: Date()).volume.first { $0.group == .chest }

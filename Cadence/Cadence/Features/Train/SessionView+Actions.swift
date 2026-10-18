@@ -310,7 +310,9 @@ extension SessionView {
             avgHR: bpmValues.isEmpty ? nil : bpmValues.reduce(0, +) / Double(bpmValues.count),
             maxHR: bpmValues.max(),
             metadata: CladironHealthBackup.strengthMetadata(for: session),
-            updatedAt: session.updatedAt)
+            updatedAt: session.updatedAt,
+            effortScore: WorkoutEffort.strengthScore(
+                workingSetRPEs: sets.filter { !$0.isWarmup }.compactMap(\.rpe)))
         let report = await model.healthBackup.enqueueAndDrain(.strength(summary))
         if let hkID = report.savedObjectIDs[session.id] {
             session.healthKitWorkoutUUID = hkID

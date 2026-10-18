@@ -58,6 +58,20 @@ extension HomeWeekDashboardSection {
             ForEach(completedEntries) { entry in
                 HomeWeekWorkoutRow(entry: entry) { onOpenWorkout(entry) }
             }
+            Button { Haptics.selection(); onShowHistory() } label: {
+                HStack {
+                    Text("Show more…")
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.caption2.weight(.semibold))
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.tint)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens workout history")
+            .accessibilityIdentifier("home.week.myWorkouts.showMore")
         }
         .accessibilityIdentifier("home.week.group.myworkouts")
     }

@@ -21,6 +21,7 @@ struct HomeWeekDashboardSection: View {
     let onResumeWorkout: (WorkoutSession) -> Void
     let onStartWorkout: (WorkoutSession) -> Void
     let onPlanWorkout: (EditablePlan) -> Void
+    let onShowHistory: () -> Void
     @State var volumeWarningMessage: String?
     /// A fresh identity on every selection lets SwiftUI present the detail sheet
     /// again even when the user taps the same muscle after dismissing it.

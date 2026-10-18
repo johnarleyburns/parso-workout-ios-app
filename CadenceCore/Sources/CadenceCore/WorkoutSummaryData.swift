@@ -183,6 +183,14 @@ public struct WorkoutSummaryData: Equatable, Sendable {
         self.cooldownSec = cooldownSec
     }
 
+    /// Strength only: whether HR observed enough of the session to trust the intensity split.
+    /// `.incomplete` means missing samples (not low intensity) account for the unclassified time.
+    public var hrCoverageState: HeartRateCoverageState {
+        guard kind == .strength else { return .none }
+        return HeartRateCoverageState.evaluate(summary: cardioIntensity,
+                                               sampleCount: cardioIntensity == nil ? 0 : 1)
+    }
+
     // Tuple-typed arrays block Equatable synthesis, so compare element-wise.
     public static func == (lhs: WorkoutSummaryData, rhs: WorkoutSummaryData) -> Bool {
         lhs.kind == rhs.kind

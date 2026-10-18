@@ -606,6 +606,29 @@ public final class WorkoutSession {
         }
     }
 
+    /// Source/coverage metadata for `hrSamplesData` (JSON `HeartRateCoverage`); additive, "" when none.
+    public var hrCoverageData: String = ""
+    /// Prior HR/summary/coverage retained for one "Restore previous measurements" (JSON
+    /// `HeartRateBackup`); replaced by the next repair. "" when none.
+    public var hrBackupData: String = ""
+
+    public var hrCoverage: HeartRateCoverage? {
+        get { Self.decodeJSON(hrCoverageData) }
+        set { hrCoverageData = Self.encodeJSON(newValue) }
+    }
+    public var hrBackup: HeartRateBackup? {
+        get { Self.decodeJSON(hrBackupData) }
+        set { hrBackupData = Self.encodeJSON(newValue) }
+    }
+    private static func decodeJSON<T: Decodable>(_ s: String) -> T? {
+        guard let d = s.data(using: .utf8), !d.isEmpty else { return nil }
+        return try? JSONDecoder().decode(T.self, from: d)
+    }
+    private static func encodeJSON<T: Encodable>(_ v: T?) -> String {
+        guard let v, let d = try? JSONEncoder().encode(v) else { return "" }
+        return String(decoding: d, as: UTF8.self)
+    }
+
     public var intensitySummary: CardioMinuteSummary? {
         get {
             guard let data = intensitySummaryData.data(using: .utf8), !data.isEmpty else { return nil }
@@ -622,8 +645,10 @@ public final class WorkoutSession {
 
     /// Stores the session's HR samples and the guideline split they imply.
     /// No samples → both cleared (no invented credit).
-    public func recordHeartRate(_ samples: [HRSamplePoint], profile: CardioIntensityProfile) {
+    public func recordHeartRate(_ samples: [HRSamplePoint], profile: CardioIntensityProfile,
+                                source: HeartRateSource = .phone, at date: Date = Date()) {
         hrSamplePoints = samples
+        hrCoverage = samples.isEmpty ? nil : HeartRateCoverage.measure(samples, source: source, at: date)
         guard !samples.isEmpty else { intensitySummary = nil; return }
         let duration = max(duration, samples.map(\.t).max() ?? 0)
         intensitySummary = CardioMinuteAccumulator.summarize(duration: duration, samples: samples, profile: profile)

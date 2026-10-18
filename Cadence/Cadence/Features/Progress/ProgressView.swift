@@ -72,7 +72,7 @@ struct TrainingProgressView: View {
                 case .strength(let id):
                     if let session = sessions.first(where: { $0.id == id }) {
                         WorkoutSummaryView(data: .from(session: session),
-                                           onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) })
+                                           onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) }, repairSession: session)
                     } else {
                         MissingWorkoutRouteView()
                     }

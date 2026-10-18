@@ -18,6 +18,7 @@ struct WorkoutSummaryView: View {
     var onSaveHealth: (() async -> Void)? = nil
     /// Strength history only: open the set editor. `nil` ⇒ no Edit button.
     var onEdit: (() -> Void)? = nil
+    var repairSession: WorkoutSession? = nil   // history detail: HR reload from Apple Health
     /// Modal (post-workout) presentation: shows a Done button and wraps itself in
     /// a `NavigationStack`. `nil` ⇒ the view is *pushed* (history), so it relies on
     /// the ambient stack's Back button instead.
@@ -52,9 +53,8 @@ struct WorkoutSummaryView: View {
                         performers: summaryVolumePerformers,
                         performerStates: summaryVolumeStates)
                 }
-                if let intensity = data.cardioIntensity {
-                    cardioIntensitySection(intensity)
-                }
+                if let intensity = data.cardioIntensity { cardioIntensitySection(intensity) }
+                if data.kind == .strength, let repairSession { HeartRateRepairSection(session: repairSession) }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }

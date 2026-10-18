@@ -104,10 +104,15 @@ public enum WatchStrengthSyncApplier {
         if let cooldown = info["cooldown_seconds"] as? Int {
             session.cooldownSeconds = Double(cooldown)
         }
-        let samples = WatchStrengthHeartRate.decode(info[WatchStrengthHeartRate.transportKey])
+        // Unknown (zero) window, e.g. end_session arriving before any set: bound only by sanity checks.
+        let known = max(session.duration, endedAt.timeIntervalSince(session.date))
+        let window: TimeInterval? = known > 0 ? known : nil
+        let samples = WatchStrengthHeartRate.decode(info[WatchStrengthHeartRate.transportKey], duration: window)
         if !samples.isEmpty {
             // Idempotent: a redelivered end_session rewrites the same samples.
-            session.recordHeartRate(samples, profile: intensityProfile ?? .ageEstimated(age: nil))
+            let source: HeartRateSource = (info["hr_source"] as? String).flatMap(HeartRateSource.init(rawValue:)) ?? .watchHealthKit
+            session.recordHeartRate(samples, profile: intensityProfile ?? .ageEstimated(age: nil),
+                                    source: source)
         }
         session.updatedAt = Date()
         try context.save()

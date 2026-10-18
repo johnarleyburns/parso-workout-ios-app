@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Record an accepted TestFlight upload against every GitHub issue closed by the
-# merged PRs contained in this binary.  This deliberately runs *after* the
+# Record an accepted TestFlight upload against every GitHub issue associated with
+# merged PRs contained in this binary. It never closes an issue. This runs *after* the
 # upload command: an archive/export failure must never look delivered.
 set -Eeuo pipefail
 

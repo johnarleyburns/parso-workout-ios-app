@@ -27,7 +27,7 @@ jobs:
     if: >-
       (github.event_name == 'workflow_dispatch' && github.actor == 'johnarleyburns') ||
       (github.event_name == 'issues' && github.event.action == 'opened' && github.event.issue.user.login == 'johnarleyburns') ||
-      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.issue.user.login == 'johnarleyburns' && github.actor == 'johnarleyburns' && (github.event.label.name == 'ai-ready' || github.event.label.name == 'ai-ci-maintenance'))
+      (github.event_name == 'issues' && github.event.action == 'labeled' && github.event.issue.user.login == 'johnarleyburns' && (github.actor == 'johnarleyburns' || github.actor == 'github-actions[bot]') && (github.event.label.name == 'ai-ready' || github.event.label.name == 'ai-ci-maintenance'))
     runs-on: xcode-27
     timeout-minutes: 120
     env:

@@ -203,7 +203,8 @@ extension HomeView {
             },
             onPlanWorkout: { plan in
                 workoutEditorPlan = plan
-            })
+            },
+            onShowHistory: { path.append(HomeRoute.history) })
     }
 
     @ViewBuilder

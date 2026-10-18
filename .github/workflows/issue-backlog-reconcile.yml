@@ -1,0 +1,36 @@
+name: Claude Issue Backlog Reconcile
+run-name: Admit one stranded issue
+
+on:
+  schedule:
+    - cron: '7,37 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: claude-issue-backlog-reconcile
+  cancel-in-progress: false
+
+jobs:
+  admit-one:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.actor == 'johnarleyburns') ||
+      (github.event_name != 'workflow_dispatch' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Admit one safely stranded issue
+        run: |
+          test -n "$GH_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
+          bash .github/scripts/admit-one-stranded-issue.sh

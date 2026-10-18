@@ -70,10 +70,12 @@ struct HomeTodayHeroCard: View {
 
                     if let reason {
                         VStack(alignment: .leading, spacing: 4) {
+                            // Workouts without exercise rows (e.g. cardio) have the
+                            // room, so show the full explanation instead of 2 lines.
                             Text(reason)
-                                .font(.caption)
+                                .font(exercises.isEmpty ? .subheadline : .caption)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(tag == String(localized: "Recovery day") ? nil : 2)
+                                .lineLimit(tag == String(localized: "Recovery day") || exercises.isEmpty ? nil : 2)
                                 .truncationMode(.tail)
                             if !citationIDs.isEmpty {
                                 CoachSourcesLink(

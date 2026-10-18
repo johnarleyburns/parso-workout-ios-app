@@ -362,6 +362,30 @@ public struct CardioMinuteSummary: Codable, Equatable, Sendable {
     public var moderateEquivalentMinutes: Double {
         moderateDuration / 60 + 2 * vigorousDuration / 60
     }
+
+    /// Returns a copy with user-entered moderate / vigorous whole minutes (e.g.
+    /// when the heart-rate link failed). Zone detail is dropped because it no
+    /// longer describes the edited minutes; the method is `activityMetadata`.
+    public func withManualMinutes(moderate: Int, vigorous: Int) -> CardioMinuteSummary {
+        let mod = TimeInterval(max(0, moderate) * 60)
+        let vig = TimeInterval(max(0, vigorous) * 60)
+        let actual = max(actualDuration, mod + vig)
+        return CardioMinuteSummary(
+            actualDuration: actual, classifiedDuration: mod + vig,
+            unclassifiedDuration: max(0, actual - mod - vig), belowModerateDuration: 0,
+            moderateDuration: mod, vigorousDuration: vig, zoneDurations: [:],
+            algorithmVersion: algorithmVersion, method: .activityMetadata, confidence: .high)
+    }
+
+    /// Summary for a session that had no heart-rate classification at all.
+    public static func manual(moderate: Int, vigorous: Int, sessionDuration: TimeInterval)
+        -> CardioMinuteSummary {
+        CardioMinuteSummary(
+            actualDuration: sessionDuration, classifiedDuration: 0, unclassifiedDuration: sessionDuration,
+            belowModerateDuration: 0, moderateDuration: 0, vigorousDuration: 0, zoneDurations: [:],
+            method: .unavailable, confidence: .unavailable
+        ).withManualMinutes(moderate: moderate, vigorous: vigorous)
+    }
 }
 
 /// Integrates the time represented by valid HR samples. Gaps longer than two

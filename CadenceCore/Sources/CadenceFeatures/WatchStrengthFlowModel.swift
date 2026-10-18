@@ -93,6 +93,9 @@ public final class WatchStrengthFlowModel {
     let restDefault: Int
     private let context: ModelContext
     private var exercisePendingAfterRest: Exercise?
+
+    /// Set when "Last Set" logs the final set of the whole plan; the watch asks Done / Keep going.
+    public var allExercisesCompletePrompt = false
     private var planPayload: WatchPlanPayload?
 
     /// In-memory name → Exercise catalog, loaded once per flow so the per-tap
@@ -336,7 +339,9 @@ public final class WatchStrengthFlowModel {
 
     /// Logs the set, rests, then moves on to the next exercise instead of returning here.
     public func logLastSet() -> SetEntry? {
-        logCurrentSet(finishingExercise: true)
+        let set = logCurrentSet(finishingExercise: true)
+        allExercisesCompletePrompt = set != nil && exercisePendingAfterRest == nil
+        return set
     }
 
     /// True when the card is on the final planned working set of its exercise.

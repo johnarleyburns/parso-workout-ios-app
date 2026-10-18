@@ -27,6 +27,9 @@ final class WatchQuickTalkController {
         case failed(code: String)
     }
 
+    /// Push-to-talk / dictation is hardcoded off (issue #212); flip to re-enable later.
+    static let isEnabled = false
+
     private(set) var phase: Phase = .idle
     private(set) var level: Float = 0
     private var recorder: AVAudioRecorder?
@@ -49,6 +52,7 @@ final class WatchQuickTalkController {
     // MARK: - Capture (V1)
 
     func startListening() {
+        guard Self.isEnabled else { return }
         guard case .idle = phase else { return }
         switch AVAudioApplication.shared.recordPermission {
         case .undetermined:
@@ -179,6 +183,7 @@ final class WatchQuickTalkController {
 
     /// Text from the iPhone or from system dictation (C fallback).
     func handle(transcript: String, source: WatchQuickTalkSource) {
+        guard Self.isEnabled else { return }
         guard let model else { return }
         let context = WatchQuickTalkPlanner.Context(
             unit: unit,

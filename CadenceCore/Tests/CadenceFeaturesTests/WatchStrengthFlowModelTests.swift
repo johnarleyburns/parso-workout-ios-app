@@ -711,6 +711,7 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.finishRest()
         XCTAssertEqual(m.stage, .home)
         XCTAssertEqual(m.exerciseList.first?.setCount, 1)
+        XCTAssertTrue(m.allExercisesCompletePrompt)
     }
 
     func testDeleteSetRemovesLocalSetAndEmitsPayload() {

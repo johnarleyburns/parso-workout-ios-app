@@ -26,6 +26,25 @@ final class CardioSuggestionTests: XCTestCase {
         XCTAssertTrue(result.citationIDs.allSatisfy { CitationRegistry.citation(forId: $0) != nil })
     }
 
+    func testGillenLibraryEntryAndGates() throws {
+        let g = try XCTUnwrap(HIITProtocol.find(id: "gillen"))
+        XCTAssertEqual(g.name, "Gillen")
+        XCTAssertEqual(g.subtitle, "3 × 20s all-out / 2 min")
+        XCTAssertNotNil(g.modalityCue)
+        XCTAssertEqual(g.citationIDs, ["gillenSIT2016"])
+        XCTAssertEqual(g.totalMinutes, 10, accuracy: 0.001)
+        let others = Set(HIITProtocol.library.map(\.id)).subtracting(["gillen"])
+        let onlyGillen = CardioSuggestionInput(weeklyModerateEquivalentMinutes: 0, experience: .beginner,
+                                               asOf: input(weekly: 0).asOf, excludedProtocolIDs: others)
+        XCTAssertNil(CardioSuggestionGenerator.generate(input: onlyGillen, calendar: calendar))
+        let adv = CardioSuggestionInput(weeklyModerateEquivalentMinutes: 0, experience: .intermediate,
+                                        asOf: onlyGillen.asOf, excludedProtocolIDs: others)
+        XCTAssertEqual(CardioSuggestionGenerator.generate(input: adv, calendar: calendar)?.protocolID, "gillen")
+        let excluded = CardioSuggestionInput(weeklyModerateEquivalentMinutes: 0, experience: .intermediate,
+                                             asOf: onlyGillen.asOf, excludedProtocolIDs: others.union(["gillen"]))
+        XCTAssertNil(CardioSuggestionGenerator.generate(input: excluded, calendar: calendar))
+    }
+
     func testRequiredMinutesPerDayDividesRemainingByDaysLeftIncludingToday() {
         let perDay = CardioSuggestionGenerator.requiredMinutesPerDay(
             input: input(weekly: 50), calendar: calendar)

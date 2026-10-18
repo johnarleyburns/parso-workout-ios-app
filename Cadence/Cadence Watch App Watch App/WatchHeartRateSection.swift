@@ -63,6 +63,12 @@ struct WatchHeartRateSection: View {
                 if let max = presentation.maximumBPM {
                     row(String(localized: "Max HR"), "\(Int(max.rounded()))")
                 }
+                if let minutes = WatchCardioMinutesSummary.make(hrSamples: hrSamples, maxHR: zoneMaxHR) {
+                    row(String(localized: "Below moderate"), CardioMinutesDisplay.zone(minutes.belowModerateMinutes))
+                    row(String(localized: "Moderate"), CardioMinutesDisplay.zone(minutes.moderateMinutes))
+                    row(String(localized: "Vigorous"), CardioMinutesDisplay.zone(minutes.vigorousMinutes))
+                    row(String(localized: "Cardio minutes"), CardioMinutesDisplay.zone(minutes.totalMinutes))
+                }
             }
         }
     }

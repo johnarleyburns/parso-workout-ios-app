@@ -160,6 +160,13 @@ struct WatchStrengthView: View {
                 .tag(Page.heart)
         }
         .tabViewStyle(.page)
+        .alert("All exercises complete, finish workout?", isPresented: Binding(
+            get: { model.allExercisesCompletePrompt },
+            set: { model.allExercisesCompletePrompt = $0 }
+        )) {
+            Button("Done") { finishWorkout() }
+            Button("Keep going", role: .cancel) {}
+        }
     }
 
     @ViewBuilder
@@ -228,11 +235,21 @@ struct WatchStrengthView: View {
     private func startIfNeeded() {
         guard flowModel == nil else { return }
         WatchHaptics.success()
+        // The Custom start screen's rest choice lives only in this view's init, so a
+        // resumed session (relaunch) would otherwise fall back to the global default.
+        let activeRestKey = "watch.strength.activeRestSeconds"
+        let defaults = UserDefaults.standard
+        if let override = restSecondsOverride {
+            defaults.set(override, forKey: activeRestKey)
+        } else if resumingSession == nil {
+            defaults.removeObject(forKey: activeRestKey)
+        }
+        let storedRest = resumingSession != nil ? defaults.object(forKey: activeRestKey) as? Int : nil
         let m = WatchStrengthFlowModel(
             context: modelContext,
             unit: watchSettings.unit,
             cooldownDefault: watchSettings.cooldownMinutes,
-            restDefault: restSecondsOverride ?? watchSettings.restSeconds,
+            restDefault: restSecondsOverride ?? storedRest ?? watchSettings.restSeconds,
             warmupDefault: watchSettings.warmupMinutes
         )
         m.prRule = watchSettings.prRule

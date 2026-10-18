@@ -136,7 +136,7 @@ public enum WatchExerciseSearchPresenter {
 public struct RepSchemePreset: Equatable, Sendable, Identifiable {
     public let ladder: [Int]
     public var id: String { ladder.map(String.init).joined(separator: "-") }
-    public var title: String { "\(ladder.count) sets · \(id)" }
+    public var title: String { id }
     /// Stable accessibility identifier (legacy ids kept for the original three).
     public var accessibilityID: String {
         switch ladder {

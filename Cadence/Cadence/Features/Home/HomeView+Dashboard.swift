@@ -346,6 +346,7 @@ extension HomeView {
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        Color.clear.frame(height: 0).id("week.top")
                         if surface == .today {
                             dashboardTopContent
                             dashboardBottomContent
@@ -358,6 +359,10 @@ extension HomeView {
                 .background { CadenceGlassBackdrop(tint: .green) }
                 .navigationTitle(surface.title)
                 .navigationBarTitleDisplayMode(.large)
+                .onReceive(NotificationCenter.default.publisher(for: .cadenceShowThisWeek)) { _ in
+                    guard surface == .thisWeek else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo("week.top", anchor: .top) }
+                }
                 .onChange(of: weekScrollTarget) { _, target in
                     guard let target else { return }
                     withAnimation(.easeInOut(duration: 0.25)) {

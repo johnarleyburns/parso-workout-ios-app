@@ -22,7 +22,13 @@ struct WorkoutSummaryView: View {
     /// a `NavigationStack`. `nil` ⇒ the view is *pushed* (history), so it relies on
     /// the ambient stack's Back button instead.
     var onDone: (() -> Void)? = nil
+    /// Strength history only: save hand-entered moderate / vigorous cardio minutes
+    /// (for when the heart-rate connection failed). `nil` ⇒ no editor.
+    var onEditCardioMinutes: ((Int, Int) -> Void)? = nil
 
+    @State private var editingMinutes = false
+    @State private var moderateInput = 0
+    @State private var vigorousInput = 0
     @State private var healthSaved = false
     /// Which exercises are showing their read-only set detail. Per-exercise, so
     /// several can be open at once (field test 2026-08-18 #1).
@@ -54,6 +60,8 @@ struct WorkoutSummaryView: View {
                 }
                 if let intensity = data.cardioIntensity {
                     cardioIntensitySection(intensity)
+                } else if onEditCardioMinutes != nil {
+                    editMinutesButton
                 }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
@@ -86,6 +94,7 @@ struct WorkoutSummaryView: View {
                 }
             }
         }
+        .sheet(isPresented: $editingMinutes) { minutesEditor }
         .safeAreaInset(edge: .bottom) {
             if let onSaveHealth {
                 Button {
@@ -215,11 +224,54 @@ struct WorkoutSummaryView: View {
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)
+            if onEditCardioMinutes != nil { editMinutesButton }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("summary.cardio.intensity")
+    }
+
+    private var editMinutesButton: some View {
+        Button {
+            moderateInput = Int(((data.cardioIntensity?.moderateDuration ?? 0) / 60).rounded())
+            vigorousInput = Int(((data.cardioIntensity?.vigorousDuration ?? 0) / 60).rounded())
+            editingMinutes = true
+        } label: {
+            Label("Edit cardio minutes", systemImage: "pencil")
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("summary.cardio.editMinutes")
+    }
+
+    private var minutesEditor: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Stepper("Moderate: \(moderateInput) min", value: $moderateInput, in: 0...600)
+                        .accessibilityIdentifier("summary.cardio.moderateStepper")
+                    Stepper("Vigorous: \(vigorousInput) min", value: $vigorousInput, in: 0...600)
+                        .accessibilityIdentifier("summary.cardio.vigorousStepper")
+                } footer: {
+                    Text("Use this when the heart-rate connection failed. These minutes replace the automatic ones for this workout and count toward your weekly cardio minutes (vigorous counts double).")
+                }
+            }
+            .navigationTitle("Cardio minutes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { editingMinutes = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onEditCardioMinutes?(moderateInput, vigorousInput)
+                        editingMinutes = false
+                    }
+                    .accessibilityIdentifier("summary.cardio.saveMinutes")
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private func summaryRow(_ title: String, _ value: String) -> some View {

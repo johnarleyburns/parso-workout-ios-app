@@ -76,6 +76,7 @@ struct HomeHistoryDestinationView: View {
     let route: HistorySummaryRoute
     @Binding var path: NavigationPath
 
+    @Environment(\.modelContext) private var context
     @Query(sort: \WorkoutSession.date, order: .reverse)
     private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse)
@@ -87,7 +88,11 @@ struct HomeHistoryDestinationView: View {
             if let session = sessions.first(where: { $0.id == id }) {
                 WorkoutSummaryView(
                     data: .from(session: session),
-                    onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) })
+                    onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) },
+                    onEditCardioMinutes: { mod, vig in
+                        session.setManualCardioMinutes(moderate: mod, vigorous: vig)
+                        try? context.save()
+                    })
             } else {
                 MissingWorkoutRouteView()
             }

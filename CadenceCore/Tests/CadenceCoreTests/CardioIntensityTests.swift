@@ -117,3 +117,17 @@ final class CardioIntensityTests: XCTestCase {
         XCTAssertNotEqual(estimate.method, .unavailable)
     }
 }
+
+import Testing
+@testable import CadenceCore
+
+@Suite struct ManualCardioMinutesTests {
+    @Test func manualMinutesReplaceSplit() {
+        let s = CardioMinuteSummary.manual(moderate: 20, vigorous: 10, sessionDuration: 600)
+        #expect(s.moderateDuration == 1200)
+        #expect(s.vigorousDuration == 600)
+        #expect(s.moderateEquivalentMinutes == 40)
+        #expect(s.actualDuration >= 1800)
+        #expect(s.zoneDurations.isEmpty)
+    }
+}

@@ -77,6 +77,7 @@ struct TrainingProgressView: View {
                     onEditCardioMinutes: { mod, vig in
                         session.setManualCardioMinutes(moderate: mod, vigorous: vig)
                         try? modelContext.save()
+                        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
                     })
                     } else {
                         MissingWorkoutRouteView()

@@ -92,6 +92,7 @@ struct HomeHistoryDestinationView: View {
                     onEditCardioMinutes: { mod, vig in
                         session.setManualCardioMinutes(moderate: mod, vigorous: vig)
                         try? context.save()
+                        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
                     })
             } else {
                 MissingWorkoutRouteView()

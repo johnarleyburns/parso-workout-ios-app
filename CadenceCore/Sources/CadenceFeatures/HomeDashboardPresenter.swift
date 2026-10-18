@@ -265,12 +265,29 @@ public enum HomeDashboardPresenter {
     /// minimum, or building), most behind first. Uncapped so Fill the Gaps
     /// addresses every gap the muscle-group list shows.
     public static func gapGroups(from rows: [HomeDashboardState.VolumeRow]) -> [MuscleGroup] {
-        rows
+        gapRows(from: rows)
             .filter { $0.isTracked && ($0.zone == .belowMinimum || $0.zone == .building) }
             .sorted { $0.normalized == $1.normalized
                 ? MuscleGroup.canonicalIndex($0.group) < MuscleGroup.canonicalIndex($1.group)
                 : $0.normalized < $1.normalized }
             .map(\.group)
+    }
+
+    /// Rows with every default-tracked group present and treated as tracked, so
+    /// Fill the Gaps covers all muscle groups even when the user's tracked set
+    /// omits some (volumeRows drops untracked, untrained groups).
+    static func gapRows(from rows: [HomeDashboardState.VolumeRow]) -> [HomeDashboardState.VolumeRow] {
+        func row(_ g: MuscleGroup, sets: Double) -> HomeDashboardState.VolumeRow {
+            let zone = WeeklySetProgress.zone(for: sets)
+            return .init(group: g, displayName: g.displayName, scientificName: g.scientificName,
+                         sets: sets, zone: zone, rangeText: zone.displayText,
+                         normalized: WeeklySetProgress.normalized(sets), isTracked: true,
+                         citationID: CitationRegistry.iversenTimeEfficient2021.id)
+        }
+        var out = rows.map { $0.isTracked || !$0.group.isTrackedByDefault ? $0 : row($0.group, sets: $0.sets) }
+        let present = Set(rows.map(\.group))
+        for g in MuscleGroup.defaultTracked.subtracting(present) { out.append(row(g, sets: 0)) }
+        return out
     }
 
     /// Gap groups split by severity, in priority order: no sets at all (missing),
@@ -290,7 +307,7 @@ public enum HomeDashboardPresenter {
 
     public static func gapTiers(from rows: [HomeDashboardState.VolumeRow]) -> GapTiers {
         let ordered = Set(gapGroups(from: rows))
-        let byGroup = Dictionary(rows.map { ($0.group, $0) }, uniquingKeysWith: { a, _ in a })
+        let byGroup = Dictionary(gapRows(from: rows).map { ($0.group, $0) }, uniquingKeysWith: { a, _ in a })
         let groups = gapGroups(from: rows).filter(ordered.contains)
         var t = GapTiers()
         for g in groups {

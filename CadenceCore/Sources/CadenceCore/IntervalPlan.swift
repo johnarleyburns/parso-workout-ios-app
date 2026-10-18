@@ -164,6 +164,15 @@ public struct IntervalPlan: Codable, Equatable, Sendable {
                 cooldown: cooldown)
     }
 
+    /// Gillen (2016) SIT: 2 min warm-up → 3 × (20s all-out / 2 min easy recovery) → 3 min cool-down (10 min).
+    public static func gillen(warmup: TimeInterval = 120, rounds: Int = 3,
+                              work: TimeInterval = 20, recover: TimeInterval = 120,
+                              cooldown: TimeInterval = 180) -> IntervalPlan {
+        rounded(name: "Gillen", warmup: warmup, rounds: rounds, work: work,
+                workLabel: { String(localized: "Sprint · \($0)/\(rounds)", bundle: .module) }, rest: recover, restLabel: String(localized: "Recover", bundle: .module),
+                cooldown: cooldown)
+    }
+
     /// 10-20-30: sets × ( reps × (30s easy / 20s moderate / 10s sprint) ) with a
     /// 2-minute recovery between sets.
     public static func tenTwentyThirty(warmup: TimeInterval = 300, sets: Int = 3,

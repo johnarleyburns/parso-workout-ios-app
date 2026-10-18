@@ -11,40 +11,56 @@ struct WatchWeightEntryView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var plate: Double = 2.5
     @State private var directEntry = false
+    @State private var plateStepPicker = false
 
     private var increment: WeightIncrement { WeightIncrement(unit: unit) }
     private var range: ClosedRange<Double> { increment.range }
 
+    /// `value` is already in display units (lb/kg), so it is formatted directly.
+    private var valueText: String { plateText(value, decimals: 1) }
+
     var body: some View {
-        List {
-            Section {
+        // Three equal vertical bands so everything fits without scrolling.
+        GeometryReader { geo in
+            let band = geo.size.height / 3
+            VStack(spacing: 4) {
                 Button { directEntry = true } label: {
-                    VStack(spacing: 2) {
-                        Text(verbatim: "\(Format.weightValue(value, unit: unit, decimals: 1)) \(unit.abbreviation)")
-                            .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                            .monospacedDigit()
-                            .lineLimit(1).minimumScaleFactor(0.55)
-                        Text("Tap again to type exact weight")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 62)
+                    Text(verbatim: valueText)
+                        .font(.system(size: 60, design: .rounded).weight(.bold))
+                        .monospacedDigit()
+                        .lineLimit(1).minimumScaleFactor(0.2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .buttonStyle(.plain)
+                .frame(height: band - 4)
+                .accessibilityLabel("Weight \(valueText) \(unit.abbreviation)")
+                .accessibilityHint("Opens keypad")
                 .accessibilityIdentifier("watchWeight.entry.value")
-            }
-            Section("Plate math") {
-                Picker("Plate step", selection: $plate) {
-                    ForEach(increment.plateOptions, id: \.self) { option in
-                        Text("\(plateText(option)) \(unit.abbreviation)").tag(option)
-                    }
+
+                Button { plateStepPicker = true } label: {
+                    Text("±\(plateText(plate)) \(unit.abbreviation)").lineLimit(1).frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                // Separate rows: two buttons in one List row can both fire on a single tap.
-                Button { adjust(-plate) } label: { Label("Subtract \(plateText(plate)) \(unit.abbreviation)", systemImage: "minus").lineLimit(1) }
+                .frame(height: band - 4)
+                .accessibilityLabel("Plate step \(plateText(plate)) \(unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.plateStep")
+
+                HStack(spacing: 6) {
+                    Button { adjust(-plate) } label: {
+                        Text("-").font(.title2.weight(.bold)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .accessibilityLabel("Subtract \(plateText(plate)) \(unit.abbreviation)")
                     .accessibilityIdentifier("watchWeight.minusPlate")
-                Button { adjust(plate) } label: { Label("Add \(plateText(plate)) \(unit.abbreviation)", systemImage: "plus").lineLimit(1) }
+                    Button { adjust(plate) } label: {
+                        Text("+").font(.title2.weight(.bold)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .accessibilityLabel("Add \(plateText(plate)) \(unit.abbreviation)")
                     .accessibilityIdentifier("watchWeight.plusPlate")
+                }
+                .frame(height: band - 4)
             }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
+        .padding(.horizontal, 4)
         .navigationTitle("Weight")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
@@ -52,8 +68,23 @@ struct WatchWeightEntryView: View {
             plate = increment.plateOptions.filter { $0 >= (unit == .pounds ? 5 : 2.5) }.min()
                 ?? increment.plateOptions.min() ?? 2.5
         }
+        .sheet(isPresented: $plateStepPicker) {
+            List(increment.plateOptions, id: \.self) { option in
+                Button {
+                    plate = option
+                    plateStepPicker = false
+                } label: {
+                    HStack {
+                        Text("\(plateText(option)) \(unit.abbreviation)")
+                        Spacer()
+                        if option == plate { Image(systemName: "checkmark") }
+                    }
+                }
+            }
+            .navigationTitle("Plate step")
+        }
         .sheet(isPresented: $directEntry) {
-            WatchNumericEntryView(title: "Enter weight", initialValue: Format.weightValue(value, unit: unit, decimals: 1), allowsDecimal: true) { text in
+            WatchNumericEntryView(title: "Enter weight", initialValue: valueText, allowsDecimal: true) { text in
                 if let number = Double(text), number.isFinite {
                     value = min(range.upperBound, max(range.lowerBound, number))
                 }
@@ -66,8 +97,8 @@ struct WatchWeightEntryView: View {
         value = min(range.upperBound, max(range.lowerBound, value + amount))
     }
 
-    private func plateText(_ value: Double) -> String {
-        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
+    private func plateText(_ value: Double, decimals: Int = 1) -> String {
+        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.\(decimals)f", value)
     }
 }
 

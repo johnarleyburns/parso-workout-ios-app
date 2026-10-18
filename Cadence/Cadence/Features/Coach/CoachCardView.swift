@@ -159,6 +159,7 @@ struct CoachSourcesLink: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .navigationLinkIndicatorVisibility(.hidden)
             .accessibilityIdentifier(identifier)
             .accessibilityLabel("The science, \(citations.count) sources")
         }

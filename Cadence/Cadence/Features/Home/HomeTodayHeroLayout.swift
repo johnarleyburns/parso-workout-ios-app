@@ -17,8 +17,12 @@ struct TodayHeroViewport<Content: View>: View {
 
     var body: some View {
         GeometryReader { proxy in
+            // The large nav title collapsing while scrolling shrinks the top safe
+            // area and grows proxy.size by the same amount; add the insets back
+            // so the hero height stays constant during scroll.
+            let stableHeight = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
             content().environment(\.todayHeroHeight,
-                                  CGFloat(TodayHeroLayout.height(viewportHeight: Double(proxy.size.height))))
+                                  CGFloat(TodayHeroLayout.height(viewportHeight: Double(stableHeight))))
         }
     }
 }

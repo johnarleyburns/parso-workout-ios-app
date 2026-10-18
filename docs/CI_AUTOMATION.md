@@ -2,7 +2,7 @@
 
 Code is the source of truth; this is the operator's map.
 
-Generated PRs open ready for review and immediately request auto-merge. Required checks and branch protection still determine merge eligibility. A refused auto-merge request leaves the PR open for reconciliation; it never falls back to an immediate merge.
+Generated PRs open ready for review and immediately request auto-merge. Required checks and branch protection still determine merge eligibility. A refused auto-merge request leaves the PR open for reconciliation; it never falls back to an immediate merge. Generated PRs never contain GitHub closing keywords: merge and TestFlight delivery leave the originating issue open for human QA and closure.
 
 Maintenance admits at most one PR action per sweep, oldest PR first, and defers whenever any macOS workflow is queued or running. Release completion and a five-minute fallback schedule resume the next batch. Behind branches receive one normal merge from main before stale cancelled or failed validation is retried. Active validations are never refreshed. Issue generation stays paused during backlog recovery.
 
@@ -16,6 +16,7 @@ An owner-reviewed GitHub orphan can be named in `CLAUDE_QUARANTINED_WORKFLOW_RUN
 | Diagnosis + repair (one PR per run) | `pr-conflict-repair.yml` + `pr-conflict-repair.sh` |
 | Readiness, branch freshness, auto-merge, backlog, escalation | `pr-maintenance.yml` + `pr-maintenance.sh` (Linux, trusted `main` checkout, no Claude, no PR code) |
 | Post-merge build/TestFlight + reporting | `ios.yml` (release secrets only here) |
+| Failed main archive triage and one bounded code repair | `release-repair.yml` + `release-repair.sh` |
 
 ## State machine (`decide()` in pr-maintenance.sh)
 stopped → nothing · dirty/failed → repair (≤3 persisted attempts) else exhausted+escalate · action_required → escalate (never "passed") · cancelled → re-run · missing → close/reopen to re-emit `pull_request` (≤2) · pending → wait · success+behind → `update-branch` (GitHub-side normal merge, no force) · success+unknown → wait · success otherwise → ready + auto-merge · already armed → waiting-merge.

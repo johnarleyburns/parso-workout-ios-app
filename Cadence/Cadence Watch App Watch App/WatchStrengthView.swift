@@ -81,10 +81,13 @@ struct WatchStrengthView: View {
                 if watchManager.isActive, watchManager.phoneRequestID == nil {
                     watchManager.stopWorkout(save: false)
                 }
+            case .home where { if case .warmup = old { return true } else { return false } }():
+                // Warm-up finished or skipped → straight into the first planned set.
+                if let model = flowModel { startFirstPlannedSet(model) }
             case .home:
                 // Last set of an exercise (or nothing planned yet) → the Plan page.
                 if old != .home { page = .plan }
-            case .keypad, .rest, .addExercise, .partners:
+            case .keypad, .rest, .addExercise, .partners, .warmup:
                 page = .main
             default:
                 break
@@ -119,6 +122,8 @@ struct WatchStrengthView: View {
     @ViewBuilder
     private func content(_ model: WatchStrengthFlowModel) -> some View {
         switch model.stage {
+        case .warmup:
+            WatchWarmUpView(model: model)
         case .cooldown:
             WatchCoolDownView(model: model)
         case .summary:
@@ -220,6 +225,13 @@ struct WatchStrengthView: View {
 
     // MARK: Start
 
+    private func startFirstPlannedSet(_ m: WatchStrengthFlowModel) {
+        if let first = m.exerciseList.first?.exercise, resumingSession == nil, !plannedExerciseNames.isEmpty {
+            m.startLogSet(for: first)
+            page = .main
+        }
+    }
+
     private func startIfNeeded() {
         guard flowModel == nil else { return }
         WatchHaptics.success()
@@ -237,7 +249,8 @@ struct WatchStrengthView: View {
             context: modelContext,
             unit: watchSettings.unit,
             cooldownDefault: watchSettings.cooldownMinutes,
-            restDefault: restSecondsOverride ?? storedRest ?? watchSettings.restSeconds
+            restDefault: restSecondsOverride ?? storedRest ?? watchSettings.restSeconds,
+            warmupDefault: watchSettings.warmupMinutes
         )
         m.prRule = watchSettings.prRule
         m.prFormula = watchSettings.formula
@@ -254,9 +267,10 @@ struct WatchStrengthView: View {
         flowModel = m
         talk.bind(model: m, unit: watchSettings.unit)
         page = m.exerciseList.isEmpty ? .plan : .main
-        if let first = m.exerciseList.first?.exercise, resumingSession == nil, !plannedExerciseNames.isEmpty {
-            m.startLogSet(for: first)
+        if resumingSession == nil, m.beginWarmup() {
             page = .main
+        } else {
+            startFirstPlannedSet(m)
         }
         CadenceWatchWidgetStore.save(CadenceWatchWidgetState(workoutTitle: title))
         WidgetCenter.shared.reloadTimelines(ofKind: "CadenceWatchSmartStackWidget")

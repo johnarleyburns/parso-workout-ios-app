@@ -28,6 +28,8 @@ gh() {
 number=$(make_pr example-branch)
 [[ "$number" == 123 ]]
 [[ $(wc -l < "$trace") -eq 3 ]]
+! grep -Eqi '(^|[^[:alpha:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):? #[0-9]+' "$trace"
+grep -q 'human verification is required' "$trace"
 ! grep -q -- '--draft' "$trace"
 grep -q 'enablePullRequestAutoMerge' "$trace"
 # A failed auto-merge request must retain the created PR for reconciliation.

@@ -27,6 +27,25 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         try! WorkoutRepository.findOrCreateExercise(named: name, in: context)
     }
 
+    // MARK: - Warm-up
+
+    func testWarmup_offWhenZeroMinutes() {
+        let m = makeModel()
+        m.start(createSession: true)
+        XCTAssertFalse(m.beginWarmup())
+        XCTAssertEqual(m.stage, .home)
+    }
+
+    func testWarmup_beginAndSkipRecordsTimeAndGoesHome() {
+        let m = WatchStrengthFlowModel(context: context, cooldownDefault: 5, restDefault: 90, warmupDefault: 5)
+        m.start(createSession: true)
+        XCTAssertTrue(m.beginWarmup())
+        XCTAssertEqual(m.stage, .warmup(300))
+        m.endWarmup()
+        XCTAssertEqual(m.stage, .home)
+        XCTAssertNotNil(m.session)
+    }
+
     // MARK: - Stage transitions
 
     func testStart_showsHome() {

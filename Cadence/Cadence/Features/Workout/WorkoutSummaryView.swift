@@ -11,7 +11,7 @@ import CadenceFeatures
 /// (`Format.*`, `CardioMath.formatPace`); the value type stays formatting-free.
 struct WorkoutSummaryView: View {
     let data: WorkoutSummaryData
-    @Environment(AppSettings.self) private var settings
+    @Environment(AppSettings.self) var settings
     @Environment(\.dismiss) private var dismiss
     /// Strength only: persist a summary `HKWorkout`. `nil` ⇒ no button (a recorded
     /// cardio workout is already saved to Health when it ends).
@@ -23,7 +23,13 @@ struct WorkoutSummaryView: View {
     /// a `NavigationStack`. `nil` ⇒ the view is *pushed* (history), so it relies on
     /// the ambient stack's Back button instead.
     var onDone: (() -> Void)? = nil
+    /// Strength history only: save hand-entered moderate / vigorous cardio minutes
+    /// (for when the heart-rate connection failed). `nil` ⇒ no editor.
+    var onEditCardioMinutes: ((Int, Int) -> Void)? = nil
 
+    @State private var editingMinutes = false
+    @State private var moderateInput = 0
+    @State private var vigorousInput = 0
     @State private var healthSaved = false
     /// Which exercises are showing their read-only set detail. Per-exercise, so
     /// several can be open at once (field test 2026-08-18 #1).
@@ -53,7 +59,11 @@ struct WorkoutSummaryView: View {
                         performers: summaryVolumePerformers,
                         performerStates: summaryVolumeStates)
                 }
-                if let intensity = data.cardioIntensity { cardioIntensitySection(intensity) }
+                if let intensity = data.cardioIntensity {
+                    cardioIntensitySection(intensity)
+                } else if onEditCardioMinutes != nil {
+                    editMinutesButton
+                }
                 if data.kind == .strength, let repairSession { HeartRateRepairSection(session: repairSession) }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
@@ -86,6 +96,7 @@ struct WorkoutSummaryView: View {
                 }
             }
         }
+        .sheet(isPresented: $editingMinutes) { minutesEditor }
         .safeAreaInset(edge: .bottom) {
             if let onSaveHealth {
                 Button {
@@ -215,11 +226,54 @@ struct WorkoutSummaryView: View {
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)
+            if onEditCardioMinutes != nil { editMinutesButton }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityIdentifier("summary.cardio.intensity")
+    }
+
+    private var editMinutesButton: some View {
+        Button {
+            moderateInput = Int(((data.cardioIntensity?.moderateDuration ?? 0) / 60).rounded())
+            vigorousInput = Int(((data.cardioIntensity?.vigorousDuration ?? 0) / 60).rounded())
+            editingMinutes = true
+        } label: {
+            Label("Edit cardio minutes", systemImage: "pencil")
+        }
+        .buttonStyle(.bordered)
+        .accessibilityIdentifier("summary.cardio.editMinutes")
+    }
+
+    private var minutesEditor: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Stepper("Moderate: \(moderateInput) min", value: $moderateInput, in: 0...600)
+                        .accessibilityIdentifier("summary.cardio.moderateStepper")
+                    Stepper("Vigorous: \(vigorousInput) min", value: $vigorousInput, in: 0...600)
+                        .accessibilityIdentifier("summary.cardio.vigorousStepper")
+                } footer: {
+                    Text("Use this when the heart-rate connection failed. These minutes replace the automatic ones for this workout and count toward your weekly cardio minutes (vigorous counts double).")
+                }
+            }
+            .navigationTitle("Cardio minutes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { editingMinutes = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        onEditCardioMinutes?(moderateInput, vigorousInput)
+                        editingMinutes = false
+                    }
+                    .accessibilityIdentifier("summary.cardio.saveMinutes")
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private func summaryRow(_ title: String, _ value: String) -> some View {
@@ -274,114 +328,6 @@ struct WorkoutSummaryView: View {
             Text("Tap an exercise to see every set. Use Edit to change them.")
                 .font(.caption).foregroundStyle(.secondary)
         }
-    }
-
-    // MARK: Strength warm-up / cool-down (feedback batch 6)
-
-    /// Actual warm-up / cool-down time consumed for a strength session — e.g.
-    /// skipping a 10:00 cool-down at 3:00 shows 3:00.
-    private var warmCoolSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Warm-up & Cool-down").font(.headline)
-            VStack(alignment: .leading, spacing: 6) {
-                if data.warmupSec > 0 {
-                    intervalRow(String(localized: "Warm-up"), Format.duration(data.warmupSec), id: "summary.strength.warmup")
-                }
-                if data.cooldownSec > 0 {
-                    intervalRow(String(localized: "Cool-down"), Format.duration(data.cooldownSec), id: "summary.strength.cooldown")
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
-        }
-    }
-
-    // MARK: Interval (HIIT/boxing) detail
-
-    /// Protocol structure for an interval workout (feedback batch 4 / roadmap P5):
-    /// rounds, work/rest, warm-up/cool-down, and how many rounds were completed.
-    private func intervalSection(_ s: IntervalSummary) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Intervals").font(.headline)
-            VStack(alignment: .leading, spacing: 6) {
-                intervalRow(String(localized: "Protocol"), s.protocolName, id: "summary.interval.protocol")
-                intervalRow(String(localized: "Rounds"),
-                            "completed \(s.completedRounds)/\(s.rounds)",
-                            id: "summary.interval.rounds")
-                intervalRow(String(localized: "Work / Rest"),
-                            "\(Format.duration(s.workSeconds)) / \(Format.duration(s.restSeconds))",
-                            id: "summary.interval.workRest")
-                if s.warmupSeconds > 0 {
-                    intervalRow(String(localized: "Warm-up"), Format.duration(s.warmupSeconds),
-                                id: "summary.interval.warmup")
-                }
-                if s.cooldownSeconds > 0 {
-                    intervalRow(String(localized: "Cool-down"), Format.duration(s.cooldownSeconds),
-                                id: "summary.interval.cooldown")
-                }
-            }
-            .padding(12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
-        }
-    }
-
-    private func intervalRow(_ title: String, _ value: String, id: String) -> some View {
-        HStack {
-            Text(title).font(.subheadline).foregroundStyle(.secondary)
-            Spacer()
-            Text(value).font(.subheadline.weight(.semibold)).monospacedDigit()
-                .accessibilityIdentifier(id)
-        }
-    }
-
-    // MARK: Cardio HR chart + route
-
-    private var hrChart: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Heart Rate").font(.headline)
-            HRZoneChart(samples: data.hr.map { ($0.t, $0.bpm) },
-                        maxHR: CardioIntensityProfile.resolved(
-                            userEnteredMaximumHR: settings.cardioMaximumHROverride,
-                            age: settings.userAge).maximumHR ?? CardioMath.defaultMaxHR(age: settings.userAge))
-            .frame(height: 180)
-            .accessibilityIdentifier("summary.hrChart")
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Heart rate over time")
-            .accessibilityValue(hrChartAXSummary(data.hr.map(\.bpm)))
-        }
-    }
-
-    /// Spoken summary of an HR series for VoiceOver (the chart itself is opaque).
-    private func hrChartAXSummary(_ bpms: [Double]) -> String {
-        WorkoutSummaryPresenter.hrChartAXSummary(bpms)
-    }
-
-    private var routeMap: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Route").font(.headline)
-            Map(initialPosition: .region(routeRegion)) {
-                MapPolyline(coordinates: data.route.map {
-                    CLLocationCoordinate2D(latitude: $0.lat, longitude: $0.lon)
-                })
-                .stroke(.blue, lineWidth: 4)
-            }
-            .frame(height: 220)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-            .accessibilityIdentifier("summary.map")
-        }
-    }
-
-    private var routeRegion: MKCoordinateRegion {
-        let lats = data.route.map(\.lat), lons = data.route.map(\.lon)
-        let minLat = lats.min() ?? 0, maxLat = lats.max() ?? 0
-        let minLon = lons.min() ?? 0, maxLon = lons.max() ?? 0
-        let center = CLLocationCoordinate2D(latitude: (minLat + maxLat) / 2,
-                                            longitude: (minLon + maxLon) / 2)
-        let span = MKCoordinateSpan(latitudeDelta: max(0.005, (maxLat - minLat) * 1.4),
-                                    longitudeDelta: max(0.005, (maxLon - minLon) * 1.4))
-        return MKCoordinateRegion(center: center, span: span)
     }
 }
 

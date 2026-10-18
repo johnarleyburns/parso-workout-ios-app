@@ -3,7 +3,12 @@ run-name: Admit one stranded issue
 
 on:
   schedule:
-    - cron: '7,37 * * * *'
+    # Recovery backstop. Minutes are deliberately offset from :00, when GitHub
+    # may delay scheduled events under load.
+    - cron: '7,22,37,52 * * * *'
+  workflow_run:
+    workflows: ["PR Swift Validation", "iOS Build & TestFlight"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:

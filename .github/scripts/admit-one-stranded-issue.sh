@@ -1,33 +1,24 @@
 #!/usr/bin/env bash
 # Admit exactly one owner-authored issue that has no implementation PR. This is
-# intentionally a slow, organisation-capacity-aware backstop: it repairs missed
+# intentionally a slow, repository-local-capacity-aware backstop: it repairs missed
 # issue events without recreating a bulk macOS queue. A label is bookkeeping,
 # not a trigger; GitHub suppresses workflow events created by GITHUB_TOKEN.
 set -euo pipefail
 
 repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
-owner='johnarleyburns'
-repos=(
-  johnarleyburns/parso-workout-ios-app
-  johnarleyburns/parso-tonearm
-  johnarleyburns/parso-voxglass
-)
-
 macos_work_pending() {
   jq -e 'any(.workflow_runs[]?;
     (.path // "" | test("/(ios|pr-validation|pr-conflict-repair|issue-to-pr|release-repair)\\.yml$")))' >/dev/null
 }
 
 macos_capacity_available() {
-  local candidate status runs
-  for candidate in "${repos[@]}"; do
-    for status in in_progress queued pending waiting requested; do
-      runs=$(gh api "repos/${candidate}/actions/runs?status=${status}&per_page=100")
-      if macos_work_pending <<<"$runs"; then
-        echo "macOS work is ${status} in ${candidate}; no stranded issue admitted"
-        return 1
-      fi
-    done
+  local status runs
+  for status in in_progress queued pending waiting requested; do
+    runs=$(gh api "repos/${repo}/actions/runs?status=${status}&per_page=100")
+    if macos_work_pending <<<"$runs"; then
+      echo "macOS work is ${status} in ${repo}; no stranded issue admitted"
+      return 1
+    fi
   done
 }
 
@@ -55,9 +46,9 @@ for issue in $issues; do
   if grep -Fq "<!-- claude-issue:${issue} -->" <<<"$pr_bodies"; then
     continue
   fi
-  # Recheck immediately before admission. The staggered schedules minimise a
-  # cross-repository race; this check prevents a second macOS job after a run
-  # was queued while this reconciliation job was listing issues.
+  # Recheck immediately before admission. This repository-local check prevents
+  # a second macOS job after a run was queued while listing issues. Other
+  # repositories reconcile independently and must never block this repository.
   macos_capacity_available || exit 0
   gh issue edit "$issue" --repo "$repo" --add-label ai-ready
   if ! gh workflow run issue-to-pr.yml --repo "$repo" --ref main -f "issue_number=${issue}"; then

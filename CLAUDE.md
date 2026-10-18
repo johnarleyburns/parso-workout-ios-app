@@ -147,6 +147,8 @@ not have.
 ## Workflow rules for Claude Code
 - **We do NOT use `current_status.md` to track status** (the file has been removed). Do not create or update it; derive state from the code, git history, and this file.
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
+- **Test the requested behavior before and after implementation:** for every non-UI issue, first add or strengthen a focused automated test that fails for the reported defect, then make that same test pass with the implementation. If a behavior cannot be covered automatically, explain why in the PR and add the narrowest reliable alternative verification.
+- **Perform a completion audit before committing a PR:** re-read the entire issue and compare every requirement and acceptance criterion against the actual diff and tests. Fix every gap found, then repeat the audit until no gaps remain. Do not commit, open, or update a PR while a known issue requirement is unaddressed.
 - **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.
 - Scope investigations narrowly; ask before large refactors or new dependencies (this repo aims for zero proprietary deps — see NFR-6).
 - When a design decision changes, update this file so it stays the source of truth.

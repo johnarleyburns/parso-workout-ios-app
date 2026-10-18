@@ -93,7 +93,10 @@ enum SuggestedExerciseRequestFactory {
         let existingIDs = Set(candidates.filter {
             normalizedExisting.contains($0.name.localizedLowercase)
         }.map(\.id))
-        let facts = TrainingFacts.make(sessions: history,
+        // Weekly volume counts the in-progress workout too, so suggestions see
+        // the full current week; only recent-repeat exclusion skips it.
+        let weekSessions = allSessions.filter { $0.countsAsStrengthHistory }
+        let facts = TrainingFacts.make(sessions: weekSessions,
                                        goal: settings.trainingGoal,
                                        experience: settings.experienceLevel)
         let historyData = historyWorkingSetCount > 0

@@ -116,6 +116,7 @@ Every screen that surfaces coach output MUST display tappable citations:
 
 - Use `CitationRegistry.citation(forId:)` to resolve string IDs to `Citation` objects.
 - Render every citation with `CitationLink` (standard or `compact: true` for "The science >").
+- Multiple citations on the same section MUST sit behind ONE "The Science" link to a multi-citation page (`CoachSourcesLink`), never several "The Science" links in a row.
 - Never display raw citation IDs (e.g. `"parejaBlancoRecovery2020"`) to the user.
 - If a new coaching output adds a `citationIds` field, it MUST be resolved and rendered in the UI.
 - Citation tests must fail when a user-visible science claim references a missing ID.

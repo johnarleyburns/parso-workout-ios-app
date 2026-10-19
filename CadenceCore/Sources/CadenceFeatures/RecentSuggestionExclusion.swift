@@ -56,4 +56,26 @@ public enum RecentSuggestionExclusion {
         return candidateIDs(from: workouts, candidates: candidates)
     }
 
+    /// Working-set count of the most recently completed exercise in the most
+    /// recently completed workout (warmups are never in the snapshot names).
+    /// `nil` when there is no usable history, so the generator uses its default.
+    public static func mostRecentExerciseSetCount(from workouts: [RecentCompletedWorkoutSnapshot]) -> Int? {
+        guard let latest = workouts.max(by: { $0.completionSortDate < $1.completionSortDate }),
+              let last = latest.exerciseNames.last else { return nil }
+        let count = latest.exerciseNames.filter { $0 == last }.count
+        return count > 0 ? count : nil
+    }
+
+    @MainActor
+    public static func mostRecentExerciseSetCount(sessions: [WorkoutSession],
+                                                  excludingSessionID: UUID? = nil) -> Int? {
+        let workouts = sessions.filter {
+            $0.id != excludingSessionID && $0.countsAsStrengthHistory && $0.completedOwnerWorkingSetCount > 0
+        }.map { session in
+            RecentCompletedWorkoutSnapshot(startedAt: session.date, endedAt: session.endedAt,
+                exerciseNames: session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }
+                    .compactMap { $0.exercise?.name })
+        }
+        return mostRecentExerciseSetCount(from: workouts)
+    }
 }

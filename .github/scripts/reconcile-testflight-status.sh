@@ -42,7 +42,13 @@ reconcile_issue() {
   comments="$tmp/comments-$issue"
   gh api --paginate "repos/$repo/issues/$issue/comments" --jq '.[].body' > "$comments" || return 0
   delivery=$(rg '<!-- testflight-delivery:[^:]+:[^:]+:[^ ]+ -->' "$comments" | tail -1 || true)
-  [[ -n "$delivery" ]] || return 0
+  if [[ -z "$delivery" ]]; then
+    # Historical upload-stage labels have no exact build to verify.  Do not
+    # preserve a claim of QA readiness that App Store Connect cannot support.
+    gh issue edit "$issue" --repo "$repo" --remove-label ready-for-qa --remove-label testflight-uploaded --remove-label testflight-processing --remove-label testflight-distribution-confirmed --remove-label testflight-access-unverified >/dev/null
+    echo "Reconciled #$issue: no traceable TestFlight build"
+    return 0
+  fi
   marker=$delivery
   bundle=$(sed -E 's/^<!-- testflight-delivery:([^:]+):.*$/\1/' <<<"$marker")
   version=$(sed -E 's/^<!-- testflight-delivery:[^:]+:([^:]+):.*$/\1/' <<<"$marker")

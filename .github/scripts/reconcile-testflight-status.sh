@@ -29,7 +29,7 @@ ensure_label() {
 ensure_label testflight-uploaded '1D76DB' 'TestFlight upload was accepted; Apple processing is being reconciled.'
 ensure_label testflight-processing 'FBCA04' 'Apple is still processing the accepted TestFlight build.'
 ensure_label testflight-distribution-confirmed '5319E7' 'App Store Connect reports at least one assigned tester group.'
-ensure_label testflight-access-unverified 'BFD4F2' 'Tester-group access could not be verified automatically; this does not mean the build is unavailable.'
+ensure_label testflight-access-unverified 'BFD4F2' 'Tester-group access was not verified automatically; the build may still be available.'
 ensure_label ready-for-qa '0E8A16' 'Apple processing completed; the exact TestFlight build is ready for human QA.'
 
 api_get() {

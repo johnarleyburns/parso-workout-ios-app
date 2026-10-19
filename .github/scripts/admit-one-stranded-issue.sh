@@ -16,6 +16,27 @@ ensure_label blocked-by-dependency 5319E7 'Waiting for an explicitly declared pr
 active=$(gh issue list --repo "$repo" --state open --limit 1000 --json number,labels --jq '.[] | select(any(.labels[]?.name; . == "intake-running")) | .number' | head -1)
 if [[ -n "$active" ]]; then echo "Repository reservation held by #${active}."; exit 0; fi
 
+# Reject malformed or circular dependency metadata before it can silently freeze
+# an issue. A dependency must be explicit and every graph edge is one-way.
+declare -A dependencies
+while IFS= read -r encoded; do
+  row=$(base64 --decode <<<"$encoded")
+  number=$(jq -r .number <<<"$row")
+  refs=$(jq -r '.body // ""' <<<"$row" | grep -oE '<!-- claude-depends-on: #[0-9]+ -->' | sed -E 's/.*#([0-9]+).*/\1/' | tr '\n' ' ' || true)
+  dependencies["$number"]="$refs"
+done < <(gh issue list --repo "$repo" --state open --limit 1000 --json number,body --jq '.[] | @base64')
+for start in "${!dependencies[@]}"; do
+  declare -A seen=()
+  stack=( ${dependencies[$start]} )
+  while ((${#stack[@]})); do
+    node="${stack[-1]}"; unset 'stack[-1]'
+    [[ "$node" == "$start" ]] && { echo "::error::Circular issue dependency includes #${start}"; exit 1; }
+    [[ -n "${seen[$node]:-}" ]] && continue
+    seen["$node"]=1
+    [[ -n "${dependencies[$node]:-}" ]] && stack+=( ${dependencies[$node]} )
+  done
+done
+
 macos_capacity_available() {
   local status run_id jobs all_jobs='[]'
   for status in in_progress queued pending waiting requested; do

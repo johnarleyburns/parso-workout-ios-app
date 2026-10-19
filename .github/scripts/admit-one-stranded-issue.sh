@@ -86,11 +86,14 @@ for issue in $issues; do
     echo "$response" >&2; exit 1; }
   run_id=$(jq -r '.workflow_run.id // .id // empty' <<<"$response")
   if [[ -z "$run_id" ]]; then
-    gh issue edit "$issue" --repo "$repo" --add-label intake-blocked --add-label needs-human-review --remove-label intake-running >/dev/null || true
+    # GitHub may accept dispatch with a 204/empty response despite the newer
+    # response-detail contract. The attempt input plus durable reservation is
+    # still sufficient for the worker to prove ownership. Do not remove the
+    # reservation or falsely block the issue; finalization resolves it.
     gh api --method PATCH "$comment_url" -f body="$reservation
 
-**Issue intake status:** dispatch response lacked a run ID. No automatic retry will occur; apply `retry-ai` after review." >/dev/null || true
-    echo '::error::Dispatch did not return an authoritative run ID' >&2; exit 1
+**Issue intake reservation:** GitHub accepted dispatch without returning a run ID. The generation-bound worker may proceed; this reservation remains the repository lock until it finalizes." >/dev/null
+    echo "Dispatch accepted for #${issue} without run metadata; retaining attempt ${attempt}."; exit 0
   fi
   gh api --method PATCH "$comment_url" -f body="$reservation
 

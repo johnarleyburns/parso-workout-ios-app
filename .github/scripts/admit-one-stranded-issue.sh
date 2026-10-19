@@ -6,19 +6,17 @@
 set -euo pipefail
 
 repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
-macos_work_pending() {
-  jq -e 'any(.workflow_runs[]?;
-    (.path // "" | test("/(ios|pr-validation|pr-conflict-repair|issue-to-pr|release-repair)\\.yml$")))' >/dev/null
-}
-
 macos_capacity_available() {
-  local status runs
+  local status runs run_id jobs
   for status in in_progress queued pending waiting requested; do
     runs=$(gh api "repos/${repo}/actions/runs?status=${status}&per_page=100")
-    if macos_work_pending <<<"$runs"; then
-      echo "macOS work is ${status} in ${repo}; no stranded issue admitted"
-      return 1
-    fi
+    for run_id in $(jq -r '.workflow_runs[]?.id' <<<"$runs"); do
+      jobs=$(gh api --paginate "repos/${repo}/actions/runs/${run_id}/jobs?per_page=100")
+      if jq -e 'any(.jobs[]?; (.status == "queued" or .status == "in_progress") and any(.labels[]?; . == "xcode-27"))' <<<"$jobs" >/dev/null; then
+        echo "macOS job is ${status} in ${repo}; no stranded issue admitted"
+        return 1
+      fi
+    done
   done
 }
 
@@ -54,7 +52,7 @@ issues=$(gh issue list --repo "$repo" --state open --limit 1000 \
     | select(.author.login == "johnarleyburns")
     | select(any(.labels[]?.name;
         . == "awaiting-ci-authorization" or . == "needs-human-review" or
-        . == "split-pending" or . == "intake-running" or . == "intake-blocked" or . == "intake-retry-deferred" or
+        . == "tracking" or . == "blocked-by-dependency" or . == "intake-running" or . == "intake-blocked" or . == "intake-retry-deferred" or
         . == "ready-for-qa") | not)
     | .number')
 

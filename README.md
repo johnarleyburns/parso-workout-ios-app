@@ -73,6 +73,23 @@ because it builds and launches the pinned iPhone and Watch targets. CI workflows
 should budget ≥5 min for the core-tests job and ≥10 min for any local
 smoke/xcodebuild jobs.
 
+## TestFlight and human QA
+
+Every successful release upload is reconciled against App Store Connect on a
+schedule. Testers should use the issue labels rather than inferring readiness
+from a green GitHub workflow: `testflight-uploaded` means Apple accepted the
+archive, `testflight-processing` means it is not ready yet, and `ready-for-qa`
+means Apple reports that exact version/build as processed (`VALID`).
+`testflight-distribution-confirmed` is extra evidence that App Store Connect
+reported an assigned tester group. `testflight-access-unverified` only means
+the group query was unavailable or empty; it does not prove that TestFlight
+cannot install the build.
+
+For a device check, open the issue's **TestFlight availability** comment,
+install that exact version/build, follow the issue-specific checklist, and post
+the device model, OS, build, scenario, and pass/fail result on the issue. A
+failed result is a new repair cycle; only the human owner closes the issue.
+
 ## Languages
 
 Cladiron ships in nine locales: English (US), English (UK), Deutsch, Español, Français, Nederlands, Português (Brasil), 简体中文 and 繁體中文. It follows the iPhone's language; to pick a language just for Cladiron, open Settings → Apps → Cladiron → Language. Settings → About → Languages lists every language in the build and links there.

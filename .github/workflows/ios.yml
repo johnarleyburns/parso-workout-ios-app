@@ -390,8 +390,3 @@ jobs:
           if [[ "$TESTS" != success || "$BUILD" != success ]]; then
             echo "::error::$status"; exit 1
           fi
-      - name: Label uploaded issues ready for QA (legacy upload-stage behavior)
-        if: ${{ needs.core-tests.result == 'success' && needs.testflight-build.result == 'success' && needs.testflight-build.outputs.stage == 'uploaded' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/mark-testflight-qa.sh

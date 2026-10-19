@@ -1,0 +1,38 @@
+name: TestFlight Availability Reconcile
+
+on:
+  schedule:
+    - cron: '11,26,41,56 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: testflight-availability-reconcile
+  cancel-in-progress: false
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+      ASC_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+      ASC_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Write App Store Connect API key
+        run: |
+          test -n "$ASC_KEY" || { echo '::error::APPSTORE_API_PRIVATE_KEY is not configured'; exit 1; }
+          key="$RUNNER_TEMP/appstore-key.p8"
+          printf '%s\n' "$ASC_KEY" > "$key"
+          chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+      - name: Reconcile outstanding TestFlight availability
+        run: bash .github/scripts/reconcile-testflight-status.sh

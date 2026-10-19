@@ -28,12 +28,12 @@ jobs:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       ISSUE: ${{ inputs.issue_number }}
       ATTEMPT: ${{ inputs.attempt_id }}
+      CLAUDE_PIPELINE_AUTO_ENABLED: ${{ vars.CLAUDE_PIPELINE_AUTO_ENABLED }}
     steps:
       - id: verify
         run: |
           marker="<!-- claude-intake-reservation issue=${ISSUE} attempt=${ATTEMPT} -->"
-          enabled=$(gh variable list --repo "$GITHUB_REPOSITORY" | awk '$1 == "CLAUDE_PIPELINE_AUTO_ENABLED" { print $2 }')
-          if [[ "$enabled" != true ]]; then echo 'valid=false' >> "$GITHUB_OUTPUT"; exit 0; fi
+          if [[ "$CLAUDE_PIPELINE_AUTO_ENABLED" != true ]]; then echo 'valid=false' >> "$GITHUB_OUTPUT"; exit 0; fi
           labels=$(gh issue view "$ISSUE" --repo "$GITHUB_REPOSITORY" --json labels --jq '[.labels[].name]')
           found=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/issues/${ISSUE}/comments?per_page=100" --jq '.[] | .body' | grep -Fxc "$marker" || true)
           if jq -e 'index("intake-running") != null' <<<"$labels" >/dev/null && [[ "$found" -gt 0 ]]; then echo 'valid=true' >> "$GITHUB_OUTPUT"; else echo 'valid=false' >> "$GITHUB_OUTPUT"; fi

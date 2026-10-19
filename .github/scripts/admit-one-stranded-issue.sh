@@ -6,7 +6,7 @@ repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"; api="repos/${repo}"
 # This is the authoritative admission brake. Workflow conditions alone are not
 # enough because manual dispatch and owner-applied labels can otherwise bypass
 # a paused queue.
-pipeline_enabled=$(gh variable list --repo "$repo" | awk '$1 == "CLAUDE_PIPELINE_AUTO_ENABLED" { print $2 }')
+pipeline_enabled="${CLAUDE_PIPELINE_AUTO_ENABLED:-false}"
 if [[ "$pipeline_enabled" != true ]]; then
   echo 'Issue admission is paused by CLAUDE_PIPELINE_AUTO_ENABLED.'
   exit 0

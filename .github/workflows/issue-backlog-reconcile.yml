@@ -1,31 +1,30 @@
-name: Claude Issue Backlog Reconcile
-run-name: Admit one stranded issue
-
+name: Claude Issue Controller
+run-name: Reconcile one repository-local issue intake
 on:
-  schedule:
-    # Recovery backstop. Minutes are deliberately offset from :00, when GitHub
-    # may delay scheduled events under load.
-    - cron: '7,22,37,52 * * * *'
+  issues:
+    types: [labeled, closed]
   workflow_run:
-    workflows: ["PR Swift Validation", "iOS Build & TestFlight"]
+    workflows: ["Claude Issue to PR", "PR Swift Validation", "iOS Build & TestFlight"]
     types: [completed]
+  schedule:
+    # Recovery only: GitHub cron may be delayed or dropped.
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
-
 permissions:
   actions: read
   contents: read
   issues: write
   pull-requests: read
-
 concurrency:
-  group: claude-issue-backlog-reconcile
+  group: claude-issue-controller
   cancel-in-progress: false
-
 jobs:
-  admit-one:
+  reconcile:
     if: >-
-      (github.event_name == 'workflow_dispatch' && github.actor == 'johnarleyburns') ||
-      (github.event_name != 'workflow_dispatch' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true')
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.actor == 'johnarleyburns' && (github.event.action == 'closed' || github.event.label.name == 'ai-ready' || github.event.label.name == 'retry-ai' || github.event.label.name == 'priority-high')) ||
+      (github.event_name == 'workflow_run' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true') ||
+      (github.event_name == 'schedule' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -35,7 +34,6 @@ jobs:
         with:
           ref: main
           persist-credentials: false
-      - name: Admit one safely stranded issue
-        run: |
+      - run: |
           test -n "$GH_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
           bash .github/scripts/admit-one-stranded-issue.sh

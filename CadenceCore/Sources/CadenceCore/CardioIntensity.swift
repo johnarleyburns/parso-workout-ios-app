@@ -536,7 +536,9 @@ public enum WeeklyCardioAggregator {
         for session in sessions where session.deletedAt == nil && session.date >= since {
             let points = session.hrSamplePoints
             let summary: CardioMinuteSummary
-            if let profile, !points.isEmpty {
+            if session.isManualCardioMinutesOverride, let stored = session.intensitySummary {
+                summary = stored
+            } else if let profile, !points.isEmpty {
                 summary = CardioMinuteAccumulator.summarize(
                     duration: max(session.duration, points.map(\.t).max() ?? 0),
                     samples: points, profile: profile)

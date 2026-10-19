@@ -47,6 +47,7 @@ issues=$(gh issue list --repo "$repo" --state open --limit 1000 \
     | select(.author.login == "johnarleyburns")
     | select(any(.labels[]?.name;
         . == "awaiting-ci-authorization" or . == "needs-human-review" or
+        . == "split-pending" or
         . == "ready-for-qa") | not)
     | .number')
 

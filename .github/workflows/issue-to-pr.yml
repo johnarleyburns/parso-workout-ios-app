@@ -53,7 +53,11 @@ jobs:
       - name: Implement and open draft PR
         run: |
           cp .github/scripts/issue-to-pr.sh "$RUNNER_TEMP/issue-to-pr-runner.sh"
-          bash "$RUNNER_TEMP/issue-to-pr-runner.sh"
+          # The agent can fail before its own validation logger is reached.
+          # Preserve its complete output so a failed intake is diagnosable and
+          # repairable instead of silently retried by the backlog sweep.
+          bash "$RUNNER_TEMP/issue-to-pr-runner.sh" 2>&1 | tee /tmp/claude-issue-logs/runner.log
+          exit "${PIPESTATUS[0]}"
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4

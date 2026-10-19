@@ -33,6 +33,13 @@ if ! gh label list --repo "$repo" --limit 100 --json name --jq '.[].name' | grep
   gh label create 'priority-high' --repo "$repo" --color B60205 \
     --description 'Owner-approved priority queue override; admits before normal eligible issues'
 fi
+for spec in \
+  'intake-running|1D76DB|Issue implementation has been reserved or is running' \
+  'intake-blocked|D93F0B|Pre-PR automation stopped; explicit owner retry or issue rework required' \
+  'retry-ai|FBCA04|Owner-authorized retry of a blocked issue intake'; do
+  IFS='|' read -r name color description <<<"$spec"
+  gh label create "$name" --repo "$repo" --color "$color" --description "$description" --force >/dev/null
+done
 
 macos_capacity_available || exit 0
 
@@ -47,7 +54,7 @@ issues=$(gh issue list --repo "$repo" --state open --limit 1000 \
     | select(.author.login == "johnarleyburns")
     | select(any(.labels[]?.name;
         . == "awaiting-ci-authorization" or . == "needs-human-review" or
-        . == "split-pending" or
+        . == "split-pending" or . == "intake-running" or . == "intake-blocked" or . == "intake-retry-deferred" or
         . == "ready-for-qa") | not)
     | .number')
 
@@ -59,10 +66,16 @@ for issue in $issues; do
   # a second macOS job after a run was queued while listing issues. Other
   # repositories reconcile independently and must never block this repository.
   macos_capacity_available || exit 0
-  gh issue edit "$issue" --repo "$repo" --add-label ai-ready
+  # Persist a visible reservation before dispatch; a second sweep must not
+  # schedule the same issue while GitHub is still exposing the new run.
+  gh issue edit "$issue" --repo "$repo" --add-label intake-running
   if ! gh workflow run issue-to-pr.yml --repo "$repo" --ref main -f "issue_number=${issue}"; then
-    gh issue edit "$issue" --repo "$repo" --remove-label ai-ready >/dev/null 2>&1 || true
-    echo "::error::Could not dispatch Issue to PR for #${issue}; admission was rolled back" >&2
+    gh issue edit "$issue" --repo "$repo" --add-label intake-blocked --add-label needs-human-review --remove-label intake-running >/dev/null 2>&1 || true
+    gh issue comment "$issue" --repo "$repo" --body "<!-- claude-intake-dispatch-failed -->
+**Issue intake status:** blocked before dispatch.
+
+GitHub did not accept the workflow dispatch. The backlog will skip this issue until an owner applies \`retry-ai\`." >/dev/null 2>&1 || true
+    echo "::error::Could not dispatch Issue to PR for #${issue}; issue was blocked" >&2
     exit 1
   fi
   echo "Admitted and explicitly dispatched stranded issue #${issue}; intentionally stopping after one."

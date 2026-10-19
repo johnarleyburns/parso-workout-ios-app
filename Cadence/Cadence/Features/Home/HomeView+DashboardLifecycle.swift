@@ -132,8 +132,7 @@ extension HomeView {
                 historyRefreshToken: historyRefreshToken,
                 sessionCount: sessions.count,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-                await Task.yield()
-                prepareTodaySuggestion()
+                await prepareTodaySuggestion()
             }
             .onChange(of: historyRefreshToken) { _, _ in
                 todaySuggestedPlan = nil

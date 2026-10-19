@@ -11,14 +11,21 @@ struct HomeTodaySuggestionTaskIdentity: Equatable {
 extension HomeView {
     /// Prepares a value-only Today preview from the existing personalized
     /// generator. Starting or editing still goes through the normal editor.
-    func prepareTodaySuggestion() {
+    func prepareTodaySuggestion() async {
         guard surface == .today,
               todaySuggestedPlan == nil,
               suggestedWorkoutPlan == nil,
               suggestedWorkoutTask == nil,
               sessions.filter({ $0.countsAsStrengthHistory }).count >= 2
         else { return }
-        requestSuggestedStrength(present: false)
+        // Heavy catalog mapping runs off the main actor; the remaining
+        // history capture is deferred past launch so first frames stay smooth.
+        try? await Task.sleep(for: .seconds(1.5))
+        guard !Task.isCancelled else { return }
+        let candidates = await loadSuggestionCandidates()
+        guard !Task.isCancelled, todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
+              suggestedWorkoutTask == nil else { return }
+        requestSuggestedStrength(present: false, preloadedCandidates: candidates)
     }
 
     func generateTodaySuggestion(_ request: SuggestedWorkoutRequest) {

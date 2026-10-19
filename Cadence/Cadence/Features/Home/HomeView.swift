@@ -156,13 +156,14 @@ struct HomeView: View {
                                      engineObservation: coachSnapshot.engineObservation)
         let weekStart = WeeklyStats.weekStart(now: Date())
         let intensityProfile = CardioIntensityProfile.forHome(
-            passiveSamples: passiveSamples, userAge: settings.userAge,
-            maximumHROverride: settings.cardioMaximumHROverride)
-        let weeklyCardio = WeeklyCardioAggregator.summarize(cardio, since: weekStart,
-                                                             profile: intensityProfile,
-                                                             sessions: sessions)
+            passiveSamples: passiveSamples, userAge: settings.userAge, maximumHROverride: settings.cardioMaximumHROverride)
+        // Newest-first queries: prefix avoids faulting all history on main.
+        let weekCardio = Array(cardio.prefix { $0.start >= weekStart })
+        let weekSessions = Array(sessions.prefix { $0.date >= weekStart })
+        let weeklyCardio = WeeklyCardioAggregator.summarize(
+            weekCardio, since: weekStart, profile: intensityProfile, sessions: weekSessions)
         let activityDose = WeeklyActivityDoseAggregator.summarize(
-            cardio: cardio, sessions: sessions, since: weekStart, profile: intensityProfile)
+            cardio: weekCardio, sessions: weekSessions, since: weekStart, profile: intensityProfile)
         return HomeDashboardPresenter.make(snapshot: snapshot,
                                            schedule: settings.coachSchedulePreferences,
                                            goal: settings.trainingGoal,

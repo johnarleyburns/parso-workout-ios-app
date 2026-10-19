@@ -25,7 +25,7 @@ public enum SuggestedWorkoutPresenter {
     public static let calculatingTitle = String(localized: "Calculating suggested workouts…", bundle: .module)
     public static let aboutAccessibilityLabel = String(localized: "About suggested workouts", bundle: .module)
     public static let chooserIntro = String(localized: "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting.", bundle: .module)
-    public static let choosingAPlan = String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track, under one \(suggestedWorkoutPlannedSetCap)-set safety cap, so a capped plan can still show remaining gaps. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: .module)
+    public static let choosingAPlan = String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: .module)
 
     public static func historyNotice(for quality: SuggestedWorkoutHistoryQuality) -> String? {
         switch quality {
@@ -54,7 +54,8 @@ public enum SuggestedWorkoutPresenter {
                               personalizedHistoryWorkoutCount: Int) -> SuggestedWorkoutChoice {
         let style = option.style
         let gaps = remainingGapText(option)
-        let trim = option.capTrimmingOccurred ? " Safety cap trimmed the final exercises." : ""
+        let trim = option.unsupportedCoverage.isEmpty ? ""
+            : " Not covered: " + option.unsupportedCoverage.map(\.explanation).joined(separator: " ")
         if style == .personalized,
            personalizedHistoryWorkoutCount < SuggestedWorkoutGenerator.minimumPersonalizedWorkouts {
             return SuggestedWorkoutChoice(
@@ -126,7 +127,7 @@ public enum SuggestedWorkoutPresenter {
         String(localized: "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.", bundle: .module),
         String(localized: "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.", bundle: .module),
         String(localized: "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.", bundle: .module),
-        String(localized: "Adds each winning movement with your set preference, then trims from the end to a \(suggestedWorkoutPlannedSetCap)-set safety cap and recomputes what is still uncovered.", bundle: .module),
+        String(localized: "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason.", bundle: .module),
         String(localized: "Produces a deterministic suggestion to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: .module)
     ]
 
@@ -136,7 +137,7 @@ public enum SuggestedWorkoutPresenter {
         "score each unused movement = sum(min(remaining gap, planned sets × direct/indirect credit))",
         "on equal score for that muscle: in-style > out-of-style; compound > isolation; then more muscles involved",
         "pass 1 considers only movements of the chosen style; pass 2 considers every movement for non-Bodyweight styles, while Bodyweight remains bodyweight-only",
-        "remove tail movements above the \(suggestedWorkoutPlannedSetCap)-set cap; recompute remaining gaps"
+        "recompute remaining weekly dose; list any group no eligible movement covers (no set cap, nothing removed)"
     ]
 
     public static var citationIDs: [String] { suggestedWorkoutCitationIDs }

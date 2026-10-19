@@ -4,7 +4,8 @@ import CadenceCore
 
 final class SuggestedWorkoutPresenterTests: XCTestCase {
     private func option(style: SuggestedWorkoutStyle, exercises: [SuggestedWorkoutExercise],
-                        remaining: [String: Double] = [:], trimmed: Bool = false) -> SuggestedWorkoutOption {
+                        remaining: [String: Double] = [:], trimmed: Bool = false,
+                        unsupported: [SuggestedCoverageGap] = []) -> SuggestedWorkoutOption {
         SuggestedWorkoutOption(
             style: style,
             plan: WorkoutPlan(id: style.rawValue, name: style.planName, source: .coachSuggested,
@@ -15,7 +16,8 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
             exercises: exercises,
             initialDeficits: [:], remainingDeficits: remaining,
             plannedSetTotal: exercises.reduce(0) { $0 + $1.plannedSets },
-            capTrimmingOccurred: trimmed, citationIDs: suggestedWorkoutCitationIDs)
+            capTrimmingOccurred: trimmed, citationIDs: suggestedWorkoutCitationIDs,
+            unsupportedCoverage: unsupported)
     }
 
     private func exercise(name: String = "Bench Press", sets: Int = 3,
@@ -65,9 +67,11 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
     func testGapsAndTrimAreDisclosed() {
         let partial = SuggestedWorkoutPresenter.choice(
             for: option(style: .olympic, exercises: [exercise()],
-                        remaining: ["lats": 2], trimmed: true))
+                        remaining: ["lats": 2],
+                        unsupported: [SuggestedCoverageGap(muscleID: "lats", reason: .noEligibleExercise,
+                                                           explanation: "Lats: no eligible exercise.")]))
         XCTAssertTrue(partial.subtitle.contains("Remaining gaps: Lats"))
-        XCTAssertTrue(partial.subtitle.contains("Safety cap trimmed"))
+        XCTAssertTrue(partial.subtitle.contains("Not covered: Lats: no eligible exercise."))
     }
 
     /// A style that borrowed general strength movements has to say so — the user
@@ -109,7 +113,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
         XCTAssertTrue(about.contains("\(suggestedWorkoutTargetSetsPerGroup)-set weekly gap"))
         XCTAssertTrue(about.contains("half for one it trains indirectly"))
         XCTAssertTrue(about.contains("not at all for one that only stabilises"))
-        XCTAssertTrue(about.contains("\(suggestedWorkoutPlannedSetCap)-set safety cap"))
+        XCTAssertTrue(about.contains("Nothing is trimmed"))
         XCTAssertTrue(about.contains("Falls back to general strength movements"))
         let code = SuggestedWorkoutPresenter.pseudocode.joined(separator: " ")
         XCTAssertTrue(code.contains("descending muscle mass"))
@@ -125,7 +129,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
         XCTAssertTrue(SuggestedWorkoutPresenter.chooserIntro.contains("kind of training"))
         XCTAssertFalse(SuggestedWorkoutPresenter.chooserIntro.lowercased().contains("minimum"))
         XCTAssertTrue(SuggestedWorkoutPresenter.choosingAPlan
-            .contains("\(suggestedWorkoutPlannedSetCap)-set safety cap"))
+            .contains("no set cap"))
         for style in SuggestedWorkoutStyle.allCases {
             XCTAssertFalse(style.subtitle.isEmpty)
             XCTAssertEqual(style.planName, "\(style.displayName) Workout")

@@ -33,6 +33,7 @@ public enum TodaySuggestedWorkoutFingerprint {
         h.add(input.historyWorkoutCount); h.add(input.historyWorkingSetCount)
         for g in input.trackedGroups.map(\.rawValue).sorted() { h.add("g:" + g) }
         h.add(input.preferredSetsPerExercise)
+        h.add(input.mostRecentExerciseWorkingSets ?? -1)
         h.add(String(describing: input.trainingGoal))
         h.add(String(describing: input.preferredStyle))
         if let ctx = input.engineContext {

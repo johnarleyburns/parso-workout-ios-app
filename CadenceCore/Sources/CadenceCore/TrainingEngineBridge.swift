@@ -427,8 +427,8 @@ extension TrainingEngineBridge {
         context: SuggestedWorkoutEngineContext,
         style: SuggestedWorkoutStyle
     ) -> EngineSuggestedWorkout? {
-        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
-        let exerciseLimit = max(1, suggestedWorkoutPlannedSetCap / preferredSets)
+        let preferredSets = input.effectiveSetsPerExercise
+        let exerciseLimit = max(5, input.trackedGroups.count)
         var schedule = context.schedule
         let isBodyweight = style == .bodyweight
         let styleEnvironment = isBodyweight ? "bodyweight_only" : context.environment
@@ -467,9 +467,7 @@ extension TrainingEngineBridge {
               }).first
         else { return nil }
 
-        let trimmedExercises = trim(
-            sourceSession.exercises,
-            toSetCap: suggestedWorkoutPlannedSetCap)
+        let trimmedExercises = sourceSession.exercises
         let session = FreeExerciseDBPlusPlus.PlanSession(
             planSessionId: sourceSession.planSessionId,
             phaseId: sourceSession.phaseId,
@@ -557,19 +555,6 @@ extension TrainingEngineBridge {
         return volumeTarget(trackedGroups: groups, landmarks: landmarks, periodDays: 7)
     }
 
-    private static func trim(
-        _ exercises: [FreeExerciseDBPlusPlus.PlanExercisePrescription],
-        toSetCap cap: Int
-    ) -> [FreeExerciseDBPlusPlus.PlanExercisePrescription] {
-        var total = 0
-        return exercises.sorted { ($0.order ?? Int.max) < ($1.order ?? Int.max) }.filter { exercise in
-            let sets = max(1, integerValue(exercise.sets) ?? exercise.plannedSets?.count ?? 1)
-            guard total + sets <= cap else { return false }
-            total += sets
-            return true
-        }
-    }
-
     private static func suggestedExercises(
         from session: FreeExerciseDBPlusPlus.PlanSession,
         style: SuggestedWorkoutStyle,
@@ -591,9 +576,9 @@ extension TrainingEngineBridge {
                 return nil
             }
             let name = record?.name ?? prescription.exerciseName ?? "Exercise"
-            let sets = max(1, integerValue(prescription.sets)
-                ?? prescription.plannedSets?.count
-                ?? preferredSets)
+            // Working sets default from the user's most recent exercise (or 3);
+            // the engine's ladder still supplies reps once history exists.
+            let sets = preferredSets
             let reps = repRange(prescription.reps)
             let repLadder = prescription.plannedSets?.compactMap { integerValue($0.reps) } ?? []
             let lower = repLadder.min() ?? reps.lower ?? goal.repRange.lowerBound

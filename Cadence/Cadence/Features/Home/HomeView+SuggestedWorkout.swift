@@ -127,6 +127,8 @@ extension HomeView {
                     recentlyCompletedCandidateIDs: recentlyCompletedCandidateIDs,
                     trackedGroups: settings.coachSchedulePreferences.trackedMuscleGroups,
                     preferredSetsPerExercise: settings.coachSchedulePreferences.desiredSetsPerExercise,
+                    mostRecentExerciseWorkingSets: RecentSuggestionExclusion.mostRecentExerciseSetCount(
+                        sessions: completedHistorySessions),
                     trainingGoal: settings.trainingGoal,
                     preferredStyle: settings.preferredWorkoutStyle,
                     engineContext: SuggestedWorkoutEngineContext(

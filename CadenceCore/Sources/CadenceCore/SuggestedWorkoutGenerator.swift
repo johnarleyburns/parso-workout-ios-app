@@ -139,8 +139,44 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
 
 /// Weekly sets per tracked muscle group every style aims at.
 public let suggestedWorkoutTargetSetsPerGroup = 4
-/// Total planned sets a single suggestion may prescribe.
-public let suggestedWorkoutPlannedSetCap = 20
+/// Working sets per exercise when no completed strength exercise exists.
+public let suggestedWorkoutDefaultSetsPerExercise = 3
+
+extension TrainingGoal {
+    /// Flat per-set reps (`n,n,n`) for the very first prescription, before any
+    /// completed history exists. An explicit, editable product default — not an
+    /// individualized or medical prescription.
+    public var firstPrescriptionReps: Int {
+        switch self {
+        case .strength: 3
+        case .hypertrophy: 8
+        case .endurance: 20
+        }
+    }
+}
+
+/// Why a tracked muscle group below its weekly dose received no planned work.
+public enum SuggestedCoverageGapReason: String, Equatable, Sendable {
+    /// No eligible exercise trains the group (equipment, exclusions, injury or
+    /// recovery filtering removed every candidate).
+    case noEligibleExercise
+    /// Eligible exercises exist, but none is allowed by the chosen style.
+    case styleConstraint
+}
+
+/// A group the plan could not cover, with the exact constraint, so it is never
+/// silently omitted.
+public struct SuggestedCoverageGap: Equatable, Sendable, Hashable {
+    public let muscleID: String
+    public let reason: SuggestedCoverageGapReason
+    public let explanation: String
+
+    public init(muscleID: String, reason: SuggestedCoverageGapReason, explanation: String) {
+        self.muscleID = muscleID
+        self.reason = reason
+        self.explanation = explanation
+    }
+}
 
 /// How much completed strength history the suggestion can use. A limited or
 /// unavailable history is a warning, never a reason to block generation.
@@ -235,6 +271,9 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
     public let engineRevisionID: String?
     public let enginePlanJSON: Data?
     public let rationale: SuggestedWorkoutRationale?
+    /// Tracked groups with a weekly gap that no selected exercise covers, each
+    /// with the constraint that prevented coverage.
+    public let unsupportedCoverage: [SuggestedCoverageGap]
 
     /// How many of the chosen movements came from the style's own pool. The
     /// chooser reports this, because a style narrows the movements without ever
@@ -247,7 +286,9 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
                 capTrimmingOccurred: Bool, citationIDs: [String],
                 enginePlanID: String? = nil, engineRevisionID: String? = nil,
                 enginePlanJSON: Data? = nil,
-                rationale: SuggestedWorkoutRationale? = nil) {
+                rationale: SuggestedWorkoutRationale? = nil,
+                unsupportedCoverage: [SuggestedCoverageGap] = []) {
+        self.unsupportedCoverage = unsupportedCoverage
         self.style = style
         self.plan = plan
         self.exercises = exercises
@@ -277,7 +318,22 @@ public struct SuggestedWorkoutOption: Equatable, Sendable {
             enginePlanID: enginePlanID,
             engineRevisionID: engineRevisionID,
             enginePlanJSON: enginePlanJSON,
-            rationale: rationale)
+            rationale: rationale,
+            unsupportedCoverage: unsupportedCoverage)
+    }
+
+    func withUnsupportedCoverage(_ gaps: [SuggestedCoverageGap]) -> SuggestedWorkoutOption {
+        SuggestedWorkoutOption(
+            style: style, plan: plan, exercises: exercises,
+            initialDeficits: initialDeficits, remainingDeficits: remainingDeficits,
+            plannedSetTotal: plannedSetTotal,
+            capTrimmingOccurred: capTrimmingOccurred,
+            citationIDs: citationIDs,
+            enginePlanID: enginePlanID,
+            engineRevisionID: engineRevisionID,
+            enginePlanJSON: enginePlanJSON,
+            rationale: rationale,
+            unsupportedCoverage: gaps)
     }
 }
 
@@ -367,6 +423,9 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
     /// (decision D4).
     public let trackedGroups: Set<MuscleGroup>
     public let preferredSetsPerExercise: Int
+    /// Working-set count of the most recently completed, non-deleted strength
+    /// exercise (warmups ignored); nil when no usable history exists.
+    public let mostRecentExerciseWorkingSets: Int?
     public let trainingGoal: TrainingGoal
     /// The user's preferred workout family. It is a fallback for Personalized
     /// generation when history has no relevant movement, never a replacement for
@@ -382,6 +441,7 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
                 recentlyCompletedCandidateIDs: Set<String> = [],
                 trackedGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked,
                 preferredSetsPerExercise: Int,
+                mostRecentExerciseWorkingSets: Int? = nil,
                 trainingGoal: TrainingGoal,
                 preferredStyle: SuggestedWorkoutStyle = .fitness,
                 engineContext: SuggestedWorkoutEngineContext? = nil) {
@@ -393,6 +453,7 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
         self.historyWorkingSetCount = max(0, historyWorkingSetCount)
         self.trackedGroups = trackedGroups.isEmpty ? MuscleGroup.defaultTracked : trackedGroups
         self.preferredSetsPerExercise = preferredSetsPerExercise
+        self.mostRecentExerciseWorkingSets = mostRecentExerciseWorkingSets.flatMap { $0 > 0 ? $0 : nil }
         self.trainingGoal = trainingGoal
         self.preferredStyle = preferredStyle == .personalized ? .fitness : preferredStyle
         self.engineContext = engineContext
@@ -427,9 +488,23 @@ public struct SuggestedWorkoutInput: Equatable, Sendable {
             recentlyCompletedCandidateIDs: recentlyCompletedCandidateIDs,
             trackedGroups: trackedGroups,
             preferredSetsPerExercise: preferredSetsPerExercise,
+            mostRecentExerciseWorkingSets: mostRecentExerciseWorkingSets,
             trainingGoal: trainingGoal,
             preferredStyle: preferredStyle,
             engineContext: engineContext)
+    }
+
+    /// Default working sets per exercise: the most recent exercise's count, else 3.
+    var effectiveSetsPerExercise: Int {
+        mostRecentExerciseWorkingSets ?? suggestedWorkoutDefaultSetsPerExercise
+    }
+
+    /// Rep range prescribed for suggested exercises: exact flat reps before any
+    /// history exists, the goal's range afterwards.
+    var prescribedRepRange: ClosedRange<Int> {
+        historyWorkoutCount == 0 && historyWorkingSetCount == 0
+            ? trainingGoal.firstPrescriptionReps...trainingGoal.firstPrescriptionReps
+            : trainingGoal.repRange
     }
 }
 
@@ -464,7 +539,7 @@ public enum SuggestedWorkoutGenerator {
                                                 tracked: input.trackedGroups)
         let indexDuration = indexStart.duration(to: clock.now)
         let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
-        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        let preferredSets = input.effectiveSetsPerExercise
 
         var counters = Counters()
         let generationStart = clock.now
@@ -472,10 +547,12 @@ public enum SuggestedWorkoutGenerator {
         // target and differs only in which movements it reaches for first.
         let options = SuggestedWorkoutStyle.allCases.map {
             solve(style: $0, completed: completed, preferredSets: preferredSets,
-                  goal: input.trainingGoal, historyWorkoutCount: input.historyWorkoutCount,
+                  goal: input.trainingGoal, repRange: input.prescribedRepRange,
+                  historyWorkoutCount: input.historyWorkoutCount,
                   index: index, counters: &counters)
         }.map { option in
-            option.withRationale(rationale(for: option, input: input))
+            let option = option.withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
+            return option.withRationale(rationale(for: option, input: input))
         }
         let generationDuration = generationStart.duration(to: clock.now)
 
@@ -507,13 +584,14 @@ public enum SuggestedWorkoutGenerator {
                                                 tracked: input.trackedGroups)
         let indexDuration = indexStart.duration(to: clock.now)
         let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
-        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        let preferredSets = input.effectiveSetsPerExercise
         var counters = Counters()
         let generationStart = clock.now
         let option = solve(style: .personalized,
                            completed: completed,
                            preferredSets: preferredSets,
                            goal: input.trainingGoal,
+                           repRange: input.prescribedRepRange,
                            historyWorkoutCount: input.historyWorkoutCount,
                            preferredStyle: input.preferredStyle,
                            allowPersonalizedFallback: true,
@@ -529,7 +607,8 @@ public enum SuggestedWorkoutGenerator {
             fullCatalogScanCount: 0,
             vectorIndexBuildDuration: indexDuration,
             allStylesGenerationDuration: generationStart.duration(to: clock.now))
-        return option.withRationale(rationale(for: option, input: input))
+        let covered = option.withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
+        return covered.withRationale(rationale(for: covered, input: input))
     }
 
     /// Chooses exactly one movement for an existing plan or live workout. The
@@ -560,7 +639,7 @@ public enum SuggestedWorkoutGenerator {
         let deficits = index.muscleSpace.muscleIDs.indices.map { dimension in
             max(0, target - completed[dimension] - allocated[dimension])
         }
-        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        let preferredSets = input.effectiveSetsPerExercise
         let historyMembership = index.styleMembership[.personalized] ??
             Array(repeating: false, count: index.exercises.count)
         let biasMembership = index.styleMembership[input.preferredStyle] ??
@@ -610,7 +689,7 @@ public enum SuggestedWorkoutGenerator {
             (style != .bodyweight ? bestCandidate(restrictedToStyle: false) : nil) {
             let exercise = index.exercises[best.candidateIndex]
             return outputExercise(exercise, preferredSets: preferredSets,
-                                  repRange: input.trainingGoal.repRange,
+                                  repRange: input.prescribedRepRange,
                                   score: best.score.credited,
                                   isInStyle: best.isInStyle,
                                   muscleSpace: index.muscleSpace)
@@ -639,7 +718,7 @@ public enum SuggestedWorkoutGenerator {
         }.first
         guard let maintenance else { return nil }
         return outputExercise(index.exercises[maintenance], preferredSets: preferredSets,
-                              repRange: input.trainingGoal.repRange,
+                              repRange: input.prescribedRepRange,
                               score: 0, isInStyle: inStyle[maintenance],
                               muscleSpace: index.muscleSpace)
 
@@ -679,11 +758,12 @@ public enum SuggestedWorkoutGenerator {
         let index = SuggestedWorkoutVectorIndex(candidates: input.candidates,
                                                 tracked: input.trackedGroups)
         let completed = index.muscleSpace.completedVector(input.completedSetsByMuscle)
-        let preferredSets = min(4, max(3, input.preferredSetsPerExercise))
+        let preferredSets = input.effectiveSetsPerExercise
         var counters = Counters()
         var options = styles.map {
             solve(style: $0, completed: completed, preferredSets: preferredSets,
-                  goal: input.trainingGoal, historyWorkoutCount: input.historyWorkoutCount,
+                  goal: input.trainingGoal, repRange: input.prescribedRepRange,
+                  historyWorkoutCount: input.historyWorkoutCount,
                   index: index, counters: &counters)
         }
         let allowedExerciseKeys = Set(input.candidates.map { ExerciseSuggestionExclusionKey.forName($0.name) })
@@ -701,6 +781,12 @@ public enum SuggestedWorkoutGenerator {
             style: .fitness)?.option,
            let fitnessIndex = styles.firstIndex(of: .fitness),
            engineOption.isLaunchable,
+           // Zero history uses the explicit first-prescription defaults; the
+           // individualized engine only takes over once real history exists,
+           // and only when it still covers every group the local solver can.
+           input.historyWorkoutCount > 0,
+           unsupportedCoverage(for: engineOption, index: index).count
+               <= unsupportedCoverage(for: options[styles.firstIndex(of: .fitness) ?? 0], index: index).count,
            engineOption.exercises.allSatisfy({ exercise in
                allowedExerciseKeys.contains(ExerciseSuggestionExclusionKey.forName(exercise.name))
                    && !olympicCandidateIDs.contains(exercise.candidateID)
@@ -720,7 +806,8 @@ public enum SuggestedWorkoutGenerator {
             vectorIndexBuildDuration: .zero,
             allStylesGenerationDuration: duration)
         options = options.map { option in
-            option.withRationale(rationale(for: option, input: input))
+            let option = option.withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
+            return option.withRationale(rationale(for: option, input: input))
         }
         return SuggestedWorkoutBundle(
             options: options,
@@ -754,6 +841,7 @@ public enum SuggestedWorkoutGenerator {
     /// explicit equipment boundary and never borrows an external-load movement.
     private static func solve(style: SuggestedWorkoutStyle, completed: [Double],
                               preferredSets: Int, goal: TrainingGoal,
+                              repRange: ClosedRange<Int>,
                               historyWorkoutCount: Int,
                               preferredStyle: SuggestedWorkoutStyle = .fitness,
                               allowPersonalizedFallback: Bool = false,
@@ -828,14 +916,14 @@ public enum SuggestedWorkoutGenerator {
                 selected[best.candidateIndex] = true
                 let exercise = index.exercises[best.candidateIndex]
                 choices.append(outputExercise(exercise, preferredSets: preferredSets,
-                                              repRange: goal.repRange, score: best.score.total,
+                                              repRange: repRange, score: best.score.total,
                                               isInStyle: outputMembership[best.candidateIndex],
                                               muscleSpace: index.muscleSpace))
                 for element in exercise.elements where deficits[element.dimension] > epsilon {
-                    deficits[element.dimension] = max(
-                        0,
-                        deficits[element.dimension] - Double(preferredSets) * element.weight
-                    )
+                    // Coverage-first: one planned contribution satisfies the
+                    // group's requirement; the dose remainder stays visible in
+                    // `remainingDeficits` rather than driving more exercises.
+                    deficits[element.dimension] = 0
                     generations[element.dimension] += 1
                     if deficits[element.dimension] > epsilon {
                         heap.push(.init(deficit: deficits[element.dimension],
@@ -873,15 +961,11 @@ public enum SuggestedWorkoutGenerator {
                                                    excludedCandidateIDs: excludedCandidateIDs) {
             let exercise = index.exercises[maintenance]
             choices.append(outputExercise(
-                exercise, preferredSets: preferredSets, repRange: goal.repRange,
+                exercise, preferredSets: preferredSets, repRange: repRange,
                 score: 0, isInStyle: inStyle[maintenance],
                 muscleSpace: index.muscleSpace))
         }
 
-        let untrimmedCount = choices.count
-        while choices.count * preferredSets > suggestedWorkoutPlannedSetCap {
-            choices.removeLast()
-        }
         let remaining = recomputeDeficits(initial: initial, exercises: choices,
                                           muscleSpace: index.muscleSpace)
         let plan = WorkoutPlan(
@@ -891,7 +975,7 @@ public enum SuggestedWorkoutGenerator {
             scheme: .strength,
             items: choices.enumerated().map {
                 PlanItem(id: $0.offset, movement: $0.element.name,
-                         reps: goal.repRange.lowerBound,
+                         reps: repRange.lowerBound,
                          targetSets: $0.element.plannedSets)
             }
         )
@@ -902,9 +986,34 @@ public enum SuggestedWorkoutGenerator {
             initialDeficits: index.muscleSpace.dictionary(initial),
             remainingDeficits: index.muscleSpace.dictionary(remaining),
             plannedSetTotal: choices.count * preferredSets,
-            capTrimmingOccurred: choices.count != untrimmedCount,
+            capTrimmingOccurred: false,
             citationIDs: suggestedWorkoutCitationIDs
         )
+    }
+
+    /// Lists every group with a weekly gap that the selected exercises do not
+    /// touch at all, with the exact constraint — never a silent omission.
+    private static func unsupportedCoverage(
+        for option: SuggestedWorkoutOption,
+        index: SuggestedWorkoutVectorIndex
+    ) -> [SuggestedCoverageGap] {
+        guard option.isLaunchable else { return [] }
+        let covered = Set(option.exercises.flatMap { exercise in
+            exercise.contributions.filter { $0.plannedSetContribution > epsilon }.map(\.muscleID)
+        })
+        return index.muscleSpace.muscleIDs.indices.compactMap { dimension in
+            let id = index.muscleSpace.muscleIDs[dimension]
+            guard (option.initialDeficits[id] ?? 0) > epsilon, !covered.contains(id) else { return nil }
+            let name = displayName(id)
+            if index.inverted[dimension].isEmpty {
+                return SuggestedCoverageGap(
+                    muscleID: id, reason: .noEligibleExercise,
+                    explanation: String(localized: "\(name): no eligible exercise trains it with your current equipment, exclusions, and injury or recovery limits.", bundle: .module))
+            }
+            return SuggestedCoverageGap(
+                muscleID: id, reason: .styleConstraint,
+                explanation: String(localized: "\(name): the \(option.style.displayName) style allows no remaining eligible exercise that trains it.", bundle: .module))
+        }
     }
 
     private static func emptyOption(style: SuggestedWorkoutStyle, goal: TrainingGoal,
@@ -941,8 +1050,11 @@ public enum SuggestedWorkoutGenerator {
             ? "your history-first Personalized style"
             : "your \(option.style.displayName.lowercased()) style"
         let workoutText = String(localized: "Built to address \(gapText) with \(styleText). ", bundle: .module)
-            + String(localized: "It prioritizes the largest need first and keeps the session to \(option.plannedSetTotal) focused working sets for your \(input.trainingGoal.displayName.lowercased()) goal.", bundle: .module)
+            + String(localized: "It prioritizes the largest need first and covers each group below its weekly dose at least once, for \(option.plannedSetTotal) working sets (an editable estimate, not a cap) for your \(input.trainingGoal.displayName.lowercased()) goal.", bundle: .module)
 
+        let unsupportedText = option.unsupportedCoverage.isEmpty ? "" : " "
+            + String(localized: "Not covered: ", bundle: .module)
+            + option.unsupportedCoverage.map(\.explanation).joined(separator: " ")
         let exerciseReasons = option.exercises.map { exercise in
             let relevant = exercise.contributions.filter { startingGapByID[$0.muscleID] ?? 0 > epsilon }
             let gapReasons = relevant.isEmpty
@@ -957,7 +1069,7 @@ public enum SuggestedWorkoutGenerator {
                                               whyExercise: whyExercise,
                                               whySetRep: whySetRep)
         }
-        return SuggestedWorkoutRationale(whyWorkout: workoutText, exercises: exerciseReasons)
+        return SuggestedWorkoutRationale(whyWorkout: workoutText + unsupportedText, exercises: exerciseReasons)
     }
 
     private static func displayName(_ identifier: String) -> String {

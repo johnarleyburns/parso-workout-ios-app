@@ -489,7 +489,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
     // MARK: - Cap, determinism, plans
 
-    func testCapTrimmingRemovesTailAndRecomputesRemainingDeficits() {
+    func testZeroHistoryCoversEveryTrackedGroupWithoutTrimmingPastTwentySets() {
         let candidates = MuscleGroup.allCases.enumerated().map {
             candidate("id-\($0.offset)", "Exercise \(String(format: "%02d", $0.offset))",
                       primary: [$0.element.rawValue])
@@ -497,17 +497,57 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let bundle = generate(completed: [:], candidates: candidates)
 
         for option in bundle.options where option.style != .personalized {
-            XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
-            XCTAssertTrue(option.capTrimmingOccurred)
+            XCTAssertFalse(option.capTrimmingOccurred)
+            XCTAssertEqual(option.plannedSetTotal, option.exercises.count * 3)
+            let covered = Set(option.exercises.flatMap { $0.contributions.filter { $0.plannedSetContribution > 0 }.map(\.muscleID) })
+            let covers = MuscleGroup.defaultTracked.allSatisfy { covered.contains($0.rawValue) }
+            XCTAssertEqual(covers, option.unsupportedCoverage.isEmpty)
         }
         let fitness = bundle.option(.fitness)
-        XCTAssertEqual(fitness.plannedSetTotal, 18)
-        let expectedIDs = MuscleGroup.descendingMassOrder
-            .filter { MuscleGroup.defaultTracked.contains($0) }
-            .prefix(6)
-            .compactMap { group in candidates.first { $0.primaryMuscles == [group.rawValue] }?.id }
-        XCTAssertEqual(fitness.exercises.map(\.candidateID), expectedIDs)
-        XCTAssertEqual(fitness.remainingDeficits["glutes"], 1)
+        XCTAssertGreaterThan(fitness.plannedSetTotal, 20)
+        XCTAssertTrue(fitness.unsupportedCoverage.isEmpty)
+        for group in MuscleGroup.defaultTracked {
+            XCTAssertTrue(fitness.exercises.contains { $0.contributions.contains { $0.muscleID == group.rawValue } },
+                          "\(group.rawValue) lost coverage")
+        }
+    }
+
+    func testUnsupportedGroupsAreListedWithReasonAndPlanIsKept() {
+        let bundle = generate(completed: [:], candidates: [candidate("c", "Bench", primary: ["chest"])],
+                              tracked: [.chest, .lats])
+        let option = bundle.option(.fitness)
+
+        XCTAssertTrue(option.isLaunchable)
+        XCTAssertEqual(option.unsupportedCoverage.map(\.muscleID), ["lats"])
+        XCTAssertEqual(option.unsupportedCoverage.first?.reason, .noEligibleExercise)
+        XCTAssertTrue(option.rationale?.whyWorkout.contains("Not covered: ") == true)
+        XCTAssertTrue(option.rationale?.whyWorkout.contains("equipment, exclusions") == true)
+    }
+
+    func testSetCountFollowsMostRecentExerciseElseThree() {
+        let c = [candidate("c", "Bench", primary: ["chest"])]
+        func plannedSets(_ sets: Int?) -> Int? {
+            SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
+                completedSetsByMuscle: [:], candidates: c, trackedGroups: [.chest],
+                preferredSetsPerExercise: 4, mostRecentExerciseWorkingSets: sets,
+                trainingGoal: .hypertrophy)).option(.fitness).exercises.first?.plannedSets
+        }
+        XCTAssertEqual(plannedSets(nil), 3)
+        XCTAssertEqual(plannedSets(5), 5)
+        XCTAssertEqual(plannedSets(2), 2)
+    }
+
+    func testFirstPrescriptionIsFlatByGoalAndHistoryRestoresGoalRange() {
+        let c = [candidate("c", "Bench", primary: ["chest"])]
+        for (goal, reps) in [(TrainingGoal.strength, 3), (.hypertrophy, 8), (.endurance, 20)] {
+            let option = generate(completed: [:], candidates: c, tracked: [.chest], goal: goal).option(.fitness)
+            XCTAssertEqual(option.exercises.first?.repRange, reps...reps)
+            XCTAssertEqual(option.plan.items.first?.reps, reps)
+            XCTAssertEqual(option.exercises.first?.plannedSets, 3)
+        }
+        let withHistory = generate(completed: [:], candidates: c, tracked: [.chest],
+                                   goal: .hypertrophy, historyWorkoutCount: 2).option(.fitness)
+        XCTAssertEqual(withHistory.exercises.first?.repRange, TrainingGoal.hypertrophy.repRange)
     }
 
     func testResultsDoNotDependOnCandidateOrDictionaryInputOrder() {
@@ -562,6 +602,8 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         let bundle = SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
             completedSetsByMuscle: [:],
             candidates: candidates,
+            historyWorkoutCount: 5,
+            historyWorkingSetCount: 40,
             trackedGroups: [.chest, .lats],
             preferredSetsPerExercise: 4,
             trainingGoal: .hypertrophy,
@@ -573,7 +615,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
         XCTAssertEqual(bundle.options.map(\.style), SuggestedWorkoutStyle.allCases)
         for option in bundle.options where option.style != .personalized {
             XCTAssertTrue(option.isLaunchable)
-            XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
+            XCTAssertGreaterThan(option.plannedSetTotal, 0)
             if option.style == .fitness {
                 XCTAssertEqual(option.enginePlanID, "generated-plan")
                 XCTAssertEqual(option.engineRevisionID, "r1")
@@ -695,7 +737,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
             XCTAssertEqual(option.plan.items.map(\.targetSets),
                            Array(repeating: 4, count: option.plan.items.count))
             XCTAssertEqual(option.plan.items.map(\.reps),
-                           Array(repeating: 15, count: option.plan.items.count))
+                           Array(repeating: 20, count: option.plan.items.count))
             XCTAssertTrue(option.plan.items.allSatisfy { $0.loadLb == nil && $0.loadPercentage == nil })
             XCTAssertEqual(option.citationIDs, suggestedWorkoutCitationIDs)
             for citationID in option.citationIDs {
@@ -715,7 +757,7 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
         for option in bundle.options where option.style != .personalized {
             XCTAssertTrue(option.isLaunchable, "\(option.style) produced no plan")
-            XCTAssertLessThanOrEqual(option.plannedSetTotal, suggestedWorkoutPlannedSetCap)
+            XCTAssertGreaterThan(option.plannedSetTotal, 0)
             XCTAssertGreaterThan(option.inStyleExerciseCount, 0,
                                  "\(option.style) borrowed its entire plan")
         }
@@ -819,12 +861,15 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
                           candidates: some Sequence<SuggestedExerciseCandidate>,
                           tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked,
                           sets: Int = 3,
-                          goal: TrainingGoal = .hypertrophy) -> SuggestedWorkoutBundle {
+                          goal: TrainingGoal = .hypertrophy,
+                          historyWorkoutCount: Int = 0) -> SuggestedWorkoutBundle {
         SuggestedWorkoutGenerator.generate(input: SuggestedWorkoutInput(
             completedSetsByMuscle: completed,
             candidates: Array(candidates),
+            historyWorkoutCount: historyWorkoutCount,
             trackedGroups: tracked,
-            preferredSetsPerExercise: sets,
+            preferredSetsPerExercise: 4,
+            mostRecentExerciseWorkingSets: sets,
             trainingGoal: goal
         ))
     }

@@ -130,12 +130,15 @@ await_authorization() {
   exit 0
 }
 
-commit_changes() { # returns 0 committed+pushed, 1 nothing, exits on forbidden/auth
+prepare_changes() { # stages candidate changes; never publishes them
   local rc=0
   stage_and_check || rc=$?
   [[ $rc -eq 3 ]] && await_authorization
   [[ $rc -eq 0 ]] || exit 1
   git diff --cached --quiet && return 1
+}
+
+publish_changes() { # commit only code that has already passed local CI
   git commit -qm "Implement issue #${ISSUE} with Claude
 
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
@@ -146,10 +149,17 @@ validate() { # attempt
   ( set -eo pipefail; env -u GH_TOKEN -u GITHUB_TOKEN bash scripts/ci-validate.sh ) >"/tmp/claude-issue-logs/validation-${1}.log" 2>&1
 }
 
+mark_validation_failure() {
+  gh label create needs-human-review --repo "$repo" --color D93F0B \
+    --description 'Automation stopped; a human must act' --force >/dev/null
+  gh issue edit "$ISSUE" --add-label needs-human-review >/dev/null 2>&1 || true
+  gh issue edit "$ISSUE" --remove-label ai-ready >/dev/null 2>&1 || true
+  gh issue comment "$ISSUE" --body "<!-- claude-prepublish-validation-failed -->
+Automation made candidate changes but they failed local validation after ${used} attempts. No commit, branch, or PR was published. Review the run and retry after the underlying failure is addressed: ${run_url}" >/dev/null || true
+}
+
 run_claude "$prompt"
-commit_changes || { echo 'Claude produced no code changes' >&2; exit 1; }
-pr_number=$(make_pr "$branch")
-gh issue edit "$ISSUE" --remove-label "$wait_label" >/dev/null 2>&1 || true
+prepare_changes || { echo 'Claude produced no safe code changes' >&2; exit 1; }
 
 passed=false; used=0
 for attempt in 0 1 2; do
@@ -163,20 +173,20 @@ Fix the build/test/guardrail failures for issue #${ISSUE}. CI maintenance author
 \`\`\`
 ${excerpt}
 \`\`\`" || true
-    commit_changes || true
+    prepare_changes || { echo 'Claude repair produced no safe code changes' >&2; exit 1; }
   fi
 done
 
-# Persist the retry budget so repair continues from it, not from zero.
-state=$(jq -nc --argjson a "$([[ "$passed" == true ]] && echo 0 || echo "$used")" '{attempts:$a}')
-gh pr comment "$pr_number" --body "$(printf '<!-- claude-pr-state %s -->\n**Automation status:** %s\n\n_Local validation by the issue run: %s. GitHub'"'"'s required `validate` check is tracked separately by PR maintenance._ [Run](%s)' \
-  "$state" "$([[ "$passed" == true ]] && echo 'PR created; awaiting required check' || echo 'PR created; local validation failed, repair queued')" "$([[ "$passed" == true ]] && echo passed || echo FAILED)" "$run_url")" >/dev/null || true
-kick_maintenance "$pr_number"
-
-if [[ "$passed" == true ]]; then
-  gh issue comment "$ISSUE" --body "PR #${pr_number} created ready for review; local validation passed. Auto-merge was requested; required checks govern merging. [Run](${run_url})" >/dev/null || true
-else
-  # Not an owner page yet: the repair workflow still has its own bounded budget.
-  gh issue comment "$ISSUE" --body "PR #${pr_number} created ready for review, but local validation failed after ${used} attempts; required checks block merging. Automated repair continues from the persisted budget and will notify @${owner} only if it is exhausted. [Run](${run_url})" >/dev/null || true
+if [[ "$passed" != true ]]; then
+  mark_validation_failure
+  echo 'Pre-publication validation failed; no branch or PR was created.' >&2
   exit 1
 fi
+
+publish_changes
+pr_number=$(make_pr "$branch")
+gh issue edit "$ISSUE" --remove-label "$wait_label" >/dev/null 2>&1 || true
+state=$(jq -nc '{attempts:0}')
+gh pr comment "$pr_number" --body "$(printf '<!-- claude-pr-state %s -->\n**Automation status:** PR created after local validation passed; awaiting required checks.\n\n_Local validation passed before this branch was published. GitHub'"'"'s required `validate` check is tracked separately by PR maintenance._ [Run](%s)' "$state" "$run_url")" >/dev/null || true
+kick_maintenance "$pr_number"
+gh issue comment "$ISSUE" --body "PR #${pr_number} created after local validation passed. Auto-merge was requested; required checks govern merging. [Run](${run_url})" >/dev/null || true

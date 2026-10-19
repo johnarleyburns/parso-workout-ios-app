@@ -2,6 +2,7 @@
 # Exercise PR creation with a fake GitHub CLI; no network or repository writes.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
+script="$root/.github/scripts/issue-to-pr.sh"
 trace=$(mktemp)
 trap 'rm -f "$trace"' EXIT
 eval "$(sed -n '/^make_pr() {/,/^}/p' "$root/.github/scripts/issue-to-pr.sh")"
@@ -38,4 +39,10 @@ api_failure=true
 number=$(make_pr example-branch 2>/dev/null)
 [[ "$number" == 123 ]]
 [[ $(grep -c '^pr create ' "$trace") -eq 1 ]]
-echo 'PR creation policy: ready, explicit auto-merge, failure preserves PR'
+echo 'PR creation policy: ready, explicit auto-merge'
+# A failed local validation must never leave a branch or PR behind.
+validate_line=$(rg -n 'if validate "\$attempt"' "$script" | cut -d: -f1)
+publish_line=$(rg -n '^publish_changes$' "$script" | cut -d: -f1)
+pr_line=$(rg -n '^pr_number=\$\(make_pr' "$script" | cut -d: -f1)
+[[ "$validate_line" -lt "$publish_line" && "$publish_line" -lt "$pr_line" ]]
+rg -q 'Pre-publication validation failed; no branch or PR was created' "$script"

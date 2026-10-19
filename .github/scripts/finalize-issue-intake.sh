@@ -18,7 +18,5 @@ fi
 state=$(gh issue view "$issue" --repo "$repo" --json state --jq .state)
 if [[ "$result" == success && "$state" == CLOSED ]]; then gh issue edit "$issue" --repo "$repo" --remove-label intake-running --remove-label retry-ai >/dev/null || true; exit 0; fi
 gh issue edit "$issue" --repo "$repo" --add-label intake-blocked --add-label needs-human-review --remove-label intake-running --remove-label ai-ready --remove-label retry-ai >/dev/null || true
-gh issue comment "$issue" --repo "$repo" --body "<!-- claude-intake-state attempt=${attempt} -->
-**Issue intake status:** blocked before PR creation.
-
-Attempt `${attempt}` ended as `${result}` without a linked PR. Review [the implementation run](${run_url}), correct the issue or split its scope, then apply `retry-ai` for one controller-mediated retry." >/dev/null
+body=$(printf '%s\n**Issue intake status:** blocked before PR creation.\n\nAttempt `%s` ended as `%s` without a linked PR. Review [the implementation run](%s), correct the issue or split its scope, then apply `retry-ai` for one controller-mediated retry.' "<!-- claude-intake-state attempt=${attempt} -->" "$attempt" "$result" "$run_url")
+gh issue comment "$issue" --repo "$repo" --body "$body" >/dev/null

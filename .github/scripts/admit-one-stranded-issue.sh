@@ -3,6 +3,14 @@
 # maintains one durable reservation per repository.
 set -euo pipefail
 repo="${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"; api="repos/${repo}"
+# This is the authoritative admission brake. Workflow conditions alone are not
+# enough because manual dispatch and owner-applied labels can otherwise bypass
+# a paused queue.
+pipeline_enabled=$(gh variable list --repo "$repo" | awk '$1 == "CLAUDE_PIPELINE_AUTO_ENABLED" { print $2 }')
+if [[ "$pipeline_enabled" != true ]]; then
+  echo 'Issue admission is paused by CLAUDE_PIPELINE_AUTO_ENABLED.'
+  exit 0
+fi
 ensure_label() { gh label create "$1" --repo "$repo" --color "$2" --description "$3" --force >/dev/null; }
 ensure_label ai-ready AAAAAA 'Admitted to the controlled coding queue'
 ensure_label priority-high B60205 'Owner-approved priority queue override; admits before normal eligible issues'
@@ -69,8 +77,9 @@ macos_capacity_available || { echo 'Actual xcode-27 capacity is occupied.'; exit
 all_pr_bodies=$(gh pr list --repo "$repo" --state all --base main --limit 1000 --json body --jq '.[].body // ""')
 issues=$(gh issue list --repo "$repo" --state open --limit 1000 --json number,author,labels,createdAt --jq '
 sort_by([if any(.labels[]?.name; . == "priority-high") then 0 else 1 end, .createdAt, .number])[] | select(.author.login == "johnarleyburns")
-| select(any(.labels[]?.name; . == "awaiting-ci-authorization" or . == "needs-human-review" or . == "tracking" or . == "blocked-by-dependency" or . == "intake-running" or . == "intake-retry-deferred" or . == "ready-for-qa") | not)
-| select((any(.labels[]?.name; . == "intake-blocked") and any(.labels[]?.name; . == "retry-ai")) or any(.labels[]?.name; . == "intake-blocked") | not) | .number')
+| select(any(.labels[]?.name; . == "awaiting-ci-authorization" or . == "tracking" or . == "blocked-by-dependency" or . == "intake-running" or . == "intake-retry-deferred" or . == "ready-for-qa") | not)
+| select((any(.labels[]?.name; . == "needs-human-review") | not) or any(.labels[]?.name; . == "retry-ai"))
+| select((any(.labels[]?.name; . == "intake-blocked") | not) or any(.labels[]?.name; . == "retry-ai")) | .number')
 for issue in $issues; do
   grep -Fq "<!-- claude-issue:${issue} -->" <<<"$all_pr_bodies" && continue
   macos_capacity_available || exit 0

@@ -20,7 +20,14 @@ token=$(ruby -rjson -ropenssl -rbase64 -e '
   h=Base64.urlsafe_encode64({alg:"ES256",kid:ENV.fetch("ASC_KEY_ID"),typ:"JWT"}.to_json,padding:false)
   p=Base64.urlsafe_encode64({iss:ENV.fetch("ASC_ISSUER_ID"),aud:"appstoreconnect-v1",exp:Time.now.to_i+600}.to_json,padding:false)
   key=OpenSSL::PKey.read(File.read(ENV.fetch("ASC_KEY_PATH")))
-  s=Base64.urlsafe_encode64(key.sign("SHA256", "#{h}.#{p}"),padding:false); print "#{h}.#{p}.#{s}"')
+  # OpenSSL returns ASN.1 DER ECDSA signatures; JWS ES256 requires raw,
+  # fixed-width r||s (32 bytes each), not the DER sequence.
+  der=key.sign("SHA256", "#{h}.#{p}")
+  values=OpenSSL::ASN1.decode(der).value.map(&:value)
+  raise "invalid ECDSA signature" unless values.length == 2
+  raw=values.map { |n| [n.to_s(16).rjust(64,"0")].pack("H*") }.join
+  raise "invalid ES256 signature length" unless raw.bytesize == 64
+  s=Base64.urlsafe_encode64(raw,padding:false); print "#{h}.#{p}.#{s}"')
 auth=(-H "Authorization: Bearer $token" -H 'Content-Type: application/json')
 
 ensure_label() {
@@ -34,7 +41,7 @@ ensure_label ready-for-qa '0E8A16' 'Apple processing completed; the exact TestFl
 
 api_get() {
   local outfile=$1; shift
-  HTTP_CODE=$(curl -sS -o "$outfile" -w '%{http_code}' "${auth[@]}" "$@" || true)
+  HTTP_CODE=$(curl -sS -o "$outfile" -w '%{http_code}' "${auth[@]}" "$@") || return 1
 }
 
 reconcile_issue() {
@@ -56,7 +63,10 @@ reconcile_issue() {
   status_marker="<!-- testflight-status:${bundle}:${version}:${build} -->"
   body="$tmp/body-$issue"
 
-  api_get "$body" --get --data-urlencode "filter[bundleId]=$bundle" 'https://api.appstoreconnect.apple.com/v1/apps'
+  if ! api_get "$body" --get --data-urlencode "filter[bundleId]=$bundle" 'https://api.appstoreconnect.apple.com/v1/apps'; then
+    echo "::error::App Store Connect transport failure; preserving existing TestFlight labels for #$issue" >&2
+    return 1
+  fi
   if [[ "$HTTP_CODE" != 200 ]]; then
     status='Upload accepted; App Store Connect lookup could not be verified yet.'
     detail="App Store Connect app lookup returned HTTP $HTTP_CODE. The scheduled reconciler will retry; this is not evidence that the build is unavailable."

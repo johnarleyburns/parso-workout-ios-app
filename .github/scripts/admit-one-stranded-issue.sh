@@ -22,20 +22,28 @@ macos_capacity_available() {
   done
 }
 
-# Provision this required label defensively so a deleted repository label cannot
-# stall every eligible issue again. Preserve an existing label's colour/text.
+# Provision queue labels defensively so a deleted repository label cannot stall
+# admission. Preserve existing labels' colour/text. `priority-high` is an
+# explicit owner-controlled queue override, never a request for extra capacity.
 if ! gh label list --repo "$repo" --limit 100 --json name --jq '.[].name' | grep -Fxq 'ai-ready'; then
   gh label create 'ai-ready' --repo "$repo" --color AAAAAA \
     --description 'Admitted to the controlled coding queue'
+fi
+if ! gh label list --repo "$repo" --limit 100 --json name --jq '.[].name' | grep -Fxq 'priority-high'; then
+  gh label create 'priority-high' --repo "$repo" --color B60205 \
+    --description 'Owner-approved priority queue override; admits before normal eligible issues'
 fi
 
 macos_capacity_available || exit 0
 
 # Bodies, rather than PR title conventions, are the durable issue-to-PR link.
 pr_bodies=$(gh pr list --repo "$repo" --state all --base main --limit 200 --json body --jq '.[] | .body // ""')
-issues=$(gh issue list --repo "$repo" --state open --limit 200 \
+issues=$(gh issue list --repo "$repo" --state open --limit 1000 \
   --json number,author,labels,createdAt --jq '
-    sort_by(.createdAt)[]
+    # Deterministic policy: oldest eligible priority-high first; otherwise
+    # oldest eligible issue. Issue number makes same-timestamp ordering stable.
+    sort_by([if any(.labels[]?.name; . == "priority-high") then 0 else 1 end,
+             .createdAt, .number])[]
     | select(.author.login == "johnarleyburns")
     | select(any(.labels[]?.name;
         . == "awaiting-ci-authorization" or . == "needs-human-review" or

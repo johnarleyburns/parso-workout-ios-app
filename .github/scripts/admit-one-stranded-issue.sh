@@ -11,6 +11,25 @@ if [[ "$pipeline_enabled" != true ]]; then
   echo 'Issue admission is paused by CLAUDE_PIPELINE_AUTO_ENABLED.'
   exit 0
 fi
+
+# Never start a second implementation lifecycle while a generated PR is open.
+# The next worker is admitted only after main's release for the current SHA has
+# completed successfully, so it always begins from settled main rather than a
+# pre-merge snapshot that would need rebasing.
+open_generated_pr=$(gh pr list --repo "$repo" --state open --base main --limit 1000 --json number,body \
+  --jq '.[] | select((.body // "") | contains("<!-- claude-issue:")) | .number' | head -1)
+if [[ -n "$open_generated_pr" ]]; then
+  echo "Generated PR #${open_generated_pr} is still open; admission waits for merge and main release."
+  exit 0
+fi
+main_sha=$(gh api "${api}/git/ref/heads/main" --jq '.object.sha')
+release=$(gh api "${api}/actions/runs?head_sha=${main_sha}&per_page=100" | jq '[.workflow_runs[] | select(.name == "iOS Build & TestFlight" or .name == "iOS")] | sort_by(.created_at) | last')
+release_status=$(jq -r '.status // empty' <<<"$release")
+release_conclusion=$(jq -r '.conclusion // empty' <<<"$release")
+if [[ "$release_status" != completed || "$release_conclusion" != success ]]; then
+  echo "main ${main_sha} release is not successfully settled (${release_status:-missing}/${release_conclusion:-missing}); admission waits."
+  exit 0
+fi
 ensure_label() { gh label create "$1" --repo "$repo" --color "$2" --description "$3" --force >/dev/null; }
 ensure_label ai-ready AAAAAA 'Admitted to the controlled coding queue'
 ensure_label priority-high B60205 'Owner-approved priority queue override; admits before normal eligible issues'
@@ -54,7 +73,7 @@ macos_capacity_available() {
       all_jobs=$(jq --argjson page "$jobs" '. + $page' <<<"$all_jobs")
     done < <(gh api --paginate "${api}/actions/runs?status=${status}&per_page=100" --jq '.workflow_runs[]?.id')
   done
-  ! jq -e 'any(.[]; (.status == "queued" or .status == "in_progress") and any(.labels[]?; . == "xcode-27"))' <<<"$all_jobs" >/dev/null
+  ! jq -e 'any(.[]; (.status == "queued" or .status == "in_progress") and any(.labels[]?; . == "xcode-27" or . == "macos-latest" or (startswith("macos-"))))' <<<"$all_jobs" >/dev/null
 }
 
 # Release only explicit, one-way dependencies when the prerequisite's linked
@@ -87,7 +106,7 @@ for issue in $issues; do
   gh issue edit "$issue" --repo "$repo" --add-label intake-running --remove-label retry-ai >/dev/null
   reservation=$(printf '%s\n**Issue intake reservation:** controller-owned, awaiting dispatch confirmation.\n\nAttempt: `%s`' "$marker" "$attempt")
   comment_url=$(gh api --method POST "${api}/issues/${issue}/comments" -f body="$reservation" --jq '.url')
-  response=$(gh api --method POST "${api}/actions/workflows/issue-to-pr.yml/dispatches" -f ref=main -f "inputs[issue_number]=${issue}" -f "inputs[attempt_id]=${attempt}" -F return_run_details=true 2>&1) || {
+  response=$(gh api --method POST "${api}/actions/workflows/issue-to-pr.yml/dispatches" -f ref=main -f "inputs[issue_number]=${issue}" -f "inputs[attempt_id]=${attempt}" -f "inputs[base_sha]=${main_sha}" -F return_run_details=true 2>&1) || {
     gh issue edit "$issue" --repo "$repo" --add-label intake-blocked --add-label needs-human-review --remove-label intake-running >/dev/null || true
     gh api --method PATCH "$comment_url" -f body="$reservation
 

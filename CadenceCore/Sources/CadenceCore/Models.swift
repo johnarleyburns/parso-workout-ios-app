@@ -543,6 +543,10 @@ public final class WorkoutSession {
     /// Guideline-minute / Z1–Z5 split (JSON `CardioMinuteSummary`) derived from
     /// `hrSamplesData` with the same classifier cardio uses. "" when unavailable.
     public var intensitySummaryData: String = ""
+    /// True once the user explicitly saved manual cardio minutes (including 0/0).
+    /// Additive/defaulted for CloudKit + back-compat; cleared when new accepted
+    /// physiological data replaces the summary.
+    public var hasManualCardioMinutesOverride: Bool = false
     /// Working load (canonical kg) prescribed by the coach when this session was
     /// launched via "Do this workout" (strength-pivot P5.3); 0 = none. Pre-fills the
     /// set keypad for the prescribed movement. Additive/defaulted for CloudKit + back-compat.
@@ -648,7 +652,17 @@ public final class WorkoutSession {
     public func setManualCardioMinutes(moderate: Int, vigorous: Int) {
         intensitySummary = (intensitySummary ?? .manual(moderate: 0, vigorous: 0, sessionDuration: duration))
             .withManualMinutes(moderate: moderate, vigorous: vigorous)
+        hasManualCardioMinutesOverride = true
         updatedAt = Date()
+    }
+
+    /// Explicit override, or a high-confidence legacy manual summary: activity
+    /// metadata method, empty zones, and nonzero manual duration.
+    public var isManualCardioMinutesOverride: Bool {
+        if hasManualCardioMinutesOverride { return true }
+        guard let s = intensitySummary else { return false }
+        return s.method == .activityMetadata && s.confidence == .high && s.zoneDurations.isEmpty
+            && s.moderateDuration + s.vigorousDuration > 0
     }
 
     /// Stores the session's HR samples and the guideline split they imply.
@@ -657,6 +671,7 @@ public final class WorkoutSession {
                                 source: HeartRateSource = .phone, at date: Date = Date()) {
         hrSamplePoints = samples
         hrCoverage = samples.isEmpty ? nil : HeartRateCoverage.measure(samples, source: source, at: date)
+        hasManualCardioMinutesOverride = false
         guard !samples.isEmpty else { intensitySummary = nil; return }
         let duration = max(duration, samples.map(\.t).max() ?? 0)
         intensitySummary = CardioMinuteAccumulator.summarize(duration: duration, samples: samples, profile: profile)

@@ -4,7 +4,7 @@ on:
   issues:
     types: [labeled, closed]
   workflow_run:
-    workflows: ["Claude Issue to PR", "PR Swift Validation", "iOS Build & TestFlight", "iOS"]
+    workflows: ["iOS Build & TestFlight", "iOS"]
     types: [completed]
   schedule:
     # Recovery only: GitHub cron may be delayed or dropped.

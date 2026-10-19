@@ -145,6 +145,7 @@ diagnostic, export, or recovery path instead of implying a control the app does
 not have.
 
 ## Workflow rules for Claude Code
+- **Automated issue-intake worker contract:** when running inside the non-interactive issue-to-PR workflow, save the requested source and test edits in the worktree; do not personally commit, push, or open the PR because the wrapper performs publication. Before responding, run `git diff --check`, report `git diff --name-only`, run required tests in the foreground (never background them), and audit the actual saved diff against the issue. A prose-only description is not a deliverable.
 - **We do NOT use `current_status.md` to track status** (the file has been removed). Do not create or update it; derive state from the code, git history, and this file.
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
 - **Test the requested behavior before and after implementation:** for every non-UI issue, first add or strengthen a focused automated test that fails for the reported defect, then make that same test pass with the implementation. If a behavior cannot be covered automatically, explain why in the PR and add the narrowest reliable alternative verification.

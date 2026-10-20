@@ -57,6 +57,14 @@ struct StartWorkoutView: View {
                         .buttonStyle(.bordered)
                         .accessibilityIdentifier("startWorkout.pick.saved")
 
+                        NavigationLink {
+                            SendCardioToWatchView()
+                        } label: {
+                            startActionLabel(String(localized: "Send cardio to Watch"), symbol: "applewatch", tint: .blue)
+                        }
+                        .buttonStyle(.bordered)
+                        .accessibilityIdentifier("startWorkout.pick.sendCardioToWatch")
+
                     }
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
@@ -346,5 +354,45 @@ struct CardioPickerView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("cardioPicker.schedule.other")
         }
+    }
+}
+
+/// Designs a cardio workout on the phone and sends it to the Watch's "Sent from your phone" list.
+/// Strength workouts are sent from their editor ("Send Workout to Watch").
+struct SendCardioToWatchView: View {
+    @Environment(AppModel.self) private var model
+    @State private var type: CardioType = .run
+    @State private var minutes = 30
+    @State private var result: Bool?
+
+    private let types: [CardioType] = CardioType.allCases.filter { $0 != .other }
+
+    var body: some View {
+        Form {
+            Picker("Type", selection: $type) {
+                ForEach(types) { Text($0.displayName).tag($0) }
+            }
+            Stepper("\(minutes) min", value: $minutes, in: 5...240, step: 5)
+            Section {
+                Button {
+                    let workout = WatchSentWorkouts.cardioSession(
+                        title: type.displayName, cardioType: type.rawValue, durationMinutes: minutes)
+                    result = model.sendWorkoutToWatch(workout)
+                } label: {
+                    Label("Send Workout to Watch", systemImage: "applewatch")
+                }
+                .accessibilityIdentifier("sendCardio.send")
+            } footer: {
+                Text("It appears on your Watch under Sent from your phone. You start it there, and it leaves that list once started.")
+            }
+            if let result {
+                Text(result ? "Sent to your Watch." : "Couldn't reach a paired Apple Watch with Cladiron installed.")
+                    .font(.footnote)
+                    .foregroundStyle(result ? Color.secondary : Color.red)
+                    .accessibilityIdentifier("sendCardio.result")
+            }
+        }
+        .navigationTitle("Send to Watch")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

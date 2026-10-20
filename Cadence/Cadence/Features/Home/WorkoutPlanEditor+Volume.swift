@@ -11,6 +11,25 @@ extension WorkoutPlanEditor {
         .accessibilityIdentifier("editor.start")
     }
 
+    var sendToWatchButton: some View {
+        CadenceActionButton(title: String(localized: "Send Workout to Watch"),
+                            systemImage: "applewatch",
+                            emphasis: .secondary) {
+            sendToWatch()
+        }
+        .accessibilityHint(String(localized: "Puts this workout on your Apple Watch under Sent from your phone. You start it there."))
+        .accessibilityIdentifier("editor.sendToWatch")
+    }
+
+    func sendToWatch() {
+        let exercises = plan.exercises.map { (name: $0.name, repTargets: $0.sets.map(\.targetReps)) }
+        let workout = WatchSentWorkouts.strengthSession(
+            title: plan.title.isEmpty ? String(localized: "Workout") : plan.title,
+            exercises: exercises)
+        sendToWatchSucceeded = model.sendWorkoutToWatch(workout)
+        sendToWatchResultPresented = true
+    }
+
     var scheduleButton: some View {
         CadenceActionButton(title: String(localized: "Schedule this Workout"),
                             systemImage: "calendar.badge.plus",

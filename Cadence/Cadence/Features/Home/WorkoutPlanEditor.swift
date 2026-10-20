@@ -75,6 +75,9 @@ struct WorkoutPlanEditor: View {
     @State private var planVolumeExpanded = false
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
     @State var schedulePresented = false
+    @State var sendToWatchResultPresented = false
+    @State var sendToWatchSucceeded = false
+    @Environment(AppModel.self) var model
     @State var suggestExerciseFailed = false
     @State private var discardEditPresented = false
     let allowsStart: Bool
@@ -106,6 +109,7 @@ struct WorkoutPlanEditor: View {
             LazyVStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 if allowsStart {
                     startButton
+                    sendToWatchButton
                     if allowsSchedule { scheduleButton }
                 }
 
@@ -213,6 +217,14 @@ struct WorkoutPlanEditor: View {
                 .padding(.vertical, 8)
                 .background(.bar)
             }
+        }
+        .alert(sendToWatchSucceeded ? "Sent to your Watch" : "Couldn't send to Watch",
+               isPresented: $sendToWatchResultPresented) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(sendToWatchSucceeded
+                 ? "Open Cladiron on your Watch and start it from Sent from your phone. It leaves that list once you start it."
+                 : "Cladiron couldn't reach a paired Apple Watch with the app installed. Check Settings, then try again.")
         }
         .alert("Discard changes?", isPresented: $discardEditPresented) {
             Button("Discard", role: .destructive) {

@@ -192,6 +192,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         recentPartnerNames = preferences.recentPartnerNames
         todayPlan = incoming.todayPlan
         if let week = incoming.weekSummary { weekSummary = week }
+        if let sent = incoming.sentWorkouts { WatchSentWorkoutStore.shared.sentWorkouts = sent }
         if let customExercises = incoming.customExercises {
             pendingCustomExercises = customExercises
             customExercisesUpdatedAt = incoming.updatedAt

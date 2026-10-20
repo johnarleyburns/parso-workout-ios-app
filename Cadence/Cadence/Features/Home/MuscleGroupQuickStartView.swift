@@ -23,18 +23,12 @@ struct MuscleGroupQuickStartView: View {
 
     @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive }) private var exclusions: [ExerciseSuggestionExclusion]
 
-    private var allowedSuggestions: [ExerciseTemplate] {
-        let lastWorkoutIDs = RecentSuggestionExclusion.candidateIDs(
-            sessions: sessions, candidates: suggestions.map { SuggestedExerciseCandidate(template: $0) })
-        let keys = Set(exclusions.map(\.exerciseKey)).union(lastWorkoutIDs)
-        return suggestions.filter { SuggestedExerciseFilter.allows($0, keys: keys) }
-    }
-
     /// Computed once per history change, not on every body pass. Ranking walks
     /// every set of every past session, and the list used to evaluate it twice
     /// per render (the `isEmpty` check and the `ForEach`).
     @State private var ranked: [(session: WorkoutSession, covered: [MuscleGroup])] = []
-    @State private var suggestions: [ExerciseTemplate] = []
+    /// Already exclusion-filtered; computed off the main actor in `.task`.
+    @State private var allowedSuggestions: [ExerciseTemplate] = []
 
     var body: some View {
         NavigationStack {
@@ -98,11 +92,25 @@ struct MuscleGroupQuickStartView: View {
             }
             .navigationTitle("Fill the Gaps")
             .navigationBarTitleDisplayMode(.inline)
-            .task(id: sessions.count) {
-                ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
-                suggestions = ExerciseLibrary.suggestions(forMissing: missing, limit: max(6, missing.count))
-            }
+            .task(id: sessions.count) { await refresh() }
+            .task(id: exclusions.count) { await refresh() }
         }
+    }
+
+    /// Snapshots the few main-actor inputs, then runs the catalog cover off the
+    /// main actor so opening the sheet never blocks the UI.
+    private func refresh() async {
+        let missing = self.missing
+        let lastWorkoutIDs = RecentSuggestionExclusion.candidateIDs(
+            sessions: sessions, candidates: ExerciseLibrary.starter.map { SuggestedExerciseCandidate(template: $0) })
+        let keys = Set(exclusions.map(\.exerciseKey)).union(lastWorkoutIDs)
+        ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
+        let picks = await Task.detached(priority: .userInitiated) {
+            ExerciseLibrary.suggestions(forMissing: missing, limit: max(6, missing.count)) {
+                SuggestedExerciseFilter.allows($0, keys: keys)
+            }
+        }.value
+        allowedSuggestions = picks
     }
 
     @ViewBuilder

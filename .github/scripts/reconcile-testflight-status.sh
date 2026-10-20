@@ -44,6 +44,32 @@ api_get() {
   HTTP_CODE=$(curl -sS -o "$outfile" -w '%{http_code}' "${auth[@]}" "$@") || return 1
 }
 
+# App Manager credentials can read a group's builds, while Apple rejects the
+# inverse /builds/{id}/betaGroups relationship. Return a compatible one-item
+# group response only when this exact build is in the required Internal QA
+# group; traverse all pages so historical builds are handled correctly.
+internal_qa_for_build() {
+  local outfile=$1 app_id=$2 build_id=$3 qa_group_id group_url next_url
+  api_get "$outfile" --get --data-urlencode "filter[app]=$app_id" --data-urlencode 'filter[name]=Internal QA' 'https://api.appstoreconnect.apple.com/v1/betaGroups'
+  [[ "$HTTP_CODE" == 200 ]] || return 0
+  qa_group_id=$(jq -r '.data[] | select(.attributes.name == "Internal QA") | .id' "$outfile" | head -1)
+  if [[ -z "$qa_group_id" ]]; then printf '%s\n' '{"data":[]}' > "$outfile"; return 0; fi
+  group_url="https://api.appstoreconnect.apple.com/v1/betaGroups/$qa_group_id/relationships/builds?limit=200"
+  while [[ -n "$group_url" ]]; do
+    api_get "$outfile" "$group_url"
+    [[ "$HTTP_CODE" == 200 ]] || return 0
+    if jq -e --arg build "$build_id" 'any(.data[]?; .id == $build)' "$outfile" >/dev/null; then
+      jq -n --arg id "$qa_group_id" '{data:[{id:$id}]}' > "$outfile"
+      HTTP_CODE=200
+      return 0
+    fi
+    next_url=$(jq -r '.links.next // empty' "$outfile")
+    group_url=$next_url
+  done
+  printf '%s\n' '{"data":[]}' > "$outfile"
+  HTTP_CODE=200
+}
+
 reconcile_issue() {
   local issue=$1 marker bundle version build status_marker comments delivery body app_id build_id state groups_count availability detail existing
   comments="$tmp/comments-$issue"
@@ -91,7 +117,7 @@ reconcile_issue() {
           detail="App Store Connect processing state: ${state:-not indexed}. The scheduled reconciler will retry."
           gh issue edit "$issue" --repo "$repo" --add-label testflight-uploaded --add-label testflight-processing --remove-label testflight-distribution-confirmed --remove-label ready-for-qa --remove-label testflight-access-unverified >/dev/null
         else
-          api_get "$body" "https://api.appstoreconnect.apple.com/v1/builds/$build_id/betaGroups"
+          internal_qa_for_build "$body" "$app_id" "$build_id"
           if [[ "$HTTP_CODE" == 200 ]]; then
             groups_count=$(jq '.data | length' "$body")
             if [[ "$groups_count" -gt 0 ]]; then

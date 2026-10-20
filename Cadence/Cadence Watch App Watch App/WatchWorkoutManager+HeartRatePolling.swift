@@ -25,6 +25,8 @@ extension WatchWorkoutManager {
     func relayReading(_ bpm: Double, endingAt sampleEnd: Date?) {
         guard phoneRequestID != nil,
               relaySchedule.observeReading(endingAt: sampleEnd, uptime: uptimeNow) else { return }
+        // A strap reading has no sample time; stamp it when observed.
+        lastObservedReading = (bpm, sampleEnd ?? Date(), sampleEnd != nil)
         sendHeartRateToPhoneSoon()
     }
 
@@ -50,7 +52,15 @@ extension WatchWorkoutManager {
         guard let bpm = currentBPM, bpm > 0,
               let requestID = phoneRequestID,
               let session = wcSession, session.isReachable else { return }
-        session.sendMessage(["bpm": bpm, "active": true, "requestID": requestID], replyHandler: nil, errorHandler: nil)
+        var payload: [String: Any] = ["bpm": bpm, "active": true, "requestID": requestID, "v": 1]
+        // Only a real measurement carries its own end time; a heartbeat resend
+        // reuses it, so the phone deduplicates instead of inventing coverage.
+        if let observed = lastObservedReading {
+            payload["bpm"] = observed.bpm
+            payload["sampleEnd"] = observed.end.timeIntervalSince1970
+            payload["source"] = observed.isHealthKit ? "watchHealthKit" : "watchBLE"
+        }
+        session.sendMessage(payload, replyHandler: nil, errorHandler: nil)
         relaySchedule.recordSend(uptime: uptimeNow)
     }
 
@@ -82,6 +92,7 @@ extension WatchWorkoutManager {
         relayTimer?.invalidate()
         relayTimer = nil
         relaySchedule.reset()
+        lastObservedReading = nil
     }
 
     /// Persists a physiological reading exactly once (see `WatchHeartRateSampleRecorder`).
@@ -140,6 +151,7 @@ extension WatchWorkoutManager {
         // Runs with the screen off too, so sparse builder callbacks never lose a sample.
         recordHeartRateSample(reading.bpm, sampleEnd: reading.sampleEnd)
         guard relaySchedule.observeReading(endingAt: reading.sampleEnd, uptime: uptimeNow) else { return }
+        if let end = reading.sampleEnd { lastObservedReading = (reading.bpm, end, true) }
         currentBPM = reading.bpm
     }
 

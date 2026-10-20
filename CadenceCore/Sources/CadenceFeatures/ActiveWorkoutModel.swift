@@ -112,6 +112,18 @@ public final class ActiveWorkoutModel {
 
     public var isActive: Bool { strengthSession != nil }
 
+    /// Session-owned phone HR recorder, created lazily for (and keyed to) the
+    /// active strength session, so it exists for both fresh starts and recovery
+    /// adoption and outlives any SwiftUI view. Retained after `endStrength` so
+    /// the caller can run the final flush; replaced when another session starts.
+    @ObservationIgnored private var recorder: PhoneStrengthHeartRateRecorder?
+    public var heartRateRecorder: PhoneStrengthHeartRateRecorder? {
+        if let session = strengthSession {
+            if recorder?.sessionID != session.id { recorder = PhoneStrengthHeartRateRecorder(session: session) }
+        }
+        return recorder
+    }
+
     /// True while the active session's clock is paused (field-testing Round 4 A1).
     public var isPaused: Bool { clock.isPaused }
 

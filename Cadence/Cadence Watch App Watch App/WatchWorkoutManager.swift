@@ -83,6 +83,8 @@ final class WatchWorkoutManager: NSObject {
     /// Bumped by every start and stop, so a stale authorization can't begin a session.
     @ObservationIgnored var startGeneration = 0
     @ObservationIgnored var relaySchedule = WatchHRRelaySchedule()
+    /// Newest real measurement (its own end time) for the phone relay.
+    @ObservationIgnored var lastObservedReading: (bpm: Double, end: Date, isHealthKit: Bool)?
     /// Whether the app is active (screen on, in front); gates the 1 s display refresh.
     @ObservationIgnored var displayActive = true
     /// Set while a phone-launched workout waits for the phone's command to name it.

@@ -368,6 +368,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     private var _settings: AppSettings?
     private var _modelContainer: ModelContainer?
     private var _active: ActiveWorkoutModel?
+    /// Watch request → phone strength session it was started for.
+    private var watchRequestSessionIDs: [UUID: UUID] = [:]
     /// Legacy Watch Today-plan cache retained only for migration/tests. New
     /// builds do not populate it from the Home coach pipeline.
     private var cachedTodayPlan: WatchSync.TodayPlan?
@@ -661,6 +663,9 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchTimeout?.invalidate()
 
         let requestID = UUID()
+        // Bind this request to the concrete phone session now, so a delayed
+        // message from workout A can never land in workout B.
+        if let sessionID = _active?.strengthSession?.id { watchRequestSessionIDs[requestID] = sessionID }
         pendingWatchStart = PendingWatchStart(requestID: requestID, retryType: retryType,
                                               allowsRetry: allowsRetry)
         let command = WatchHRCommand(action: .start, requestID: requestID,
@@ -838,6 +843,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchActive = false
         watchStartInProgress = false
         watchError = nil
+        hrm.clearExternalBPM()
         guard let targetRequestID, let session = wcSession else { return }
         let command = WatchHRCommand(action: .stop, requestID: targetRequestID,
                                      issuedAt: nextWatchHRCommandIssuedAt())
@@ -979,9 +985,27 @@ extension AppModel {
                 self.watchActive = true
                 self.watchStartInProgress = false
                 self.hrm.injectExternalBPM(bpm)
+                self.recordWatchObservation(message, bpm: bpm, requestID: requestID)
             }
         }
         replyHandler?(["ack": true])
+    }
+
+    /// Captures a real, timestamped Watch reading into the active session's
+    /// durable recorder. Packets without a measurement timestamp (display
+    /// heartbeats from older Watch builds) are never recorded; a resent
+    /// heartbeat reuses its `sampleEnd` and deduplicates.
+    private func recordWatchObservation(_ message: [String: Any], bpm: Double, requestID: UUID) {
+        guard let end = message["sampleEnd"] as? TimeInterval,
+              let session = _active?.strengthSession,
+              watchRequestSessionIDs[requestID] == session.id,
+              let recorder = _active?.heartRateRecorder, recorder.sessionID == session.id else { return }
+        let sampleID = (message["sampleID"] as? String)
+        let source: HeartRateObservationSource = (message["source"] as? String)
+            .flatMap(HeartRateObservationSource.init(rawValue:)) ?? .watchHealthKit
+        recorder.record(HeartRateObservation(
+            source: source, observedAt: Date(timeIntervalSince1970: end), bpm: bpm,
+            requestID: requestID, sampleID: sampleID))
     }
 
     fileprivate func handleWatchUserInfo(_ userInfo: [String: Any]) {

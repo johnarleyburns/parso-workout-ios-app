@@ -98,23 +98,19 @@ struct WeekStripView: View {
     @ViewBuilder
     private var progressLine: some View {
         let strengthDone = balance.strengthDays
-        let strengthTarget = preferences.strengthDaysPerWeek
-        let cardioDone = balance.cardioDays
-        let cardioTarget = preferences.cardioDaysPerWeek
+        let cardioMinutes = Int(balance.loggedAerobicMinutes.rounded())
         HStack(spacing: 2) {
-            Text("\(strengthDone)/\(strengthTarget) strength")
+            Text("\(strengthDone) strength")
             Text("·")
-            Text("\(cardioDone)/\(cardioTarget) cardio this week")
+            Text("\(cardioMinutes) cardio min this week")
         }
     }
 
     private var weekStripAccessibilityLabel: String {
         let strengthDone = balance.strengthDays
-        let strengthTarget = preferences.strengthDaysPerWeek
-        let cardioDone = balance.cardioDays
-        let cardioTarget = preferences.cardioDaysPerWeek
+        let cardioMinutes = Int(balance.loggedAerobicMinutes.rounded())
         let dayLabels = plan.currentWeekDays.map { dayAccessibilityLabel($0) }.joined(separator: ", ")
-        return String(localized: "This week: \(strengthDone) of \(strengthTarget) strength, \(cardioDone) of \(cardioTarget) cardio. \(dayLabels)")
+        return String(localized: "This week: \(strengthDone) strength days, \(cardioMinutes) cardio minutes. \(dayLabels)")
     }
 
     private func calendarShort(for date: Date) -> String {

@@ -591,14 +591,15 @@ final class CoachDecisionEngineTests: XCTestCase {
         let wed = cal.date(byAdding: .day, value: -4, to: sunday)!
         let fri = cal.date(byAdding: .day, value: -2, to: sunday)!
         let s1 = try makeStrengthEvent(context: ctx, name: "Back Squat",
-                                        primaryMuscles: ["quadriceps", "glutes"], date: mon)
+                                        primaryMuscles: ["quadriceps", "glutes"], date: mon, sets: 10)
         let s2 = try makeStrengthEvent(context: ctx, name: "Bench Press",
-                                        primaryMuscles: ["chest"], date: wed)
+                                        primaryMuscles: ["chest"], date: wed, sets: 10)
         let s3 = try makeStrengthEvent(context: ctx, name: "Deadlift",
-                                        primaryMuscles: ["hamstrings", "glutes"], date: fri)
+                                        primaryMuscles: ["hamstrings", "glutes"], date: fri, sets: 10)
 
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 3, cardioDaysPerWeek: 3,
-                                              allowsTwoADays: true)
+        // Volume, not a day count, decides: every tracked group has its minimum.
+        let prefs = CoachSchedulePreferences(allowsTwoADays: true,
+                                             trackedMuscleGroups: [.quadriceps, .chest, .hamstrings])
         let facts = CoachFacts.make(from: [s1, s2, s3], goal: .strength,
                                      experience: .intermediate, now: sunday)
 
@@ -608,7 +609,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
         XCTAssertNotEqual(decision.primary.kind, .strength,
-                          "Weekly strength target (3/3) met on Sunday → no more strength, even with two-a-day. Got: \(decision.primary.kind)")
+                          "Weekly minimum volume met on Sunday → no more strength, even with two-a-day. Got: \(decision.primary.kind)")
         XCTAssertFalse(decision.todayPlannedRecommendations.contains { $0.kind == .strength },
                        "Two-a-day must not override the weekly strength cap once the target is met")
         XCTAssertFalse(decision.alternatives.contains { $0.kind == .strength },
@@ -1057,8 +1058,8 @@ final class CoachDecisionEngineTests: XCTestCase {
                                          goal: .strength, experience: .intermediate, now: now)
         let afterDecision = CoachDecisionEngine.run(afterFacts, schedulePreferences: prefs)
 
-        XCTAssertEqual(afterFacts.weeklyBalance.strengthDays, prefs.strengthDaysPerWeek,
-                       "The morning strength workout should satisfy the weekly strength target")
+        XCTAssertEqual(afterFacts.weeklyBalance.strengthDays, 2,
+                       "The morning strength workout is the second logged strength day")
         XCTAssertEqual(afterDecision.todayPlannedRecommendations.count, 1,
                        "Cardio should remain planned after only strength is complete")
         XCTAssertTrue(afterDecision.todayPlannedRecommendations.first?.isAerobic ?? false,
@@ -1357,7 +1358,6 @@ final class CoachDecisionEngineTests: XCTestCase {
         // Cardio target is 6/wk but 0 cardio done. Strength 5/wk, 3 done.
         // On current code, rest may win when everything is blocked.
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 5, cardioDaysPerWeek: 6,
             restPreference: .rolling(everyNDays: 4),
             allowsTwoADays: true)
 
@@ -1388,7 +1388,6 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         // 0/6 cardio, 1/5 strength → cardio is the priority
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 5, cardioDaysPerWeek: 6,
             restPreference: .rolling(everyNDays: 4),
             allowsTwoADays: true)
 

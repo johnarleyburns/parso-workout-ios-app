@@ -537,7 +537,14 @@ public enum UnifiedPlanCoachEngine {
                 citationIDs: ["parejaBlancoRecovery2020", "meeusenOvertraining2013"],
                 confidence: .moderate)
         ]
-        if request.schedulePreferences.cardioDaysPerWeek > 0 {
+        let planHasCardio = plan.weeks.contains { week in
+            week.days.contains { day in
+                day.sessions.contains { session in
+                    session.items.contains { if case .cardio = $0 { return true } else { return false } }
+                }
+            }
+        }
+        if planHasCardio {
             decisions.append(RationaleDecision(
                 id: stableUUID("rationale|cardio|\(plan.id.raw.uuidString)"),
                 claim: String(localized: "Cardio sessions retain their modality and intensity prescription in the unified plan.", bundle: .module),

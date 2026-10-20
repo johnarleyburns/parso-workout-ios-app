@@ -147,7 +147,6 @@ struct TimerCardioSetupView: View {
             autoPause: settings.lastCardioSettings.autoPause,
             intervalColorBlind: settings.lastCardioSettings.intervalColorBlind,
             spokenCues: settings.lastCardioSettings.spokenCues,
-            weeklyCardioMinutesGoal: settings.lastCardioSettings.weeklyCardioMinutesGoal,
             warmupMinutes: settings.lastCardioSettings.warmupMinutes,
             cooldownMinutes: settings.lastCardioSettings.cooldownMinutes,
             useHRMonitoring: useHR

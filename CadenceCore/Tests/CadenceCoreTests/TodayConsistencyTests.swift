@@ -16,13 +16,13 @@ final class TodayConsistencyTests: XCTestCase {
                                    goal: .hypertrophy, experience: .intermediate, now: now)
         XCTAssertEqual(facts.weeklyBalance.consecutiveHardDays, 4)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: .init(
-            strengthDaysPerWeek: 5, cardioDaysPerWeek: 6, restPreference: .rolling(everyNDays: 3),
+            restPreference: .rolling(everyNDays: 3),
             allowsTwoADays: true))
         XCTAssertTrue(decision.primary.kind == .strength || decision.primary.isAerobic,
                       "Unmet chosen training targets must outrank hard-streak recovery")
     }
 
-    func testDueCardioDayStillCountsAfterMinuteAndStrengthGoalsAreMet() {
+    func testCardioNotDueOnceActualMinutesAreMetRegardlessOfCardioDays() {
         let workouts = (1...4).map { day in
             CardioWorkout(type: .boxing, start: now.addingTimeInterval(-Double(day) * 86400 - 3600),
                           end: now.addingTimeInterval(-Double(day) * 86400), avgHeartRate: 170)
@@ -34,17 +34,15 @@ final class TodayConsistencyTests: XCTestCase {
         }
         let facts = CoachFacts.make(from: strength + workouts.map { TrainingEvent.from(cardio: $0) },
                                    goal: .hypertrophy, experience: .intermediate, now: now)
-        let schedule = CoachSchedulePreferences(strengthDaysPerWeek: 5, cardioDaysPerWeek: 6,
-                                                 restPreference: .rolling(everyNDays: 3), allowsTwoADays: true)
+        let schedule = CoachSchedulePreferences(restPreference: .rolling(everyNDays: 3), allowsTwoADays: true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: schedule)
         XCTAssertEqual(facts.weeklyBalance.strengthDays, 5)
         XCTAssertEqual(facts.weeklyBalance.cardioDays, 4)
         XCTAssertEqual(facts.weeklyBalance.consecutiveHardDays, 4)
-        XCTAssertTrue(decision.primary.isAerobic, "Cardio frequency remains due even after minute target is met")
-        XCTAssertEqual(decision.observedFacts.first { $0.kind == .weeklyCardioDays }?.value, "4/6")
+        XCTAssertEqual(decision.observedFacts.first { $0.kind == .weeklyCardioDays }?.value, "4",
+                       "Cardio days are reported as an observation, never against a target")
         XCTAssertNotNil(decision.warnings.first { $0.id == "consecutiveHardDays" })
         XCTAssertGreaterThan(facts.weeklyBalance.moderateEquivalentMinutes, 150)
-        if case .planComplete = decision.planAdherence { XCTFail("Today's cardio is still due") }
 
         var explicitRest = schedule
         explicitRest.restPreference = .fixed(days: [.friday])

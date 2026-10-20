@@ -104,15 +104,13 @@ extension CoachSession {
 
         var candidates: [CoachSession] = []
 
-        // The weekly strength floor is the user's own target (was hardcoded 2).
-        let strengthFloor = schedulePreferences.strengthDaysPerWeek
         let desiredSets = schedulePreferences.desiredSetsPerExercise
 
-        let strengthNeeded = balance.strengthDays < strengthFloor
-        // Once the weekly strength target is met, NO strength is offered (general,
-        // beginner, or reduced-load) — the user's expectation, and two-a-days must
-        // not override it.
-        let strengthCapMet = balance.strengthDays >= strengthFloor
+        // Strength is needed while any tracked group is under its minimum weekly
+        // volume. Once every group has it, NO strength is offered (general,
+        // beginner, or reduced-load) and two-a-days must not override that.
+        let strengthNeeded = facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups)
+        let strengthCapMet = !strengthNeeded
 
         // Always offer strength if something needs training and is eligible
         if strengthNeeded || facts.events.isEmpty {

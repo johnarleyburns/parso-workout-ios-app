@@ -18,10 +18,6 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         let data = Data(legacyJSON.utf8)
         let prefs = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
 
-        XCTAssertEqual(prefs.strengthDaysPerWeek, 4,
-                       "Legacy strength days should survive")
-        XCTAssertEqual(prefs.cardioDaysPerWeek, 2,
-                       "Legacy cardio days should survive")
         if case .fixed(let days) = prefs.restPreference {
             let sorted = days.sorted(by: { $0.rawValue < $1.rawValue })
             XCTAssertEqual(sorted, [.monday, .friday],
@@ -59,8 +55,6 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         let data = Data(legacyJSON.utf8)
         let prefs = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
 
-        XCTAssertEqual(prefs.strengthDaysPerWeek, 3)
-        XCTAssertEqual(prefs.cardioDaysPerWeek, 5)
         if case .rolling(let n) = prefs.restPreference {
             XCTAssertEqual(n, 4)
         } else {
@@ -121,8 +115,6 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
 
     func testRoundTripStable() throws {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 4,
-            cardioDaysPerWeek: 2,
             restPreference: .fixed(days: [.saturday, .sunday]),
             allowsTwoADays: true,
             sameDayCardioTiming: .separateLater,
@@ -133,8 +125,6 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         let data = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
 
-        XCTAssertEqual(decoded.strengthDaysPerWeek, 4)
-        XCTAssertEqual(decoded.cardioDaysPerWeek, 2)
         XCTAssertEqual(decoded.restPreference, .fixed(days: [.saturday, .sunday]))
         XCTAssertTrue(decoded.allowsTwoADays)
         XCTAssertEqual(decoded.sameDayCardioTiming, .separateLater)
@@ -161,28 +151,43 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         let data = Data(json.utf8)
         let prefs = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
 
-        XCTAssertEqual(prefs.strengthDaysPerWeek, 2,
-                       "Strength below 2 should clamp to 2")
-        XCTAssertEqual(prefs.cardioDaysPerWeek, 7,
-                       "Cardio above 7 should clamp to 7")
         XCTAssertEqual(prefs.dailyStepTarget, 2_000,
                        "Step target below 2_000 should clamp to 2_000")
         XCTAssertEqual(prefs.desiredSetsPerExercise, 4,
                        "Desired sets above 4 should clamp to 4")
     }
 
+    // MARK: - Retired day-per-week targets
+
+    /// Old stores and exports carried strength/cardio days-per-week targets. They
+    /// must decode (unknown keys ignored) and never be written back.
+    func testRetiredDayTargetKeysDecodeButAreNeverEncoded() throws {
+        let legacyJSON = """
+        {
+          "strengthDaysPerWeek": 4,
+          "cardioDaysPerWeek": 6,
+          "restPreference": {"rolling": {"everyNDays": 3}},
+          "allowsTwoADays": true
+        }
+        """
+        let prefs = try JSONDecoder().decode(CoachSchedulePreferences.self,
+                                             from: Data(legacyJSON.utf8))
+        XCTAssertTrue(prefs.allowsTwoADays)
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(prefs), encoding: .utf8))
+        XCTAssertFalse(json.contains("DaysPerWeek"))
+        XCTAssertFalse(json.contains("stepGoal"))
+    }
+
     // MARK: - trackedMuscleGroups survives as a populated set
 
     func testTrackedMuscleGroupsSurvivesPopulatedSet() throws {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 3,
             trackedMuscleGroups: [.abdominals, .calves, .biceps]
         )
         let data = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
 
         XCTAssertEqual(decoded.trackedMuscleGroups, [.abdominals, .calves, .biceps])
-        XCTAssertEqual(decoded.strengthDaysPerWeek, 3)
     }
 
     func testLegacyExplicitTrackedGroupsReceiveNewDBPPVolumeGroupsOnce() throws {
@@ -256,5 +261,36 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         XCTAssertEqual(decoded.avoidedTags, ["anaerobic", "threshold"])
         XCTAssertEqual(decoded.aerobicPreferences.count, 1)
         XCTAssertEqual(decoded.aerobicPreferences.first?.score, 5)
+    }
+}
+
+// Retired planner day targets: the public surface must not carry them.
+final class RetiredDayTargetSurfaceTests: XCTestCase {
+    func testNoPublicModelEncodesRetiredGoalKeys() throws {
+        let retired = ["strengthDaysPerWeek", "cardioDaysPerWeek", "stepGoal", "weeklyCardioMinutesGoal"]
+        let blobs: [Data] = [
+            try JSONEncoder().encode(CoachSchedulePreferences.default),
+            try JSONEncoder().encode(ExportPreferences(schedulePreferences: .default)),
+            try JSONEncoder().encode(WorkoutSettings.default),
+        ]
+        for data in blobs {
+            let json = try XCTUnwrap(String(data: data, encoding: .utf8))
+            for key in retired { XCTAssertFalse(json.contains(key), "\(key) leaked into \(json)") }
+        }
+    }
+
+    func testRecommendationsDoNotDeriveFromLegacyDayTargets() throws {
+        func prefs(_ extra: String) throws -> CoachSchedulePreferences {
+            try JSONDecoder().decode(CoachSchedulePreferences.self,
+                                     from: Data("{\(extra)\"allowsTwoADays\": false}".utf8))
+        }
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
+                                    now: Date(timeIntervalSince1970: 1_760_000_000))
+        let low = try prefs("\"strengthDaysPerWeek\": 2, \"cardioDaysPerWeek\": 0,")
+        let high = try prefs("\"strengthDaysPerWeek\": 5, \"cardioDaysPerWeek\": 7,")
+        XCTAssertEqual(low, high, "Legacy day-target keys must be ignored on decode")
+        let a = CoachDecisionEngine.run(facts, schedulePreferences: low)
+        let b = CoachDecisionEngine.run(facts, schedulePreferences: high)
+        XCTAssertEqual(a.primary.id, b.primary.id)
     }
 }

@@ -24,8 +24,6 @@ final class SameDayLoadRegressionTests: XCTestCase {
 
     private var exportPrefs: CoachSchedulePreferences {
         CoachSchedulePreferences(
-            strengthDaysPerWeek: 5,
-            cardioDaysPerWeek: 6,
             restPreference: .fixed(days: [.sunday]),
             allowsTwoADays: true,
             sameDayCardioTiming: .separateLater)

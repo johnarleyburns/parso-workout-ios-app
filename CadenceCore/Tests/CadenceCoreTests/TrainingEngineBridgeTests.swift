@@ -31,7 +31,6 @@ final class TrainingEngineBridgeTests: XCTestCase {
 
     func testRequestBuildersTranslateAppStateDeterministically() {
         let schedule = CoachSchedulePreferences(
-            strengthDaysPerWeek: 3,
             restPreference: .fixed(days: [.sunday, .wednesday]))
         let profile = TrainingEngineBridge.trainingProfile(
             experience: .intermediate,
@@ -42,7 +41,8 @@ final class TrainingEngineBridgeTests: XCTestCase {
         XCTAssertEqual(profile.subjectId, "subject-1")
         XCTAssertEqual(profile.experience, "intermediate")
         XCTAssertEqual(profile.equipment, ["barbell", "body only", "e-z curl bar"])
-        XCTAssertEqual(profile.availability?.sessionsPerCycle?.target, 3)
+        XCTAssertEqual(profile.availability?.sessionsPerCycle?.target, 1,
+                       "One launchable session per cycle; no weekly day quota is sent")
 
         let target = TrainingEngineBridge.volumeTarget(
             trackedGroups: [.chest, .lats],
@@ -67,7 +67,7 @@ final class TrainingEngineBridgeTests: XCTestCase {
     func testFixedProfileAndTargetProduceStablePlanAndRoundTrip() throws {
         let profile = TrainingEngineBridge.trainingProfile(
             experience: .intermediate,
-            schedule: CoachSchedulePreferences(strengthDaysPerWeek: 2),
+            schedule: CoachSchedulePreferences(),
             availableEquipment: Equipment.allCases,
             subjectId: "subject-1")
         let target = TrainingEngineBridge.volumeTarget(
@@ -100,7 +100,7 @@ final class TrainingEngineBridgeTests: XCTestCase {
     }
 
     func testOverConstrainedIntentProducesUnsatisfiableOutcome() throws {
-        let schedule = CoachSchedulePreferences(strengthDaysPerWeek: 2)
+        let schedule = CoachSchedulePreferences()
         let intent = TrainingEngineBridge.workoutIntent(
             goal: .strength,
             environment: "commercial_gym",
@@ -141,7 +141,7 @@ final class TrainingEngineBridgeTests: XCTestCase {
 
         let profile = TrainingEngineBridge.trainingProfile(
             experience: .intermediate,
-            schedule: CoachSchedulePreferences(strengthDaysPerWeek: 2),
+            schedule: CoachSchedulePreferences(),
             availableEquipment: Equipment.allCases)
         let target = TrainingEngineBridge.volumeTarget(
             trackedGroups: [.chest], experience: .intermediate)
@@ -233,7 +233,7 @@ final class TrainingEngineBridgeTests: XCTestCase {
     func testAdaptiveCoachSessionUsesEnginePlanBehindCoachSession() throws {
         let now = Date(timeIntervalSince1970: 1_750_000_000)
         let schedule = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2, trackedMuscleGroups: [.chest])
+            trackedMuscleGroups: [.chest])
         let profile = TrainingEngineBridge.trainingProfile(
             experience: .intermediate,
             schedule: schedule,

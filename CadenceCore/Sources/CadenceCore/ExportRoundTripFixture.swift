@@ -209,15 +209,14 @@ public enum ExportRoundTripFixture {
 
         return ExportPreferences(
             unit: "pounds", prRule: "heaviestSet", oneRepMaxFormula: "brzycki",
-            stepGoal: 12_000, weeklyCardioMinutesGoal: 200, restSeconds: 120,
+            restSeconds: 120,
             warmupMinutes: 5, cooldownMinutes: 5, autoStartRest: true, idleTimeoutMinutes: 3,
             gpsHighAccuracy: true, autoPause: true, intervalColorBlind: false, spokenCues: true,
             plateRounding: true, autoSaveHealth: false, autoEndOnIdle: true, workoutSounds: true,
             preWorkoutCountdown: 5, trainingGoal: "strength", experienceLevel: "advanced",
             useHRMonitoring: true, recoveryAwareCoachV2: true,
             favoriteRoutineIDs: ["preset-531", "preset-5x5"],
-            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2,
-                                                          allowsTwoADays: true),
+            schedulePreferences: CoachSchedulePreferences(allowsTwoADays: true),
             coachProfile: profile)
     }
 }

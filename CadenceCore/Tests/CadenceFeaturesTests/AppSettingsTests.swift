@@ -73,7 +73,6 @@ final class AppSettingsTests: XCTestCase {
         let src = AppSettings(defaults: freshDefaults("src"))
         src.unit = .pounds
         src.distanceUnit = .miles
-        src.weeklyCardioMinutesGoal = 200
         src.experienceLevel = .advanced
         src.userAge = 41
         src.warmupMinutes = 7
@@ -88,7 +87,6 @@ final class AppSettingsTests: XCTestCase {
         dst.applyImportedPreferences(snapshot)
         XCTAssertEqual(dst.unit, .pounds)
         XCTAssertEqual(dst.distanceUnit, .miles)
-        XCTAssertEqual(dst.weeklyCardioMinutesGoal, 200)
         XCTAssertEqual(dst.experienceLevel, .advanced)
         XCTAssertEqual(dst.userAge, 41)
         XCTAssertEqual(dst.warmupMinutes, 7)

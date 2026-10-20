@@ -269,28 +269,23 @@ public struct WeeklyPlan: Sendable, Equatable {
         let nextWeekStart = cal.date(byAdding: .day, value: 7, to: currentWeekStart) ?? currentWeekStart
         let planningEnd = cal.date(byAdding: .day, value: 14, to: currentWeekStart) ?? currentWeekStart
 
-        // Accumulate projected state: strength days left for current week, etc.
-        // Effective strength floor (issue 7): honor the stored preference AND infer
-        // the user's real cadence from history — a 5×/week lifter with a stale
-        // preference of 2 should still see ~5 planned strength days. The observed
-        // count is the distinct strength days in the trailing 7 days. Inference only
-        // *raises* the floor; the stored preference stays authoritative as a minimum.
+        // Accumulate projected state: weekly volume per muscle group and aerobic
+        // minutes. Nothing here is a day quota: strength is planned while a tracked
+        // group is under its minimum effective weekly volume, cardio while actual
+        // aerobic minutes are short. Split mode follows the user's observed
+        // cadence (distinct strength days in the trailing 7 days).
         let observedWeeklyStrengthDays = Set(
             facts.rolling7dCompletedEvents
                 .filter(\.isStrength)
                 .map { cal.startOfDay(for: $0.start) }
         ).count
-        let strengthFloor = min(6, max(schedulePreferences.strengthDaysPerWeek, observedWeeklyStrengthDays))
-        let cardioDayTarget = schedulePreferences.cardioDaysPerWeek
         let aerobicMinutesTarget = 150.0
+        let trackedGroups = schedulePreferences.trackedMuscleGroups
 
-        // Count what's already done in the current week
-        let currentWeekStrengthDone = strengthDays.filter { $0 >= currentWeekStart && $0 < nextWeekStart && $0 <= today }.count
-        let currentWeekCardioDaysDone = Set(cardioEventsByDay.keys.filter { $0 >= currentWeekStart && $0 < nextWeekStart && $0 <= today }).count
+        let currentWeekSets = facts.weeklyBalance.fractionalSets
         let currentWeekAerobicMinutes = facts.weeklyBalance.moderateEquivalentMinutes
 
-        var projectedStrengthDays = currentWeekStrengthDone
-        var projectedCardioDays = currentWeekCardioDaysDone
+        var projectedSets = currentWeekSets
         var projectedHardDays = hardDays
         var projectedAerobicMinutes = currentWeekAerobicMinutes
         var lastStrengthDate: Date?
@@ -307,11 +302,11 @@ public struct WeeklyPlan: Sendable, Equatable {
 
         var weekResetOffset = nextWeekStart
 
-        // Split mode (issue 7): at ≥4 strength days/week the coach rotates
+        // Split mode (issue 7): at ≥4 observed strength days/week the coach rotates
         // upper/lower focuses so consecutive strength days train different muscles
         // (ramosCampoSplit2024) while per-muscle recovery is respected
         // (parejaBlancoRecovery2020). Below that it keeps whole-body sessions.
-        let useSplit = strengthFloor >= 4
+        let useSplit = observedWeeklyStrengthDays >= 4
         var nextFocus: StrengthFocus = .upper
 
         // Future days: current week remainder + full next week
@@ -323,8 +318,7 @@ public struct WeeklyPlan: Sendable, Equatable {
 
             // Reset weekly counters when entering a new week
             if date >= weekResetOffset {
-                projectedStrengthDays = 0
-                projectedCardioDays = 0
+                projectedSets = [:]
                 projectedAerobicMinutes = 0
                 weekResetOffset = cal.date(byAdding: .day, value: 7, to: weekResetOffset) ?? weekResetOffset
             }
@@ -332,14 +326,12 @@ public struct WeeklyPlan: Sendable, Equatable {
             let plannedFocus: StrengthFocus = useSplit ? nextFocus : .fullBody
             let sessions = futureSessions(
                 on: date,
-                projectedStrengthDays: projectedStrengthDays,
-                projectedCardioDays: projectedCardioDays,
+                projectedSets: projectedSets,
                 projectedAerobicMinutes: projectedAerobicMinutes,
                 projectedHardDays: projectedHardDays,
                 lastStrengthDate: lastStrengthDate,
                 lastLowerBodyCardioDate: lastLowerBodyCardioDate,
-                strengthFloor: strengthFloor,
-                cardioDayTarget: cardioDayTarget,
+                trackedGroups: trackedGroups,
                 aerobicMinutesTarget: aerobicMinutesTarget,
                 allowsTwoADays: schedulePreferences.allowsTwoADays,
                 sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
@@ -364,7 +356,10 @@ public struct WeeklyPlan: Sendable, Equatable {
             // days ("coach suggests" plan, Phase 3).
             for s in sessions {
                 if s.kind == .strength {
-                    projectedStrengthDays += 1
+                    let focusGroups = (useSplit ? (s.focus ?? .fullBody) : .fullBody).muscleGroups
+                    for group in focusGroups {
+                        projectedSets[group, default: 0] += plannedSetsPerGroupPerSession
+                    }
                     lastStrengthDate = date
                     // Rotate the split focus off the focus actually scheduled, so
                     // upper/lower alternate even when a blocked focus was swapped.
@@ -377,7 +372,6 @@ public struct WeeklyPlan: Sendable, Equatable {
                 }
                 if s.kind == .easyAerobic || s.kind == .moderateAerobic || s.kind == .vo2Intervals {
                     projectedAerobicMinutes += plannedModerateEquivalentMinutes(for: s.kind)
-                    projectedCardioDays += 1
                 }
             }
         }
@@ -390,14 +384,12 @@ public struct WeeklyPlan: Sendable, Equatable {
            days[todayIdx].sessions.isEmpty {
             let planned = futureSessions(
                 on: days[todayIdx].date,
-                projectedStrengthDays: currentWeekStrengthDone,
-                projectedCardioDays: currentWeekCardioDaysDone,
+                projectedSets: currentWeekSets,
                 projectedAerobicMinutes: currentWeekAerobicMinutes,
                 projectedHardDays: hardDays,
                 lastStrengthDate: lastStrengthDate,
                 lastLowerBodyCardioDate: lastLowerBodyCardioDate,
-                strengthFloor: strengthFloor,
-                cardioDayTarget: cardioDayTarget,
+                trackedGroups: trackedGroups,
                 aerobicMinutesTarget: aerobicMinutesTarget,
                 allowsTwoADays: schedulePreferences.allowsTwoADays,
                 sameDayCardioTiming: schedulePreferences.sameDayCardioTiming,
@@ -420,16 +412,18 @@ public struct WeeklyPlan: Sendable, Equatable {
     }
 
     /// Compute planned sessions for a future date, possibly two-a-day.
+    /// Working sets a planned strength session is projected to add to each muscle
+    /// group in its focus, for weekly-volume projection only.
+    private static let plannedSetsPerGroupPerSession = 6.0
+
     private static func futureSessions(
         on date: Date,
-        projectedStrengthDays: Int,
-        projectedCardioDays: Int,
+        projectedSets: [MuscleGroup: Double],
         projectedAerobicMinutes: Double,
         projectedHardDays: Set<Date>,
         lastStrengthDate: Date?,
         lastLowerBodyCardioDate: Date?,
-        strengthFloor: Int,
-        cardioDayTarget: Int,
+        trackedGroups: Set<MuscleGroup>,
         aerobicMinutesTarget: Double,
         allowsTwoADays: Bool,
         sameDayCardioTiming: SameDayCardioTiming,
@@ -451,9 +445,12 @@ public struct WeeklyPlan: Sendable, Equatable {
                                     isHard: false, isRest: true)]
         }
 
-        let strengthNeeded = projectedStrengthDays < strengthFloor
-        let cardioNeeded = projectedCardioDays < cardioDayTarget
-            || projectedAerobicMinutes < aerobicMinutesTarget
+        let largestSetDeficit = trackedGroups.map { group in
+            VolumeLandmarks.bands(for: group, experience: facts.experience).mev
+                - (projectedSets[group] ?? 0)
+        }.max() ?? 0
+        let strengthNeeded = largestSetDeficit > 0
+        let cardioNeeded = projectedAerobicMinutes < aerobicMinutesTarget
         let priorHardStreak = hardStreak(endingBefore: date, hardDays: projectedHardDays, calendar: calendar)
         let tomorrow = calendar.date(byAdding: .day, value: 1,
                                      to: calendar.startOfDay(for: facts.referenceDate)) ?? date
@@ -475,7 +472,7 @@ public struct WeeklyPlan: Sendable, Equatable {
         }
 
         // Strength eligibility. Recovery/spacing gates may *shift* a strength day,
-        // but the user's weekly target wins: when the remaining non-rest days of
+        // but the weekly volume need wins: when the remaining non-rest days of
         // this week can no longer absorb the deficit, strength is scheduled anyway.
         var planFocus: StrengthFocus = useSplit ? focus : .fullBody
         var canStrength = false
@@ -499,7 +496,7 @@ public struct WeeklyPlan: Sendable, Equatable {
                     && (lastStrengthDate == nil || calendar.dateComponents([.day], from: lastStrengthDate!, to: date).day! >= 1)
             }
             if !canStrength && mustScheduleStrength(on: date,
-                                                    deficit: strengthFloor - projectedStrengthDays,
+                                                    deficit: Int((largestSetDeficit / plannedSetsPerGroupPerSession).rounded(.up)),
                                                     restPreference: restPreference,
                                                     calendar: calendar) {
                 canStrength = true
@@ -563,10 +560,11 @@ public struct WeeklyPlan: Sendable, Equatable {
                               cardioZone: zone)
     }
 
-    /// True when the user's weekly strength target can no longer be met unless a
-    /// strength session is scheduled on this date — the remaining non-rest days of
-    /// the week (including this one) are fewer than or equal to the deficit. The
-    /// user's stated days/week trump the coach's automatic recovery logic.
+    /// True when the weekly minimum-volume need can no longer be met unless a
+    /// strength session is scheduled on this date — `deficit` is the number of
+    /// sessions still needed to close the largest per-group set gap, and the
+    /// remaining non-rest days of the week (including this one) are fewer than or
+    /// equal to it.
     private static func mustScheduleStrength(on date: Date, deficit: Int,
                                              restPreference: RestPreference,
                                              calendar: Calendar) -> Bool {

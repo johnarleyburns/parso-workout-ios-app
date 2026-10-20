@@ -4,16 +4,6 @@ import Testing
 @testable import CadenceCore
 
 struct PlanningAdapterParityTests {
-    @Test func preferencesAdaptToPlanningInput() throws {
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2,
-                                             restPreference: .fixed(days: [.sunday, .wednesday]))
-        let input = try prefs.planningInput()
-        #expect(input.strengthDaysPerWeek == 4)
-        #expect(input.cardioDaysPerWeek == 2)
-        #expect(input.restRule == .fixed(weekdays: [1, 4]))
-        #expect(input.policy == PlanningConstraintPolicy.safe)
-    }
-
     @Test func rollingRestRuleMatchesLegacyFormula() {
         for n in 1...6 {
             let rule = RestPreference.rolling(everyNDays: n).planningRule

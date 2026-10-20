@@ -115,9 +115,7 @@ final class CoachPlanOptimizerMuscleGroupTests: XCTestCase {
     }
 
     private func preferences() -> CoachSchedulePreferences {
-        CoachSchedulePreferences(strengthDaysPerWeek: 2,
-                                 cardioDaysPerWeek: 3,
-                                 restPreference: .fixed(days: []),
+        CoachSchedulePreferences(restPreference: .fixed(days: []),
                                  allowsTwoADays: false)
     }
 

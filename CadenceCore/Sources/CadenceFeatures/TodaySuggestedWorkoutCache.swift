@@ -41,7 +41,6 @@ public enum TodaySuggestedWorkoutFingerprint {
             h.add(ctx.environment)
             for e in ctx.availableEquipment.map({ String(describing: $0) }).sorted() { h.add("e:" + e) }
             let s = ctx.schedule
-            h.add(s.strengthDaysPerWeek); h.add(s.cardioDaysPerWeek)
             h.add(String(describing: s.restPreference)); h.add(s.allowsTwoADays)
             h.add(String(describing: s.sameDayCardioTiming))
             h.add(s.dailyStepTarget); h.add(s.desiredSetsPerExercise)

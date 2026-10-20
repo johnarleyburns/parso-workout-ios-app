@@ -193,8 +193,6 @@ public enum SettingsKey {
     public static let unit = "settings.unit"                 // MeasurementUnitPreference.rawValue
     public static let prRule = "settings.prRule"             // PRRule.rawValue
     public static let oneRepMaxFormula = "settings.formula"  // OneRepMaxFormula.rawValue
-    public static let stepGoal = "settings.stepGoal"         // Int
-    public static let weeklyCardioMinutesGoal = "settings.cardioGoal" // Int (minutes/week)
     public static let restSeconds = "settings.restSeconds"   // Int
     public static let warmupMinutes = "settings.warmupMinutes"   // Int (minutes)
     public static let cooldownMinutes = "settings.cooldownMinutes" // Int (minutes)
@@ -207,8 +205,6 @@ public enum SettingsDefault {
     public static let distanceUnit = DistanceUnitPreference.kilometers
     public static let prRule = PRRule.estimated1RM
     public static let oneRepMaxFormula = OneRepMaxFormula.epley
-    public static let stepGoal = 10_000
-    public static let weeklyCardioMinutesGoal = 250
     public static let restSeconds = 90
     // Strength guided warm-up & cool-down (feedback batch 7 item 7 — 5 min;
     // HIIT/boxing use their protocol's own periods, not these). User-override

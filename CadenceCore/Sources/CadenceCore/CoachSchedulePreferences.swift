@@ -58,8 +58,6 @@ public enum SameDayCardioTiming: String, Codable, Sendable, CaseIterable {
 // MARK: - CoachSchedulePreferences
 
 public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
-    public var strengthDaysPerWeek: Int
-    public var cardioDaysPerWeek: Int
     public var restPreference: RestPreference
     public var allowsTwoADays: Bool
     public var sameDayCardioTiming: SameDayCardioTiming
@@ -78,31 +76,25 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     ]
 
     private enum CodingKeys: String, CodingKey {
-        case strengthDaysPerWeek, cardioDaysPerWeek, restPreference
+        case restPreference
         case allowsTwoADays, sameDayCardioTiming, dailyStepTarget
         case excludedCoverageParts, desiredSetsPerExercise
         case trackedMuscleGroups, trackedMuscleGroupsVersion
     }
 
     public static let `default` = CoachSchedulePreferences(
-        strengthDaysPerWeek: 2,
-        cardioDaysPerWeek: 3,
         restPreference: .defaultRolling,
         allowsTwoADays: false,
         sameDayCardioTiming: .afterStrength,
         desiredSetsPerExercise: 3,
         trackedMuscleGroups: MuscleGroup.defaultTracked)
 
-    public init(strengthDaysPerWeek: Int = 2,
-                cardioDaysPerWeek: Int = 3,
-                restPreference: RestPreference = .defaultRolling,
+    public init(restPreference: RestPreference = .defaultRolling,
                 allowsTwoADays: Bool = false,
                 sameDayCardioTiming: SameDayCardioTiming = .afterStrength,
                 dailyStepTarget: Int = 8_000,
                 desiredSetsPerExercise: Int = 3,
                 trackedMuscleGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked) {
-        self.strengthDaysPerWeek = min(5, max(2, strengthDaysPerWeek))
-        self.cardioDaysPerWeek = min(7, max(0, cardioDaysPerWeek))
         self.restPreference = restPreference
         self.allowsTwoADays = allowsTwoADays
         self.sameDayCardioTiming = sameDayCardioTiming
@@ -114,8 +106,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        strengthDaysPerWeek = min(5, max(2, try c.decodeIfPresent(Int.self, forKey: .strengthDaysPerWeek) ?? 2))
-        cardioDaysPerWeek = min(7, max(0, try c.decodeIfPresent(Int.self, forKey: .cardioDaysPerWeek) ?? 3))
         restPreference = try c.decodeIfPresent(RestPreference.self, forKey: .restPreference) ?? .defaultRolling
         allowsTwoADays = try c.decodeIfPresent(Bool.self, forKey: .allowsTwoADays) ?? false
         sameDayCardioTiming = try c.decodeIfPresent(SameDayCardioTiming.self, forKey: .sameDayCardioTiming) ?? .afterStrength
@@ -158,8 +148,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     /// vocabulary the app no longer has.
     public func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(strengthDaysPerWeek, forKey: .strengthDaysPerWeek)
-        try c.encode(cardioDaysPerWeek, forKey: .cardioDaysPerWeek)
         try c.encode(restPreference, forKey: .restPreference)
         try c.encode(allowsTwoADays, forKey: .allowsTwoADays)
         try c.encode(sameDayCardioTiming, forKey: .sameDayCardioTiming)
@@ -201,18 +189,6 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     }
 
     // MARK: Constrained setters for use in UI
-
-    public func withStrengthDays(_ d: Int) -> CoachSchedulePreferences {
-        var copy = self
-        copy.strengthDaysPerWeek = min(5, max(2, d))
-        return copy
-    }
-
-    public func withCardioDays(_ d: Int) -> CoachSchedulePreferences {
-        var copy = self
-        copy.cardioDaysPerWeek = min(7, max(0, d))
-        return copy
-    }
 
     public func withRestPreference(_ r: RestPreference) -> CoachSchedulePreferences {
         var copy = self

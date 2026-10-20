@@ -144,10 +144,9 @@ final class DataExportTests: XCTestCase {
             AerobicPreference(intent: .moderateAerobic, modality: .cycle, score: 4, updatedAt: now)
         ]
         let prefs = ExportPreferences(
-            unit: "pounds", stepGoal: 12000, trainingGoal: "strength", experienceLevel: "advanced",
+            unit: "pounds", trainingGoal: "strength", experienceLevel: "advanced",
             favoriteRoutineIDs: ["preset-5x5"],
-            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2,
-                                                          allowsTwoADays: true,
+            schedulePreferences: CoachSchedulePreferences(allowsTwoADays: true,
                                                           desiredSetsPerExercise: 4),
             coachProfile: profile)
 
@@ -176,8 +175,6 @@ final class DataExportTests: XCTestCase {
 
         // Preferences survive the JSON round-trip losslessly.
         XCTAssertEqual(decoded.preferences?.unit, "pounds")
-        XCTAssertEqual(decoded.preferences?.stepGoal, 12000)
-        XCTAssertEqual(decoded.preferences?.schedulePreferences?.strengthDaysPerWeek, 4)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.desiredSetsPerExercise, 4)
         XCTAssertTrue(decoded.preferences?.schedulePreferences?.allowsTwoADays ?? false)
         XCTAssertEqual(decoded.preferences?.coachProfile?.aerobicPreferences.first?.score, 4)
@@ -267,9 +264,8 @@ final class DataExportTests: XCTestCase {
         let decoded = try DataExport.decodeJSON(Data(legacyJSON.utf8))
         XCTAssertNotNil(decoded.preferences, "Legacy preferences should decode fully")
         XCTAssertEqual(decoded.preferences?.unit, "pounds")
-        XCTAssertEqual(decoded.preferences?.schedulePreferences?.strengthDaysPerWeek, 4,
+        XCTAssertEqual(decoded.preferences?.schedulePreferences?.sameDayCardioTiming, .separateLater,
                        "Schedule preferences should survive legacy blob")
-        XCTAssertEqual(decoded.preferences?.schedulePreferences?.cardioDaysPerWeek, 2)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.dailyStepTarget, 10_000)
         XCTAssertEqual(decoded.preferences?.schedulePreferences?.desiredSetsPerExercise, 3)
         XCTAssertTrue(decoded.preferences?.schedulePreferences?.allowsTwoADays ?? false)
@@ -278,7 +274,7 @@ final class DataExportTests: XCTestCase {
                        "A payload with no tracked-group key should fall back to the defaults, not fail decode")
     }
 
-    // MARK: - Legacy stepGoal compatibility
+    // MARK: - Retired goal keys (stepGoal, weeklyCardioMinutesGoal, day targets)
 
     func testLegacyExportWithStepGoalStillDecodes() throws {
         let now = Date(timeIntervalSince1970: 1_750_000_000)
@@ -292,14 +288,20 @@ final class DataExportTests: XCTestCase {
           "assessments": [],
           "preferences": {
             "stepGoal": 15000,
+            "weeklyCardioMinutesGoal": 200,
             "unit": "pounds",
-            "trainingGoal": "strength"
+            "trainingGoal": "strength",
+            "schedulePreferences": {"strengthDaysPerWeek": 4, "cardioDaysPerWeek": 2}
           }
         }
         """
         let decoded = try DataExport.decodeJSON(Data(legacyJSON.utf8))
-        XCTAssertEqual(decoded.preferences?.stepGoal, 15000,
-                       "Legacy stepGoal field should still decode without error")
+        XCTAssertEqual(decoded.preferences?.unit, "pounds",
+                       "Legacy goal keys must be ignored without failing decode")
+        let reencoded = try XCTUnwrap(String(data: DataExport.encodeJSON(decoded), encoding: .utf8))
+        for key in ["stepGoal", "weeklyCardioMinutesGoal", "strengthDaysPerWeek", "cardioDaysPerWeek"] {
+            XCTAssertFalse(reencoded.contains(key), "\(key) must not be re-emitted")
+        }
     }
 
     // MARK: - Custom exercise round-trip (v5)
@@ -504,25 +506,20 @@ final class DataExportTests: XCTestCase {
 
         let prefs = ExportPreferences(
             unit: "pounds", prRule: "heaviestSet",
-            oneRepMaxFormula: "brzycki", stepGoal: 12_000,
-            weeklyCardioMinutesGoal: 200, restSeconds: 120,
+            oneRepMaxFormula: "brzycki", restSeconds: 120,
             warmupMinutes: 5, cooldownMinutes: 5,
             autoStartRest: true, idleTimeoutMinutes: 3,
             plateRounding: true, autoSaveHealth: false,
             workoutSounds: true, preWorkoutCountdown: 5,
             trainingGoal: "strength", experienceLevel: "intermediate",
             favoriteRoutineIDs: ["preset-531", "preset-5x5"],
-            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4,
-                                                          cardioDaysPerWeek: 2,
-                                                          allowsTwoADays: false),
+            schedulePreferences: CoachSchedulePreferences(allowsTwoADays: false),
             coachProfile: profile)
 
         let export = try WorkoutRepository.buildExport(ctx, preferences: prefs)
         XCTAssertNotNil(export.preferences)
         XCTAssertEqual(export.preferences?.unit, "pounds")
         XCTAssertEqual(export.preferences?.prRule, "heaviestSet")
-        XCTAssertEqual(export.preferences?.stepGoal, 12_000)
-        XCTAssertEqual(export.preferences?.schedulePreferences?.strengthDaysPerWeek, 4)
         XCTAssertEqual(export.preferences?.coachProfile?.aerobicPreferences.first?.score, 5)
         XCTAssertEqual(export.preferences?.favoriteRoutineIDs, ["preset-531", "preset-5x5"])
 
@@ -530,7 +527,6 @@ final class DataExportTests: XCTestCase {
         let decoded = try DataExport.decodeJSON(json)
         XCTAssertEqual(decoded.preferences?.unit, "pounds")
         XCTAssertEqual(decoded.preferences?.oneRepMaxFormula, "brzycki")
-        XCTAssertEqual(decoded.preferences?.schedulePreferences?.cardioDaysPerWeek, 2)
         XCTAssertEqual(decoded.preferences?.coachProfile?.strengthPreferences.first?.exerciseName, "Bench Press")
         XCTAssertEqual(decoded.preferences?.coachProfile?.avoidedTags, ["boring"])
     }
@@ -564,7 +560,7 @@ final class DataExportTests: XCTestCase {
         // Preferences.
         let prefs = ExportPreferences(
             unit: "kilograms", trainingGoal: "hypertrophy",
-            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 5, cardioDaysPerWeek: 3))
+            schedulePreferences: CoachSchedulePreferences())
 
         let exportA = try WorkoutRepository.buildExport(ctxA, preferences: prefs)
         let json = try DataExport.encodeJSON(exportA)
@@ -717,9 +713,9 @@ final class DataExportTests: XCTestCase {
             AerobicPreference(intent: .moderateAerobic, modality: .cycle, score: 5, updatedAt: now)
         ]
         let prefs = ExportPreferences(
-            unit: "kilograms", prRule: "heaviestSet", stepGoal: 10_000,
+            unit: "kilograms", prRule: "heaviestSet",
             trainingGoal: "strength", experienceLevel: "intermediate",
-            schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2),
+            schedulePreferences: CoachSchedulePreferences(),
             coachProfile: profile)
 
         try ctxA.save()

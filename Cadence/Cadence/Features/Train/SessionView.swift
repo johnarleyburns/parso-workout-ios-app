@@ -85,7 +85,6 @@ struct SessionView: View {
     @State var prEvent: PREvent?
     @State var setLoggedRevision = 0
     let idleTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
-    @State var hrSamples: [HRSamplePoint] = []
     @State var cache = SessionHistoryCache()
     /// Each performer's rep pattern across every movement they have logged, keyed
     /// by `SessionRenderModel.performerKey`. Refreshed with the render cache, so a

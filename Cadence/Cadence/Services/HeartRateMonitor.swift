@@ -170,6 +170,16 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
         state = .connected(UUID())
     }
 
+    /// Drops a Watch-relayed reading when its scoped Watch session ends, fails,
+    /// times out or is superseded, so a stale value neither looks live nor
+    /// stops a new Watch request. BLE readings are untouched.
+    func clearExternalBPM() {
+        guard source == .appleWatch else { return }
+        _bpm = nil
+        source = .none
+        if case .connected = state { state = .idle }
+    }
+
     // MARK: Internal helpers
 
     private func startSimFeed() {

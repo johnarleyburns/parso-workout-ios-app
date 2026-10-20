@@ -264,6 +264,8 @@ extension SessionView {
     func endWorkout() {
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         RestAlarmCoordinator.shared.cancel()
+        let recorderForEnd = active.heartRateRecorder
+        recorderForEnd?.flush()
         model.stopWatchWorkout()
         if settings.autoSaveHealth, session.healthKitWorkoutUUID == nil, !session.orderedSets.isEmpty {
             Task { await saveToHealth() }
@@ -275,37 +277,38 @@ extension SessionView {
             _ = try? ScheduledWorkoutStore.markCompleted(recordID: scheduled.id, in: context)
         }
         try? context.save()
-        let samples = hrSamples
-        if samples.isEmpty {
-            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: samples), session: session)
-            return
-        }
-        // Same resting-HR/HRmax profile cardio uses; stored so history and the
-        // weekly cardio minutes/zones include this strength session.
+        // Final flush of the session-owned recorder; the summary is built only
+        // from the persisted series, never a view-local array.
+        let recorder = recorderForEnd
         Task {
-            let profile = await cardioIntensityProfile(model: model, settings: settings)
-            session.recordHeartRate(samples, profile: profile)
-            try? context.save()
-            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: samples), session: session)
+            if let recorder, !recorder.snapshot.isEmpty {
+                let profile = await cardioIntensityProfile(model: model, settings: settings)
+                recorder.finalize(profile: profile)
+            }
+            active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: session.hrSamplePoints), session: session)
         }
     }
 
+    /// Phone-BLE strap readings enter the same recorder at observation time.
+    /// Watch readings are captured by `AppModel` at the transport event.
     func sampleHR() {
-        guard let bpm = model.hrm.currentBPM, bpm > 0 else { return }
-        let now = Date().timeIntervalSince(session.date)
-        hrSamples.append(HRSamplePoint(t: now, bpm: bpm))
+        guard model.hrm.source == .bluetooth, let bpm = model.hrm.currentBPM, bpm > 0 else { return }
+        active.heartRateRecorder?.record(HeartRateObservation(source: .phoneBLE, observedAt: Date(), bpm: bpm))
     }
 
     func saveToHealth() async {
         let sets = session.orderedSets
         guard let first = sets.first?.completedAt else { return }
         let last = sets.last?.completedAt ?? first
-        let end = max(last, first.addingTimeInterval(60))
-        let minutes = end.timeIntervalSince(first) / 60
+        // Full session bounds, so the measurement window is not truncated to the first/last set.
+        let start = min(first, session.date)
+        let end = max(last, session.endedAt ?? last, first.addingTimeInterval(60))
+        let minutes = end.timeIntervalSince(start) / 60
         let kcal = max(30, round(CardioMath.strengthCaloriesPerMinute * minutes))
+        let hrSamples = session.hrSamplePoints
         let bpmValues = hrSamples.map(\.bpm)
         let summary = StrengthWorkoutSummary(
-            id: session.id, start: first, end: end,
+            id: session.id, start: start, end: end,
             activeEnergyKcal: kcal, hrSamples: hrSamples,
             avgHR: bpmValues.isEmpty ? nil : bpmValues.reduce(0, +) / Double(bpmValues.count),
             maxHR: bpmValues.max(),

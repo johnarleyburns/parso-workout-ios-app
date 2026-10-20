@@ -31,7 +31,7 @@ private struct SessionInlineEditorSheet: View {
 extension SessionView {
     func startWatchIfNeeded() {
         guard !isManualLog, model.watchAvailable else { return }
-        if case .connected = model.hrm.state { return }
+        if case .connected = model.hrm.state, model.hrm.source == .bluetooth { return }
         model.startWatchStrength()
     }
     func handleIdleTimer(_ _: Date) {

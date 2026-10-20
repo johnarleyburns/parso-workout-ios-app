@@ -21,7 +21,13 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(s.distanceUnit, SettingsDefault.distanceUnit)
         XCTAssertEqual(s.formula, SettingsDefault.oneRepMaxFormula)
         XCTAssertEqual(s.restSeconds, SettingsDefault.restSeconds)
-        XCTAssertFalse(s.hasCompletedOnboarding)
+    }
+
+    func testLegacyOnboardingFlagDoesNotChangeSettings() {
+        let a = freshDefaults(); a.set(true, forKey: "settings.hasCompletedOnboarding"); a.set("pounds", forKey: "settings.unit")
+        let b = freshDefaults(); b.set(false, forKey: "settings.hasCompletedOnboarding"); b.set("pounds", forKey: "settings.unit")
+        XCTAssertEqual(AppSettings(defaults: a).unit, AppSettings(defaults: b).unit)
+        XCTAssertEqual(AppSettings(defaults: a).restSeconds, AppSettings(defaults: b).restSeconds)
     }
 
     func testMutationPersistsAcrossInstances() {

@@ -512,7 +512,6 @@ final class DataExportTests: XCTestCase {
             workoutSounds: true, preWorkoutCountdown: 5,
             trainingGoal: "strength", experienceLevel: "intermediate",
             favoriteRoutineIDs: ["preset-531", "preset-5x5"],
-            hasCompletedOnboarding: true,
             schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4,
                                                           cardioDaysPerWeek: 2,
                                                           allowsTwoADays: false),
@@ -526,7 +525,6 @@ final class DataExportTests: XCTestCase {
         XCTAssertEqual(export.preferences?.schedulePreferences?.strengthDaysPerWeek, 4)
         XCTAssertEqual(export.preferences?.coachProfile?.aerobicPreferences.first?.score, 5)
         XCTAssertEqual(export.preferences?.favoriteRoutineIDs, ["preset-531", "preset-5x5"])
-        XCTAssertTrue(export.preferences?.hasCompletedOnboarding == true)
 
         let json = try DataExport.encodeJSON(export)
         let decoded = try DataExport.decodeJSON(json)

@@ -215,7 +215,7 @@ public enum ExportRoundTripFixture {
             plateRounding: true, autoSaveHealth: false, autoEndOnIdle: true, workoutSounds: true,
             preWorkoutCountdown: 5, trainingGoal: "strength", experienceLevel: "advanced",
             useHRMonitoring: true, recoveryAwareCoachV2: true,
-            favoriteRoutineIDs: ["preset-531", "preset-5x5"], hasCompletedOnboarding: true,
+            favoriteRoutineIDs: ["preset-531", "preset-5x5"],
             schedulePreferences: CoachSchedulePreferences(strengthDaysPerWeek: 4, cardioDaysPerWeek: 2,
                                                           allowsTwoADays: true),
             coachProfile: profile)

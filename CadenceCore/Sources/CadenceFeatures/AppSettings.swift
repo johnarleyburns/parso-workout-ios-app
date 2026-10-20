@@ -45,8 +45,6 @@ public final class AppSettings {
                 defaults.removeObject(forKey: key)
             }
         }
-        // Onboarding — true after the user completes the 4-screen flow.
-        self.hasCompletedOnboarding = defaults.bool(forKey: "settings.hasCompletedOnboarding")
         self.hasSeenFirstSetCoachMark = defaults.bool(forKey: "settings.hasSeenFirstSetCoachMark")
         self.unit = Self.read(defaults, SettingsKey.unit, MeasurementUnitPreference.self) ?? SettingsDefault.unit
         self.distanceUnit = Self.read(defaults, SettingsKey.distanceUnit, DistanceUnitPreference.self) ?? SettingsDefault.distanceUnit
@@ -124,13 +122,6 @@ public final class AppSettings {
         // fast); a test can opt in with `-preCountdown N`.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
             let a = ProcessInfo.processInfo.arguments
-            // Onboarding is skipped by default in UI tests so existing tests land
-            // on Home. Pass `-showOnboarding` to opt into the flow.
-            if a.contains("-showOnboarding") {
-                self.hasCompletedOnboarding = false
-            } else {
-                self.hasCompletedOnboarding = true
-            }
             if let i = a.firstIndex(of: "-preCountdown"), i + 1 < a.count, let n = Int(a[i + 1]) {
                 self.preWorkoutCountdown = n
             } else {
@@ -247,8 +238,6 @@ public final class AppSettings {
             }
         }
     }
-    /// Whether the user has completed the new-user onboarding flow.
-    public var hasCompletedOnboarding: Bool { didSet { defaults.set(hasCompletedOnboarding, forKey: "settings.hasCompletedOnboarding") } }
     /// Whether the one-time first-set teaching overlay has been dismissed.
     /// Kept in settings so it follows the user across the phone's UI state but
     /// never blocks logging or changes workout data.
@@ -366,7 +355,6 @@ public extension AppSettings {
             experienceLevel: experienceLevel.rawValue, preferredWorkoutStyle: preferredWorkoutStyle.rawValue,
             useHRMonitoring: useHRMonitoring,
             recoveryAwareCoachV2: recoveryAwareCoachV2, favoriteRoutineIDs: Array(favoriteRoutineIDs),
-            hasCompletedOnboarding: hasCompletedOnboarding,
             schedulePreferences: coachSchedulePreferences, coachProfile: coachPreferenceProfile,
             lastTestRecommendationAt: lastTestRecommendationAt,
             testRecommendationSnoozes: testRecommendationSnoozes.isEmpty ? nil : testRecommendationSnoozes,
@@ -409,7 +397,6 @@ public extension AppSettings {
         if let v = p.useHRMonitoring { useHRMonitoring = v }
         if let v = p.recoveryAwareCoachV2 { recoveryAwareCoachV2 = v }
         if let v = p.favoriteRoutineIDs { favoriteRoutineIDs = Set(v) }
-        if let v = p.hasCompletedOnboarding { hasCompletedOnboarding = v }
         if let v = p.schedulePreferences { coachSchedulePreferences = v }
         if let v = p.coachProfile { coachPreferenceProfile = v }
         if let v = p.lastTestRecommendationAt { lastTestRecommendationAt = v }

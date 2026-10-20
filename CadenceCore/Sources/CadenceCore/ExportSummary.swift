@@ -159,7 +159,6 @@ public struct ExportSummary: Codable, Equatable, Sendable {
         if p.useHRMonitoring != nil { n += 1 }
         if p.recoveryAwareCoachV2 != nil { n += 1 }
         if p.favoriteRoutineIDs != nil { n += 1 }
-        if p.hasCompletedOnboarding != nil { n += 1 }
         if p.schedulePreferences != nil { n += 1 }
         return n
     }

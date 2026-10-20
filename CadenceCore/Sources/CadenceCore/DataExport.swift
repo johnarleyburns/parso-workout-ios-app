@@ -368,7 +368,6 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var useHRMonitoring: Bool?
     public var recoveryAwareCoachV2: Bool?
     public var favoriteRoutineIDs: [String]?
-    public var hasCompletedOnboarding: Bool?
     public var schedulePreferences: CoachSchedulePreferences?
     /// The coach's learned preference profile, carried losslessly as its own
     /// Codable type (the top-level `coachPreferences` DTO stays for back-compat).
@@ -395,7 +394,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 preWorkoutCountdown: Int? = nil, trainingGoal: String? = nil, experienceLevel: String? = nil,
                 preferredWorkoutStyle: String? = nil,
                 useHRMonitoring: Bool? = nil, recoveryAwareCoachV2: Bool? = nil,
-                favoriteRoutineIDs: [String]? = nil, hasCompletedOnboarding: Bool? = nil,
+                favoriteRoutineIDs: [String]? = nil,
                 schedulePreferences: CoachSchedulePreferences? = nil,
                 coachProfile: CoachPreferenceProfile? = nil,
                 lastTestRecommendationAt: Date? = nil,
@@ -415,7 +414,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
         self.experienceLevel = experienceLevel; self.useHRMonitoring = useHRMonitoring
         self.preferredWorkoutStyle = preferredWorkoutStyle
         self.recoveryAwareCoachV2 = recoveryAwareCoachV2; self.favoriteRoutineIDs = favoriteRoutineIDs
-        self.hasCompletedOnboarding = hasCompletedOnboarding; self.schedulePreferences = schedulePreferences
+        self.schedulePreferences = schedulePreferences
         self.coachProfile = coachProfile
         self.lastTestRecommendationAt = lastTestRecommendationAt
         self.testRecommendationSnoozes = testRecommendationSnoozes

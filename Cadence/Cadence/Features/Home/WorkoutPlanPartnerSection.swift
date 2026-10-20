@@ -103,16 +103,26 @@ struct WorkoutPlanPartnerSection: View {
     private var showsPicker: Bool { isEditing || pickerRevealed }
 
     private func partnerRow(_ person: Person) -> some View {
-        HStack {
-            Text(person.name)
-            Spacer()
-            if partnerIDs.contains(person.id) {
-                Image(systemName: "checkmark").foregroundStyle(.tint)
+        let a11y = PartnerRowAccessibility(name: person.name,
+                                           isSelected: partnerIDs.contains(person.id))
+        return Button {
+            toggle(person)
+        } label: {
+            HStack {
+                Text(person.name)
+                Spacer()
+                if a11y.isSelected {
+                    Image(systemName: "checkmark").foregroundStyle(.tint)
+                }
             }
+            .contentShape(Rectangle())
         }
-        .contentShape(Rectangle())
-        .onTapGesture { toggle(person) }
-        .accessibilityIdentifier("editor.partner.\(person.name)")
+        .buttonStyle(.plain)
+        .accessibilityIdentifier(a11y.identifier)
+        .accessibilityLabel(a11y.label)
+        .accessibilityValue(a11y.value)
+        .accessibilityHint(a11y.hint)
+        .accessibilityAddTraits(a11y.hasSelectedTrait ? .isSelected : [])
     }
 
     private var addPartnerRow: some View {

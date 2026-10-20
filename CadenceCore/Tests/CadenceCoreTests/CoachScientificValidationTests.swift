@@ -318,7 +318,7 @@ final class CoachScientificValidationTests: XCTestCase {
     func testB4_weeklyPlanDistributesStrengthAcrossDays() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 3, cardioDaysPerWeek: 2)
+        let prefs = CoachSchedulePreferences()
 
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
 

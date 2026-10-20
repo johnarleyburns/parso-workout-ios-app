@@ -7,7 +7,6 @@ final class TrainingEngineContractTests: XCTestCase {
 
     func testFixedEngineLoopIsDeterministicAndEligibilityGated() throws {
         let schedule = CoachSchedulePreferences(
-            strengthDaysPerWeek: 1,
             trackedMuscleGroups: [.chest])
         let profile = TrainingEngineBridge.trainingProfile(
             experience: .intermediate,

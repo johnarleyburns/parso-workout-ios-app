@@ -240,7 +240,9 @@ extension TrainingEngineBridge {
             .flatMap { equipmentStrings(for: $0) }
             .sorted()
 
-        let sessions = Double(schedule.strengthDaysPerWeek)
+        // One launchable session per cycle; weekly volume, not a day count,
+        // drives how much the engine prescribes.
+        let sessions = 1.0
         let availability = FreeExerciseDBPlusPlus.TrainingAvailability(
             cycleLengthDays: 7,
             sessionsPerCycle: .init(min: sessions, target: sessions, max: sessions),
@@ -313,9 +315,7 @@ extension TrainingEngineBridge {
         let engineSchedule = FreeExerciseDBPlusPlus.WorkoutSchedule(
             cycleLengthDays: 7,
             sessionsPerCycle: .init(
-                min: schedule.strengthDaysPerWeek,
-                target: schedule.strengthDaysPerWeek,
-                max: schedule.strengthDaysPerWeek),
+                min: 1, target: 1, max: 1),
             excludedWeekdays: fixedRestDays)
 
         let preferences = style.map {
@@ -429,13 +429,11 @@ extension TrainingEngineBridge {
     ) -> EngineSuggestedWorkout? {
         let preferredSets = input.effectiveSetsPerExercise
         let exerciseLimit = max(5, input.trackedGroups.count)
-        var schedule = context.schedule
+        let schedule = context.schedule
         let isBodyweight = style == .bodyweight
         let styleEnvironment = isBodyweight ? "bodyweight_only" : context.environment
         let styleEquipment = isBodyweight ? [Equipment.bodyweight] : context.availableEquipment
-        // A suggestion is one launchable workout. The user's weekly schedule
-        // still informs the request shape, but does not create duplicate chips.
-        schedule.strengthDaysPerWeek = 1
+        // A suggestion is one launchable workout; it does not create duplicate chips.
 
         let profile = trainingProfile(
             experience: context.experience,
@@ -1009,12 +1007,8 @@ extension TrainingEngineBridge {
         asOf: Date,
         facts: CoachFacts? = nil
     ) -> CoachSession? {
-        var coachSchedule = schedule
-        // The Coach card proposes one launchable session. The user's weekly
-        // frequency still informs the target, but asking generation for a
-        // two-session cycle with a one-session exercise budget can be
-        // over-constrained for a single tracked group.
-        coachSchedule.strengthDaysPerWeek = 1
+        // The Coach card proposes one launchable session.
+        let coachSchedule = schedule
         let exerciseCount = min(6, max(4, schedule.trackedMuscleGroups.count))
         let profile = trainingProfile(
             experience: experience,

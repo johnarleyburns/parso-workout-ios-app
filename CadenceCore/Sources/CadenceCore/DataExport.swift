@@ -339,8 +339,6 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var distanceUnit: String?
     public var prRule: String?
     public var oneRepMaxFormula: String?
-    public var stepGoal: Int?
-    public var weeklyCardioMinutesGoal: Int?
     public var restSeconds: Int?
     public var warmupMinutes: Int?
     public var cooldownMinutes: Int?
@@ -382,7 +380,7 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
     public var cardioMaximumHROverride: Double?
     public init(unit: String? = nil, distanceUnit: String? = nil,
                 prRule: String? = nil, oneRepMaxFormula: String? = nil,
-                stepGoal: Int? = nil, weeklyCardioMinutesGoal: Int? = nil, restSeconds: Int? = nil,
+                restSeconds: Int? = nil,
                 warmupMinutes: Int? = nil, cooldownMinutes: Int? = nil, autoStartRest: Bool? = nil,
                 idleTimeoutMinutes: Int? = nil, gpsHighAccuracy: Bool? = nil, autoPause: Bool? = nil,
                 intervalColorBlind: Bool? = nil, spokenCues: Bool? = nil, plateRounding: Bool? = nil,
@@ -401,7 +399,6 @@ public struct ExportPreferences: Codable, Equatable, Sendable {
                 testRecommendationSnoozes: [String: Date]? = nil,
                 userAge: Int? = nil, cardioMaximumHROverride: Double? = nil) {
         self.unit = unit; self.distanceUnit = distanceUnit; self.prRule = prRule; self.oneRepMaxFormula = oneRepMaxFormula
-        self.stepGoal = stepGoal; self.weeklyCardioMinutesGoal = weeklyCardioMinutesGoal
         self.restSeconds = restSeconds; self.warmupMinutes = warmupMinutes; self.cooldownMinutes = cooldownMinutes
         self.autoStartRest = autoStartRest; self.idleTimeoutMinutes = idleTimeoutMinutes
         self.gpsHighAccuracy = gpsHighAccuracy; self.autoPause = autoPause

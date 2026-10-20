@@ -20,7 +20,6 @@ public final class AppSettings {
         // test order can never bleed through persisted UserDefaults.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
             for key in [SettingsKey.unit, SettingsKey.distanceUnit, SettingsKey.prRule, SettingsKey.oneRepMaxFormula,
-                        SettingsKey.stepGoal, SettingsKey.weeklyCardioMinutesGoal,
                         SettingsKey.restSeconds, SettingsKey.warmupMinutes, SettingsKey.cooldownMinutes,
                         SettingsKey.lastHealthSync, "settings.autoRest",
                         "settings.idleTimeout", "settings.gpsHighAccuracy", "settings.autoPause",
@@ -50,8 +49,6 @@ public final class AppSettings {
         self.distanceUnit = Self.read(defaults, SettingsKey.distanceUnit, DistanceUnitPreference.self) ?? SettingsDefault.distanceUnit
         self.prRule = Self.read(defaults, SettingsKey.prRule, PRRule.self) ?? SettingsDefault.prRule
         self.formula = Self.read(defaults, SettingsKey.oneRepMaxFormula, OneRepMaxFormula.self) ?? SettingsDefault.oneRepMaxFormula
-        self.stepGoal = defaults.object(forKey: SettingsKey.stepGoal) as? Int ?? SettingsDefault.stepGoal
-        self.weeklyCardioMinutesGoal = defaults.object(forKey: SettingsKey.weeklyCardioMinutesGoal) as? Int ?? SettingsDefault.weeklyCardioMinutesGoal
         self.restSeconds = defaults.object(forKey: SettingsKey.restSeconds) as? Int ?? SettingsDefault.restSeconds
         self.warmupMinutes = defaults.object(forKey: SettingsKey.warmupMinutes) as? Int ?? SettingsDefault.warmupMinutes
         self.cooldownMinutes = defaults.object(forKey: SettingsKey.cooldownMinutes) as? Int ?? SettingsDefault.cooldownMinutes
@@ -147,9 +144,6 @@ public final class AppSettings {
     public var distanceUnit: DistanceUnitPreference { didSet { defaults.set(distanceUnit.rawValue, forKey: SettingsKey.distanceUnit) } }
     public var prRule: PRRule { didSet { defaults.set(prRule.rawValue, forKey: SettingsKey.prRule) } }
     public var formula: OneRepMaxFormula { didSet { defaults.set(formula.rawValue, forKey: SettingsKey.oneRepMaxFormula) } }
-    public var stepGoal: Int { didSet { defaults.set(stepGoal, forKey: SettingsKey.stepGoal) } }
-    /// Weekly cardio-minutes goal shown on the Home cardio tile (feedback batch 4).
-    public var weeklyCardioMinutesGoal: Int { didSet { defaults.set(weeklyCardioMinutesGoal, forKey: SettingsKey.weeklyCardioMinutesGoal) } }
     public var restSeconds: Int { didSet { defaults.set(restSeconds, forKey: SettingsKey.restSeconds) } }
     /// Warm-up / cool-down countdown length for strength workouts (minutes).
     public var warmupMinutes: Int { didSet { defaults.set(warmupMinutes, forKey: SettingsKey.warmupMinutes) } }
@@ -342,7 +336,7 @@ public extension AppSettings {
         ExportPreferences(
             unit: unit.rawValue, distanceUnit: distanceUnit.rawValue,
             prRule: prRule.rawValue, oneRepMaxFormula: formula.rawValue,
-            stepGoal: nil, weeklyCardioMinutesGoal: weeklyCardioMinutesGoal, restSeconds: restSeconds,
+            restSeconds: restSeconds,
             warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes, autoStartRest: autoStartRest,
             idleTimeoutMinutes: idleTimeoutMinutes, gpsHighAccuracy: gpsHighAccuracy, autoPause: autoPause,
             intervalColorBlind: intervalColorBlind, spokenCues: spokenCues, plateRounding: plateRounding,
@@ -368,8 +362,6 @@ public extension AppSettings {
         if let v = p.distanceUnit.flatMap(DistanceUnitPreference.init(rawValue:)) { distanceUnit = v }
         if let v = p.prRule.flatMap(PRRule.init(rawValue:)) { prRule = v }
         if let v = p.oneRepMaxFormula.flatMap(OneRepMaxFormula.init(rawValue:)) { formula = v }
-        if let v = p.stepGoal { stepGoal = v }
-        if let v = p.weeklyCardioMinutesGoal { weeklyCardioMinutesGoal = v }
         if let v = p.restSeconds { restSeconds = v }
         if let v = p.warmupMinutes { warmupMinutes = v }
         if let v = p.cooldownMinutes { cooldownMinutes = v }

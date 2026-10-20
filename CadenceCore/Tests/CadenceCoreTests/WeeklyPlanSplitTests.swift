@@ -68,7 +68,7 @@ final class WeeklyPlanSplitTests: XCTestCase {
                                                  date: now.addingTimeInterval(Double(-(i + 1)) * 86400)))
         }
         let facts = CoachFacts.make(from: events, goal: .hypertrophy, experience: .intermediate, now: now)
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 3)
+        let prefs = CoachSchedulePreferences()
 
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
         let nextWeekStrengthDays = plan.nextWeekDays.filter { day in
@@ -126,7 +126,7 @@ final class WeeklyPlanSplitTests: XCTestCase {
                                   date: now.addingTimeInterval(-5 * 86400)),
         ]
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 3)
+        let prefs = CoachSchedulePreferences()
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
 
         let strengthSessions = plan.nextWeekDays.flatMap(\.sessions).filter { $0.kind == .strength }
@@ -140,7 +140,7 @@ final class WeeklyPlanSplitTests: XCTestCase {
         let now = testNow
         // Empty history, default prefs → whole-body low-frequency plan.
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 3, cardioDaysPerWeek: 3)
+        let prefs = CoachSchedulePreferences()
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
 
         let strengthDates = plan.nextWeekDays

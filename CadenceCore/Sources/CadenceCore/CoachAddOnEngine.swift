@@ -19,9 +19,7 @@ public enum CoachAddOnEngine {
         let cardioToday = todayCompleted.filter(\.isAerobic)
         let redundantCardioToday = cardioToday.contains(where: \.isHard) || cardioToday.count >= 2
 
-        let cardioDayTarget = schedulePreferences.cardioDaysPerWeek
         let aerobicTarget = 150.0
-        let cardioDaysBelow = balance.cardioDays < cardioDayTarget
         let minutesBelow = balance.moderateEquivalentMinutes < aerobicTarget
         let poorReadiness = facts.readiness?.isPoor ?? false
         let hardStreak = balance.consecutiveHardDays
@@ -53,7 +51,7 @@ public enum CoachAddOnEngine {
 
         // Encouraged: cardio is below target, and no hard strength already done today
         // that would make extra cardio a second hard session on the same day.
-        if !hardDoneToday && !redundantCardioToday && (cardioDaysBelow || minutesBelow) {
+        if !hardDoneToday && !redundantCardioToday && minutesBelow {
             let session = CoachSession(
                 id: "addon.easyCardioEncouraged",
                 kind: .easyAerobic,
@@ -69,12 +67,8 @@ public enum CoachAddOnEngine {
                 session: session,
                 status: .encouraged,
                 message: {
-                    if minutesBelow {
-                        let gap = max(0, Int(aerobicTarget - balance.moderateEquivalentMinutes))
-                        return String(localized: "\(gap) min to go on this week's aerobic target (\(Int(balance.moderateEquivalentMinutes))/150). Easy movement closes the gap.", bundle: .module)
-                    }
-                    let dayGap = max(0, cardioDayTarget - balance.cardioDays)
-                    return String(localized: "\(dayGap) cardio days to go this week (\(balance.cardioDays)/\(cardioDayTarget)). Easy movement closes the gap.", bundle: .module)
+                    let gap = max(0, Int(aerobicTarget - balance.moderateEquivalentMinutes))
+                    return String(localized: "\(gap) min to go on this week's aerobic target (\(Int(balance.moderateEquivalentMinutes))/150). Easy movement closes the gap.", bundle: .module)
                 }(),
                 citationIds: ["ekelundActivityMortality2016"]
             )

@@ -127,8 +127,6 @@ final class CoachExerciseVarietyTests: XCTestCase {
 
     private func preferences(twoADays: Bool) -> CoachSchedulePreferences {
         CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: []),
             allowsTwoADays: twoADays)
     }

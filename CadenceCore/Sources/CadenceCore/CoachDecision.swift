@@ -208,7 +208,7 @@ public enum CoachDecisionEngine {
         if let top = scored.first {
             primary = top.session
         } else {
-            let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
+            let strengthNeeded = facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups)
             if strengthNeeded, let deferredStrength = deferred.first(where: { $0.session.kind == .strength }) {
                 primary = deferredStrength.session
                 strengthOverrideWarning = CoachWarning(
@@ -217,8 +217,8 @@ public enum CoachDecisionEngine {
                     citationIds: ["schoenfeld2021"])
             } else {
                 // Phase C (field-test-fixes): rescue still-due cardio before ever
-                // recommending rest when the weekly cardio target is unmet.
-                let cardioNeeded = facts.weeklyBalance.cardioDays < schedulePreferences.cardioDaysPerWeek
+                // recommending rest when actual weekly aerobic minutes are short.
+                let cardioNeeded = facts.hasAerobicMinuteDeficit
                 if cardioNeeded,
                    let deferredCardio = deferred.first(where: {
                        $0.session.kind == .easyAerobic
@@ -320,20 +320,15 @@ public enum CoachDecisionEngine {
         factsList.append(ObservedFact(
             kind: .weeklyStrengthDays,
             title: String(localized: "Strength days this week", bundle: .module),
-            value: {
-                let done = facts.weeklyBalance.strengthDays
-                let target = schedulePreferences.strengthDaysPerWeek
-                let toGo = max(0, target - done)
-                return toGo > 0 ? "\(done)/\(target)+ · \(toGo) to go" : "\(done)/\(target)+ · target met"
-            }(),
-            detail: String(localized: "Target is \(schedulePreferences.strengthDaysPerWeek) or more", bundle: .module)
+            value: "\(facts.weeklyBalance.strengthDays)",
+            detail: String(localized: "Days with logged strength work. Informational — your plan is driven by weekly volume, not a day count.", bundle: .module)
         ))
 
         factsList.append(ObservedFact(
             kind: .weeklyCardioDays,
             title: String(localized: "Cardio days this week", bundle: .module),
-            value: "\(facts.weeklyBalance.cardioDays)/\(schedulePreferences.cardioDaysPerWeek)",
-            detail: String(localized: "Your chosen weekly frequency is separate from the aerobic minute goal.", bundle: .module)
+            value: "\(facts.weeklyBalance.cardioDays)",
+            detail: String(localized: "Days with logged cardio. Informational — aerobic progress is measured in minutes.", bundle: .module)
         ))
 
         factsList.append(ObservedFact(
@@ -427,9 +422,8 @@ public enum CoachDecisionEngine {
             candidates.contains { $0.isAerobic && eventSatisfiesCoachSession(event, $0) }
         }
 
-        let strengthNeeded = facts.weeklyBalance.strengthDays < schedulePreferences.strengthDaysPerWeek
-        let cardioNeeded = facts.weeklyBalance.cardioDays < schedulePreferences.cardioDaysPerWeek
-            || facts.weeklyBalance.moderateEquivalentMinutes < 150.0
+        let strengthNeeded = facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups)
+        let cardioNeeded = facts.hasAerobicMinuteDeficit
         let todayPlan = todayPlanStatus(todayCompleted: todayCompleted,
                                         facts: facts,
                                         schedulePreferences: schedulePreferences)
@@ -497,21 +491,11 @@ public enum CoachDecisionEngine {
             event.start >= weekStart && event.start < todayStart
         }
 
-        let strengthDaysBeforeToday = Set(beforeToday.compactMap { event -> Date? in
-            guard event.isStrength else { return nil }
-            return cal.startOfDay(for: event.start)
-        }).count
-
         let creditBeforeToday = beforeToday.reduce(0.0) { $0 + moderateEquivalentMinutes(for: $1) }
-        let cardioDaysBeforeToday = Set(beforeToday.compactMap { event -> Date? in
-            guard event.isAerobic else { return nil }
-            return cal.startOfDay(for: event.start)
-        }).count
 
         return TodayPlanStatus(
-            strengthPlannedAtStart: strengthDaysBeforeToday < schedulePreferences.strengthDaysPerWeek,
-            cardioPlannedAtStart: cardioDaysBeforeToday < schedulePreferences.cardioDaysPerWeek
-                || creditBeforeToday < 150.0,
+            strengthPlannedAtStart: facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups),
+            cardioPlannedAtStart: creditBeforeToday < 150.0,
             strengthCompleted: todayCompleted.contains(where: \.isStrength),
             cardioCompleted: todayCompleted.contains(where: \.isAerobic)
         )
@@ -599,12 +583,10 @@ public enum CoachDecisionEngine {
                                                   candidates: [CoachSession],
                                                   schedulePreferences: CoachSchedulePreferences = .default) -> String? {
         let balance = facts.weeklyBalance
-        let strengthFloor = schedulePreferences.strengthDaysPerWeek
         let aerobicFloor = 150.0
 
-        let strengthNeeded = balance.strengthDays < strengthFloor
-        let aerobicNeeded = balance.cardioDays < schedulePreferences.cardioDaysPerWeek
-            || balance.moderateEquivalentMinutes < aerobicFloor
+        let strengthNeeded = facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups)
+        let aerobicNeeded = balance.moderateEquivalentMinutes < aerobicFloor
 
         // Check recovery gates for strength
         let canStrength: Bool
@@ -676,11 +658,11 @@ public enum CoachDecisionEngine {
                                 todayCompleted: [TrainingEvent] = [])
         -> [(session: CoachSession, breakdown: SessionScoreBreakdown)] {
         let balance = facts.weeklyBalance
-        let strengthFloor = schedulePreferences.strengthDaysPerWeek
+        let strengthDeficit = facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups)
         let aerobicFloor = 150.0
 
         let scored = candidates.map { c -> (session: CoachSession, breakdown: SessionScoreBreakdown) in
-            let base = scoreSessionBase(c, balance: balance, strengthFloor: strengthFloor, aerobicFloor: aerobicFloor)
+            let base = scoreSessionBase(c, balance: balance, strengthDeficit: strengthDeficit, aerobicFloor: aerobicFloor)
             let need = systemNeed(for: c, facts: facts)
             let pref = profile.preferenceScore(for: c)
             let dampen = sameDayDamping(for: c, todayCompleted: todayCompleted)
@@ -706,9 +688,9 @@ public enum CoachDecisionEngine {
     ) -> [(session: CoachSession, breakdown: SessionScoreBreakdown)] {
         if case .fixed(let days) = schedule.restPreference,
            let weekday = Weekday(from: facts.referenceDate), days.contains(weekday) { return scored }
-        let strengthDue = facts.weeklyBalance.strengthDays < schedule.strengthDaysPerWeek
+        let strengthDue = facts.hasStrengthVolumeDeficit(tracked: schedule.trackedMuscleGroups)
             && !todayCompleted.contains(where: \.isStrength)
-        let cardioDue = facts.weeklyBalance.cardioDays < schedule.cardioDaysPerWeek
+        let cardioDue = facts.hasAerobicMinuteDeficit
             && !todayCompleted.contains(where: \.isAerobic)
         let due = scored.filter { item in
             (strengthDue && item.session.kind == .strength) || (cardioDue && item.session.isAerobic)
@@ -759,24 +741,24 @@ public enum CoachDecisionEngine {
     }
 
     private static func scoreSessionBase(_ session: CoachSession, balance: WeeklyBalance,
-                                          strengthFloor: Int, aerobicFloor: Double) -> Int {
+                                          strengthDeficit: Bool, aerobicFloor: Double) -> Int {
         var score = 0
 
         switch session.kind {
         case .strength:
-            if balance.strengthDays < strengthFloor { score += 30 }
+            if strengthDeficit { score += 30 }
             if balance.moderateEquivalentMinutes >= aerobicFloor { score += 15 }
             score += 5
         case .moderateAerobic:
             if balance.moderateEquivalentMinutes < aerobicFloor { score += 35 }
-            if balance.strengthDays >= strengthFloor { score += 10 }
+            if !strengthDeficit { score += 10 }
             score += 5
         case .easyAerobic:
             if balance.moderateEquivalentMinutes < aerobicFloor { score += 25 }
-            if balance.strengthDays >= strengthFloor { score += 10 }
+            if !strengthDeficit { score += 10 }
             score += 5
         case .vo2Intervals:
-            if balance.moderateEquivalentMinutes >= 50 && balance.strengthDays >= strengthFloor { score += 20 }
+            if balance.moderateEquivalentMinutes >= 50 && !strengthDeficit { score += 20 }
             score += 3
         case .recovery:
             if balance.consecutiveHardDays >= 3 { score += 40 }
@@ -852,9 +834,9 @@ public enum CoachDecisionEngine {
 
         var recommendations: [CoachSession] = []
 
-        // Weekly cap: never add strength once the weekly strength target is met,
-        // even on a two-a-day day (the user's expectation).
-        let strengthCapMet = facts.weeklyBalance.strengthDays >= schedulePreferences.strengthDaysPerWeek
+        // Never add strength once every tracked group has its minimum weekly
+        // volume, even on a two-a-day day.
+        let strengthCapMet = !facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups)
         if let s = bestStrength, !todayPlan.strengthCompleted, !strengthCapMet {
             recommendations.append(s)
         }

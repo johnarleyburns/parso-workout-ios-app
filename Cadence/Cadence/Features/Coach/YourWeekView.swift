@@ -47,8 +47,6 @@ struct YourWeekView: View {
         let nextWeek = plan.nextWeekDays.filter { !$0.sessions.isEmpty }
         let stepSummary = facts.stepSummary ?? StepActivitySummary(from: [])
         let stepTarget = effectivePrefs.dailyStepTarget
-        let strengthToGo = max(0, effectivePrefs.strengthDaysPerWeek - balance.strengthDays)
-        let cardioToGo = max(0, effectivePrefs.cardioDaysPerWeek - balance.cardioDays)
         let minutesToGo = max(0, 150 - Int(balance.moderateEquivalentMinutes))
         let stepsToGo = max(0, stepTarget - Int(stepSummary.sevenDayAverageSteps))
 
@@ -69,15 +67,9 @@ struct YourWeekView: View {
                         Image(systemName: "dumbbell.fill").foregroundStyle(.green)
                         Text("Strength days").font(.subheadline)
                         Spacer()
-                        HStack(spacing: 0) {
-                            Text("\(balance.strengthDays)")
-                                .font(.subheadline.bold()).monospacedDigit()
-                            Text(strengthToGo > 0 ? "  \(strengthToGo) to go · target \(effectivePrefs.strengthDaysPerWeek)+" : "  target met")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
+                        Text("\(balance.strengthDays)")
+                            .font(.subheadline.bold()).monospacedDigit()
                     }
-                    ProgressView(value: min(1, Double(balance.strengthDays) / Double(effectivePrefs.strengthDaysPerWeek)))
-                        .tint(.green)
 
                     // Strength tonnage this week (issue 7).
                     HStack {
@@ -93,16 +85,9 @@ struct YourWeekView: View {
                         Image(systemName: "heart.fill").foregroundStyle(.teal)
                         Text("Cardio days").font(.subheadline)
                         Spacer()
-                        HStack(spacing: 0) {
-                            Text("\(balance.cardioDays)")
-                                .font(.subheadline.bold()).monospacedDigit()
-                            Text(cardioToGo > 0 ? "  \(cardioToGo) to go · target \(effectivePrefs.cardioDaysPerWeek)" : "  target met")
-                                .font(.caption).foregroundStyle(.secondary)
-                        }
+                        Text("\(balance.cardioDays)")
+                            .font(.subheadline.bold()).monospacedDigit()
                     }
-                    ProgressView(value: effectivePrefs.cardioDaysPerWeek > 0
-                        ? min(1, Double(balance.cardioDays) / Double(effectivePrefs.cardioDaysPerWeek)) : 1)
-                        .tint(.teal)
 
                     HStack {
                         Image(systemName: "timer").foregroundStyle(.blue)

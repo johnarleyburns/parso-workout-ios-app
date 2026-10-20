@@ -202,7 +202,6 @@ struct IntervalSetupView: View {
             autoPause: settings.lastIntervalSettings.autoPause,
             intervalColorBlind: intervalColorBlind,
             spokenCues: spokenCues,
-            weeklyCardioMinutesGoal: settings.lastIntervalSettings.weeklyCardioMinutesGoal,
             warmupMinutes: warmupMin,
             cooldownMinutes: cooldownMin,
             useHRMonitoring: useHR

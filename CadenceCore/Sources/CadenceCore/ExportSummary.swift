@@ -138,8 +138,6 @@ public struct ExportSummary: Codable, Equatable, Sendable {
         if p.unit != nil { n += 1 }
         if p.prRule != nil { n += 1 }
         if p.oneRepMaxFormula != nil { n += 1 }
-        if p.stepGoal != nil { n += 1 }
-        if p.weeklyCardioMinutesGoal != nil { n += 1 }
         if p.restSeconds != nil { n += 1 }
         if p.warmupMinutes != nil { n += 1 }
         if p.cooldownMinutes != nil { n += 1 }

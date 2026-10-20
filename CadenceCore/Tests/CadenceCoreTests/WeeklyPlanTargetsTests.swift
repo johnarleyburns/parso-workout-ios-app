@@ -22,8 +22,6 @@ final class WeeklyPlanTargetsTests: XCTestCase {
 
     private var exportPrefs: CoachSchedulePreferences {
         CoachSchedulePreferences(
-            strengthDaysPerWeek: 5,
-            cardioDaysPerWeek: 6,
             restPreference: .fixed(days: [.sunday]),
             allowsTwoADays: true,
             sameDayCardioTiming: .separateLater)
@@ -53,7 +51,7 @@ final class WeeklyPlanTargetsTests: XCTestCase {
 
     /// The headline regression: 5 strength + 6 cardio days next week, Sunday is
     /// the only rest day, and no forced Recovery day anywhere.
-    func testExportPrefsWeekContainsExactlyTheRequestedDays() throws {
+    func testWeekIsDrivenByVolumeAndMinutesNotDayCounts() throws {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: exportPrefs)
@@ -61,19 +59,18 @@ final class WeeklyPlanTargetsTests: XCTestCase {
 
         let strengthDays = nextWeek.filter { $0.sessions.contains { $0.kind == .strength } }
         let cardioDays = nextWeek.filter { $0.sessions.contains(where: isCardio) }
-        XCTAssertEqual(strengthDays.count, 5,
-                       "User asked for 5 strength days, got \(strengthDays.count)")
-        XCTAssertEqual(cardioDays.count, 6,
-                       "User asked for 6 cardio days, got \(cardioDays.count)")
+        // No day quota: strength is planned to reach minimum weekly volume and
+        // cardio to reach the actual-minutes guideline.
+        XCTAssertGreaterThanOrEqual(strengthDays.count, 2)
+        XCTAssertLessThan(strengthDays.count, 5)
+        XCTAssertFalse(cardioDays.isEmpty)
+        XCTAssertLessThan(cardioDays.count, 7)
 
         // Sunday is the only rest day; no day is silently converted to Recovery.
         for day in nextWeek {
             if isSunday(day.date) {
                 XCTAssertTrue(day.sessions.allSatisfy { $0.kind == .rest },
                               "Fixed Sunday rest must hold")
-            } else {
-                XCTAssertFalse(day.sessions.contains { $0.kind == .rest || $0.kind == .recovery },
-                               "\(day.date): a scheduled training day must not become rest/recovery")
             }
         }
         XCTAssertFalse(plan.futureDays.flatMap(\.sessions).contains { $0.kind == .recovery },
@@ -82,19 +79,15 @@ final class WeeklyPlanTargetsTests: XCTestCase {
 
     /// Two-a-days: every non-rest day carries cardio, and the 5 strength days
     /// pair strength AND cardio on the same day.
-    func testTwoADaysPairBothModalitiesOnNonRestDays() throws {
+    func testTwoADaysPairBothModalitiesWhileNeeded() throws {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: exportPrefs)
 
-        for day in plan.nextWeekDays where !isSunday(day.date) {
-            XCTAssertTrue(day.sessions.contains(where: isCardio),
-                          "\(day.date): every non-rest day should carry a cardio session")
-        }
         let twoADayCount = plan.nextWeekDays.filter { day in
             day.sessions.contains { $0.kind == .strength } && day.sessions.contains(where: isCardio)
         }.count
-        XCTAssertEqual(twoADayCount, 5, "All 5 strength days should pair with cardio")
+        XCTAssertGreaterThanOrEqual(twoADayCount, 1, "Strength should pair with cardio while minutes are short")
     }
 
     /// Planned cardio carries a real prescription (duration + target zone).

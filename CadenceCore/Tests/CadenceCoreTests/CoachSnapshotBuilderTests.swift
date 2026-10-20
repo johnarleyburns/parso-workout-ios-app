@@ -116,8 +116,6 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             sessions: [monday], cardio: [], assessments: [], hasPainToday: false,
             goal: .strength, experience: .intermediate, formula: .epley,
             schedulePreferences: CoachSchedulePreferences(
-                strengthDaysPerWeek: 3,
-                cardioDaysPerWeek: 6,
                 restPreference: .fixed(days: []),
                 allowsTwoADays: false),
             profile: .empty, now: tuesdayDate)

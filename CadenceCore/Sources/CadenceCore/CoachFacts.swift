@@ -132,6 +132,25 @@ public struct WeeklyBalance: Sendable, Equatable {
     )
 }
 
+extension CoachFacts {
+    /// Whether any tracked muscle group is still below its minimum effective
+    /// weekly volume. This is the volume-based replacement for the retired
+    /// strength days-per-week quota: strength is "needed" because work is missing,
+    /// never because a day count was not reached.
+    public func hasStrengthVolumeDeficit(tracked: Set<MuscleGroup>) -> Bool {
+        tracked.contains { group in
+            (weeklyBalance.fractionalSets[group] ?? 0)
+                < VolumeLandmarks.bands(for: group, experience: experience).mev
+        }
+    }
+
+    /// Whether the week's actual aerobic dose is still under the public-health
+    /// guideline. Actual minutes only; no cardio-day quota.
+    public var hasAerobicMinuteDeficit: Bool {
+        weeklyBalance.moderateEquivalentMinutes < 150.0
+    }
+}
+
 public struct CoachFacts: Sendable {
     public let events: [TrainingEvent]
     public let recovery: RecoveryState

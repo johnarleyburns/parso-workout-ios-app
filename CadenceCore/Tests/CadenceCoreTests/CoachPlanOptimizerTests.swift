@@ -95,8 +95,6 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
         let plan = weeklyPlan(now: now, days: [(1, [.strength])])
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: []),
             allowsTwoADays: false,
             desiredSetsPerExercise: 4,
@@ -294,8 +292,6 @@ final class CoachPlanOptimizerTests: XCTestCase {
         ], generatedAt: now)
 
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: []),
             allowsTwoADays: false)
 
@@ -503,8 +499,6 @@ final class CoachPlanOptimizerTests: XCTestCase {
 
         // 3 strength days configured, 2 remaining slots (Wed + Fri).
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 3,
-            cardioDaysPerWeek: 6,
             restPreference: .fixed(days: []),
             allowsTwoADays: false)
 
@@ -743,8 +737,6 @@ final class CoachPlanOptimizerTests: XCTestCase {
 
     private func preferences(twoADays: Bool) -> CoachSchedulePreferences {
         CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: []),
             allowsTwoADays: twoADays)
     }

@@ -349,7 +349,6 @@ struct WorkoutPlanEditor: View {
             autoPause: settings.lastStrengthSettings.autoPause,
             intervalColorBlind: settings.lastStrengthSettings.intervalColorBlind,
             spokenCues: settings.lastStrengthSettings.spokenCues,
-            weeklyCardioMinutesGoal: settings.lastStrengthSettings.weeklyCardioMinutesGoal,
             warmupMinutes: plan.warmupMinutes,
             cooldownMinutes: plan.cooldownMinutes,
             useHRMonitoring: useHR

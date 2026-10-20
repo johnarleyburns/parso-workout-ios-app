@@ -164,8 +164,6 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
 
     private func preferences() -> CoachSchedulePreferences {
         CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: []),
             allowsTwoADays: false)
     }

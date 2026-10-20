@@ -11,7 +11,6 @@ public struct WorkoutSettings: Codable, Equatable, Sendable {
     public var autoPause: Bool
     public var intervalColorBlind: Bool
     public var spokenCues: Bool
-    public var weeklyCardioMinutesGoal: Int
     public var warmupMinutes: Int
     public var cooldownMinutes: Int
     public var useHRMonitoring: Bool
@@ -26,7 +25,6 @@ public struct WorkoutSettings: Codable, Equatable, Sendable {
                 autoPause: Bool = false,
                 intervalColorBlind: Bool = false,
                 spokenCues: Bool = false,
-                weeklyCardioMinutesGoal: Int = 250,
                 warmupMinutes: Int = 5,
                 cooldownMinutes: Int = 5,
                 useHRMonitoring: Bool = false) {
@@ -40,7 +38,6 @@ public struct WorkoutSettings: Codable, Equatable, Sendable {
         self.autoPause = autoPause
         self.intervalColorBlind = intervalColorBlind
         self.spokenCues = spokenCues
-        self.weeklyCardioMinutesGoal = weeklyCardioMinutesGoal
         self.warmupMinutes = warmupMinutes
         self.cooldownMinutes = cooldownMinutes
         self.useHRMonitoring = useHRMonitoring

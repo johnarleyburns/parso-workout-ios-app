@@ -14,12 +14,3 @@ extension RestPreference {
         }
     }
 }
-
-extension CoachSchedulePreferences {
-    public func planningInput(policy: PlanningPolicy = .safe) throws -> PlanningInput {
-        try PlanningInput(strengthDaysPerWeek: strengthDaysPerWeek,
-                          cardioDaysPerWeek: cardioDaysPerWeek,
-                          restRule: restPreference.planningRule,
-                          policy: policy)
-    }
-}

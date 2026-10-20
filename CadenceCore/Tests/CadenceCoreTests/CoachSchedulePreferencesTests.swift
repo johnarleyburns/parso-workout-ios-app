@@ -8,8 +8,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testDefaultPreferences() {
         let prefs = CoachSchedulePreferences.default
-        XCTAssertEqual(prefs.strengthDaysPerWeek, 2)
-        XCTAssertEqual(prefs.cardioDaysPerWeek, 3)
         if case .rolling(let n) = prefs.restPreference {
             XCTAssertEqual(n, 3)
         } else {
@@ -22,28 +20,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     // MARK: - Constraints
 
-    func testStrengthDaysClamped() {
-        let below = CoachSchedulePreferences(strengthDaysPerWeek: 1)
-        XCTAssertEqual(below.strengthDaysPerWeek, 2, "Should clamp to minimum 2")
-
-        let above = CoachSchedulePreferences(strengthDaysPerWeek: 6)
-        XCTAssertEqual(above.strengthDaysPerWeek, 5, "Should clamp to maximum 5")
-
-        let valid = CoachSchedulePreferences(strengthDaysPerWeek: 4)
-        XCTAssertEqual(valid.strengthDaysPerWeek, 4)
-    }
-
-    func testCardioDaysClamped() {
-        let below = CoachSchedulePreferences(cardioDaysPerWeek: -1)
-        XCTAssertEqual(below.cardioDaysPerWeek, 0, "Should clamp to minimum 0")
-
-        let above = CoachSchedulePreferences(cardioDaysPerWeek: 8)
-        XCTAssertEqual(above.cardioDaysPerWeek, 7, "Should clamp to maximum 7")
-
-        let valid = CoachSchedulePreferences(cardioDaysPerWeek: 5)
-        XCTAssertEqual(valid.cardioDaysPerWeek, 5)
-    }
-
     func testDesiredSetsPerExerciseClamped() {
         XCTAssertEqual(CoachSchedulePreferences(desiredSetsPerExercise: 2).desiredSetsPerExercise, 3)
         XCTAssertEqual(CoachSchedulePreferences(desiredSetsPerExercise: 5).desiredSetsPerExercise, 4)
@@ -54,16 +30,12 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testCodableRoundTrip() throws {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 3,
-            cardioDaysPerWeek: 4,
             restPreference: .fixed(days: [.saturday, .sunday]),
             allowsTwoADays: true,
             sameDayCardioTiming: .separateLater
         )
         let data = try JSONEncoder().encode(prefs)
         let decoded = try JSONDecoder().decode(CoachSchedulePreferences.self, from: data)
-        XCTAssertEqual(decoded.strengthDaysPerWeek, 3)
-        XCTAssertEqual(decoded.cardioDaysPerWeek, 4)
         XCTAssertEqual(decoded.restPreference, .fixed(days: [.saturday, .sunday]))
         XCTAssertTrue(decoded.allowsTwoADays)
         XCTAssertEqual(decoded.sameDayCardioTiming, .separateLater)
@@ -105,17 +77,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     // MARK: - With helpers
 
-    func testWithStrengthDays() {
-        let prefs = CoachSchedulePreferences.default.withStrengthDays(4)
-        XCTAssertEqual(prefs.strengthDaysPerWeek, 4)
-        XCTAssertEqual(prefs.cardioDaysPerWeek, 3) // unchanged
-    }
-
-    func testWithCardioDays() {
-        let prefs = CoachSchedulePreferences.default.withCardioDays(5)
-        XCTAssertEqual(prefs.cardioDaysPerWeek, 5)
-    }
-
     func testWithTwoADays() {
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         XCTAssertTrue(prefs.allowsTwoADays)
@@ -133,14 +94,15 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     // MARK: - Decision engine uses strength target 2
 
-    func testDecisionEngineDynamicStrengthTargetInObservedFacts() throws {
+    func testDecisionEngineObservedStrengthDaysCarryNoTarget() throws {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 3)
+        let prefs = CoachSchedulePreferences()
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
-        // With 0/3 strength days, the target text should reflect the dynamic target
+        // Strength days are an observation only: no "n/target" quota is shown.
         let fact = decision.observedFacts.first { $0.kind == .weeklyStrengthDays }
         XCTAssertNotNil(fact)
-        XCTAssertTrue(fact!.value.contains("3"), "Should use dynamic target 3")
+        XCTAssertEqual(fact?.value, "0")
+        XCTAssertFalse(fact?.value.contains("/") ?? true)
     }
 
     // MARK: - Decision engine with met strength needs cardio
@@ -165,14 +127,14 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
         let facts = CoachFacts.make(from: [s1, s2], goal: .strength, experience: .intermediate, now: now)
         // With 2 strength days, default target of 2 is met
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2)
+        let prefs = CoachSchedulePreferences()
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
         XCTAssertTrue(decision.primary.isAerobic, "With strength target met and no cardio, primary should be aerobic. Got: \(decision.primary.kind)")
     }
 
     // MARK: - Decision engine with higher strength target still needs strength (but aerobic deficit wins first)
 
-    func testDecisionEngineHigherTargetObservedFactsReflectTarget() throws {
+    func testDecisionEngineObservedStrengthDaysReflectActualCount() throws {
         let ctx = try ModelContext(CadenceStore.makeModelContainer(inMemory: true))
         let now = Date()
 
@@ -191,17 +153,17 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         let s2 = try makeStrength("Bench", ["chest"], 3, 3)
 
         let facts = CoachFacts.make(from: [s1, s2], goal: .strength, experience: .intermediate, now: now)
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 5)
+        let prefs = CoachSchedulePreferences()
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
         let fact = decision.observedFacts.first { $0.kind == .weeklyStrengthDays }
         XCTAssertNotNil(fact)
-        XCTAssertTrue(fact!.value.contains("5"), "Should use dynamic target 5. Got: \(fact!.value)")
+        XCTAssertNotNil(Int(fact?.value ?? ""), "Reports an actual day count only. Got: \(fact!.value)")
     }
 
     // MARK: - Cardio day target independent of minutes
 
-    func testCardioDayTargetIndependentOfMinutes() throws {
+    func testCardioPlanFollowsActualMinutesNotDayCount() throws {
         let context = try ModelContext(CadenceStore.makeModelContainer(inMemory: true))
         // Fixed Thursday so a "1 day ago" event stays inside the same Monday-week.
         var nowComps = DateComponents()
@@ -225,12 +187,13 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         XCTAssertEqual(facts.weeklyBalance.cardioDays, 1,
                        "Cardio days should be distinct days, not minutes")
 
-        // With cardioDays target = 3 and only 1 day done, cardio should still be needed
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 3)
+        // Actual minutes already meet the guideline, so no cardio is planned for
+        // the rest of this week just because few cardio days were logged.
+        let prefs = CoachSchedulePreferences()
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
-        let futureSessions = plan.futureDays.flatMap(\.sessions)
-        let hasCardio = futureSessions.contains { $0.kind == .moderateAerobic || $0.kind == .easyAerobic }
-        XCTAssertTrue(hasCardio, "Should still plan cardio days even though minutes target is met")
+        let thisWeekFuture = plan.currentWeekDays.filter { $0.isFuture }.flatMap(\.sessions)
+        let hasCardio = thisWeekFuture.contains { $0.kind == .moderateAerobic || $0.kind == .easyAerobic }
+        XCTAssertFalse(hasCardio, "No cardio-day quota: met minutes mean no more planned cardio this week")
 
         // But with 0/2 strength and zero cardio days, strength should still win for the decision
         // This test just verifies cardio day counting is independent from minutes
@@ -240,8 +203,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testTwoADaysDisabledNoDoubleSession() throws {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 3,
-                                              allowsTwoADays: false)
+        let prefs = CoachSchedulePreferences(allowsTwoADays: false)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
         let futureDays = plan.futureDays
 
@@ -257,8 +219,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testTwoADaysEnabledAllowsDoubleSession() throws {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 3,
-                                              allowsTwoADays: true)
+        let prefs = CoachSchedulePreferences(allowsTwoADays: true)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
         let futureDays = plan.futureDays
 
@@ -283,8 +244,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
 
         for timing in [SameDayCardioTiming.afterStrength, .separateLater] {
-            let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 5,
-                                                 allowsTwoADays: true,
+            let prefs = CoachSchedulePreferences(allowsTwoADays: true,
                                                  sameDayCardioTiming: timing)
             let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
             let notes = plan.futureDays.flatMap(\.sessions).compactMap(\.timingNote)
@@ -292,8 +252,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         }
 
         // Two-a-days still schedule strength + cardio on the same day.
-        let twoADay = CoachSchedulePreferences(strengthDaysPerWeek: 2, cardioDaysPerWeek: 5,
-                                               allowsTwoADays: true,
+        let twoADay = CoachSchedulePreferences(allowsTwoADays: true,
                                                sameDayCardioTiming: .afterStrength)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: twoADay)
         let hasSameDayBoth = plan.futureDays.contains { day in
@@ -309,8 +268,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy, experience: .intermediate,
                                     now: plannerNow())
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 0,
             restPreference: .fixed(days: [])
         )
 
@@ -323,8 +280,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy, experience: .intermediate,
                                     now: plannerNow())
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 0,
             restPreference: .fixed(days: []),
             desiredSetsPerExercise: 4
         )
@@ -338,8 +293,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testFixedRestSaturdayAndSunday() throws {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: [.saturday, .sunday])
         )
         let encoded = try JSONEncoder().encode(prefs)
@@ -349,8 +302,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testRollingRestEveryThreeDays() throws {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .rolling(everyNDays: 3)
         )
         let encoded = try JSONEncoder().encode(prefs)
@@ -360,15 +311,15 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     // MARK: - Observed facts use dynamic targets
 
-    func testObservedFactsUseDynamicStrengthTarget() throws {
+    func testObservedFactsCarryNoStrengthTarget() throws {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
-        let prefs = CoachSchedulePreferences(strengthDaysPerWeek: 4)
+        let prefs = CoachSchedulePreferences()
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
         let strengthFact = decision.observedFacts.first { $0.kind == .weeklyStrengthDays }
         XCTAssertNotNil(strengthFact)
-        XCTAssertTrue(strengthFact!.value.contains("4"),
-                      "Strength target should be 4. Got: \(strengthFact!.value)")
+        XCTAssertFalse(strengthFact!.value.contains("/") || strengthFact!.value.contains("+"),
+                       "No strength-day target may be rendered. Got: \(strengthFact!.value)")
     }
 
     // MARK: - WeeklyPlan extends horizon beyond +6
@@ -421,8 +372,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testFixedOneDayRoundTrip() {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: [.sunday])
         )
         if case .fixed(let days) = prefs.restPreference {
@@ -435,8 +384,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     func testFixedTwoDayRoundTrip() {
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 2,
-            cardioDaysPerWeek: 3,
             restPreference: .fixed(days: [.saturday, .sunday])
         )
         if case .fixed(let days) = prefs.restPreference {
@@ -460,8 +407,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
         // Fixed rest on Wednesday (day 4) and Sunday (day 1)
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 5,
-            cardioDaysPerWeek: 6,
             restPreference: .fixed(days: [.wednesday, .sunday])
         )
 
@@ -489,8 +434,6 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
         // Fixed rest Wednesday + Sunday only
         let prefs = CoachSchedulePreferences(
-            strengthDaysPerWeek: 5,
-            cardioDaysPerWeek: 6,
             restPreference: .fixed(days: [.wednesday, .sunday])
         )
 

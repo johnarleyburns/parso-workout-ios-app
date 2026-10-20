@@ -48,12 +48,13 @@ jobs:
     needs: verify-reservation
     if: needs.verify-reservation.outputs.valid == 'true'
     runs-on: xcode-27
-    timeout-minutes: 120
+    timeout-minutes: 360
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       ISSUE: ${{ inputs.issue_number }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_MODEL: sonnet
+      CLAUDE_MAX_TURNS: ${{ vars.CLAUDE_MAX_TURNS || '1000' }}
     steps:
       - uses: actions/checkout@v4
         with:

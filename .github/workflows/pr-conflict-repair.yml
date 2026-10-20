@@ -27,11 +27,12 @@ jobs:
   repair:
     if: github.actor == 'johnarleyburns' || github.actor == 'github-actions[bot]'
     runs-on: xcode-27
-    timeout-minutes: 180
+    timeout-minutes: 360
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       ANTHROPIC_MODEL: sonnet
+      CLAUDE_MAX_TURNS: ${{ vars.CLAUDE_MAX_TURNS || '1000' }}
       TARGET_PR: ${{ inputs.pr_number }}
     steps:
       - uses: actions/checkout@v4

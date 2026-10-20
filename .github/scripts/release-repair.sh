@@ -13,7 +13,9 @@ git config user.name 'github-actions[bot]'
 git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
 git_auth() { git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64)" "$@"; }
-run_claude() { env -u GH_TOKEN -u GITHUB_TOKEN claude -p "$1" --model sonnet --permission-mode bypassPermissions --max-turns 35; }
+CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-1000}"
+[[ "$CLAUDE_MAX_TURNS" =~ ^[1-9][0-9]*$ ]] && (( CLAUDE_MAX_TURNS <= 1000 )) || { echo 'CLAUDE_MAX_TURNS must be an integer from 1 to 1000.' >&2; exit 64; }
+run_claude() { env -u GH_TOKEN -u GITHUB_TOKEN claude -p "$1" --model sonnet --permission-mode bypassPermissions --max-turns "$CLAUDE_MAX_TURNS"; }
 is_sensitive_path() {
   local path
   path=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')

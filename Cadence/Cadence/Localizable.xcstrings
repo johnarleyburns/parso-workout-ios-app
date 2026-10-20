@@ -28410,7 +28410,7 @@
       },
       "comment" : "UI text shown in: Home Today Hero Card (Cadence/Cadence/Features/Home/HomeTodayHeroCard.swift)"
     },
-    "Estimated from workout type — add your age in onboarding or Coach preferences for HR-based zones." : {
+    "Estimated from workout type — add your age in Coach preferences for HR-based zones." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -28421,7 +28421,7 @@
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Estimated from workout type — add your age in onboarding or Coach preferences for HR-based zones."
+            "value" : "Estimated from workout type — add your age in Coach preferences for HR-based zones."
           }
         },
         "es" : {

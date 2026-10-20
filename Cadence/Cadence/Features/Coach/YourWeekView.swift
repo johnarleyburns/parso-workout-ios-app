@@ -191,7 +191,7 @@ struct YourWeekView: View {
                         .accessibilityIdentifier("yourPlan.zone.\(row.zone)")
                     }
                     if settings.userAge == nil {
-                        Text("Estimated from workout type — add your age in onboarding or Coach preferences for HR-based zones.")
+                        Text("Estimated from workout type — add your age in Coach preferences for HR-based zones.")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                     if let citation = CitationRegistry.citation(forId: "seilerPolarized2010") {

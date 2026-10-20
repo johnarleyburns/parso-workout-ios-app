@@ -25,12 +25,6 @@ struct RootTabView: View {
         @Bindable var active = active
         return ZStack {
             nativeTabs
-            .fullScreenCover(isPresented: Binding(
-                get: { !settings.hasCompletedOnboarding },
-                set: { presented in if !presented { settings.hasCompletedOnboarding = true } }
-            )) {
-                OnboardingView()
-            }
 
             // Explicit Watch action results use one non-layout-affecting host.
             // Automatic CloudKit restore state stays in Settings/diagnostics so

@@ -129,8 +129,8 @@ struct HomeView: View {
     @State var readinessExpanded = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     @State var coachSnapshotReady = false
-    // Historical Home projections are cached separately from the coach
-    // snapshot. Recomputing SwiftData relationships from the render path made
+    @State var homeActivityReady = false  // first weekly projection applied
+    // Historical Home projections are cached separately from the coach snapshot.
     @State var cachedWorkoutsTodayRows: [WorkoutsTodayPresenter.Row] = []
     @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []

@@ -5,6 +5,9 @@ import CadenceFeatures
 struct HomeMuscleMapView: View {
     let dashboard: HomeDashboardState
     let volumeRows: [HomeDashboardState.VolumeRow]?
+    /// True until the coach snapshot and weekly activity projection have both
+    /// landed; painting earlier would flash every muscle red (issue #195).
+    var isLoading = false
     @Binding var selectedPanel: MuscleMapPanel
     let onSelect: (MuscleGroup) -> Void
     let onOpenCardio: () -> Void
@@ -28,7 +31,9 @@ struct HomeMuscleMapView: View {
             .pickerStyle(.segmented)
             .accessibilityIdentifier("home.week.muscleMap.picker")
 
-            if selectedPanel == .list {
+            if isLoading {
+                loadingPlaceholder
+            } else if selectedPanel == .list {
                 muscleList
             } else {
                 heatMap
@@ -55,6 +60,19 @@ struct HomeMuscleMapView: View {
         }
         .accessibilityHint("Switch to List for all muscles")
         .accessibilityIdentifier("home.week.sets.muscleMap")
+    }
+
+    private var loadingPlaceholder: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+            Text("Loading this week's muscle coverage…")
+                .font(.footnote).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .frame(height: MapMetrics.displayHeight)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Loading this week's muscle coverage")
+        .accessibilityIdentifier("home.week.muscleMap.loading")
     }
 
     private var heatMap: some View {

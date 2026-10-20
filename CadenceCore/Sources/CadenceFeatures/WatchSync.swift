@@ -54,6 +54,8 @@ public enum WatchSync {
 
         public static let todayPlanSessions = "todayPlan.sessions"
         public static let todayPlanUpdatedAt = "todayPlan.updatedAt"
+        /// Workouts designed on the iPhone and sent to the Watch ("Send Workout to Watch").
+        public static let sentWorkouts = "sentWorkouts.sessions"
 
         public static let weekSets = "week.sets"
         public static let weekSetsMinimum = "week.setsMinimum"
@@ -248,7 +250,13 @@ public enum WatchSync {
         public static func contextDict(_ plan: TodayPlan) -> [String: Any] {
             [
                 Key.todayPlanUpdatedAt: plan.updatedAt,
-                Key.todayPlanSessions: plan.sessions.map { session -> [String: Any] in
+                Key.todayPlanSessions: rows(plan.sessions),
+            ]
+        }
+
+        /// Property-list rows for sessions; shared by the Today plan and phone-sent workouts.
+        public static func rows(_ sessions: [Session]) -> [[String: Any]] {
+            sessions.map { session -> [String: Any] in
                     var dict: [String: Any] = [
                         "id": session.id,
                         "kind": session.kind.rawValue,
@@ -268,13 +276,18 @@ public enum WatchSync {
                         if !propertyList.isEmpty { dict[WatchPlanPayload.transportKey] = propertyList }
                     }
                     return dict
-                },
-            ]
+            }
         }
 
         public static func from(context: [String: Any]) -> TodayPlan? {
             guard let rows = context[Key.todayPlanSessions] as? [[String: Any]] else { return nil }
-            let sessions = rows.compactMap { row -> Session? in
+            let sessions = sessions(fromRows: rows)
+            let updatedAt = (context[Key.todayPlanUpdatedAt] as? Date) ?? Date()
+            return TodayPlan(sessions: sessions, updatedAt: updatedAt)
+        }
+
+        public static func sessions(fromRows rows: [[String: Any]]) -> [Session] {
+            rows.compactMap { row -> Session? in
                 guard let id = row["id"] as? String,
                       let rawKind = row["kind"] as? String,
                       let kind = Session.Kind(rawValue: rawKind),
@@ -293,8 +306,6 @@ public enum WatchSync {
                     adviceCitationIDs: row["adviceCitationIDs"] as? [String] ?? []
                 )
             }
-            let updatedAt = (context[Key.todayPlanUpdatedAt] as? Date) ?? Date()
-            return TodayPlan(sessions: sessions, updatedAt: updatedAt)
         }
 
         private static func cardioTypeHint(for session: PlannedSession) -> String {
@@ -463,10 +474,14 @@ public enum WatchSync {
         public let customExercises: [CustomExercise]?
         public let updatedAt: Date
         public let weekSummary: WeekSummary?
+        /// Workouts sent from the iPhone; nil when the context carries no such key.
+        public let sentWorkouts: [TodayPlan.Session]?
 
         public init(preferences: Preferences, todayPlan: TodayPlan?,
                     customExercises: [CustomExercise]?, updatedAt: Date,
-                    weekSummary: WeekSummary? = nil) {
+                    weekSummary: WeekSummary? = nil,
+                    sentWorkouts: [TodayPlan.Session]? = nil) {
+            self.sentWorkouts = sentWorkouts
             self.preferences = preferences
             self.todayPlan = todayPlan
             self.customExercises = customExercises
@@ -487,7 +502,8 @@ public enum WatchSync {
                 todayPlan: TodayPlan.from(context: context),
                 customExercises: customExercises,
                 updatedAt: (context[Key.contextUpdatedAt] as? Date) ?? Date(),
-                weekSummary: WeekSummary.from(context: context))
+                weekSummary: WeekSummary.from(context: context),
+                sentWorkouts: context[Key.sentWorkouts] == nil ? nil : WatchSentWorkouts.sessions(from: context))
         }
     }
 

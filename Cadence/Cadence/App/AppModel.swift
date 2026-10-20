@@ -374,6 +374,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// builds do not populate it from the Home coach pipeline.
     private var cachedTodayPlan: WatchSync.TodayPlan?
     private var cachedWeekSummary: WatchSync.WeekSummary?
+    /// Workouts the user chose to send to the Watch; mirrored in the application context.
+    private var cachedSentWorkouts: [WatchSync.TodayPlan.Session] = []
     private var watchPayloadTask: Task<Void, Never>?
     private var lastWatchPayloadFingerprint: Int?
 
@@ -564,6 +566,10 @@ final class AppModel: NSObject, @unchecked Sendable {
             context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
             context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
         }
+        // The context is built fresh, so carry workouts sent to the Watch along with it.
+        if !cachedSentWorkouts.isEmpty {
+            context.merge(WatchSentWorkouts.contextDict(cachedSentWorkouts)) { _, new in new }
+        }
         // The settings context is built fresh, so carry the This Week totals along with it.
         if let week = cachedWeekSummary {
             context.merge(WatchSync.WeekSummary.contextDict(week)) { _, new in new }
@@ -597,6 +603,21 @@ final class AppModel: NSObject, @unchecked Sendable {
         var context = session.applicationContext
         context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
         enqueueWatchContextWrite(context, on: session, at: plan.updatedAt)
+    }
+
+    /// "Send Workout to Watch": queues a designed workout on the Watch as "Sent from your phone".
+    /// Returns false when no paired Watch app is reachable for delivery, so the UI can say so.
+    @discardableResult
+    func sendWorkoutToWatch(_ workout: WatchSync.TodayPlan.Session) -> Bool {
+        guard let session = wcSession, session.isWatchAppInstalled else { return false }
+        var context = session.applicationContext
+        if cachedSentWorkouts.isEmpty {
+            cachedSentWorkouts = WatchSentWorkouts.sessions(from: context)
+        }
+        cachedSentWorkouts = WatchSentWorkouts.adding(workout, to: cachedSentWorkouts)
+        context.merge(WatchSentWorkouts.contextDict(cachedSentWorkouts)) { _, new in new }
+        enqueueWatchContextWrite(context, on: session, at: Date())
+        return true
     }
 
     /// Publishes this week's sets and cardio minutes for the Watch's This Week page. It merges into

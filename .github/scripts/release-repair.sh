@@ -3,6 +3,28 @@
 # issues and never retries credentials, signing, App Store Connect, or Apple failures.
 set -Eeuo pipefail
 
+# Classify only the failed-step log.  A test-suite failure is application code
+# work even when its output happens to mention an upload/artifact step.  Do not
+# let broad deployment keywords turn a repairable test failure into a false
+# needs-human-review ticket.
+classify_failure_log() {
+  local failed_log="$1"
+  if grep -Eqi 'Run logic tests|Run Swift Package Tests|Run SwiftPM package tests|swift test|Test Suite.*failed|Test .*failed|XCTest.*failed' "$failed_log"; then
+    echo code-test
+  elif grep -Eqi 'provision|signing|certificate|profile|keychain|app store connect|transporter|upload|authentication|credential|HTTP 4[0-9][0-9]|HTTP 5[0-9][0-9]' "$failed_log"; then
+    echo deployment
+  elif grep -Eqi 'error:|CompileSwift|SwiftCompile|BUILD FAILED|archive not found|xcodebuild.*failed' "$failed_log"; then
+    echo code-build
+  else
+    echo unknown
+  fi
+}
+
+if [[ "${1:-}" == --classify-log ]]; then
+  classify_failure_log "${2:?log path required}"
+  exit 0
+fi
+
 : "${FAILED_RUN_ID:?}"
 : "${GITHUB_REPOSITORY:?}"
 mkdir -p /tmp/claude-release-repair
@@ -48,16 +70,11 @@ if [[ "$subject" == fix\(release\):* ]]; then
   exit 1
 fi
 
-# Only compiler/archive errors are code-repair candidates.  Everything involving
-# credentials, provisioning, signing, upload, or Apple is deliberately escalated.
-if grep -Eqi 'provision|signing|certificate|profile|keychain|app store connect|transporter|upload|authentication|credential|HTTP 4[0-9][0-9]|HTTP 5[0-9][0-9]' "$log"; then
-  escalate "Deployment infrastructure/signing/upload failure; code repair is unsafe."
-  exit 1
-fi
-if ! grep -Eqi 'error:|CompileSwift|SwiftCompile|BUILD FAILED|archive not found|xcodebuild.*failed' "$log"; then
-  escalate "Failure could not be classified as an application archive/compiler error."
-  exit 1
-fi
+case "$(classify_failure_log "$log")" in
+  code-test|code-build) ;;
+  deployment) escalate "Deployment infrastructure/signing/upload failure; code repair is unsafe."; exit 1 ;;
+  *) escalate "Failure could not be classified as an application test or compiler error."; exit 1 ;;
+esac
 
 git_auth fetch -q origin main
 git checkout -q -B "$branch" origin/main

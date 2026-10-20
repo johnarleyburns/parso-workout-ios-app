@@ -90,9 +90,9 @@ struct HomeHistoryDestinationView: View {
                     data: .from(session: session),
                     onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) },
                     onEditCardioMinutes: { mod, vig in
-                        session.setManualCardioMinutes(moderate: mod, vigorous: vig)
-                        try? context.save()
-                        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+                        try ManualCardioMinutesSaver.save(
+                            session: session, moderate: mod, vigorous: vig,
+                            persist: { try context.save() }).get()
                     })
             } else {
                 MissingWorkoutRouteView()

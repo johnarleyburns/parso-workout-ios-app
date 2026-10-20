@@ -75,9 +75,9 @@ struct TrainingProgressView: View {
                                            onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) },
                                            repairSession: session,
                     onEditCardioMinutes: { mod, vig in
-                        session.setManualCardioMinutes(moderate: mod, vigorous: vig)
-                        try? modelContext.save()
-                        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+                        try ManualCardioMinutesSaver.save(
+                            session: session, moderate: mod, vigorous: vig,
+                            persist: { try modelContext.save() }).get()
                     })
                     } else {
                         MissingWorkoutRouteView()

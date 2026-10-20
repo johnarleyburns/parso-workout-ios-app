@@ -25,9 +25,10 @@ struct WorkoutSummaryView: View {
     var onDone: (() -> Void)? = nil
     /// Strength history only: save hand-entered moderate / vigorous cardio minutes
     /// (for when the heart-rate connection failed). `nil` ⇒ no editor.
-    var onEditCardioMinutes: ((Int, Int) -> Void)? = nil
+    var onEditCardioMinutes: ((Int, Int) throws -> Void)? = nil
 
     @State private var editingMinutes = false
+    @State private var minutesSaveFailed = false
     @State private var moderateInput = 0
     @State private var vigorousInput = 0
     @State private var healthSaved = false
@@ -236,13 +237,15 @@ struct WorkoutSummaryView: View {
 
     private var editMinutesButton: some View {
         Button {
-            moderateInput = Int(((data.cardioIntensity?.moderateDuration ?? 0) / 60).rounded())
-            vigorousInput = Int(((data.cardioIntensity?.vigorousDuration ?? 0) / 60).rounded())
+            guard let existing = ManualCardioMinutesSaver.existingMinutes(from: data.cardioIntensity) else { return }
+            moderateInput = existing.moderate
+            vigorousInput = existing.vigorous
             editingMinutes = true
         } label: {
             Label("Edit cardio minutes", systemImage: "pencil")
         }
         .buttonStyle(.bordered)
+        .disabled(data.cardioIntensity == nil)
         .accessibilityIdentifier("summary.cardio.editMinutes")
     }
 
@@ -266,14 +269,23 @@ struct WorkoutSummaryView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        onEditCardioMinutes?(moderateInput, vigorousInput)
-                        editingMinutes = false
+                        do {
+                            try onEditCardioMinutes?(moderateInput, vigorousInput)
+                            editingMinutes = false
+                        } catch {
+                            minutesSaveFailed = true
+                        }
                     }
                     .accessibilityIdentifier("summary.cardio.saveMinutes")
                 }
             }
         }
         .presentationDetents([.medium])
+        .alert("Couldn't save cardio minutes", isPresented: $minutesSaveFailed) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Your previous minutes were kept. Try saving again.")
+        }
     }
 
     private func summaryRow(_ title: String, _ value: String) -> some View {

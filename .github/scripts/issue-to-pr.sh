@@ -56,6 +56,9 @@ is_sensitive_path() {
   esac
   [[ "$path" == *credential* || "$path" == *secret* ]]
 }
+contains_secret_material() {
+  git diff --cached --unified=0 -- "$1" | grep -Eq '^\+[^+].*(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|sk_(live|proj)_[A-Za-z0-9]{20,})'
+}
 
 kick_maintenance() { gh workflow run pr-maintenance.yml ${1:+-f pr_number="$1"} >/dev/null 2>&1 || echo 'could not dispatch pr-maintenance (scheduled sweep will pick the PR up)'; }
 
@@ -122,6 +125,8 @@ stage_and_check() {
       [[ "$ci_authorized" == true ]] || needs_auth=true
     elif is_sensitive_path "$f"; then
       echo "Forbidden signing/credential path: $f" >&2; git reset -q; return 1
+    elif contains_secret_material "$f"; then
+      echo "Forbidden secret material in diff: $f" >&2; git reset -q; return 1
     fi
     if [[ -L "$f" ]]; then echo "Symlink rejected: $f" >&2; git reset -q; return 1; fi
     if [[ "$f" == *.sh && -f "$f" ]] && ! bash -n "$f"; then echo "Shell syntax error: $f" >&2; git reset -q; return 1; fi

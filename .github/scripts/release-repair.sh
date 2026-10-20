@@ -23,6 +23,9 @@ is_sensitive_path() {
   esac
   [[ "$path" == *credential* || "$path" == *secret* ]]
 }
+contains_secret_material() {
+  git diff --cached --unified=0 -- "$1" | grep -Eq '^\+[^+].*(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9_]{20,}|sk_(live|proj)_[A-Za-z0-9]{20,})'
+}
 escalate() {
   gh label create needs-human-review --repo "$repo" --color D93F0B --description 'Automation stopped; a human must act' --force >/dev/null
   gh issue create --repo "$repo" --title "Release repair needs human action for run #${FAILED_RUN_ID}" --label needs-human-review \
@@ -65,6 +68,10 @@ prepare_changes() {
   local f
   while IFS= read -r -d '' f; do
     if [[ "$f" == .github/* ]] || is_sensitive_path "$f"; then
+      git reset -q
+      return 2
+    fi
+    if contains_secret_material "$f"; then
       git reset -q
       return 2
     fi

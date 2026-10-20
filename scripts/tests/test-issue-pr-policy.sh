@@ -58,3 +58,19 @@ for guarded in "$script" "$root/.github/scripts/pr-conflict-repair.sh" "$root/.g
   is_sensitive_path 'fastlane/Appfile'
 done
 echo 'Sensitive-path policy: Swift credential views allowed; deployment artifacts blocked'
+
+tmp=$(mktemp -d)
+trap 'rm -f "$trace"; rm -rf "$tmp"' EXIT
+(
+  cd "$tmp"
+  git init -q
+  git config user.email test@example.invalid
+  git config user.name test
+  printf 'baseline\n' > CredentialView.swift
+  git add CredentialView.swift && git commit -qm baseline
+  printf 'let token = "ghp_abcdefghijklmnopqrstuvwxyz123456"\n' > CredentialView.swift
+  git add CredentialView.swift
+  eval "$(sed -n '/^contains_secret_material() {/,/^}/p' "$script")"
+  contains_secret_material CredentialView.swift
+)
+echo 'Sensitive-content policy: token-like additions rejected in allowed source paths'

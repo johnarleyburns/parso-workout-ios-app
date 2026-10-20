@@ -210,6 +210,7 @@ extension HomeView {
             cachedMuscleHistoryByPerformer = projection.muscleHistoryByPerformer
             cachedScheduledItems = projection.scheduledItems
             cachedRecentCardioTypes = projection.recentCardioTypes
+            homeActivityReady = true
         } else {
             cachedWorkoutsTodayRows = WorkoutsTodayPresenter.historicalRows(
                 sessions: sessions, cardio: cardio, now: now)
@@ -231,6 +232,7 @@ extension HomeView {
             cachedMuscleHistoryByPerformer = weeklyVolume.histories
             cachedScheduledItems = scheduledWorkouts.map(HomePlannedWorkoutsSection.item)
             cachedRecentCardioTypes = recentCardioTypesFromCurrentCardio
+            homeActivityReady = true
         }
     }
 

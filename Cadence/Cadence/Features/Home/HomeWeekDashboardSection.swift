@@ -15,6 +15,7 @@ struct HomeWeekDashboardSection: View {
     let weeklyVolumeKgByPerformer: [String: Double]
     let weeklyVolumePerformers: [VolumeSummaryPerformer]
     let totalVolumeKg: Double
+    var isVolumeLoading = false
     let unit: MeasurementUnitPreference
     let onOpenWorkout: (TodayActivityPresenter.Entry) -> Void
     let onOpenPlanned: (UUID) -> Void
@@ -204,6 +205,7 @@ struct HomeWeekDashboardSection: View {
         HomeMuscleMapView(
             dashboard: dashboard,
             volumeRows: displayedVolumeRows,
+            isLoading: isVolumeLoading,
             selectedPanel: $muscleMapPanel,
             onSelect: { group in
                 // Only publish a lightweight value. The detail payload is

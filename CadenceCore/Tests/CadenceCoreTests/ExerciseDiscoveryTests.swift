@@ -52,6 +52,19 @@ final class ExerciseDiscoveryTests: XCTestCase {
         XCTAssertFalse(picks.contains { $0.name == "90/90 Hamstring" })
     }
 
+    // Exclusions apply before the cover is computed, so the remaining picks still
+    // cover every group the catalog can reach without the excluded movements.
+    func testSuggestionsStillCoverMissingAfterExcludingFirstPicks() {
+        let missing: [MuscleGroup] = [.lats, .quadriceps, .calves, .biceps]
+        let first = ExerciseLibrary.suggestions(forMissing: missing, limit: 6)
+        let banned = Set(first.map(\.name))
+        let picks = ExerciseLibrary.suggestions(forMissing: missing, limit: 6) { !banned.contains($0.name) }
+        XCTAssertTrue(picks.allSatisfy { !banned.contains($0.name) })
+        var covered = Set<MuscleGroup>()
+        for t in picks { covered.formUnion(ExerciseLibrary.muscleGroups(of: t)) }
+        XCTAssertTrue(Set(missing).isSubset(of: covered))
+    }
+
     func testSuggestionsEmptyWhenNothingMissing() {
         XCTAssertTrue(ExerciseLibrary.suggestions(forMissing: []).isEmpty)
     }

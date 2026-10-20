@@ -45,13 +45,16 @@ public extension ExerciseLibrary {
 
     /// Greedy set-cover: pick exercises (compounds first) that together cover as many
     /// of the `missing` muscle groups as possible, fewest movements first. Used by the
-    /// quick-start as a fallback / supplement to reusing a past workout.
-    static func suggestions(forMissing missing: [MuscleGroup], limit: Int = 6) -> [ExerciseTemplate] {
+    /// quick-start as a fallback / supplement to reusing a past workout. `isAllowed`
+    /// filters the pool BEFORE the cover is computed, so excluded movements (recent
+    /// repeats, user exclusions) never leave a gap uncovered by the final list.
+    static func suggestions(forMissing missing: [MuscleGroup], limit: Int = 6,
+                            allowing isAllowed: (ExerciseTemplate) -> Bool = { _ in true }) -> [ExerciseTemplate] {
         guard !missing.isEmpty else { return [] }
         var remaining = Set(missing)
         var chosen: [ExerciseTemplate] = []
         // Candidate pool: compounds first (cover more per movement), then isolations.
-        let pool = starter.filter(\.volumeEligible).sorted {
+        let pool = starter.filter { $0.volumeEligible && isAllowed($0) }.sorted {
             ($0.mechanics == .compound ? 0 : 1, $0.name) < ($1.mechanics == .compound ? 0 : 1, $1.name)
         }
         while !remaining.isEmpty && chosen.count < limit {

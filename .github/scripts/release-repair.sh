@@ -14,6 +14,15 @@ git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 
 git_auth() { git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64)" "$@"; }
 run_claude() { env -u GH_TOKEN -u GITHUB_TOKEN claude -p "$1" --model sonnet --permission-mode bypassPermissions --max-turns 35; }
+is_sensitive_path() {
+  local path
+  path=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+  case "$path" in
+    *.p12|*.p8|*.pem|*.key|*.cer|*.mobileprovision|*.entitlements|*.xcconfig|*.env|fastlane/*|*/fastlane/*|*exportoptions*.plist) return 0 ;;
+    *.swift) return 1 ;;
+  esac
+  [[ "$path" == *credential* || "$path" == *secret* ]]
+}
 escalate() {
   gh label create needs-human-review --repo "$repo" --color D93F0B --description 'Automation stopped; a human must act' --force >/dev/null
   gh issue create --repo "$repo" --title "Release repair needs human action for run #${FAILED_RUN_ID}" --label needs-human-review \
@@ -53,10 +62,13 @@ prepare_changes() {
   git add -A
   changed=$(git diff --cached --name-only)
   [[ -n "$changed" ]] || return 1
-  if grep -Eqi '(^\.github/|(^|/)(.*\.(p12|p8|pem|key|cer|mobileprovision|entitlements|xcconfig|env)$|.*(credential|secret).*))' <<<"$changed"; then
-    git reset -q
-    return 2
-  fi
+  local f
+  while IFS= read -r -d '' f; do
+    if [[ "$f" == .github/* ]] || is_sensitive_path "$f"; then
+      git reset -q
+      return 2
+    fi
+  done < <(git diff --cached --name-only --no-renames -z)
 }
 
 validate() {

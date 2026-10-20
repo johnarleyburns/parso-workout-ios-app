@@ -46,3 +46,15 @@ publish_line=$(grep -nFx 'publish_changes' "$script" | cut -d: -f1)
 pr_line=$(grep -nE '^pr_number=\$\(make_pr' "$script" | cut -d: -f1)
 [[ "$validate_line" -lt "$publish_line" && "$publish_line" -lt "$pr_line" ]]
 grep -Fq 'Pre-publication validation failed; no branch or PR was created' "$script"
+
+# Source filenames may describe credentials without being credential artifacts;
+# binary/config artifacts and non-source secret files remain blocked.
+for guarded in "$script" "$root/.github/scripts/pr-conflict-repair.sh" "$root/.github/scripts/release-repair.sh"; do
+  policy=$(sed -n '/^is_sensitive_path() {/,/^}/p' "$guarded")
+  eval "$policy"
+  ! is_sensitive_path 'Sources/Features/Settings/JamendoCredentialView.swift'
+  is_sensitive_path 'Config/credentials.json'
+  is_sensitive_path 'certs/distribution.p12'
+  is_sensitive_path 'fastlane/Appfile'
+done
+echo 'Sensitive-path policy: Swift credential views allowed; deployment artifacts blocked'

@@ -44,7 +44,18 @@ ci_paths=(
   .github/scripts/pr-maintenance.sh
 )
 is_ci_path() { local p="$1" a; for a in "${ci_paths[@]}"; do [[ "$p" == "$a" ]] && return 0; done; return 1; }
-sensitive_re='(^|/)([^/]*\.(p12|p8|pem|key|cer|mobileprovision|entitlements|xcconfig|env)|[^/]*credential[^/]*|[^/]*secret[^/]*|ExportOptions[^/]*\.plist|fastlane/.*)$'
+# Protect deployment material by artifact type, not by a broad source-file name.
+# A normal Swift UI file such as JamendoCredentialView.swift contains no secret
+# merely because its name describes the UI it implements.
+is_sensitive_path() {
+  local path
+  path=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')
+  case "$path" in
+    *.p12|*.p8|*.pem|*.key|*.cer|*.mobileprovision|*.entitlements|*.xcconfig|*.env|fastlane/*|*/fastlane/*|*exportoptions*.plist) return 0 ;;
+    *.swift) return 1 ;;
+  esac
+  [[ "$path" == *credential* || "$path" == *secret* ]]
+}
 
 kick_maintenance() { gh workflow run pr-maintenance.yml ${1:+-f pr_number="$1"} >/dev/null 2>&1 || echo 'could not dispatch pr-maintenance (scheduled sweep will pick the PR up)'; }
 
@@ -109,7 +120,7 @@ stage_and_check() {
     if [[ "$f" == .github/* ]]; then
       if ! is_ci_path "$f"; then echo "Forbidden .github path: $f" >&2; git reset -q; return 1; fi
       [[ "$ci_authorized" == true ]] || needs_auth=true
-    elif grep -Eiq "$sensitive_re" <<<"$f"; then
+    elif is_sensitive_path "$f"; then
       echo "Forbidden signing/credential path: $f" >&2; git reset -q; return 1
     fi
     if [[ -L "$f" ]]; then echo "Symlink rejected: $f" >&2; git reset -q; return 1; fi

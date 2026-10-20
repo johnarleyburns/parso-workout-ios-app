@@ -39,9 +39,9 @@ struct HistoryView: View {
                 }
             } header: {
                 HStack {
-                    // Embedded in Progress, the tab bar already says "History".
-                    if !embedded || showDeleted {
-                        Text(showDeleted ? "Deleted" : "History")
+                    // The nav title or the Progress tab already says "History".
+                    if showDeleted {
+                        Text("Deleted")
                     }
                     Spacer()
                     if !deletedSessions.isEmpty || !deletedCardio.isEmpty {

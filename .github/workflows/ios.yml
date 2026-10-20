@@ -296,12 +296,27 @@ jobs:
           APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
         run: |
-          set -eo pipefail
-          xcrun altool --upload-app \
-            --type ios \
-            --file output/Cadence.ipa \
-            --apiKey "$APPSTORE_API_KEY_ID" \
-            --apiIssuer "$APPSTORE_API_ISSUER_ID"
+          set -euo pipefail
+          upload_options="$RUNNER_TEMP/TestFlightExportOptions.plist"
+          cp ExportOptions.plist "$upload_options"
+          /usr/libexec/PlistBuddy -c 'Add :destination string upload' "$upload_options"
+          bash .github/scripts/testflight-upload.sh -- \
+            xcodebuild -exportArchive \
+              -archivePath ./build/Cadence.xcarchive \
+              -exportPath ./output \
+              -exportOptionsPlist "$upload_options" \
+              -authenticationKeyPath "$HOME/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8" \
+              -authenticationKeyID "$APPSTORE_API_KEY_ID" \
+              -authenticationKeyIssuerID "$APPSTORE_API_ISSUER_ID"
+
+      - name: Upload TestFlight transport diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testflight-transport-${{ github.run_id }}
+          path: ${{ runner.temp }}/testflight-transport.log
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Record TestFlight delivery
         if: success()
@@ -348,7 +363,7 @@ jobs:
           rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8
 
   # Records the post-merge outcome on the merged PR. Uses only GITHUB_TOKEN with
-  # issue/PR comment scope and no release secrets. "Uploaded" means altool
+  # issue/PR comment scope and no release secrets. "Uploaded" means Xcode's
   # accepted the build; Apple processing / tester availability is NOT claimed.
   deployment-report:
     needs: [core-tests, testflight-build]

@@ -106,4 +106,10 @@ final class WatchLiftSourcesTests: XCTestCase {
         XCTAssertEqual(source.endedAt, Date(timeIntervalSince1970: 900))
         XCTAssertTrue(created.orderedSets.isEmpty)
     }
+
+    func testLocalSuggestWorksWithoutPhone() {
+        let review = WatchSuggestReview.makeLocal(previous: [])
+        XCTAssertFalse(review.launch.exerciseNames.isEmpty)
+        XCTAssertNotNil(review.launch.planPayload?.strength)
+    }
 }

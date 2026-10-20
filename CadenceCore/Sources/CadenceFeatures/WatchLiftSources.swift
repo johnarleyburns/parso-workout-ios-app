@@ -90,6 +90,30 @@ public struct WatchSuggestReview: Equatable, Sendable {
                                     repLadder: session.repLadder, planPayload: session.planPayload))
     }
 
+    /// Standalone Watch suggestion: no iPhone needed. Repeats the newest completed
+    /// strength workout on the Watch, or offers a bodyweight starter when there is none.
+    public static func makeLocal(previous: [WatchPreviousWorkout], now: Date = Date()) -> WatchSuggestReview {
+        if let last = previous.first {
+            return WatchSuggestReview(
+                heading: "Suggested from your last workout", title: last.title,
+                exerciseLines: last.structureLines, prescriptionDetail: "\(last.workingSetCount) working sets",
+                isStale: false, syncedAt: now, launch: last.launch)
+        }
+        let names = ["Bodyweight Squat", "Push-Up", "Plank"]
+        let prescriptions = names.map { name in
+            PlannedExercisePrescription(
+                exerciseName: name, sets: (0..<3).map { _ in PlannedSetPrescription(targetReps: 10) })
+        }
+        let title = "Starter Full Body"
+        let payload = WatchPlanPayload(
+            title: title, strength: .init(exerciseNames: names, repLadder: [10, 10, 10], prescriptions: prescriptions))
+        return WatchSuggestReview(
+            heading: "Starter workout", title: title,
+            exerciseLines: names.map { "\($0) · 3×10" }, prescriptionDetail: "9 working sets",
+            isStale: false, syncedAt: now,
+            launch: WatchLiftLaunch(title: title, exerciseNames: names, repLadder: [10, 10, 10], planPayload: payload))
+    }
+
     static func repsText(_ reps: [Int]) -> String {
         guard let first = reps.first else { return "0" }
         return reps.allSatisfy({ $0 == first }) ? "\(first)" : reps.map(String.init).joined(separator: "/")

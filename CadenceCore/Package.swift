@@ -11,6 +11,8 @@ let package = Package(
     ],
     products: [
         .library(name: "CadenceCore", targets: ["CadenceCore"]),
+        // Foundation-only planning domain; builds and tests on Linux.
+        .library(name: "CadencePlanning", targets: ["CadencePlanning"]),
         .library(name: "CadenceExerciseImages", targets: ["CadenceExerciseImages"]),
         // Headless app logic lifted out of SwiftUI Views so `swift test` can
         // exercise it without a simulator (test-pyramid plan, 2026-07-12).
@@ -25,9 +27,13 @@ let package = Package(
         )
     ],
     targets: [
+        // Foundation ONLY — never SwiftUI, SwiftData, HealthKit, UIKit,
+        // WatchConnectivity, CoreLocation, StoreKit, or app model types.
+        .target(name: "CadencePlanning", swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
             name: "CadenceCore",
             dependencies: [
+                "CadencePlanning",
                 .product(
                     name: "FreeExerciseDBPlusPlus",
                     package: "free-exercise-db-plusplus"
@@ -60,7 +66,12 @@ let package = Package(
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadenceCore", "CadenceFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(
+            name: "CadencePlanningTests",
+            dependencies: ["CadencePlanning"],
+            swiftSettings: [.swiftLanguageMode(.v6)]
+        ),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadenceExerciseImagesTests",
             dependencies: ["CadenceCore", "CadenceExerciseImages"],

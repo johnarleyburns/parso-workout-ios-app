@@ -40,7 +40,9 @@ public struct PlanSessionSnapshot: Codable, Equatable, Sendable {
                             restSeconds: set.restSeconds,
                             isWarmup: set.kind == .warmup,
                             kind: set.kind)
-                    }))
+                    },
+                    defaultRestSeconds: value.defaultRestSeconds,
+                    transitionRestSeconds: value.transitionRestSeconds))
             case let .cardio(value):
                 return .cardio(Self.cardioSnapshot(value))
             case let .mobility(value):
@@ -155,10 +157,18 @@ public struct StrengthItemSnapshot: Codable, Equatable, Sendable {
     public var exerciseName: String
     public var supersetGroup: String?
     public var sets: [PrescribedSetSnapshot]
+    /// Between-set default and exercise-transition rest, carried so every
+    /// runtime consumer resolves rest through `TransitionRestResolver`.
+    public var defaultRestSeconds: Int?
+    public var transitionRestSeconds: Int?
 
     public init(id: UUID, exerciseKey: String, exerciseName: String,
                 supersetGroup: String? = nil,
-                sets: [PrescribedSetSnapshot]) {
+                sets: [PrescribedSetSnapshot],
+                defaultRestSeconds: Int? = nil,
+                transitionRestSeconds: Int? = nil) {
+        self.defaultRestSeconds = defaultRestSeconds
+        self.transitionRestSeconds = transitionRestSeconds
         self.id = id
         self.exerciseKey = exerciseKey
         self.exerciseName = exerciseName
@@ -333,7 +343,9 @@ public struct RuntimePrescriptionAdapter: Sendable {
                         isWarmup: set.isWarmup,
                         kind: set.kind)
                 },
-                supersetGroup: item.supersetGroup)
+                supersetGroup: item.supersetGroup,
+                defaultRestSeconds: item.defaultRestSeconds,
+                transitionRestSeconds: item.transitionRestSeconds)
         }
         let firstSets = prescriptions.first?.sets ?? []
         let firstWeight = firstSets.compactMap(\.targetWeightKg).first ?? 0

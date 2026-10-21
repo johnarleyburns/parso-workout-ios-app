@@ -318,7 +318,6 @@ struct WatchStrengthReviewView: View {
         VStack(spacing: 1) {
             Text(value).font(.system(.title3, design: .rounded).weight(.bold)).monospacedDigit()
                 .foregroundStyle(highlight ? WatchTone.gold : .primary)
-                .lineLimit(1).minimumScaleFactor(0.6)
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, minHeight: 50)

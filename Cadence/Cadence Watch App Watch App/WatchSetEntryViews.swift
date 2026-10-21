@@ -20,45 +20,40 @@ struct WatchWeightEntryView: View {
     private var valueText: String { plateText(value, decimals: 1) }
 
     var body: some View {
-        // Three equal vertical bands so everything fits without scrolling.
-        GeometryReader { geo in
-            let band = geo.size.height / 3
+        // Vertical stack in a ScrollView: at accessibility sizes it grows and scrolls
+        // (Digital Crown) instead of shrinking the value to fit.
+        ScrollView {
             VStack(spacing: 4) {
                 Button { directEntry = true } label: {
                     Text(verbatim: valueText)
-                        .font(.system(size: 60, design: .rounded).weight(.bold))
+                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
                         .monospacedDigit()
-                        .lineLimit(1).minimumScaleFactor(0.2)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .frame(maxWidth: .infinity, minHeight: 56)
                 }
                 .buttonStyle(.plain)
-                .frame(height: band - 4)
                 .accessibilityLabel("Weight \(valueText) \(unit.abbreviation)")
                 .accessibilityHint("Opens keypad")
                 .accessibilityIdentifier("watchWeight.entry.value")
 
                 Button { plateStepPicker = true } label: {
-                    Text("±\(plateText(plate)) \(unit.abbreviation)").lineLimit(1).frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Text("±\(plateText(plate)) \(unit.abbreviation)").frame(maxWidth: .infinity, minHeight: 40)
                 }
-                .frame(height: band - 4)
                 .accessibilityLabel("Plate step \(plateText(plate)) \(unit.abbreviation)")
                 .accessibilityIdentifier("watchWeight.plateStep")
 
                 HStack(spacing: 6) {
                     Button { adjust(-plate) } label: {
-                        Text("-").font(.title2.weight(.bold)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Text("-").font(.title2.weight(.bold)).frame(maxWidth: .infinity, minHeight: 40)
                     }
                     .accessibilityLabel("Subtract \(plateText(plate)) \(unit.abbreviation)")
                     .accessibilityIdentifier("watchWeight.minusPlate")
                     Button { adjust(plate) } label: {
-                        Text("+").font(.title2.weight(.bold)).frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Text("+").font(.title2.weight(.bold)).frame(maxWidth: .infinity, minHeight: 40)
                     }
                     .accessibilityLabel("Add \(plateText(plate)) \(unit.abbreviation)")
                     .accessibilityIdentifier("watchWeight.plusPlate")
                 }
-                .frame(height: band - 4)
             }
-            .frame(width: geo.size.width, height: geo.size.height)
         }
         .padding(.horizontal, 4)
         .navigationTitle("Weight")
@@ -168,7 +163,7 @@ struct WatchNumericEntryView: View {
         VStack(spacing: 4) {
             Text(text.isEmpty ? initialValue : text)
                 .font(.system(.title, design: .rounded).weight(.bold))
-                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                .monospacedDigit()
                 .frame(maxWidth: .infinity, minHeight: 28)
                 .accessibilityIdentifier("watchNumeric.value")
             ForEach(rows, id: \.self) { row in

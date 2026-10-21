@@ -30,3 +30,12 @@ if rg -n 'minimumScaleFactor\((0?\.[0-9]+|0)\)' "${live_roots[@]}" --glob '*.swi
   echo "accessibility ratchet failed: sub-1 minimumScaleFactor in a live workout root" >&2
   exit 1
 fi
+
+# Live Watch workout surfaces (weight entry, keypad, interval, strength card)
+# must reflow/scroll too, never shrink text to fit.
+watch="$root/Cadence/Cadence Watch App Watch App"
+watch_live=("$watch/WatchSetEntryViews.swift" "$watch/WatchSetKeypadView.swift" "$watch/WatchIntervalView.swift" "$watch/WatchStrengthView.swift")
+if rg -n 'minimumScaleFactor\((0?\.[0-9]+|0)\)' "${watch_live[@]}"; then
+  echo "accessibility ratchet failed: sub-1 minimumScaleFactor in a live Watch workout view" >&2
+  exit 1
+fi

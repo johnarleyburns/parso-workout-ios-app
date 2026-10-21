@@ -35,7 +35,7 @@ struct WatchSetKeypadView: View {
             VStack(spacing: 3) {
                 Text(card.exerciseName)
                     .font(.footnote.weight(.semibold))
-                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
                 // Dots and (with partners) who is lifting share one row, so the card fits under the title.
@@ -65,7 +65,7 @@ struct WatchSetKeypadView: View {
                     if WatchQuickTalkController.isEnabled, card.lifterText == nil {
                         Text(talk.isPhoneReachable ? "Hold to talk" : "iPhone not nearby — dictate in ⋯")
                             .font(.caption2).foregroundStyle(.secondary)
-                            .lineLimit(1).minimumScaleFactor(0.7)
+                            .fixedSize(horizontal: false, vertical: true)
                             .accessibilityHidden(true)
                     }
                 }
@@ -75,7 +75,7 @@ struct WatchSetKeypadView: View {
             .overlay(alignment: .top) {
                 if let toastLastTime {
                     Text(toastLastTime)
-                        .font(.caption2).lineLimit(1).minimumScaleFactor(0.7)
+                        .font(.caption2).fixedSize(horizontal: false, vertical: true)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(Capsule().fill(.regularMaterial))
                         .transition(.opacity)

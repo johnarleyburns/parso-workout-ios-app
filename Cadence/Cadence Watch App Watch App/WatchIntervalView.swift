@@ -87,8 +87,7 @@ struct WatchIntervalView: View {
             VStack(spacing: 2) {
                 Text(titleLine)
                     .font(.footnote.weight(.semibold))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 2)
                 Text(runner.phaseLabel)
@@ -97,8 +96,6 @@ struct WatchIntervalView: View {
                 Text(formatTime(runner.phaseRemaining))
                     .font(.system(size: 52, weight: .bold, design: .rounded))
                     .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.6)
                     .accessibilityIdentifier("intervalCountdown")
                 heartLine
                 if !isLuminanceReduced { zoneBar.padding(.horizontal, 14).padding(.top, 6) }
@@ -172,7 +169,7 @@ struct WatchIntervalView: View {
         } label: {
             VStack(spacing: 4) {
                 Image(systemName: systemImage).font(.title3)
-                Text(title).font(.caption2.weight(.semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                Text(title).font(.caption2.weight(.semibold)).fixedSize(horizontal: false, vertical: true)
             }
             .foregroundStyle(destructive ? Color.red : Color.primary)
             .frame(maxWidth: .infinity, minHeight: 62)

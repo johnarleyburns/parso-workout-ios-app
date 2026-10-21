@@ -292,3 +292,54 @@ struct WatchHeartRateCommandCompatibilityTests {
         #expect(WatchHRCommand(payload: legacy.payload)?.phoneWorkoutSessionID == nil)
     }
 }
+
+@MainActor
+struct WatchHeartRateTransactionalDeliveryTests {
+    final class FailingReceiptStore: WatchHeartRateReceiptStore {
+        var states: [UUID: WatchHRReceiptState] = [:]
+        var failSaves = true
+        struct Boom: Error {}
+        func load(sessionID: UUID) -> WatchHRReceiptState? { states[sessionID] }
+        func save(_ state: WatchHRReceiptState) throws {
+            if failSaves { throw Boom() }
+            states[state.phoneWorkoutSessionID] = state
+        }
+        func clear(sessionID: UUID) { states[sessionID] = nil }
+    }
+
+    @Test func receiptSaveFailureSendsNoAckAndReplayIsAcknowledged() {
+        let session = UUID(), request = UUID()
+        let store = FailingReceiptStore(), transport = FakeHRTransport()
+        var persisted = 0
+        let receiver = WatchHeartRateReceiver(store: store, transport: transport,
+                                              expectedRequestID: { _ in request },
+                                              persist: { _, _ in persisted += 1; return true })
+        let obs = WatchHRObservation(observationID: UUID(), source: .watchHealthKit,
+                                     sampleEnd: 1_800_000_000, bpm: 120, sampleID: nil)
+        let message = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: session,
+                                     watchRequestID: request, sequence: 1, observations: [obs])
+        #expect(receiver.handle(message.payload) == .persistenceFailed)
+        #expect(transport.immediate.isEmpty && transport.durable.isEmpty)
+        store.failSaves = false
+        #expect(receiver.handle(message.payload) == .accepted(count: 1))
+        #expect(!transport.durable.isEmpty)
+        #expect(persisted == 2)
+    }
+
+    @Test func retiredJournalsAreNeverDroppedAtCapacity() {
+        let store = FakeHRStore(), transport = FakeHRTransport()
+        transport.isReachable = false
+        let outbox = WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 })
+        var ids: [UUID] = []
+        for i in 0...WatchHeartRateOutbox.maximumRetiredJournals {
+            let id = UUID(); ids.append(id)
+            #expect(outbox.bind(phoneWorkoutSessionID: id, watchRequestID: UUID()))
+            outbox.record(bpm: 100, sampleEnd: Date(timeIntervalSince1970: 1_800_000_000 + Double(i)), source: .watchHealthKit)
+        }
+        #expect(!outbox.bind(phoneWorkoutSessionID: UUID(), watchRequestID: UUID()))
+        #expect(outbox.failedRecoverably && outbox.bindingRefused)
+        #expect(outbox.state?.retired.count == WatchHeartRateOutbox.maximumRetiredJournals)
+        #expect(outbox.state?.retired.allSatisfy { !$0.batches.isEmpty } == true)
+        #expect(outbox.record(bpm: 100, sampleEnd: Date(timeIntervalSince1970: 1_800_000_999), source: .watchHealthKit) == .notPersisted)
+    }
+}

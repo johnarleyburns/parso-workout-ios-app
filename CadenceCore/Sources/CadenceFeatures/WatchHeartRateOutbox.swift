@@ -70,6 +70,9 @@ public final class WatchHeartRateOutbox {
     private let makeUUID: () -> UUID
     public private(set) var state: WatchHeartRateOutboxState?
     public private(set) var failedRecoverably = false
+    /// True while a new workout cannot be bound because retaining all earlier
+    /// unacknowledged journals would exceed `maximumRetiredJournals`.
+    public private(set) var bindingRefused = false
     private var lastImmediateAt: TimeInterval?
 
     public init(store: WatchHeartRateOutboxStore, transport: WatchHeartRateTransport,
@@ -92,30 +95,36 @@ public final class WatchHeartRateOutbox {
 
     /// Scopes the journal to a phone-owned workout. Re-binding the same pair
     /// keeps the persisted state; a different pair replaces it.
-    public func bind(phoneWorkoutSessionID: UUID, watchRequestID: UUID) {
-        if let state, state.phoneWorkoutSessionID == phoneWorkoutSessionID, state.watchRequestID == watchRequestID { return }
+    @discardableResult
+    public func bind(phoneWorkoutSessionID: UUID, watchRequestID: UUID) -> Bool {
+        if let state, state.phoneWorkoutSessionID == phoneWorkoutSessionID, state.watchRequestID == watchRequestID { return true }
         var fresh = WatchHeartRateOutboxState(phoneWorkoutSessionID: phoneWorkoutSessionID, watchRequestID: watchRequestID)
         if var old = state {
             fresh.retired = old.retired
             old.retired = []
             if !(old.pending.isEmpty && old.batches.isEmpty) {
+                // Backpressure: never drop unacknowledged data to make room.
+                guard fresh.retired.count < Self.maximumRetiredJournals else {
+                    bindingRefused = true
+                    failedRecoverably = true
+                    Self.log.error("retired journal limit reached, new workout not bound")
+                    return false
+                }
                 sealPending(&old)
                 fresh.retired.append(old)
                 Self.log.info("earlier workout retained for delivery")
             }
-            if fresh.retired.count > Self.maximumRetiredJournals {
-                fresh.retired.removeFirst(fresh.retired.count - Self.maximumRetiredJournals)
-                Self.log.error("retired journal limit reached")
-            }
         }
         state = fresh
         failedRecoverably = false
+        bindingRefused = false
         persist()
+        return true
     }
 
     @discardableResult
     public func record(bpm: Double, sampleEnd: Date, source: HeartRateObservationSource, sampleID: String? = nil) -> WatchHeartRateRecordOutcome {
-        guard state != nil else { return .notPersisted }
+        guard state != nil, !bindingRefused else { return .notPersisted }
         guard source == .watchHealthKit || source == .watchBLE else { return .rejected(.invalidSource) }
         guard bpm.isFinite, bpm >= Self.minimumBPM, bpm <= Self.maximumBPM else { return .rejected(.invalidBPM) }
         let end = sampleEnd.timeIntervalSince1970

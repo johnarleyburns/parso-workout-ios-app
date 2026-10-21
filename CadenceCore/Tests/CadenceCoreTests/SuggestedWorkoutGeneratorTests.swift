@@ -452,8 +452,10 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
 
         let option = generate(completed: completed, candidates: [oly, curl]).option(.olympic)
 
-        XCTAssertEqual(option.exercises.map(\.candidateID), ["oly", "curl"])
-        XCTAssertEqual(option.exercises.map(\.isInStyle), [true, false])
+        // Selection order is oly, curl; the transition-rest ordering then ends
+        // the session on the longer-transition compound movement.
+        XCTAssertEqual(option.exercises.map(\.candidateID), ["curl", "oly"])
+        XCTAssertEqual(option.exercises.map(\.isInStyle), [false, true])
         XCTAssertEqual(option.inStyleExerciseCount, 1)
         XCTAssertEqual(option.remainingDeficits["biceps"] ?? .nan, 1, accuracy: 1e-12)
     }

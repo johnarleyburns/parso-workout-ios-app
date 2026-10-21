@@ -383,6 +383,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     private var _settings: AppSettings?
     private var _modelContainer: ModelContainer?
     private var _active: ActiveWorkoutModel?
+    /// Original measurement time of the newest Watch HR reading seen.
+    private(set) var watchLastSampleEnd: Date?
     /// Watch request → phone strength session it was started for.
     private var watchRequestSessionIDs: [UUID: UUID] = [:]
     /// Legacy Watch Today-plan cache retained only for migration/tests. New
@@ -728,7 +730,10 @@ final class AppModel: NSObject, @unchecked Sendable {
         let requestID = UUID()
         // Bind this request to the concrete phone session now, so a delayed
         // message from workout A can never land in workout B.
-        let phoneSessionID = _active?.strengthSession?.id
+        // Phone strength preflight starts before the WorkoutSession exists: use
+        // the reserved identity the session will be created with.
+        let reservation = (_active?.strengthSession == nil && rawType == "strength") ? reserveWatchPreflight() : nil
+        let phoneSessionID = _active?.strengthSession?.id ?? reservation?.phoneWorkoutSessionID
         if let phoneSessionID {
             watchRequestSessionIDs[requestID] = phoneSessionID
             WatchHeartRateRouteStore().add(sessionID: phoneSessionID, requestID: requestID)
@@ -737,7 +742,8 @@ final class AppModel: NSObject, @unchecked Sendable {
                                               allowsRetry: allowsRetry)
         let command = WatchHRCommand(action: .start, requestID: requestID,
                                      workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt(),
-                                     phoneWorkoutSessionID: phoneSessionID)
+                                     phoneWorkoutSessionID: phoneSessionID,
+                                     captureEpoch: reservation?.captureEpoch)
         // Durable, ordered copy first. When Cladiron isn't running on the
         // Watch, this is delivered as soon as the launch below brings it up,
         // and names the workout the launch started. The Watch treats the
@@ -1062,6 +1068,70 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
+    // MARK: Watch HR preflight reservation
+
+    private static let preflightLedgerKey = "watchHR.preflightLedger.v1"
+
+    private var watchPreflightLedger: WatchHRPreflightLedger {
+        get {
+            UserDefaults.standard.data(forKey: Self.preflightLedgerKey)
+                .flatMap { try? JSONDecoder().decode(WatchHRPreflightLedger.self, from: $0) } ?? WatchHRPreflightLedger()
+        }
+        set { UserDefaults.standard.set(try? JSONEncoder().encode(newValue), forKey: Self.preflightLedgerKey) }
+    }
+
+    /// Reserved identity for the next phone-started strength workout. Persisted,
+    /// stable across relaunch, and not a history workout.
+    var watchPreflightReservation: WatchHRPreflightReservation? { watchPreflightLedger.reservation }
+
+    @discardableResult
+    func reserveWatchPreflight() -> WatchHRPreflightReservation {
+        var ledger = watchPreflightLedger
+        let before = ledger.reservation
+        let reservation = ledger.reserve()
+        watchPreflightLedger = ledger
+        if let before, before.phoneWorkoutSessionID != reservation.phoneWorkoutSessionID {
+            WatchHeartRateRouteStore().remove(sessionID: before.phoneWorkoutSessionID)
+        }
+        return reservation
+    }
+
+    /// The preflight was cancelled: tombstone the identity, drop buffered
+    /// readings and its route so nothing can reach a later workout.
+    func cancelWatchPreflight() {
+        var ledger = watchPreflightLedger
+        guard let cancelled = ledger.cancel() else { return }
+        watchPreflightLedger = ledger
+        WatchHeartRateRouteStore().remove(sessionID: cancelled)
+        watchRequestSessionIDs = watchRequestSessionIDs.filter { $0.value != cancelled }
+    }
+
+    /// Binds the buffered preflight capture to the real session (created with
+    /// the reserved ID) and records the readings inside its bounds.
+    @discardableResult
+    func adoptWatchPreflight(into session: WorkoutSession, now: Date = Date()) -> Bool {
+        var ledger = watchPreflightLedger
+        guard let adopted = ledger.adopt(sessionID: session.id, start: session.date, end: now) else { return false }
+        watchPreflightLedger = ledger
+        if !adopted.isEmpty { _ = persistWatchObservations(adopted, sessionID: session.id) }
+        return true
+    }
+
+    /// Readings for a reserved ID with no WorkoutSession yet are kept durably;
+    /// cancelled/adopted IDs are acknowledged and dropped.
+    private func bufferPreAdoptionObservations(_ observations: [WatchHRObservation], sessionID: UUID) -> Bool {
+        var ledger = watchPreflightLedger
+        var accepted = true
+        for o in observations {
+            switch ledger.buffer(o, sessionID: sessionID) {
+            case .buffered, .duplicate, .tombstoned: break
+            case .unknown: accepted = false
+            }
+        }
+        watchPreflightLedger = ledger
+        return accepted
+    }
+
     /// Writes observations through the session-owned recorder: the live one for
     /// the active workout, otherwise one bound to the retained finished session.
     private func persistWatchObservations(_ observations: [WatchHRObservation], sessionID: UUID) -> Bool {
@@ -1077,7 +1147,9 @@ final class AppModel: NSObject, @unchecked Sendable {
         guard let container = _modelContainer else { return false }
         let context = ModelContext(container)
         let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.id == sessionID })
-        guard let session = try? context.fetch(descriptor).first else { return false }
+        guard let session = try? context.fetch(descriptor).first else {
+            return bufferPreAdoptionObservations(observations, sessionID: sessionID)
+        }
         let recorder = PhoneStrengthHeartRateRecorder(session: session, save: { try context.save() })
         for o in observations { recorder.record(make(o.source, o)) }
         guard session.endedAt != nil else { return recorder.flush() }
@@ -1290,6 +1362,10 @@ extension AppModel {
     /// heartbeats from older Watch builds) are never recorded; a resent
     /// heartbeat reuses its `sampleEnd` and deduplicates.
     private func recordWatchObservation(_ message: [String: Any], bpm: Double, requestID: UUID) {
+        if let end = message["sampleEnd"] as? TimeInterval {
+            // Age is the measurement time, never the heartbeat receipt time.
+            watchLastSampleEnd = max(watchLastSampleEnd ?? .distantPast, Date(timeIntervalSince1970: end))
+        }
         guard let end = message["sampleEnd"] as? TimeInterval,
               let session = _active?.strengthSession,
               watchRequestSessionIDs[requestID] == session.id,

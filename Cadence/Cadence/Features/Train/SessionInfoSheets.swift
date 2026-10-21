@@ -15,8 +15,35 @@ struct SessionLiveHRBand: View {
 
     @ViewBuilder
     var body: some View {
-        if let bpm = model.hrm.currentBPM {
-            band(bpm)
+        VStack(spacing: 0) {
+            if let bpm = model.hrm.currentBPM {
+                band(bpm)
+            }
+            if model.watchHRConnection.identity != nil { watchRow }
+        }
+    }
+
+    /// Truthful Watch link status, real reading age, and the repair action,
+    /// available in the live workout (not only the preflight screen).
+    private var watchRow: some View {
+        TimelineView(.periodic(from: .now, by: 5)) { context in
+            HStack(spacing: 8) {
+                Image(systemName: "applewatch").font(.caption)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(model.watchHRStatusText).font(.caption.weight(.semibold))
+                    if let end = model.watchLastSampleEnd {
+                        Text("Last reading \(max(0, Int(context.date.timeIntervalSince(end)))) s ago")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+                Button("Reconnect Apple Watch HR") { model.reconnectWatchHR() }
+                    .font(.caption).buttonStyle(.bordered)
+                    .accessibilityHint("Asks your Apple Watch which workout it is running and repairs the connection without starting a second workout")
+                    .accessibilityIdentifier("session.watch.reconnect")
+            }
+            .padding(.horizontal, 12).padding(.vertical, 4)
+            .accessibilityElement(children: .contain)
         }
     }
 

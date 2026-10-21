@@ -88,7 +88,7 @@ final class WatchWorkoutManager: NSObject {
     /// Whether the app is active (screen on, in front); gates the 1 s display refresh.
     @ObservationIgnored var displayActive = true
     /// Set while a phone-launched workout waits for the phone's command to name it.
-    @ObservationIgnored var phoneLaunchPendingSince: Date?
+    @ObservationIgnored var phoneLaunchPendingSince: Date?; @ObservationIgnored var unclaimedHR = WatchHRUnclaimedBuffer()
     @ObservationIgnored var recoveryInFlight = false
     private var ble: WatchHeartRateBLE?
     var sessionStart: Date?

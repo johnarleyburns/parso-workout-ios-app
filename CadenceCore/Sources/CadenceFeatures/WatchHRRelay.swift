@@ -138,3 +138,12 @@ public final class WatchHRRelay {
     }
     public var freshBPM: Int? { freshBPM(at: Date()) }
 }
+
+extension WatchHRRelay {
+    /// Why the phone would not apply a sample, or nil when it would. Lets the
+    /// phone answer a mismatched sample with an explicit negative status.
+    public func sampleRejection(requestID: UUID) -> String? {
+        guard let active = activeRequestID else { return "inactive" }
+        return active == requestID ? nil : "requestMismatch"
+    }
+}

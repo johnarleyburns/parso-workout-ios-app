@@ -6,7 +6,10 @@ import Foundation
 /// guaranteed background queue. `issuedAt` makes that duplicate idempotent and
 /// prevents an old queued stop from ending a newer session.
 public struct WatchHRCommand: Equatable, Sendable {
-    public enum Action: String, Sendable { case start = "start_workout", stop = "stop_workout" }
+    public enum Action: String, Sendable { case start = "start_workout", stop = "stop_workout"
+        /// Read-only state query; the Watch answers with a `WatchHRStateReport`.
+        case query = "query_state"
+    }
 
     public static let issuedAtKey = "watchHRCommandIssuedAt"
 

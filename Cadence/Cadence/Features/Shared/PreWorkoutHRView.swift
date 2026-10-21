@@ -106,6 +106,16 @@ struct PreWorkoutHRView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("prehr.watch.instructions")
+                        if model.watchHRConnection.identity != nil {
+                            Text(model.watchHRStatusText)
+                                .font(.caption.weight(.semibold))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .accessibilityIdentifier("prehr.watch.linkStatus")
+                            Button("Reconnect Apple Watch HR") { model.reconnectWatchHR() }
+                                .buttonStyle(.bordered)
+                                .accessibilityHint("Asks your Apple Watch which workout it is running and repairs the connection without starting a second workout")
+                                .accessibilityIdentifier("prehr.watch.reconnect")
+                        }
                         if model.watchConnectionInProgress {
                             HStack(spacing: 8) {
                                 ProgressView()

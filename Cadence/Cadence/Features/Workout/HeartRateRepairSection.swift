@@ -69,13 +69,13 @@ struct HeartRateRepairSection: View {
             .confirmationDialog("Apply these measurements?", isPresented: .init(get: { preview != nil }, set: { if !$0 { preview = nil } }),
                                 titleVisibility: .visible, presenting: preview) { p in
                 Button("Apply") {
-                    let chosen = previewChoice
                     preview = nil
-                    Task { await repair(chosen: chosen, confirm: false, confirmed: true, legacy: p.isLegacyFallback) }
+                    handle(HeartRateRepair.apply(p.proposal, to: session, confirmReplacement: true,
+                                                 save: { try modelContext.save() }), chosen: nil)
                 }
                 Button("Keep existing", role: .cancel) {}
             } message: { p in
-                Text("\(p.sourceName): \(p.sampleCount) readings between \(p.sessionStart.formatted(date: .omitted, time: .shortened)) and \(p.sessionEnd.formatted(date: .omitted, time: .shortened)). Classified minutes: \(p.beforeClassifiedMinutes) now, \(p.afterClassifiedMinutes) after. You can restore the previous measurements afterward.")
+                Text("\(p.sourceName): \(p.sampleCount) readings between \(p.sessionStart.formatted(date: .omitted, time: .shortened)) and \(p.sessionEnd.formatted(date: .omitted, time: .shortened)). Classified minutes: \(p.beforeClassifiedMinutes) now, \(p.afterClassifiedMinutes) after.\(p.isLowerQuality ? " This covers no more of the workout than what is saved." : "") Exactly these readings will be applied. You can restore the previous measurements afterward.")
             }
             .confirmationDialog("Replace existing measurements?", isPresented: $showConfirm) {
                 Button("Replace") { if let c = pendingConfirmation { Task { await repair(chosen: c, confirm: true) } } }
@@ -120,7 +120,13 @@ struct HeartRateRepairSection: View {
                                                 profile: profile, chosen: chosen, confirmReplacement: confirm,
                                                 confirmed: confirmed, allowLegacyFallback: true,
                                                 save: { try modelContext.save() })
+        handle(outcome, chosen: chosen)
+    }
+
+    private func handle(_ outcome: HeartRateRepairOutcome, chosen: HealthWorkoutCandidate?) {
         switch outcome {
+        case .staleProposal:
+            announce(String(localized: "This workout changed after the preview, so nothing was applied. Reload the measurements to review them again."))
         case .noMatch: announce(String(localized: "No matching Apple Health workout was found."))
         case .noHeartRateSamples: announce(String(localized: "Apple Health has no heart-rate samples for this workout."))
         case .accessError: announce(String(localized: "Couldn't read Apple Health. Check Health access in Settings and try again."))

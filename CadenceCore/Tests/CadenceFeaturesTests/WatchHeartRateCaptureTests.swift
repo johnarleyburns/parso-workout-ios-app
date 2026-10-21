@@ -188,4 +188,89 @@ final class HeartRateRepairTests: XCTestCase {
         XCTAssertEqual(s.hrSamplePoints.count, 2)
         XCTAssertGreaterThan(s.intensitySummary!.unclassifiedDuration, 3_000)
     }
+
+    private struct SaveFailure: Error {}
+
+    private func preview(_ s: WorkoutSession, hr: [(date: Date, bpm: Double)]) async throws -> HeartRateRepairPreview {
+        let out = await HeartRateRepair.run(session: s, source: FakeSource(list: .success([candidate]), hr: .success(hr)),
+                                            profile: profile, confirmed: false)
+        guard case .preview(let p) = out else { throw XCTSkip("\(out)") }
+        return p
+    }
+
+    func testStoredWorkoutUUIDWinsOverOtherCandidates() async throws {
+        let s = try makeSession(samples: sparse)
+        let id = UUID()
+        s.healthKitWorkoutUUID = id
+        let exact = HealthWorkoutCandidate(token: id.uuidString, start: start, end: start.addingTimeInterval(3_600),
+                                           isStrength: true, sourceName: "Watch", isFromThisApp: false)
+        let out = await HeartRateRepair.run(session: s, source: FakeSource(list: .success([candidate, exact]), hr: .success(denseHR)),
+                                            profile: profile, confirmed: false)
+        guard case .preview(let p) = out else { return XCTFail("\(out)") }
+        XCTAssertEqual(p.proposal.associationToken, id.uuidString)
+    }
+
+    func testAmbiguousLegacyNeverAutoApplies() async throws {
+        let s = try makeSession(samples: sparse)
+        let a = HealthWorkoutCandidate(token: "x", start: start, end: start.addingTimeInterval(3_600),
+                                       isStrength: true, sourceName: "A", isFromThisApp: false)
+        let b = HealthWorkoutCandidate(token: "y", start: start, end: start.addingTimeInterval(3_500),
+                                       isStrength: true, sourceName: "B", isFromThisApp: false)
+        let out = await HeartRateRepair.run(session: s, source: FakeSource(list: .success([a, b]), hr: .success(denseHR)), profile: profile)
+        guard case .needsSelection = out else { return XCTFail("\(out)") }
+        XCTAssertEqual(s.hrSamplePoints, sparse)
+    }
+
+    func testConfirmAppliesPreviewedObservationsEvenIfHealthChanges() async throws {
+        let s = try makeSession(samples: sparse)
+        let p = try await preview(s, hr: denseHR)
+        // Health now would return different data; confirm must not re-query.
+        let out = HeartRateRepair.apply(p.proposal, to: s)
+        guard case .repaired = out else { return XCTFail("\(out)") }
+        XCTAssertEqual(s.hrSamplePoints, p.proposal.observations)
+        XCTAssertEqual(s.intensitySummary, p.proposal.summary)
+        XCTAssertEqual(s.hrCoverage?.source, .repairedHealthKit)
+        XCTAssertNotNil(s.hrBackup)
+    }
+
+    func testSessionChangeAfterPreviewIsStaleAndDoubleApplyDoesNotDoubleCredit() async throws {
+        let s = try makeSession(samples: sparse)
+        let p = try await preview(s, hr: denseHR)
+        s.updatedAt = s.updatedAt.addingTimeInterval(5)
+        XCTAssertEqual(HeartRateRepair.apply(p.proposal, to: s), .staleProposal)
+        XCTAssertEqual(s.hrSamplePoints, sparse)
+        s.updatedAt = p.proposal.sessionRevision
+        guard case .repaired = HeartRateRepair.apply(p.proposal, to: s) else { return XCTFail() }
+        let credited = s.intensitySummary
+        XCTAssertEqual(HeartRateRepair.apply(p.proposal, to: s), .staleProposal)
+        XCTAssertEqual(s.intensitySummary, credited)
+    }
+
+    func testSaveFailureDuringApplyRestoresEverythingExactly() async throws {
+        let s = try makeSession(samples: sparse)
+        let p = try await preview(s, hr: denseHR)
+        let before = (s.hrSamplesData, s.intensitySummaryData, s.hrCoverageData, s.hrBackupData, s.updatedAt)
+        let out = HeartRateRepair.apply(p.proposal, to: s, save: { throw SaveFailure() })
+        XCTAssertEqual(out, .accessError(.query))
+        XCTAssertEqual(s.hrSamplesData, before.0)
+        XCTAssertEqual(s.intensitySummaryData, before.1)
+        XCTAssertEqual(s.hrCoverageData, before.2)
+        XCTAssertEqual(s.hrBackupData, before.3)
+        XCTAssertEqual(s.updatedAt, before.4)
+    }
+
+    func testSaveFailureDuringUndoKeepsRepairAndBackup() async throws {
+        let s = try makeSession(samples: sparse)
+        let p = try await preview(s, hr: denseHR)
+        _ = HeartRateRepair.apply(p.proposal, to: s)
+        let repaired = (s.hrSamplesData, s.intensitySummaryData, s.hrCoverageData, s.hrBackupData, s.updatedAt)
+        XCTAssertFalse(HeartRateRepair.restorePrevious(s, save: { throw SaveFailure() }))
+        XCTAssertEqual(s.hrSamplesData, repaired.0)
+        XCTAssertEqual(s.intensitySummaryData, repaired.1)
+        XCTAssertEqual(s.hrCoverageData, repaired.2)
+        XCTAssertEqual(s.hrBackupData, repaired.3)
+        XCTAssertEqual(s.updatedAt, repaired.4)
+        XCTAssertTrue(HeartRateRepair.restorePrevious(s))
+        XCTAssertEqual(s.hrSamplePoints, sparse)
+    }
 }

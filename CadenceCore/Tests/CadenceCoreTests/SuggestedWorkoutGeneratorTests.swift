@@ -745,7 +745,10 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
             }
         }
         XCTAssertEqual(suggestedWorkoutCitationIDs,
-                       ["iversenTimeEfficient2021", "pellandDoseResponse2026"])
+                       ["acsmResistanceTraining2002", "acsmResistanceTraining2026",
+                        "iversenTimeEfficient2021", "volumeDoseResponse", "pellandDoseResponse2026"])
+        XCTAssertEqual(CitationRegistry.citation(forId: "volumeDoseResponse")?.url,
+                       "https://pubmed.ncbi.nlm.nih.gov/27433992/")
     }
 
     // MARK: - The real catalog

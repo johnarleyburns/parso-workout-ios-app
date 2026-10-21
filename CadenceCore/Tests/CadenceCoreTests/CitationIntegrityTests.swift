@@ -10,6 +10,7 @@ final class CitationIntegrityTests: XCTestCase {
         let required = [
             "ekelundActivityMortality2016",
             "iversenTimeEfficient2021", "pellandDoseResponse2026",
+            "acsmResistanceTraining2002", "acsmResistanceTraining2026",
             "ramosCampoSplit2024",
             "parejaBlancoRecovery2020", "sawMonitoring2016", "meeusenOvertraining2013",
             "schumannConcurrent2022", "crowleyVO2Intensity2022", "poonHIIT2024",

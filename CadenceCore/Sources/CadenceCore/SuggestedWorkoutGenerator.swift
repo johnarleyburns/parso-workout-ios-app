@@ -1,7 +1,10 @@
 import Foundation
 
 public let suggestedWorkoutCitationIDs = [
+    "acsmResistanceTraining2002",
+    "acsmResistanceTraining2026",
     "iversenTimeEfficient2021",
+    "volumeDoseResponse",
     // The final peer-reviewed Pelland paper covers both dose-response and
     // fractional direct/indirect-set accounting.
     "pellandDoseResponse2026",

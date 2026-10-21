@@ -75,7 +75,27 @@ public enum CitationRegistry {
         year: 2017,
         title: "Dose-response relationship between weekly resistance training volume and increases in muscle mass: A systematic review and meta-analysis",
         source: "Journal of Sports Sciences 35(11)",
-        url: "https://doi.org/10.1080/02640414.2016.1210197"
+        url: "https://pubmed.ncbi.nlm.nih.gov/27433992/"
+    )
+
+    /// ACSM 2002 progression models — supports goal-aware resistance-program structure.
+    public static let acsmResistanceTraining2002 = Citation(
+        id: "acsmResistanceTraining2002",
+        authors: "American College of Sports Medicine",
+        year: 2002,
+        title: "Progression Models in Resistance Training for Healthy Adults",
+        source: "Medicine & Science in Sports & Exercise 34(2)",
+        url: "https://doi.org/10.1097/00005768-200202000-00027"
+    )
+
+    /// ACSM 2026 position-stand overview — the current official summary.
+    public static let acsmResistanceTraining2026 = Citation(
+        id: "acsmResistanceTraining2026",
+        authors: "American College of Sports Medicine",
+        year: 2026,
+        title: "ACSM Releases New Position Stand on Resistance Training",
+        source: "ACSM Science Spotlight",
+        url: "https://acsm.org/science-spotlight-acsm-releases-new-position-stand-on-resistance-training/"
     )
 
     /// Time-efficient resistance training review — anchors Home's shared weekly
@@ -766,7 +786,8 @@ public enum CitationRegistry {
     // MARK: - All citations registry
 
     public static let all: [Citation] = [
-        schoenfeld2021, volumeDoseResponse, iversenTimeEfficient2021, frequencyMeta, oneRMEstimation,
+        schoenfeld2021, volumeDoseResponse, acsmResistanceTraining2002, acsmResistanceTraining2026,
+        iversenTimeEfficient2021, frequencyMeta, oneRMEstimation,
         rpeAutoregulation, cooperVo2max, wingateTest, hiitVo2max,
         rockportWalk, queensCollegeStep,
         krieger2010, rheaPeriodization, calatayudBodyweight, channellOlympic,
@@ -809,6 +830,8 @@ public enum CitationRegistry {
     public static let usageReasons: [String: String] = [
         "schoenfeld2021": "Loading recommendations — anchors the rep continuum for strength, hypertrophy, and endurance prescriptions.",
         "volumeDoseResponse": "Weekly sets-per-muscle dose-response — backs volume add/trim recommendations and per-part progress.",
+        "acsmResistanceTraining2002": "ACSM progression models — supports goal-aware resistance-program structure while every suggested plan stays editable; not proof of one universal fixed rep prescription.",
+        "acsmResistanceTraining2026": "Official ACSM overview of the current resistance-training position stand, surfaced in The Science.",
         "iversenTimeEfficient2021": "Time-efficient resistance training review — backs Home's shared 4-to-12 weekly-set scale for muscle groups and individual muscles.",
         "frequencyMeta": "Spreading weekly volume across ≥2 sessions per week improves per-set quality and recovery.",
         "oneRMEstimation": "Prediction equations for estimated 1RM — backs the e1RM formula picker and assessment retest prompts.",

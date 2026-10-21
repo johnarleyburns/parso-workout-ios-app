@@ -30,7 +30,7 @@ final class CitationPresenterTests: XCTestCase {
             forIds: SuggestedWorkoutPresenter.citationIDs)
 
         XCTAssertEqual(presentation.citations.map(\.id), SuggestedWorkoutPresenter.citationIDs)
-        XCTAssertEqual(presentation.citations.count, 2)
+        XCTAssertEqual(presentation.citations.count, 5)
         XCTAssertEqual(presentation.linkCount, 1,
                        "A multi-reference personalized workout must render one science link")
     }

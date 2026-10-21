@@ -18,6 +18,30 @@ public struct HealthWorkoutCandidate: Equatable, Sendable, Identifiable {
     }
 }
 
+/// One Health heart-rate reading with its provenance, for the legacy fallback.
+public struct HealthHeartSample: Equatable, Sendable {
+    public let date: Date
+    public let bpm: Double
+    public let isAppleWatch: Bool
+    public init(date: Date, bpm: Double, isAppleWatch: Bool) {
+        self.date = date; self.bpm = bpm; self.isAppleWatch = isAppleWatch
+    }
+}
+
+/// What a repair would change, shown before the user confirms. Nothing is
+/// modified until the same repair is re-run with `confirmed: true`.
+public struct HeartRateRepairPreview: Equatable, Sendable {
+    public let sourceName: String
+    public let sessionStart: Date
+    public let sessionEnd: Date
+    public let beforeClassifiedMinutes: Int
+    public let afterClassifiedMinutes: Int
+    public let sampleCount: Int
+    /// True when no associated Health workout exists and the samples were found
+    /// by the session window alone.
+    public let isLegacyFallback: Bool
+}
+
 public enum HealthRepairError: Error, Equatable, Sendable { case authorization, query }
 
 /// HealthKit query abstraction so repair is testable without a store.
@@ -25,10 +49,18 @@ public protocol HealthHeartRateSource: Sendable {
     func workouts(from: Date, to: Date) async throws -> [HealthWorkoutCandidate]
     /// Absolute-time HR samples associated with the workout, bounded to its interval.
     func heartRate(for candidate: HealthWorkoutCandidate) async throws -> [(date: Date, bpm: Double)]
+    /// Window-bounded readings with provenance, used only by the legacy fallback.
+    func heartRateSamples(from: Date, to: Date) async throws -> [HealthHeartSample]
+}
+
+public extension HealthHeartRateSource {
+    func heartRateSamples(from: Date, to: Date) async throws -> [HealthHeartSample] { [] }
 }
 
 public enum HeartRateRepairOutcome: Equatable, Sendable {
     case noMatch
+    /// Proposed change; the original is untouched until the user confirms.
+    case preview(HeartRateRepairPreview)
     case needsSelection([HealthWorkoutCandidate])
     case noHeartRateSamples
     case accessError(HealthRepairError)
@@ -68,6 +100,8 @@ public enum HeartRateRepair {
                            profile: CardioIntensityProfile,
                            chosen: HealthWorkoutCandidate? = nil,
                            confirmReplacement: Bool = false,
+                           confirmed: Bool = true,
+                           allowLegacyFallback: Bool = false,
                            now: Date = Date(),
                            save: () throws -> Void = {}) async -> HeartRateRepairOutcome {
         guard let end = session.endedAt else { return .noMatch }
@@ -82,7 +116,11 @@ public enum HeartRateRepair {
             } catch let error as HealthRepairError { return .accessError(error) }
             catch { return .accessError(.query) }
             let found = matches(session, list)
-            if found.isEmpty { return .noMatch }
+            if found.isEmpty {
+                guard allowLegacyFallback else { return .noMatch }
+                return await legacyFallback(session: session, source: source, profile: profile,
+                                            confirmed: confirmed, now: now, save: save)
+            }
             if found.count > 1 { return .needsSelection(found) }
             candidate = found[0]
         }
@@ -99,9 +137,60 @@ public enum HeartRateRepair {
 
         let summary = CardioMinuteAccumulator.summarize(duration: duration, samples: points, profile: profile)
         let existing = session.intensitySummary?.classifiedDuration ?? 0
+        if !confirmed {
+            return .preview(makePreview(session: session, summary: summary, sourceName: candidate.sourceName,
+                                        count: points.count, legacy: false))
+        }
         if !confirmReplacement, !session.hrSamplePoints.isEmpty, summary.classifiedDuration <= existing {
             return .needsReplacementConfirmation(existingCovered: existing, repairedCovered: summary.classifiedDuration)
         }
+        return apply(points, summary: summary, session: session, profile: profile, now: now, save: save)
+    }
+
+    private static func makePreview(session: WorkoutSession, summary: CardioMinuteSummary, sourceName: String,
+                                    count: Int, legacy: Bool) -> HeartRateRepairPreview {
+        HeartRateRepairPreview(
+            sourceName: sourceName, sessionStart: session.date, sessionEnd: session.endedAt ?? session.date,
+            beforeClassifiedMinutes: Int(((session.intensitySummary?.classifiedDuration ?? 0) / 60).rounded()),
+            afterClassifiedMinutes: Int((summary.classifiedDuration / 60).rounded()),
+            sampleCount: count, isLegacyFallback: legacy)
+    }
+
+    /// Older builds discarded the Health association. Accept only Apple Watch
+    /// readings strictly inside the known session window, and only after the
+    /// user confirms the previewed change; never replaces better coverage.
+    @MainActor
+    private static func legacyFallback(session: WorkoutSession, source: some HealthHeartRateSource,
+                                       profile: CardioIntensityProfile, confirmed: Bool,
+                                       now: Date, save: () throws -> Void) async -> HeartRateRepairOutcome {
+        guard let end = session.endedAt else { return .noMatch }
+        let raw: [HealthHeartSample]
+        do { raw = try await source.heartRateSamples(from: session.date, to: end) }
+        catch let error as HealthRepairError { return .accessError(error) }
+        catch { return .accessError(.query) }
+        let duration = end.timeIntervalSince(session.date)
+        let points = HRSampleNormalizer.normalize(
+            raw.filter { $0.isAppleWatch && $0.date > session.date && $0.date < end }
+                .map { HRSamplePoint(t: $0.date.timeIntervalSince(session.date), bpm: $0.bpm) },
+            duration: duration)
+        guard !points.isEmpty else { return .noMatch }
+        let summary = CardioMinuteAccumulator.summarize(duration: duration, samples: points, profile: profile)
+        guard summary.classifiedDuration > (session.intensitySummary?.classifiedDuration ?? 0) else {
+            return .needsReplacementConfirmation(existingCovered: session.intensitySummary?.classifiedDuration ?? 0,
+                                                 repairedCovered: summary.classifiedDuration)
+        }
+        guard confirmed else {
+            return .preview(makePreview(session: session, summary: summary, sourceName: "Apple Watch",
+                                        count: points.count, legacy: true))
+        }
+        return apply(points, summary: summary, session: session, profile: profile, now: now, save: save)
+    }
+
+    @MainActor
+    private static func apply(_ points: [HRSamplePoint], summary: CardioMinuteSummary, session: WorkoutSession,
+                              profile: CardioIntensityProfile, now: Date,
+                              save: () throws -> Void) -> HeartRateRepairOutcome {
+        let duration = (session.endedAt ?? session.date).timeIntervalSince(session.date)
         // Validated and recomputed; apply atomically (restore on save failure).
         let backup = HeartRateBackup(samples: session.hrSamplePoints, summary: session.intensitySummary,
                                      coverage: session.hrCoverage)

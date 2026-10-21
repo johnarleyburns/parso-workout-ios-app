@@ -72,6 +72,9 @@ public final class PhoneStrengthHeartRateRecorder {
     public private(set) var source: HeartRateObservationSource?
     /// True when a write failed and data is held in memory awaiting retry.
     public private(set) var persistencePending = false
+    /// Sample count at the last successful finalize; repeated finish/recovery
+    /// calls with nothing new are no-ops (idempotent).
+    private var finalizedCount: Int?
 
     public init(session: WorkoutSession, save: (() throws -> Void)? = nil) {
         self.session = session
@@ -105,6 +108,7 @@ public final class PhoneStrengthHeartRateRecorder {
             Self.log.debug("observation deduplicated (timestamp)")
             return .duplicate
         }
+        finalizedCount = nil
         samples.append(HRSamplePoint(t: clampedT, bpm: obs.bpm.rounded()))
         samples.sort { $0.t < $1.t }
         if samples.count > Self.maximumStoredSamples { downsample() }
@@ -142,9 +146,20 @@ public final class PhoneStrengthHeartRateRecorder {
     public func finalize(profile: CardioIntensityProfile, at date: Date = Date()) -> Bool {
         guard flush() else { return false }
         guard !samples.isEmpty else { return true }
+        if finalizedCount == samples.count { return true }
+        // A user-confirmed manual cardio override stays authoritative: the
+        // measured series is kept, but the override is not silently erased.
+        let manual = session.isManualCardioMinutesOverride
+        let explicit = session.hasManualCardioMinutesOverride
+        let manualSummary = session.intensitySummary
         session.recordHeartRate(samples, profile: profile,
                                 source: source?.coverageSource ?? .phone, at: date)
+        if manual {
+            session.hasManualCardioMinutesOverride = explicit
+            session.intensitySummary = manualSummary
+        }
         do { try save() } catch { persistencePending = true; return false }
+        finalizedCount = samples.count
         let gap = zip(samples, samples.dropFirst()).map { $1.t - $0.t }.max() ?? 0
         Self.log.debug("finalized, maximum gap \(Int(gap), privacy: .public)s")
         return true

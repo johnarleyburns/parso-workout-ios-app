@@ -70,7 +70,7 @@ struct IntervalView: View {
             runnerView
                 .keepAwake()
                 .overlay { countdownOverlay }
-                .onAppear { beginPreStart() }
+                .onAppear { if !adoptParked() { beginPreStart() } }
                 .onDisappear { preStartTask?.cancel() }
         }
     }
@@ -116,6 +116,34 @@ struct IntervalView: View {
             cueScheduler = scheduler
             scheduler.start()
         }
+    }
+
+    /// Reopening a minimized (paused) workout restores the exact runner and HR
+    /// samples; the pre-start countdown is skipped and no second session starts.
+    private func adoptParked() -> Bool {
+        guard preStartTask == nil, let parked = model.parkedCardio.session,
+              parked.route == .interval, let parkedRunner = parked.intervalRunner else { return false }
+        _ = model.parkedCardio.take()
+        runner = parkedRunner
+        hrSamples = parked.hrSamples
+        lastHRSecond = Int(parkedRunner.elapsed)
+        cues.spokenEnabled = settings.spokenCues
+        cues.isBoxing = saveType == .boxing
+        preStartSecond = nil
+        preStartTask = Task {} // marks the pre-start as already consumed
+        let scheduler = IntervalCueScheduler(runner: runner, cues: cues)
+        cueScheduler = scheduler
+        scheduler.start()
+        return true
+    }
+
+    /// Dismissal while paused minimizes; End routes through `finish`, which
+    /// sets `finished` first, so this never parks an ended workout.
+    private func parkIfMinimized() {
+        guard runner.isPaused, !finished, !runner.isComplete else { return }
+        model.parkedCardio.park(ParkedCardioSession(
+            route: .interval, type: saveType, captureHR: captureHR,
+            intervalRunner: runner, intervalPlan: plan, hrSamples: hrSamples))
     }
 
     private var runnerView: some View {
@@ -180,7 +208,11 @@ struct IntervalView: View {
                     endTint: .black.opacity(0.4),
                     pauseTint: .black.opacity(0.4)
                 )
-                .padding(.bottom)
+                .padding(.bottom, runner.isPaused ? 0 : nil)
+                if runner.isPaused {
+                    ReturnToTodayButton(idPrefix: "interval") { dismiss() }
+                        .padding(.bottom)
+                }
             }
             .foregroundStyle(.white)
             .padding()
@@ -201,7 +233,9 @@ struct IntervalView: View {
             if let kind = runner.phaseKind { cues.phaseChanged(to: kind, label: runner.phaseLabel) }
             cueScheduler?.resetForNewPhase()
         }
+        .onChange(of: runner.isPaused) { _, paused in announceCardioPaused(paused) }
         .onDisappear {
+            parkIfMinimized()
             cueScheduler?.stop()
             cues.deactivate()
         }

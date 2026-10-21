@@ -29,6 +29,8 @@ struct RecordCardioView: View {
     @State private var recorder: CardioRecorder?
     @State private var started = false
     @State private var finishedSummary: WorkoutSummaryData?
+    /// Set by Cancel so a discard is never mistaken for a minimize.
+    @State private var cancelled = false
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let types: [CardioType] = [.run, .cycle, .rowing, .walk, .boxing, .hiit]
@@ -50,16 +52,41 @@ struct RecordCardioView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { model.stopWatchWorkout(); dismiss() }.accessibilityIdentifier("record.cancel")
+                            Button("Cancel") { cancelled = true; model.stopWatchWorkout(); dismiss() }.accessibilityIdentifier("record.cancel")
                         }
                     }
                 }
             }
         }
         .onReceive(timer) { _ in recorder?.tick() }
-        .interactiveDismissDisabled(started)
+        .interactiveDismissDisabled(started && !(recorder.map { CardioPresentation.live(isPaused: $0.isPaused).allowsInteractiveMinimize } ?? false))
+        .onChange(of: recorder?.isPaused ?? false) { _, paused in announceCardioPaused(paused) }
+        .onDisappear { parkIfMinimized() }
         .keepAwake(started && finishedSummary == nil)
-        .onAppear { if let t = initialType, !started { startRecorder(t) } }
+        .onAppear {
+            if adoptParked() { return }
+            if let t = initialType, !started { startRecorder(t) }
+        }
+    }
+
+    /// Reopening a minimized workout restores the exact recorder (elapsed, HR,
+    /// route) rather than starting a second session.
+    private func adoptParked() -> Bool {
+        guard !started, let parked = model.parkedCardio.session, parked.route == .record,
+              let r = parked.recorder else { return false }
+        _ = model.parkedCardio.take()
+        recorder = r
+        started = true
+        return true
+    }
+
+    /// Dismissal while paused (button or downward gesture) minimizes; it never
+    /// ends or discards. Cancel, End and the summary are not minimizes.
+    private func parkIfMinimized() {
+        guard let r = recorder, started, !cancelled, finishedSummary == nil,
+              r.isRecording, r.isPaused else { return }
+        model.parkedCardio.park(ParkedCardioSession(
+            route: .record, type: r.type, recorder: r, tracksGPS: r.usesGPS))
     }
 
     private func startRecorder(_ type: CardioType) {
@@ -129,6 +156,9 @@ struct RecordCardioView: View {
                 onEnd: { Task { await endWorkout(recorder) } },
                 idPrefix: "record"
             )
+            if recorder.isPaused {
+                ReturnToTodayButton(idPrefix: "record") { dismiss() }
+            }
         }
         .padding()
     }

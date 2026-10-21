@@ -26,6 +26,10 @@ struct SwimRecordView: View {
     @State private var laps = 0
     @State private var finishedSummary: WorkoutSummaryData?
     @State private var schedulePresented = false
+    /// Swim has no recorder: pause freezes the wall-clock elapsed.
+    @State private var pausedAt: Date?
+    @State private var pausedTotal: TimeInterval = 0
+    @State private var cancelled = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -42,13 +46,16 @@ struct SwimRecordView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { dismiss() }.accessibilityIdentifier("swim.cancel")
+                            Button("Cancel") { cancelled = true; dismiss() }.accessibilityIdentifier("swim.cancel")
                         }
                     }
                 }
             }
         }
-        .interactiveDismissDisabled(started)
+        .interactiveDismissDisabled(started && !CardioPresentation.live(isPaused: pausedAt != nil).allowsInteractiveMinimize)
+        .onChange(of: pausedAt != nil) { _, paused in announceCardioPaused(paused) }
+        .onAppear { adoptParked() }
+        .onDisappear { parkIfMinimized() }
         .keepAwake(started && finishedSummary == nil)
         .onReceive(tick) { now = $0 }
         .sheet(isPresented: $schedulePresented) {
@@ -56,6 +63,36 @@ struct SwimRecordView: View {
                 ScheduleWorkoutSheet(title: "Swim", onSave: onSchedule)
             }
         }
+    }
+
+    private var elapsed: TimeInterval {
+        let ref = pausedAt ?? now
+        return max(0, ref.timeIntervalSince(startDate) - pausedTotal)
+    }
+
+    private func adoptParked() {
+        guard !started, let parked = model.parkedCardio.session, parked.route == .swim else { return }
+        _ = model.parkedCardio.take()
+        startDate = parked.startDate
+        laps = parked.laps
+        targetLaps = parked.targetLaps
+        pausedTotal = parked.clock.pausedAccumulated
+        pausedAt = parked.clock.pausedSince
+        now = Date()
+        started = true
+    }
+
+    private func parkIfMinimized() {
+        guard started, !cancelled, finishedSummary == nil, let pausedAt else { return }
+        model.parkedCardio.park(ParkedCardioSession(
+            route: .swim, type: .swim,
+            clock: WorkoutClock(startedAt: startDate, pausedAccumulated: pausedTotal, pausedSince: pausedAt),
+            laps: laps, targetLaps: targetLaps, startDate: startDate))
+    }
+
+    private func togglePause() {
+        if let p = pausedAt { pausedTotal += Date().timeIntervalSince(p); pausedAt = nil }
+        else { pausedAt = Date() }
     }
 
     private var setupScreen: some View {
@@ -99,7 +136,7 @@ struct SwimRecordView: View {
     private var liveScreen: some View {
         VStack(spacing: 28) {
             HStack { WallClockLabel(); Spacer() }
-            Text(Format.duration(now.timeIntervalSince(startDate)))
+            Text(Format.duration(elapsed))
                 .scaledSystemFont(56, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit()
                 .accessibilityIdentifier("swim.elapsed")
 
@@ -126,11 +163,11 @@ struct SwimRecordView: View {
 
             Spacer()
 
-            Button(action: endSwim) {
-                Label("End", systemImage: "stop.fill").frame(maxWidth: .infinity, minHeight: 50)
+            WorkoutControlBar(isPaused: pausedAt != nil, onPauseToggle: togglePause,
+                              onEnd: endSwim, idPrefix: "swim")
+            if pausedAt != nil {
+                ReturnToTodayButton(idPrefix: "swim") { dismiss() }
             }
-            .buttonStyle(.borderedProminent).controlSize(.large).tint(.red)
-            .accessibilityIdentifier("swim.end")
         }
         .padding()
     }
@@ -139,7 +176,9 @@ struct SwimRecordView: View {
         // A watch session started at the HR gate outlives the recorder unless we
         // tear it down here (field-test batch 2026-08-20 issue 5).
         model.stopWatchWorkout()
-        let end = Date()
+        if let p = pausedAt { pausedTotal += Date().timeIntervalSince(p); pausedAt = nil }
+        // Paused time is excluded from the saved span.
+        let end = Date().addingTimeInterval(-pausedTotal)
         Task {
             let profile = await cardioIntensityProfile(model: model, settings: settings)
             let duration = end.timeIntervalSince(startDate)

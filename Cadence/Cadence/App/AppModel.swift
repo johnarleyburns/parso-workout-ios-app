@@ -110,6 +110,8 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     let health: HealthDataProviding
     let healthBackup: HealthBackupCoordinator
+    /// The single paused-and-minimized cardio session (reopened from Today).
+    let parkedCardio = ParkedCardioStore()
     let hrm: HeartRateMonitor
     let location: LocationTracker
     let isUITestMode: Bool

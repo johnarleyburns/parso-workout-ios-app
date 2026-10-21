@@ -75,6 +75,7 @@ extension HomeView {
                     onFillGaps: openFillGapsFromStartWorkout,
                     onSuggestCardio: { requestSuggestedWorkout(.cardio) })
             }
+            .safeAreaInset(edge: .bottom) { parkedCardioBar }
             .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) {
                 RecordCardioView(initialType: $0, tracksGPS: cardioTracksGPS,
                                  customTitle: otherCardioTitle, captureHR: captureHR,

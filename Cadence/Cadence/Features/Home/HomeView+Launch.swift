@@ -185,7 +185,40 @@ extension HomeView {
         }
     }
 
+    /// Reopens the minimized cardio session into the surface that owns it; that
+    /// surface adopts the exact recorder/runner from the parked store.
+    func reopenParkedCardio() {
+        guard let parked = model.parkedCardio.session else { return }
+        switch parked.route {
+        case .record: cardioType = parked.type
+        case .outdoor: outdoorType = parked.type
+        case .swim: swimPresented = true
+        case .interval:
+            guard let plan = parked.intervalPlan else { return }
+            intervalLaunch = IntervalLaunch(plan: plan, saveType: parked.type, captureHR: parked.captureHR)
+        }
+    }
+
+    /// Today's affordance for a paused, minimized cardio workout.
+    @ViewBuilder
+    var parkedCardioBar: some View {
+        if let parked = model.parkedCardio.session {
+            Button { reopenParkedCardio() } label: {
+                Label("Return to \(parked.type.displayName) (paused)", systemImage: "arrow.up.circle.fill")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.horizontal)
+            .accessibilityIdentifier("home.parkedCardio")
+            .accessibilityLabel("Return to paused \(parked.type.displayName) workout")
+            .accessibilityHint("Reopens the paused workout exactly where you left it. Nothing was ended.")
+        }
+    }
+
     func releaseCardioWorkout() {
+        // A paused, minimized cardio workout keeps its lease, watch session and
+        // GPS until the user reopens and ends it — dismissal is only a minimize.
+        guard !model.parkedCardio.isParked else { return }
         guard active.strengthSession == nil else { return } // Every cardio dismiss here stops the watch session (2026-08-20 #5).
         cardioTracksGPS = nil
         model.stopWatchWorkout(); if let lease = active.liveWorkout.lease { _ = active.liveWorkout.release(lease) }

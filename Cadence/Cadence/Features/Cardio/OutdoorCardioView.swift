@@ -33,6 +33,8 @@ struct OutdoorCardioView: View {
     @State private var clock = WorkoutClock()
     @State private var now = Date()
     @State private var finishedSummary: WorkoutSummaryData?
+    /// Set by Cancel so a discard is never mistaken for a minimize.
+    @State private var cancelled = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var elapsed: TimeInterval { clock.elapsed(now: now) }
@@ -51,11 +53,14 @@ struct OutdoorCardioView: View {
         } else {
             liveView
                 .keepAwake()
-                .onAppear { startIfNeeded() }
+                .onAppear { if !adoptParked() { startIfNeeded() } }
                 // Safety net: background GPS must never outlive this screen. The
                 // End/Cancel paths already stop the tracker; this guards any other
                 // dismissal so location is only ever active during a live workout.
-                .onDisappear { if recorder?.isRecording == true { model.location.stop() } }
+                .onDisappear {
+                    if parkIfMinimized() { return } // minimized: GPS/route stay live
+                    if recorder?.isRecording == true { model.location.stop() }
+                }
         }
     }
 
@@ -105,18 +110,22 @@ struct OutdoorCardioView: View {
                     onEnd: { Task { await end() } },
                     idPrefix: "outdoor"
                 )
+                if clock.isPaused {
+                    ReturnToTodayButton(idPrefix: "outdoor") { dismiss() }
+                }
             }
             .padding()
             .navigationTitle(type.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { model.stopWatchWorkout(); _ = recorder?.end(); dismiss() }
+                    Button("Cancel") { cancelled = true; model.stopWatchWorkout(); _ = recorder?.end(); dismiss() }
                         .accessibilityIdentifier("outdoor.cancel")
                 }
             }
         }
-        .interactiveDismissDisabled(true)
+        .interactiveDismissDisabled(!CardioPresentation.live(isPaused: clock.isPaused).allowsInteractiveMinimize)
+        .onChange(of: clock.isPaused) { _, paused in announceCardioPaused(paused) }
         .onReceive(tick) { _ in
             now = Date()
             recorder?.tick()
@@ -142,6 +151,26 @@ struct OutdoorCardioView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 12)
         .background(.background.secondary, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func adoptParked() -> Bool {
+        guard recorder == nil, let parked = model.parkedCardio.session, parked.route == .outdoor,
+              let r = parked.recorder else { return false }
+        _ = model.parkedCardio.take()
+        recorder = r
+        clock = parked.clock
+        now = Date()
+        return true
+    }
+
+    /// Paused dismissal minimizes: the recorder, clock and GPS route are handed
+    /// to the parked store untouched. Returns whether the session was parked.
+    private func parkIfMinimized() -> Bool {
+        guard let r = recorder, !cancelled, finishedSummary == nil,
+              r.isRecording, clock.isPaused else { return false }
+        return model.parkedCardio.park(ParkedCardioSession(
+            route: .outdoor, type: type, recorder: r, clock: clock,
+            customTitle: customTitle, goalMeters: goalMeters, captureHR: captureHR))
     }
 
     private func startIfNeeded() {

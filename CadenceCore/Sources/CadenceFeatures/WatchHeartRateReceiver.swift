@@ -81,7 +81,13 @@ public final class WatchHeartRateReceiver {
             }
             state.deliveryIDs.insert(message.deliveryID)
             state.sequences.insert(message.sequence)
-            do { try store.save(state) } catch { Self.log.error("receipt journal save failed") }
+            // ACK means observations AND receipt state are durable. If the receipt
+            // save fails nothing is acknowledged; the Watch retains the batch and
+            // the replay re-persists idempotently (the recorder dedupes by identity/time).
+            do { try store.save(state) } catch {
+                Self.log.error("receipt journal save failed, not acknowledged")
+                return .persistenceFailed
+            }
             acknowledge(message, cursor: state.cursor)
             return .accepted(count: message.observations.count)
         case .finalizeAcknowledgement:

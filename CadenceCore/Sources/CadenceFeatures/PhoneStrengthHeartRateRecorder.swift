@@ -152,13 +152,26 @@ public final class PhoneStrengthHeartRateRecorder {
         let manual = session.isManualCardioMinutesOverride
         let explicit = session.hasManualCardioMinutesOverride
         let manualSummary = session.intensitySummary
+        let prior = (hr: session.hrSamplesData, coverage: session.hrCoverageData,
+                     summary: session.intensitySummaryData, override: session.hasManualCardioMinutesOverride,
+                     updatedAt: session.updatedAt)
         session.recordHeartRate(samples, profile: profile,
                                 source: source?.coverageSource ?? .phone, at: date)
         if manual {
             session.hasManualCardioMinutesOverride = explicit
             session.intensitySummary = manualSummary
         }
-        do { try save() } catch { persistencePending = true; return false }
+        do { try save() } catch {
+            // Compensate: a failed save must not leave a half-applied summary.
+            session.hrSamplesData = prior.hr
+            session.hrCoverageData = prior.coverage
+            session.intensitySummaryData = prior.summary
+            session.hasManualCardioMinutesOverride = prior.override
+            session.updatedAt = prior.updatedAt
+            persistencePending = true
+            Self.log.error("finalize save failed, prior state restored")
+            return false
+        }
         finalizedCount = samples.count
         let gap = zip(samples, samples.dropFirst()).map { $1.t - $0.t }.max() ?? 0
         Self.log.debug("finalized, maximum gap \(Int(gap), privacy: .public)s")

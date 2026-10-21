@@ -62,10 +62,34 @@ final class CladironRedesignPresenterTests: XCTestCase {
         XCTAssertNotEqual(hero.title, "Recovery day")
     }
 
-    func testTodayHeroCapsExercises() {
-        let lines = (0..<8).map { TodayHero.Line(name: "\($0)", detail: "3 × 5") }
+    func testTodayHeroRetainsEveryExercise() {
+        let lines = (0..<8).map { TodayHero.Line(name: "Move \($0)", detail: "3 × 5") }
         let hero = TodayHero(kind: .suggested, title: "Lift", exercises: lines)
-        XCTAssertEqual(hero.exercises.count, 5)
+        XCTAssertEqual(hero.exercises, lines)
+    }
+
+    func testDisclosureWideShowsAllAndConstrainedIsTruthful() {
+        let lines = (0..<8).map { TodayHero.Line(name: "Move \($0)", detail: "3 × 5") }
+        let wide = TodayExerciseDisclosure(lines: lines, capacity: 8)
+        XCTAssertEqual(wide.visible.count, 8)
+        XCTAssertNil(wide.summaryText)
+        XCTAssertNil(wide.accessibilityLabel)
+
+        let narrow = TodayExerciseDisclosure(lines: lines, capacity: 5)
+        XCTAssertEqual(narrow.visible.count, 5)
+        XCTAssertEqual(narrow.hiddenCount, 3)
+        XCTAssertEqual(narrow.summaryText, "… +3 more")
+        let label = narrow.accessibilityLabel ?? ""
+        XCTAssertTrue(label.contains("8 in total"))
+        XCTAssertTrue(label.contains("Move 5") && label.contains("Move 7"))
+        XCTAssertEqual(narrow.visible + narrow.hidden, lines)
+    }
+
+    func testDisclosureFiveOrFewerUnchanged() {
+        let lines = (0..<3).map { TodayHero.Line(name: "Move \($0)", detail: "3 × 5") }
+        let d = TodayExerciseDisclosure(lines: lines, capacity: 3)
+        XCTAssertEqual(d.visible, lines)
+        XCTAssertEqual(d.hiddenCount, 0)
     }
 
     func testPRMomentExcludesTiesWarmupsAndPartnerSets() {

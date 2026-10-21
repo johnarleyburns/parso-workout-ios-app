@@ -14,10 +14,13 @@ struct HomeTodayHeroCard: View {
     let summary: DaySummary?
     let unit: MeasurementUnitPreference
     let onStart: () -> Void
+    let onShowAllExercises: () -> Void
     let onEdit: () -> Void
     let onChooseAnother: () -> Void
     let onViewSummary: () -> Void
     let onAddSomething: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 32
     @State private var rationalePresented = false
     @State private var durationInfoPresented = false
 
@@ -152,9 +155,17 @@ struct HomeTodayHeroCard: View {
         .accessibilityIdentifier("home.hero")
     }
 
+    /// Rows that fit in the hero after the header, title, actions and reason.
+    private var exerciseCapacity: Int {
+        let chrome: CGFloat = typeSize.isAccessibilitySize ? 330 : 270
+        return max(2, Int((heroHeight - chrome) / rowHeight))
+    }
+
     private var exerciseRows: some View {
-        VStack(spacing: 0) {
-            ForEach(Array(exercises.prefix(3).enumerated()), id: \.offset) { _, exercise in
+        let lines = exercises.map { TodayHero.Line(name: $0.name, detail: $0.detail) }
+        let disclosure = TodayExerciseDisclosure(lines: lines, capacity: max(exerciseCapacity, 3))
+        return VStack(spacing: 0) {
+            ForEach(Array(disclosure.visible.enumerated()), id: \.offset) { _, exercise in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(exercise.name)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,10 +180,16 @@ struct HomeTodayHeroCard: View {
                 .padding(.vertical, 5)
                 .overlay(alignment: .bottom) { Divider().opacity(0.35) }
             }
-            if exercises.count > 3 {
-                Text("\(exercises.count - 3) more…")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let summary = disclosure.summaryText {
+                Button(action: onShowAllExercises) {
+                    Text(summary)
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(CadenceTheme.link)
+                .accessibilityLabel(disclosure.accessibilityLabel ?? summary)
+                .accessibilityIdentifier("home.hero.moreExercises")
             }
         }
     }

@@ -170,6 +170,7 @@ extension HomeView {
                                          launchDecision(coachDecision.primary)
                                      }
                                  },
+                                 onShowAllExercises: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
                                  onEdit: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
                                  onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
                                  onViewSummary: {

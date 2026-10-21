@@ -28,14 +28,19 @@ extension WatchWorkoutManager: WCSessionDelegate {
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
         let reachable = session.isReachable
         Task { @MainActor [weak self] in
-            guard let self, reachable, self.isActive || self.isMonitoring else { return }
+            guard let self, reachable else { return }
+            self.retryHeartRateOutbox(reason: "reachability")
+            guard self.isActive || self.isMonitoring else { return }
             self.sendHeartRateToPhoneSoon()
         }
     }
 
     nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         guard activationState == .activated else { return }
-        Task { @MainActor in WatchSyncSender.flushOutbox() }
+        Task { @MainActor [weak self] in
+            WatchSyncSender.flushOutbox()
+            self?.retryHeartRateOutbox(reason: "activation")
+        }
         let applicationContext = UncheckedWatchPayload(value: session.receivedApplicationContext)
         guard !applicationContext.value.isEmpty else { return }
         Task { @MainActor [weak self] in
@@ -82,6 +87,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
 
     @MainActor
     func handleMessage(_ message: [String: Any]) -> [String: Any] {
+        if WatchHRMessage.isWatchHRPayload(message) { return handleHeartRateProtocol(message) }
         if message["action"] as? String == "cardio_completion_ack",
            let rawID = message["id"] as? String, let id = UUID(uuidString: rawID) {
             acknowledgeCardioCompletion(id)
@@ -90,6 +96,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         guard let rawAction = message[WatchSync.Key.command] as? String,
               let action = WatchHRCommand.Action(rawValue: rawAction) else { return ["ack": false] }
         let command = WatchHRCommand(payload: message)
+        let phoneSessionID = command?.phoneWorkoutSessionID
         if let command, !command.isNewer(than: lastAppliedWatchHRCommandAt) {
             if action == .start,
                let requestID = command.requestID,
@@ -107,7 +114,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
             guard !isActive, !isMonitoring else {
                 // The phone opened this app with `startWatchApp`, which already
                 // started the workout; this command names it.
-                if adoptPhoneLaunchedWorkout(requestID: uuid, type: type) {
+                if adoptPhoneLaunchedWorkout(requestID: uuid, type: type, phoneWorkoutSessionID: phoneSessionID) {
                     if let command { lastAppliedWatchHRCommandAt = command.issuedAt }
                     return reply(for: uuid, accepted: true)
                 }
@@ -116,7 +123,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
                     : reply(for: uuid, accepted: false, rejection: .alreadyActive,
                             activeRequestID: phoneRequestID.flatMap(UUID.init(uuidString:)))
             }
-            guard startWorkout(type: type, phoneRequestID: uuid) else {
+            guard startWorkout(type: type, phoneRequestID: uuid, phoneWorkoutSessionID: phoneSessionID) else {
                 return reply(for: uuid, accepted: false, rejection: .sessionStartFailed)
             }
             if let command { lastAppliedWatchHRCommandAt = command.issuedAt }

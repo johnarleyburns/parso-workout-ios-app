@@ -85,6 +85,7 @@ extension WatchWorkoutManager {
         // Picks up a reading whose builder callback has not arrived yet, so the
         // phone never waits on a delayed callback for longer than a heartbeat.
         refreshHeartRateFromBuilder()
+        flushHeartRateOutboxIfDue()
         sendHeartRateToPhone()
     }
 
@@ -98,6 +99,7 @@ extension WatchWorkoutManager {
     /// Persists a physiological reading exactly once (see `WatchHeartRateSampleRecorder`).
     /// Relay heartbeats/retries never call this.
     func recordHeartRateSample(_ bpm: Double, sampleEnd: Date?) {
+        journalHeartRate(bpm, sampleEnd: sampleEnd)
         guard let start = cardioSessionStart ?? sessionStart else { return }
         hrRecorder.record(bpm: bpm, sampleEnd: sampleEnd, now: Date(), sessionStart: start)
     }

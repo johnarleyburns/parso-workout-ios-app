@@ -101,6 +101,9 @@ final class WatchWorkoutManager: NSObject {
     /// ending it must not tear that session down.
     var cardioOwnsSession = false
     var phoneRequestID: String?
+    var phoneWorkoutSessionID: UUID? // paired with phoneRequestID; see +HeartRateOutbox
+    @ObservationIgnored var lastOutboxFlushUptime: TimeInterval = 0
+    @ObservationIgnored lazy var hrOutbox = WatchHeartRateOutbox(store: WatchHeartRateDefaultsStore(), transport: WatchWCHeartRateTransport())
     /// Workout screens on show (strength, cardio, intervals). A running session with none of these,
     /// no phone workout and no resumable lift is recording for no one; see `WatchSessionOwnership`.
     var workoutScreensVisible = 0
@@ -113,12 +116,6 @@ final class WatchWorkoutManager: NSObject {
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
     var hrRecorder = WatchHeartRateSampleRecorder()
     private var elapsedTracker = ElapsedTimeTracker()
-    enum PersistedWorkoutKey {
-        static let active = "watch.activeWorkout.active"
-        static let type = "watch.activeWorkout.type"
-        static let monitoring = "watch.activeWorkout.monitoring"
-        static let phoneRequestID = "watch.activeWorkout.phoneRequestID"
-    }
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -149,13 +146,15 @@ final class WatchWorkoutManager: NSObject {
 
     @discardableResult
     func startWorkout(type rawType: String, cardioType: CardioType? = nil,
-                      spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil) -> Bool {
+                      spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil,
+                      phoneWorkoutSessionID: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
         workoutStartError = nil
         // Only `startPhoneLaunchedWorkout` marks a start as awaiting the phone.
         phoneLaunchPendingSince = nil
         let resolvedSpec = spec ?? WorkoutConfigurationSpec(for: rawType)
         self.phoneRequestID = phoneRequestID?.uuidString
+        bindPhoneWorkoutSession(phoneRequestID == nil ? nil : phoneWorkoutSessionID)
         heartRateEnabled = resolvedSpec.heartRateEnabled
         gpsEnabled = resolvedSpec.usesGPS
         workoutType = rawType
@@ -242,6 +241,7 @@ final class WatchWorkoutManager: NSObject {
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
         phoneRequestID = nil
+        endPhoneWorkoutJournal()
         sessionStart = nil; cardioSessionStart = nil; cardioOwnsSession = false
         accumulatedHR = 0; hrCount = 0
         hrRecorder.reset()

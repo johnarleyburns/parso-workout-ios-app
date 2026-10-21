@@ -686,11 +686,16 @@ final class AppModel: NSObject, @unchecked Sendable {
         let requestID = UUID()
         // Bind this request to the concrete phone session now, so a delayed
         // message from workout A can never land in workout B.
-        if let sessionID = _active?.strengthSession?.id { watchRequestSessionIDs[requestID] = sessionID }
+        let phoneSessionID = _active?.strengthSession?.id
+        if let phoneSessionID {
+            watchRequestSessionIDs[requestID] = phoneSessionID
+            WatchHeartRateRouteStore().add(sessionID: phoneSessionID, requestID: requestID)
+        }
         pendingWatchStart = PendingWatchStart(requestID: requestID, retryType: retryType,
                                               allowsRetry: allowsRetry)
         let command = WatchHRCommand(action: .start, requestID: requestID,
-                                     workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt())
+                                     workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt(),
+                                     phoneWorkoutSessionID: phoneSessionID)
         // Durable, ordered copy first. When Cladiron isn't running on the
         // Watch, this is delivered as soon as the launch below brings it up,
         // and names the workout the launch started. The Watch treats the
@@ -866,6 +871,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchError = nil
         hrm.clearExternalBPM()
         guard let targetRequestID, let session = wcSession else { return }
+        requestWatchHeartRateFinalization(requestID: targetRequestID)
         let command = WatchHRCommand(action: .stop, requestID: targetRequestID,
                                      issuedAt: nextWatchHRCommandIssuedAt())
         // Apple guarantees queued user-info delivery even if either app is
@@ -875,6 +881,85 @@ final class AppModel: NSObject, @unchecked Sendable {
         if session.isReachable {
             session.sendMessage(command.payload, replyHandler: nil, errorHandler: nil)
         }
+    }
+
+    // MARK: - Durable Watch heart rate
+
+    @ObservationIgnored private var _watchHeartRateReceiver: WatchHeartRateReceiver?
+    private var watchHeartRateReceiver: WatchHeartRateReceiver {
+        if let existing = _watchHeartRateReceiver { return existing }
+        let receiver = makeWatchHeartRateReceiver()
+        _watchHeartRateReceiver = receiver
+        return receiver
+    }
+
+    private func makeWatchHeartRateReceiver() -> WatchHeartRateReceiver {
+        WatchHeartRateReceiver(
+        store: WatchHeartRateReceiptDefaultsStore(),
+        transport: PhoneWCHeartRateTransport(),
+        expectedRequestID: { WatchHeartRateRouteStore().requestID(for: $0) },
+        persist: { [weak self] sessionID, observations in
+            self?.persistWatchObservations(observations, sessionID: sessionID) ?? false
+        })
+    }
+
+    /// Handles a versioned Watch HR protocol message. Returns the legacy
+    /// `ack` flag; the protocol acknowledgement itself is sent by the receiver
+    /// only after persistence succeeds.
+    @discardableResult
+    private func handleWatchHeartRateProtocol(_ message: [String: Any]) -> Bool {
+        switch watchHeartRateReceiver.handle(message) {
+        case .accepted, .duplicate, .finalizationUpdated: return true
+        case .rejected, .persistenceFailed: return false
+        }
+    }
+
+    /// Writes observations through the session-owned recorder: the live one for
+    /// the active workout, otherwise one bound to the retained finished session.
+    private func persistWatchObservations(_ observations: [WatchHRObservation], sessionID: UUID) -> Bool {
+        let make = { (source: HeartRateObservationSource, o: WatchHRObservation) in
+            HeartRateObservation(source: source, observedAt: Date(timeIntervalSince1970: o.sampleEnd),
+                                 bpm: o.bpm, sampleID: o.sampleID)
+        }
+        if let active = _active, let session = active.strengthSession, session.id == sessionID,
+           let recorder = active.heartRateRecorder, recorder.sessionID == sessionID {
+            for o in observations { recorder.record(make(o.source, o)) }
+            return recorder.flush()
+        }
+        guard let container = _modelContainer else { return false }
+        let context = ModelContext(container)
+        let descriptor = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.id == sessionID })
+        guard let session = try? context.fetch(descriptor).first else { return false }
+        let recorder = PhoneStrengthHeartRateRecorder(session: session, save: { try context.save() })
+        for o in observations { recorder.record(make(o.source, o)) }
+        guard session.endedAt != nil else { return recorder.flush() }
+        let profile = CardioIntensityProfile.resolved(
+            userEnteredMaximumHR: _settings?.cardioMaximumHROverride, age: _settings?.userAge)
+        let saved = recorder.finalize(profile: profile)
+        if saved { NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil) }
+        return saved
+    }
+
+    /// Normal Finish: ask the Watch to flush instead of discarding. The route
+    /// stays retained so a late batch merges into this exact session.
+    private func requestWatchHeartRateFinalization(requestID: UUID) {
+        let routes = WatchHeartRateRouteStore()
+        guard let sessionID = routes.sessionID(for: requestID) else { return }
+        routes.markFinalizationRequested(sessionID: sessionID)
+        watchHeartRateReceiver.requestFinalization(sessionID: sessionID, watchRequestID: requestID)
+    }
+
+    /// True while a finished workout still awaits the Watch's final heart-rate
+    /// batches (`watchHRFinalizationPending`); its identifiers are retained.
+    func watchHRFinalizationPending(sessionID: UUID) -> Bool {
+        guard let route = WatchHeartRateRouteStore().routes.first(where: { $0.sessionID == sessionID }) else { return false }
+        return route.finalizationRequested && !watchHeartRateReceiver.isFinalizationComplete(sessionID: sessionID)
+    }
+
+    /// Explicit, user-confirmed discard of a workout's retained Watch HR state.
+    func discardWatchHeartRate(sessionID: UUID) {
+        watchHeartRateReceiver.discard(sessionID: sessionID)
+        WatchHeartRateRouteStore().remove(sessionID: sessionID)
     }
 
     private func nextWatchHRCommandIssuedAt(now: Date = Date()) -> TimeInterval {
@@ -937,6 +1022,12 @@ extension AppModel {
     }
 
     fileprivate func watchReachabilityChanged(reachable: Bool) {
+        if reachable {
+            for route in WatchHeartRateRouteStore().routes where route.finalizationRequested
+                && !watchHeartRateReceiver.isFinalizationComplete(sessionID: route.sessionID) {
+                watchHeartRateReceiver.requestFinalization(sessionID: route.sessionID, watchRequestID: route.requestID)
+            }
+        }
         guard reachable, watchHRRelay.activeRequestID != nil else { return }
         // The Watch retries its latest sample after reachability returns. This
         // keeps a transient Apple Fitness/WatchConnectivity interruption from
@@ -946,6 +1037,10 @@ extension AppModel {
 
     fileprivate func handleWatchMessage(_ message: [String: Any],
                                          replyHandler: (([String: Any]) -> Void)? = nil) {
+        if WatchHRMessage.isWatchHRPayload(message) {
+            replyHandler?(["ack": handleWatchHeartRateProtocol(message)])
+            return
+        }
         if let requestIDString = message["requestID"] as? String,
            let requestID = UUID(uuidString: requestIDString),
            let accepted = message["accepted"] as? Bool {
@@ -1030,6 +1125,10 @@ extension AppModel {
     }
 
     fileprivate func handleWatchUserInfo(_ userInfo: [String: Any]) {
+        if WatchHRMessage.isWatchHRPayload(userInfo) {
+            handleWatchHeartRateProtocol(userInfo)
+            return
+        }
         guard let action = userInfo["action"] as? String else { return }
         guard ["cardio_completion", "log_set", "end_session", "discard_session",
                "delete_exercise", "delete_set", "set_unit", "set_distance_unit"]

@@ -14,8 +14,13 @@ public struct WatchHRCommand: Equatable, Sendable {
     public let requestID: UUID?
     public let workoutType: String?
     public let issuedAt: TimeInterval
+    /// `WorkoutSession.id` of the phone-owned strength workout. Optional so
+    /// older phones/Watches interoperate; durable HR delivery needs it.
+    public let phoneWorkoutSessionID: UUID?
 
-    public init(action: Action, requestID: UUID?, workoutType: String? = nil, issuedAt: TimeInterval) {
+    public init(action: Action, requestID: UUID?, workoutType: String? = nil, issuedAt: TimeInterval,
+                phoneWorkoutSessionID: UUID? = nil) {
+        self.phoneWorkoutSessionID = phoneWorkoutSessionID
         self.action = action
         self.requestID = requestID
         self.workoutType = workoutType
@@ -31,7 +36,8 @@ public struct WatchHRCommand: Equatable, Sendable {
         self.init(action: action,
                   requestID: requestID,
                   workoutType: payload["type"] as? String,
-                  issuedAt: issuedAt)
+                  issuedAt: issuedAt,
+                  phoneWorkoutSessionID: (payload["phoneWorkoutSessionID"] as? String).flatMap(UUID.init(uuidString:)))
     }
 
     public var payload: [String: Any] {
@@ -41,6 +47,7 @@ public struct WatchHRCommand: Equatable, Sendable {
         ]
         if let requestID { result["requestID"] = requestID.uuidString }
         if let workoutType { result["type"] = workoutType }
+        if let phoneWorkoutSessionID { result["phoneWorkoutSessionID"] = phoneWorkoutSessionID.uuidString }
         return result
     }
 

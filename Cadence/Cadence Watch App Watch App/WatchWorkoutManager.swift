@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import HealthKit
 import WatchConnectivity
 import WatchKit
@@ -33,12 +34,12 @@ final class WatchWorkoutManager: NSObject {
     /// WatchConnectivity activation and workout recovery run once per process,
     /// even if the boundary reappears after HealthKit answers.
     @ObservationIgnored var launchSyncStarted = false
-    private(set) var bleState: BLEConnectionState? = nil
-    private(set) var bleBattery: Int? = nil
+    var bleState: BLEConnectionState? = nil
+    var bleBattery: Int? = nil
 
     private(set) var elapsed: TimeInterval = 0
     private(set) var avgHeartRate: Double?
-    private(set) var maxHeartRate: Double?
+    var maxHeartRate: Double?
     private(set) var distanceMeters: Double = 0
     var heartRateEnabled: Bool = true
     var gpsEnabled: Bool = false
@@ -90,7 +91,7 @@ final class WatchWorkoutManager: NSObject {
     /// Set while a phone-launched workout waits for the phone's command to name it.
     @ObservationIgnored var phoneLaunchPendingSince: Date?; @ObservationIgnored var unclaimedHR = WatchHRUnclaimedBuffer()
     @ObservationIgnored var recoveryInFlight = false
-    private var ble: WatchHeartRateBLE?
+    var ble: WatchHeartRateBLE?
     var sessionStart: Date?
     /// Wall-clock start of the cardio session the user began on the Watch. Kept
     /// separate from `sessionStart`, which can belong to a phone-started
@@ -111,8 +112,8 @@ final class WatchWorkoutManager: NSObject {
     var abandonedSessionNotice: Date? = UserDefaults.standard.object(forKey: "watch.abandonedSessionNotice") as? Date {
         didSet { UserDefaults.standard.set(abandonedSessionNotice, forKey: "watch.abandonedSessionNotice") }
     }
-    private var accumulatedHR: Double = 0
-    private var hrCount: Int = 0
+    var accumulatedHR: Double = 0
+    var hrCount: Int = 0
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
     var hrRecorder = WatchHeartRateSampleRecorder()
     private var elapsedTracker = ElapsedTimeTracker()
@@ -124,7 +125,18 @@ final class WatchWorkoutManager: NSObject {
             }
         }
     }
-    var pendingApplicationContext: [String: Any]?; var pendingSyncEnvelope: WatchSyncHandshake.Envelope?
+    var pendingApplicationContext: [String: Any]?
+    /// Orders snapshot commits; the envelope always travels with its decoded snapshot.
+    var syncCommitCoordinator = WatchSyncCommitCoordinator(
+        appliedRevision: WatchWorkoutManager.loadAppliedSyncRecord()?.revision ?? 0)
+    struct AwaitingSyncCommit {
+        let envelope: WatchSyncHandshake.Envelope
+        let customExercises: [WatchSync.CustomExercise]
+        let updatedAt: Date
+    }
+    var awaitingSyncCommit: AwaitingSyncCommit?
+    @ObservationIgnored var durableCommitEnvelopeID: UUID?
+    @ObservationIgnored var syncModelContainer: ModelContainer?
 
     let uiTestMode: Bool
 
@@ -276,50 +288,6 @@ final class WatchWorkoutManager: NSObject {
         case .resume: if session?.state == .paused { session?.resume() }
         case .none: break
         }
-    }
-
-    func switchToSource(_ source: HRSource) {
-        hrSource = source
-        guard isActive || isMonitoring else { return }
-        if source == .appleWatch { ble?.disconnect(); ble = nil; bleState = nil }
-        else { startBLE() }
-    }
-
-    func startBLE() {
-        ble = WatchHeartRateBLE { [weak self] event in
-            guard let self else { return }
-            Task { @MainActor in
-                switch event {
-                case .connected(let battery):
-                    self.bleState = .connected
-                    self.bleBattery = battery
-                case .disconnected:
-                    self.bleState = .disconnected
-                    self.bleBattery = nil
-                case .bpm(let value):
-                    self.currentBPM = value
-                    self.accumulatedHR += value
-                    self.hrCount += 1
-                    self.recordHeartRateSample(value, sampleEnd: nil)
-                    if self.maxHeartRate == nil || value > (self.maxHeartRate ?? 0) {
-                        self.maxHeartRate = value
-                    }
-                    self.relayReading(value, endingAt: nil)
-                case .scanning:
-                    self.bleState = .scanning
-                case .batteryUpdated(let pct):
-                    self.bleBattery = pct
-                }
-            }
-        }
-        bleState = .scanning
-        ble?.start()
-    }
-
-    func stopBLE() {
-        ble?.disconnect()
-        ble = nil
-        bleState = nil
     }
 
     // MARK: Helpers

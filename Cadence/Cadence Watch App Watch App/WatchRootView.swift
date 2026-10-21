@@ -60,6 +60,7 @@ struct WatchRootView: View {
                 launcher
             }
         }
+        .task { watchManager.applyCustomExercisesInBackground(container: context.container) }
         .onChange(of: watchManager.customExercisesUpdatedAt) { _, _ in
             // Stored on a background context, and skipped entirely when the
             // phone replays an unchanged list (it does on every activation).

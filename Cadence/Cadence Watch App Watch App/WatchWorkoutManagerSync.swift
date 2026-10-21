@@ -215,7 +215,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         case .apply:
             break
         }
-        pendingSyncEnvelope = decision == .apply ? envelope : nil
+        let commitEnvelope = decision == .apply ? envelope : nil
         phoneSyncState = .syncing(Date())
         let current = WatchSync.Preferences(
             unit: s.unit,
@@ -234,12 +234,19 @@ extension WatchWorkoutManager: WCSessionDelegate {
                     context: payload.value,
                     applyingTo: current)
             }.value
-            self?.applyIncomingContext(snapshot)
+            self?.applyIncomingContext(snapshot, envelope: commitEnvelope)
         }
     }
 
-    private func applyIncomingContext(_ incoming: WatchSync.IncomingContext) {
+    func applyIncomingContext(_ incoming: WatchSync.IncomingContext, envelope: WatchSyncHandshake.Envelope?) {
         guard let s = watchAppSettings else { return }
+        var outcome = WatchSyncCommitCoordinator.Outcome.discard
+        if let envelope {
+            // A stale late completion must neither overwrite nor acknowledge newer state.
+            outcome = syncCommitCoordinator.accept(envelope, applied: Self.loadAppliedSyncRecord(),
+                                                   needsDurableExercises: incoming.customExercises != nil)
+            if outcome == .discard { return }
+        }
         let preferences = incoming.preferences
         s.unit = preferences.unit
         s.distanceUnit = preferences.distanceUnit
@@ -258,19 +265,74 @@ extension WatchWorkoutManager: WCSessionDelegate {
             customExercisesUpdatedAt = incoming.updatedAt
         }
 
-        if let envelope = pendingSyncEnvelope {
-            pendingSyncEnvelope = nil
-            let record = WatchSyncAppliedRecord(revision: envelope.revision, snapshotID: envelope.snapshotID,
-                                                components: envelope.components)
-            if let data = try? JSONEncoder().encode(record) {
-                UserDefaults.standard.set(data, forKey: Self.appliedSyncRecordKey)
+        if let envelope {
+            if outcome == .awaitDurable {
+                awaitingSyncCommit = AwaitingSyncCommit(envelope: envelope,
+                                                        customExercises: incoming.customExercises ?? [],
+                                                        updatedAt: incoming.updatedAt)
+                phoneSyncState = .syncing(Date())
+                drainDurableSyncCommit()
+                return
             }
-            sendSyncAck(record.ack)
+            if case .commit(let record) = outcome { Self.persistAndAcknowledge(record, via: self) }
         }
-        lastPhoneSyncAt = incoming.updatedAt
+        finishSyncApply(updatedAt: incoming.updatedAt)
+    }
+
+    private func finishSyncApply(updatedAt: Date) {
+        lastPhoneSyncAt = updatedAt
         lastPhoneSyncError = nil
-        UserDefaults.standard.set(incoming.updatedAt, forKey: "watch.lastPhoneSyncAt")
-        phoneSyncState = .synced(incoming.updatedAt)
+        UserDefaults.standard.set(updatedAt, forKey: "watch.lastPhoneSyncAt")
+        phoneSyncState = .synced(updatedAt)
+    }
+
+    private static func persistAndAcknowledge(_ record: WatchSyncAppliedRecord, via manager: WatchWorkoutManager) {
+        guard let data = try? JSONEncoder().encode(record) else { return }
+        UserDefaults.standard.set(data, forKey: appliedSyncRecordKey)
+        manager.sendSyncAck(record.ack)
+    }
+
+    /// Persists the awaiting snapshot's custom exercises, then commits. ACK is
+    /// sent only from `completeDurableSyncCommit` after the store succeeded.
+    func drainDurableSyncCommit() {
+        guard let container = syncModelContainer, let awaiting = awaitingSyncCommit,
+              durableCommitEnvelopeID != awaiting.envelope.snapshotID else { return }
+        let envelope = awaiting.envelope
+        let incoming = awaiting.customExercises
+        let fingerprint = WatchSync.CustomExercise.fingerprint(incoming)
+        if fingerprint == UserDefaults.standard.string(forKey: Self.appliedCustomExercisesKey) {
+            completeDurableSyncCommit(envelope: envelope, succeeded: true)
+            return
+        }
+        durableCommitEnvelopeID = envelope.snapshotID
+        let previous = customExerciseApplyTask
+        customExerciseApplyTask = Task.detached(priority: .utility) { [weak self] in
+            await previous?.value
+            let context = ModelContext(container)
+            let applied = (try? WatchCustomExerciseStore.apply(incoming, in: context)) != nil
+            await self?.finishCustomExerciseApply(fingerprint: fingerprint, applied: applied)
+            await self?.completeDurableSyncCommit(envelope: envelope, succeeded: applied)
+        }
+    }
+
+    func completeDurableSyncCommit(envelope: WatchSyncHandshake.Envelope, succeeded: Bool) {
+        if durableCommitEnvelopeID == envelope.snapshotID { durableCommitEnvelopeID = nil }
+        guard let awaiting = awaitingSyncCommit, awaiting.envelope == envelope else { return }
+        let outcome = syncCommitCoordinator.durableStoreFinished(
+            for: envelope, succeeded: succeeded, applied: Self.loadAppliedSyncRecord())
+        switch outcome {
+        case .commit(let record):
+            awaitingSyncCommit = nil
+            Self.persistAndAcknowledge(record, via: self)
+            finishSyncApply(updatedAt: awaiting.updatedAt)
+        case .failed:
+            // Old confirmed revision stays; no ACK, so the phone keeps it pending and retries.
+            awaitingSyncCommit = nil
+            requestSettingsSync()
+            recordPhoneSyncFailure(String(localized: "Couldn't save custom exercises. Retrying."))
+        case .discard, .awaitDurable:
+            awaitingSyncCommit = nil
+        }
     }
 
     /// Stores the phone's custom exercises off the main actor.
@@ -281,6 +343,9 @@ extension WatchWorkoutManager: WCSessionDelegate {
     /// unresponsive for seconds. Now an unchanged list is skipped by
     /// fingerprint, and a changed one is written once on a background context.
     func applyCustomExercisesInBackground(container: ModelContainer) {
+        syncModelContainer = container
+        // A snapshot awaiting durable custom exercises owns this write; it commits and ACKs afterwards.
+        if awaitingSyncCommit != nil { drainDurableSyncCommit(); return }
         let incoming = pendingCustomExercises
         let fingerprint = WatchSync.CustomExercise.fingerprint(incoming)
         guard fingerprint != UserDefaults.standard.string(forKey: Self.appliedCustomExercisesKey),

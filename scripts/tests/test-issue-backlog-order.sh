@@ -5,7 +5,7 @@ set -euo pipefail
 script=.github/scripts/admit-one-stranded-issue.sh
 grep -Fq -- '--limit 1000' "$script"
 grep -Fq -- 'priority-high' "$script"
-grep -Fq -- 'sort_by([if any(.labels[]?.name; . == "priority-high") then 0 else 1 end,' "$script"
+grep -Fq -- 'sort_by([if any(.labels[]?.name; . == "priority-high") then 0 elif any(.labels[]?.name; . == "qa-failed") then 1 else 2 end,' "$script"
 
 order() {
   jq -r 'sort_by([if any(.labels[]?.name; . == "priority-high") then 0 else 1 end, .createdAt, .number])[] | .number'

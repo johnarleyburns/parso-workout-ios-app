@@ -118,7 +118,7 @@ while IFS=$'\t' read -r issue _title; do
   gh label create testflight-processing --repo "$repo" --color FBCA04 \
     --description 'Apple is still processing the accepted TestFlight build.' --force >/dev/null
   gh issue edit "$issue" --repo "$repo" --add-label testflight-uploaded --add-label testflight-processing \
-    --remove-label ready-for-qa >/dev/null
+    --remove-label ready-for-qa --remove-label qa-failed >/dev/null
 done < "$issues_file"
 
 echo "Recorded TestFlight upload $bundle $version ($build) for $issue_count associated issue(s)."

@@ -39,6 +39,7 @@ issue_json=$(gh issue view "$ISSUE" --json title,body,author,state)
 if [[ $(jq -r '.state' <<<"$issue_json") != 'OPEN' ]]; then echo "Issue #$ISSUE is closed: not restarting (no-op)"; exit 0; fi
 title=$(jq -r '.title' <<<"$issue_json")
 body=$(jq -r '.body // ""' <<<"$issue_json")
+qa_failed=$(gh issue view "$ISSUE" --json labels --jq 'any(.labels[].name; . == "qa-failed")')
 
 # CI edits are authorized only when the repository owner applied ai-ci-maintenance.
 # Check the actor of the label event, not just the current labels.
@@ -88,11 +89,15 @@ if jq -e 'any(.[]; .state=="OPEN")' <<<"$existing" >/dev/null; then
   gh issue edit "$ISSUE" --remove-label "$wait_label" >/dev/null 2>&1 || true
   kick_maintenance "$n"; exit 0
 fi
-if jq -e 'any(.[]; .state=="MERGED")' <<<"$existing" >/dev/null; then echo "Issue $ISSUE already merged: no-op"; exit 0; fi
+if jq -e 'any(.[]; .state=="MERGED")' <<<"$existing" >/dev/null && [[ "$qa_failed" != true ]]; then echo "Issue $ISSUE already merged: no-op"; exit 0; fi
+if [[ "$qa_failed" == true ]]; then echo "Issue $ISSUE failed human QA: starting a repair cycle despite its prior merged PR."; fi
 if jq -e 'any(.[]; .state=="CLOSED")' <<<"$existing" >/dev/null; then echo "PR for issue $ISSUE was closed unmerged (rejected): not restarting"; exit 0; fi
 
 # A pushed branch with no PR (earlier run died between push and PR creation): adopt it.
-orphan=$(retry_git_network git_auth ls-remote --heads origin "refs/heads/claude/issue-${ISSUE}-*" | awk '{sub("refs/heads/","",$2); print $2}' | tail -1)
+orphan=''
+if [[ "$qa_failed" != true ]]; then
+  orphan=$(retry_git_network git_auth ls-remote --heads origin "refs/heads/claude/issue-${ISSUE}-*" | awk '{sub("refs/heads/","",$2); print $2}' | tail -1)
+fi
 
 make_pr() { # branch -> prints PR number
   local br="$1" url pr_json

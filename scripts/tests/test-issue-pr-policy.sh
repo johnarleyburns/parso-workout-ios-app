@@ -47,6 +47,17 @@ pr_line=$(grep -nE '^pr_number=\$\(make_pr' "$script" | cut -d: -f1)
 [[ "$validate_line" -lt "$publish_line" && "$publish_line" -lt "$pr_line" ]]
 grep -Fq 'Pre-publication validation failed; no branch or PR was created' "$script"
 
+# A human QA failure is an explicit repair request, even when an earlier PR
+# merged. It must start a new branch and not be overwritten by reconciliation.
+grep -Fq 'qa_failed=$(gh issue view "$ISSUE" --json labels' "$script"
+grep -Fq 'Issue $ISSUE failed human QA: starting a repair cycle' "$script"
+grep -Fq 'if [[ "$qa_failed" != true ]]; then' "$script"
+grep -Fq 'github.event.label.name == '\''qa-failed'\''' "$root/.github/workflows/issue-backlog-reconcile.yml"
+grep -Fq 'or any(.labels[]?.name; . == "qa-failed")' "$root/.github/scripts/admit-one-stranded-issue.sh"
+grep -Fq -- '--remove-label qa-failed' "$root/.github/scripts/record-testflight-delivery.sh"
+grep -Fq 'human QA failure is awaiting repair' "$root/.github/scripts/reconcile-testflight-status.sh"
+echo 'QA failure policy: repair supersedes prior ready/merged state'
+
 # Source filenames may describe credentials without being credential artifacts;
 # binary/config artifacts and non-source secret files remain blocked.
 for guarded in "$script" "$root/.github/scripts/pr-conflict-repair.sh" "$root/.github/scripts/release-repair.sh"; do

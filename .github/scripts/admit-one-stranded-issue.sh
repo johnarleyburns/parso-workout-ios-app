@@ -95,12 +95,14 @@ done < <(gh issue list --repo "$repo" --state open --limit 1000 --json number,la
 macos_capacity_available || { echo 'Actual xcode-27 capacity is occupied.'; exit 0; }
 all_pr_bodies=$(gh pr list --repo "$repo" --state all --base main --limit 1000 --json body --jq '.[].body // ""')
 issues=$(gh issue list --repo "$repo" --state open --limit 1000 --json number,author,labels,createdAt --jq '
-sort_by([if any(.labels[]?.name; . == "priority-high") then 0 else 1 end, .createdAt, .number])[] | select(.author.login == "johnarleyburns")
-| select(any(.labels[]?.name; . == "awaiting-ci-authorization" or . == "tracking" or . == "blocked-by-dependency" or . == "intake-running" or . == "intake-retry-deferred" or . == "ready-for-qa") | not)
+sort_by([if any(.labels[]?.name; . == "priority-high") then 0 elif any(.labels[]?.name; . == "qa-failed") then 1 else 2 end, .createdAt, .number])[] | select(.author.login == "johnarleyburns")
+| select(any(.labels[]?.name; . == "awaiting-ci-authorization" or . == "tracking" or . == "blocked-by-dependency" or . == "intake-running" or . == "intake-retry-deferred") | not)
+| select((any(.labels[]?.name; . == "ready-for-qa") | not) or any(.labels[]?.name; . == "qa-failed"))
 | select((any(.labels[]?.name; . == "needs-human-review") | not) or any(.labels[]?.name; . == "retry-ai"))
 | select((any(.labels[]?.name; . == "intake-blocked") | not) or any(.labels[]?.name; . == "retry-ai")) | .number')
 for issue in $issues; do
-  grep -Fq "<!-- claude-issue:${issue} -->" <<<"$all_pr_bodies" && continue
+  qa_failed=$(gh issue view "$issue" --repo "$repo" --json labels --jq 'any(.labels[].name; . == "qa-failed")')
+  [[ "$qa_failed" == true ]] || { grep -Fq "<!-- claude-issue:${issue} -->" <<<"$all_pr_bodies" && continue; }
   macos_capacity_available || exit 0
   attempt="$(date +%s)-${RANDOM}${RANDOM}"; marker="<!-- claude-intake-reservation issue=${issue} attempt=${attempt} -->"
   gh issue edit "$issue" --repo "$repo" --add-label intake-running --remove-label retry-ai >/dev/null

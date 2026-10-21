@@ -594,7 +594,13 @@ public struct StrengthItem: Codable, Equatable, Sendable {
     public var order: Int
     public var instructions: String?
     public var tempo: String?
+    /// Between-set rest default for this exercise (legacy name, kept for
+    /// stored-data compatibility). See `transitionRestSeconds` for the pause
+    /// after the last set, before the next exercise.
     public var defaultRestSeconds: Int?
+    /// Exercise-transition rest taken after this item's final set, before the
+    /// next exercise. `nil` (all legacy data) means "same as between-set rest".
+    public var transitionRestSeconds: Int?
     public var alternateExerciseKey: ExerciseKey?
     public var sets: [PrescribedSet]
     public var schemeApplied: SetSchemeID?
@@ -613,7 +619,8 @@ public struct StrengthItem: Codable, Equatable, Sendable {
                 sets: [PrescribedSet] = [], schemeApplied: SetSchemeID? = nil,
                 supersetGroup: SupersetGroupID? = nil, laterality: String? = nil,
                 progression: ProgressionIntent? = nil,
-                performerOverrides: [PerformerPrescriptionOverride]? = nil) {
+                performerOverrides: [PerformerPrescriptionOverride]? = nil,
+                transitionRestSeconds: Int? = nil) {
         self.id = id
         self.exerciseKey = exerciseKey
         self.order = order
@@ -627,6 +634,28 @@ public struct StrengthItem: Codable, Equatable, Sendable {
         self.laterality = laterality
         self.progression = progression
         self.performerOverrides = performerOverrides
+        self.transitionRestSeconds = transitionRestSeconds
+    }
+
+    /// Rest after the given set: the set's own rest, else the item's
+    /// between-set default. Never applies transition rest.
+    public func betweenSetRestSeconds(after set: PrescribedSet) -> Int? {
+        set.restSeconds ?? defaultRestSeconds
+    }
+
+    /// Rest taken once this exercise is finished, before the next one.
+    /// Legacy items without an explicit transition fall back to the
+    /// between-set rest of the final set.
+    public var effectiveTransitionRestSeconds: Int? {
+        if let transitionRestSeconds { return transitionRestSeconds }
+        return sets.last.flatMap { betweenSetRestSeconds(after: $0) } ?? defaultRestSeconds
+    }
+
+    /// Total between-set rest: every gap between consecutive sets, excluding
+    /// the trailing gap (which belongs to the exercise transition).
+    public var totalBetweenSetRestSeconds: Int {
+        let ordered = sets.sorted { $0.setIndex < $1.setIndex }
+        return ordered.dropLast().reduce(0) { $0 + (betweenSetRestSeconds(after: $1) ?? 0) }
     }
 
     /// Source-compatible constructor retained for the pre-Phase-2 model.
@@ -646,6 +675,12 @@ public struct StrengthItem: Codable, Equatable, Sendable {
 
     public func validate() throws {
         guard order >= 0 else { throw UnifiedPlanValidationError.invalidItemOrder }
+        if let defaultRestSeconds, defaultRestSeconds < 0 {
+            throw UnifiedPlanValidationError.invalidRest
+        }
+        if let transitionRestSeconds, transitionRestSeconds < 0 {
+            throw UnifiedPlanValidationError.invalidRest
+        }
         let indices = sets.map(\.setIndex)
         guard indices.allSatisfy({ $0 >= 0 }), Set(indices).count == indices.count else {
             throw UnifiedPlanValidationError.invalidSetIndex

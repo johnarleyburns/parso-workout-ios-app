@@ -388,6 +388,7 @@ public enum UnifiedPlanAuthoring {
                      supersetGroup: source.supersetGroup,
                      laterality: source.laterality,
                      progression: source.progression,
-                     performerOverrides: source.performerOverrides)
+                     performerOverrides: source.performerOverrides,
+                     transitionRestSeconds: source.transitionRestSeconds)
     }
 }

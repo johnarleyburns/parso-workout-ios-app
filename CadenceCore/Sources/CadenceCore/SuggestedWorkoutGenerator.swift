@@ -554,7 +554,8 @@ public enum SuggestedWorkoutGenerator {
                   historyWorkoutCount: input.historyWorkoutCount,
                   index: index, counters: &counters)
         }.map { option in
-            let option = option.withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
+            let option = GeneratedTransitionRestOrder.apply(to: option)
+                .withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
             return option.withRationale(rationale(for: option, input: input))
         }
         let generationDuration = generationStart.duration(to: clock.now)
@@ -610,7 +611,8 @@ public enum SuggestedWorkoutGenerator {
             fullCatalogScanCount: 0,
             vectorIndexBuildDuration: indexDuration,
             allStylesGenerationDuration: generationStart.duration(to: clock.now))
-        let covered = option.withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
+        let covered = GeneratedTransitionRestOrder.apply(to: option)
+            .withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
         return covered.withRationale(rationale(for: covered, input: input))
     }
 
@@ -809,7 +811,8 @@ public enum SuggestedWorkoutGenerator {
             vectorIndexBuildDuration: .zero,
             allStylesGenerationDuration: duration)
         options = options.map { option in
-            let option = option.withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
+            let option = GeneratedTransitionRestOrder.apply(to: option)
+                .withUnsupportedCoverage(unsupportedCoverage(for: option, index: index))
             return option.withRationale(rationale(for: option, input: input))
         }
         return SuggestedWorkoutBundle(

@@ -102,7 +102,7 @@ struct InlineSetEditorView: View {
 
     private var headerContext: some View {
         VStack(spacing: 6) {
-            Text(config.exerciseName).font(.headline).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity)
+            Text(config.exerciseName).font(.headline).frame(maxWidth: .infinity)
                 .accessibilityIdentifier("setEditor.exerciseName")
             Text(config.setNumberText).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 .accessibilityIdentifier("setEditor.setNumber")
@@ -194,7 +194,7 @@ struct InlineSetEditorView: View {
                     .accessibilityIdentifier("setEditor.weightSource")
             }
             Button { typedWeight = weightText; keypadPresented = true } label: {
-                HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type").font(.caption).foregroundStyle(.tint).lineLimit(1).minimumScaleFactor(0.8) }
+                HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type").font(.caption).foregroundStyle(.tint) }
                     .frame(maxWidth: .infinity)
             }.buttonStyle(.plain).accessibilityIdentifier("setEditor.weightValue").accessibilityValue("\(weightText) \(config.unit.abbreviation)")
             HStack(spacing: 10) {
@@ -206,7 +206,6 @@ struct InlineSetEditorView: View {
                     ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
                         Button { increment = value; Haptics.selection() } label: {
                             Text(incrementLabel(value))
-                                .lineLimit(1)
                                 .fixedSize(horizontal: true, vertical: false)
                                 .frame(minHeight: 48)
                                 .padding(.horizontal, 10)
@@ -215,8 +214,6 @@ struct InlineSetEditorView: View {
                     }
                     Button { typedWeight = weightText; keypadPresented = true } label: {
                         Text("Type")
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
                             .frame(minHeight: 48)
                             .padding(.horizontal, 10)
                             .accessibilityLabel("Type weight")

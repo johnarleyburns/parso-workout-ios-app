@@ -37,8 +37,6 @@ struct WorkoutElapsedHeader: View {
                 Text(time)
                     .scaledSystemFont(44, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                     .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.55)
                     .allowsTightening(true)
                     .layoutPriority(1)
                     .foregroundStyle(isPaused ? .secondary : .primary)
@@ -47,7 +45,6 @@ struct WorkoutElapsedHeader: View {
                 if isPaused {
                     Text("Paused")
                         .font(.caption.weight(.semibold))
-                        .lineLimit(1)
                         .fixedSize(horizontal: true, vertical: false)
                         .foregroundStyle(.orange)
                         .padding(.horizontal, 8).padding(.vertical, 3)

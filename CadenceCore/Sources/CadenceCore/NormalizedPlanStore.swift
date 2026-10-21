@@ -155,7 +155,10 @@ public final class PersistedPlanItem {
                                     defaultRestSeconds: value.defaultRestSeconds,
                                     alternateExerciseKey: value.alternateExerciseKey,
                                     sets: [], schemeApplied: value.schemeApplied,
-                                    supersetGroup: value.supersetGroup)
+                                    supersetGroup: value.supersetGroup,
+                                    laterality: nil, progression: nil,
+                                    performerOverrides: nil,
+                                    transitionRestSeconds: value.transitionRestSeconds)
             self.payloadData = try NormalizedPlanStore.encode(base)
         case let .cardio(value):
             self.kindRaw = "cardio"

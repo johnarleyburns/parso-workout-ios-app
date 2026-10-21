@@ -106,7 +106,7 @@ final class SuggestedWorkoutPresenterTests: XCTestCase {
 
     func testAboutContractIncludesEveryAlgorithmStepAndResolvableCitations() {
         XCTAssertEqual(SuggestedWorkoutPresenter.citationIDs, suggestedWorkoutCitationIDs)
-        XCTAssertEqual(SuggestedWorkoutPresenter.citationIDs.count, 2)
+        XCTAssertEqual(SuggestedWorkoutPresenter.citationIDs.count, 5)
         XCTAssertTrue(SuggestedWorkoutPresenter.citationsResolve)
         XCTAssertEqual(SuggestedWorkoutPresenter.aboutSteps.count, 7)
         let about = SuggestedWorkoutPresenter.aboutSteps.joined(separator: " ")

@@ -27,10 +27,26 @@ Continuum.* **Sports 9(2):32.** <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC79
   driver; local-endurance evidence is **equivocal** — endurance prescriptions are
   conservative and flagged lower-confidence.
 
+### `acsmResistanceTraining2002` — goal-aware resistance-program structure
+American College of Sports Medicine (2002). *Progression Models in Resistance
+Training for Healthy Adults.* **Med Sci Sports Exerc 34(2).**
+<https://doi.org/10.1097/00005768-200202000-00027>
+
+- **Used by:** Suggested Workout's The Science page, supporting goal-aware program
+  structure while every suggested plan remains editable.
+- **Caveat:** not proof of one universal fixed rep prescription.
+
+### `acsmResistanceTraining2026` — current ACSM position stand overview
+American College of Sports Medicine (2026). *ACSM Releases New Position Stand on
+Resistance Training.* **ACSM Science Spotlight.**
+<https://acsm.org/science-spotlight-acsm-releases-new-position-stand-on-resistance-training/>
+
+- **Used by:** Suggested Workout's The Science page as the official current overview.
+
 ### `volumeDoseResponse` — weekly volume landmarks
 Schoenfeld, Ogborn & Krieger (2017). *Dose-response relationship between weekly
 resistance training volume and increases in muscle mass.* **J Sports Sci 35(11).**
-<https://doi.org/10.1080/02640414.2016.1210197>
+<https://pubmed.ncbi.nlm.nih.gov/27433992/>
 
 - **Used by:** the MEV/MAV/MRV volume landmarks (`VolumeLandmarks`), the volume insight,
   and the prescriptive **add-volume** rule (sets to add to reach the minimum effective

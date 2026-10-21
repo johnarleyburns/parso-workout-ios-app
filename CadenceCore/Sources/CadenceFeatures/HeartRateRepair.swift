@@ -40,6 +40,26 @@ public struct HeartRateRepairPreview: Equatable, Sendable {
     /// True when no associated Health workout exists and the samples were found
     /// by the session window alone.
     public let isLegacyFallback: Bool
+    /// True when the proposal covers no more of the workout than what is saved;
+    /// applying it needs explicit replacement consent.
+    public let isLowerQuality: Bool
+    /// The exact data previewed. Confirming applies this, never a fresh query.
+    public let proposal: HeartRateRepairProposal
+}
+
+/// Immutable record of exactly what the user previewed.
+public struct HeartRateRepairProposal: Equatable, Sendable {
+    public let sessionID: UUID
+    /// `WorkoutSession.updatedAt` when previewed; apply requires it to be unchanged.
+    public let sessionRevision: Date
+    /// Opaque Health workout association (nil for the legacy Watch-sample fallback).
+    public let associationToken: String?
+    public let sourceName: String
+    public let isLegacyFallback: Bool
+    /// Normalized observations (seconds since session start, BPM) that will be stored.
+    public let observations: [HRSamplePoint]
+    public let summary: CardioMinuteSummary
+    public let beforeSummary: CardioMinuteSummary?
 }
 
 public enum HealthRepairError: Error, Equatable, Sendable { case authorization, query }
@@ -67,6 +87,8 @@ public enum HeartRateRepairOutcome: Equatable, Sendable {
     /// Repaired data is not demonstrably better; nothing changed until the user confirms.
     case needsReplacementConfirmation(existingCovered: TimeInterval, repairedCovered: TimeInterval)
     case repaired(classifiedMinutes: Int, totalMinutes: Int)
+    /// The session changed after the preview; a new preview is required.
+    case staleProposal
 }
 
 public enum HeartRateRepair {
@@ -115,7 +137,13 @@ public enum HeartRateRepair {
                                                  to: end.addingTimeInterval(matchTolerance))
             } catch let error as HealthRepairError { return .accessError(error) }
             catch { return .accessError(.query) }
-            let found = matches(session, list)
+            let stored = session.healthKitWorkoutUUID?.uuidString
+            let found: [HealthWorkoutCandidate]
+            if let stored, let exact = list.first(where: { $0.token == stored }) {
+                found = [exact]
+            } else {
+                found = matches(session, list)
+            }
             if found.isEmpty {
                 guard allowLegacyFallback else { return .noMatch }
                 return await legacyFallback(session: session, source: source, profile: profile,
@@ -136,24 +164,28 @@ public enum HeartRateRepair {
         guard !points.isEmpty else { return .noHeartRateSamples }
 
         let summary = CardioMinuteAccumulator.summarize(duration: duration, samples: points, profile: profile)
-        let existing = session.intensitySummary?.classifiedDuration ?? 0
-        if !confirmed {
-            return .preview(makePreview(session: session, summary: summary, sourceName: candidate.sourceName,
-                                        count: points.count, legacy: false))
-        }
-        if !confirmReplacement, !session.hrSamplePoints.isEmpty, summary.classifiedDuration <= existing {
-            return .needsReplacementConfirmation(existingCovered: existing, repairedCovered: summary.classifiedDuration)
-        }
-        return apply(points, summary: summary, session: session, profile: profile, now: now, save: save)
+        let proposal = makeProposal(session: session, points: points, summary: summary,
+                                    token: candidate.token, sourceName: candidate.sourceName, legacy: false)
+        if !confirmed { return .preview(makePreview(session: session, proposal: proposal)) }
+        return apply(proposal, to: session, confirmReplacement: confirmReplacement, now: now, save: save)
     }
 
-    private static func makePreview(session: WorkoutSession, summary: CardioMinuteSummary, sourceName: String,
-                                    count: Int, legacy: Bool) -> HeartRateRepairPreview {
-        HeartRateRepairPreview(
-            sourceName: sourceName, sessionStart: session.date, sessionEnd: session.endedAt ?? session.date,
-            beforeClassifiedMinutes: Int(((session.intensitySummary?.classifiedDuration ?? 0) / 60).rounded()),
-            afterClassifiedMinutes: Int((summary.classifiedDuration / 60).rounded()),
-            sampleCount: count, isLegacyFallback: legacy)
+    private static func makeProposal(session: WorkoutSession, points: [HRSamplePoint], summary: CardioMinuteSummary,
+                                     token: String?, sourceName: String, legacy: Bool) -> HeartRateRepairProposal {
+        HeartRateRepairProposal(sessionID: session.id, sessionRevision: session.updatedAt, associationToken: token,
+                                sourceName: sourceName, isLegacyFallback: legacy, observations: points,
+                                summary: summary, beforeSummary: session.intensitySummary)
+    }
+
+    private static func makePreview(session: WorkoutSession, proposal: HeartRateRepairProposal) -> HeartRateRepairPreview {
+        let existing = session.intensitySummary?.classifiedDuration ?? 0
+        return HeartRateRepairPreview(
+            sourceName: proposal.sourceName, sessionStart: session.date, sessionEnd: session.endedAt ?? session.date,
+            beforeClassifiedMinutes: Int((existing / 60).rounded()),
+            afterClassifiedMinutes: Int((proposal.summary.classifiedDuration / 60).rounded()),
+            sampleCount: proposal.observations.count, isLegacyFallback: proposal.isLegacyFallback,
+            isLowerQuality: !session.hrSamplePoints.isEmpty && proposal.summary.classifiedDuration <= existing,
+            proposal: proposal)
     }
 
     /// Older builds discarded the Health association. Accept only Apple Watch
@@ -180,45 +212,79 @@ public enum HeartRateRepair {
                                                  repairedCovered: summary.classifiedDuration)
         }
         guard confirmed else {
-            return .preview(makePreview(session: session, summary: summary, sourceName: "Apple Watch",
-                                        count: points.count, legacy: true))
+            return .preview(makePreview(session: session, proposal: makeProposal(
+                session: session, points: points, summary: summary, token: nil,
+                sourceName: "Apple Watch", legacy: true)))
         }
-        return apply(points, summary: summary, session: session, profile: profile, now: now, save: save)
+        return apply(makeProposal(session: session, points: points, summary: summary, token: nil,
+                                  sourceName: "Apple Watch", legacy: true),
+                     to: session, confirmReplacement: true, now: now, save: save)
     }
 
+    /// Everything a repair or undo can touch, captured so a failed save restores it exactly.
+    private struct Snapshot {
+        let samplesData: String, summaryData: String, coverageData: String, backupData: String
+        let manualOverride: Bool, updatedAt: Date
+        @MainActor init(_ s: WorkoutSession) {
+            samplesData = s.hrSamplesData; summaryData = s.intensitySummaryData
+            coverageData = s.hrCoverageData; backupData = s.hrBackupData
+            manualOverride = s.hasManualCardioMinutesOverride; updatedAt = s.updatedAt
+        }
+        @MainActor func restore(to s: WorkoutSession) {
+            s.hrSamplesData = samplesData; s.intensitySummaryData = summaryData
+            s.hrCoverageData = coverageData; s.hrBackupData = backupData
+            s.hasManualCardioMinutesOverride = manualOverride; s.updatedAt = updatedAt
+        }
+    }
+
+    /// Applies exactly the previewed proposal. Rejects it if the session changed
+    /// since the preview; on save failure every touched field is restored.
     @MainActor
-    private static func apply(_ points: [HRSamplePoint], summary: CardioMinuteSummary, session: WorkoutSession,
-                              profile: CardioIntensityProfile, now: Date,
-                              save: () throws -> Void) -> HeartRateRepairOutcome {
+    public static func apply(_ proposal: HeartRateRepairProposal, to session: WorkoutSession,
+                             confirmReplacement: Bool = false, now: Date = Date(),
+                             save: () throws -> Void = {}) -> HeartRateRepairOutcome {
+        guard proposal.sessionID == session.id, proposal.sessionRevision == session.updatedAt else {
+            return .staleProposal
+        }
+        let existing = session.intensitySummary?.classifiedDuration ?? 0
+        if !confirmReplacement, !session.hrSamplePoints.isEmpty, proposal.summary.classifiedDuration <= existing {
+            return .needsReplacementConfirmation(existingCovered: existing,
+                                                 repairedCovered: proposal.summary.classifiedDuration)
+        }
         let duration = (session.endedAt ?? session.date).timeIntervalSince(session.date)
-        // Validated and recomputed; apply atomically (restore on save failure).
+        let snapshot = Snapshot(session)
         let backup = HeartRateBackup(samples: session.hrSamplePoints, summary: session.intensitySummary,
                                      coverage: session.hrCoverage)
-        session.recordHeartRate(points, profile: profile, source: .repairedHealthKit, at: now)
+        session.hrSamplePoints = proposal.observations
+        session.hrCoverage = HeartRateCoverage.measure(proposal.observations, source: .repairedHealthKit, at: now)
+        session.intensitySummary = proposal.summary
+        session.hasManualCardioMinutesOverride = false
         session.hrBackup = backup
+        session.updatedAt = max(now, snapshot.updatedAt.addingTimeInterval(0.001))
         do { try save() } catch {
-            restore(backup, to: session)
-            session.hrBackup = nil
+            snapshot.restore(to: session)
             return .accessError(.query)
         }
-        return .repaired(classifiedMinutes: Int((summary.classifiedDuration / 60).rounded()),
+        return .repaired(classifiedMinutes: Int((proposal.summary.classifiedDuration / 60).rounded()),
                          totalMinutes: Int((duration / 60).rounded()))
     }
 
-    private static func restore(_ backup: HeartRateBackup, to session: WorkoutSession) {
-        session.hrSamplePoints = backup.samples
-        session.intensitySummary = backup.summary
-        session.hrCoverage = backup.coverage
-    }
-
-    /// Reverts the most recent repair. Returns false when there is nothing to restore.
+    /// Reverts the most recent repair. Returns false when there is nothing to restore
+    /// or the save failed (in which case the repaired state and its backup are kept).
+    @MainActor
     @discardableResult
     public static func restorePrevious(_ session: WorkoutSession, save: () throws -> Void = {}) -> Bool {
         guard let backup = session.hrBackup else { return false }
-        restore(backup, to: session)
+        let snapshot = Snapshot(session)
+        session.hrSamplePoints = backup.samples
+        session.intensitySummary = backup.summary
+        session.hrCoverage = backup.coverage
         session.hrBackup = nil
-        session.updatedAt = Date()
-        do { try save() } catch { return false }
+        session.updatedAt = max(Date(), snapshot.updatedAt.addingTimeInterval(0.001))
+        do { try save() } catch {
+            snapshot.restore(to: session)
+            return false
+        }
         return true
     }
 }

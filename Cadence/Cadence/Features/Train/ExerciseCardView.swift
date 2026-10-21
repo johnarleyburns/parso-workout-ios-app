@@ -200,7 +200,7 @@ struct ExerciseCardView: View {
             Color.clear.frame(width: SetCol.check)
         }
         .font(.caption2).textCase(.uppercase).foregroundStyle(.tertiary)
-        .lineLimit(1).minimumScaleFactor(0.5)
+        .lineLimit(1)
         .padding(.horizontal, 2)
     }
 
@@ -230,11 +230,11 @@ struct ExerciseCardView: View {
 
             Button { onTapSet(set) } label: {
                 if set.usesBodyweight && set.weight <= 0 {
-                    Text("BW").monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                    Text("BW").monospacedDigit().lineLimit(1)
                         .frame(maxWidth: .infinity)
                 } else {
                     Text(isNonWeighted ? "—" : Format.weightValueQuarter(set.weight, unit: unit))
-                        .monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                        .monospacedDigit().lineLimit(1)
                         .frame(maxWidth: .infinity)
                 }
             }

@@ -91,7 +91,6 @@ extension SessionView {
                     .stroke(CadenceTheme.accent, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                 Text("\(completed)/\(planned)").font(.caption2.weight(.bold)).monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.6)
                     .padding(.horizontal, 10)
             }
             .frame(width: 60, height: 60)

@@ -150,7 +150,7 @@ struct PreWorkoutHRView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    if watchBPM == nil { model.stopWatchWorkout() }
+                    if watchBPM == nil { model.stopWatchWorkout(); model.cancelWatchPreflight() }
                     onContinue(HRSourceChoice(PreWorkoutHRPresenter.continueAction(hrState)))
                 } label: {
                     Text(PreWorkoutHRPresenter.continueLabel(hrState))
@@ -164,6 +164,7 @@ struct PreWorkoutHRView: View {
 
                 Button {
                     model.stopWatchWorkout()
+                    model.cancelWatchPreflight()
                     onCancel()
                 } label: {
                     Text("Cancel")

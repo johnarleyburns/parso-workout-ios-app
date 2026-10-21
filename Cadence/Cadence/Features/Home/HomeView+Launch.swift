@@ -144,7 +144,8 @@ extension HomeView {
 
     func startStrengthAfterLease(startCue: WorkoutStartCue,
                                          create: () -> WorkoutSession?) {
-        let intent = LiveWorkoutStartIntent(kind: .strength(sessionID: UUID()),
+        let reservedID = model.watchPreflightReservation?.phoneWorkoutSessionID
+        let intent = LiveWorkoutStartIntent(kind: .strength(sessionID: reservedID ?? UUID()),
                                              routePayload: "strength",
                                              origin: .finalCommit)
         guard case .granted(let lease) = active.liveWorkout.requestStart(intent: intent,
@@ -152,10 +153,19 @@ extension HomeView {
             showWorkoutConflict = true
             return
         }
-        guard let session = create(), active.startStrength(session, lease: lease) else {
+        guard let session = create() else {
             _ = active.liveWorkout.release(lease)
             return
         }
+        // Reuse the identity reserved at Watch preflight so the capture binds
+        // to this workout and no second identity is ever created.
+        if let reservedID { session.id = reservedID }
+        guard active.startStrength(session, lease: lease) else {
+            _ = active.liveWorkout.release(lease)
+            return
+        }
+        try? context.save()
+        model.adoptWatchPreflight(into: session)
         playStartCue(startCue)
     }
 

@@ -22,9 +22,38 @@ public struct TodayHero: Equatable, Sendable {
                 citationIDs: [String] = [], summary: DaySummary? = nil,
                 computedAt: Date = Date()) {
         self.kind = kind; self.title = title; self.estimatedMinutes = estimatedMinutes
-        self.exercises = Array(exercises.prefix(5)); self.reason = reason
+        self.exercises = exercises; self.reason = reason
         self.citationIDs = citationIDs; self.computedAt = computedAt
         self.summary = summary
+    }
+}
+
+/// How much of a hero's exercise list fits; the model itself is never truncated.
+public struct TodayExerciseDisclosure: Equatable, Sendable {
+    public let visible: [TodayHero.Line]
+    public let hiddenCount: Int
+    public let total: Int
+
+    /// Shows every line when `capacity` allows; otherwise `capacity` names plus a truthful `+N more`.
+    public init(lines: [TodayHero.Line], capacity: Int) {
+        total = lines.count
+        let shown = lines.count <= max(capacity, 0) ? lines.count : max(capacity, 0)
+        visible = Array(lines.prefix(shown))
+        hidden = Array(lines.dropFirst(shown))
+        hiddenCount = hidden.count
+    }
+
+    public var summaryText: String? {
+        hiddenCount > 0 ? String(localized: "… +\(hiddenCount) more", bundle: .module) : nil
+    }
+
+    public let hidden: [TodayHero.Line]
+
+    /// VoiceOver label with the exact total and the hidden names.
+    public var accessibilityLabel: String? {
+        guard hiddenCount > 0 else { return nil }
+        let list = hidden.map(\.name).formatted(.list(type: .and))
+        return String(localized: "\(hiddenCount) more exercises, \(total) in total: \(list). Opens the full plan to review.", bundle: .module)
     }
 }
 

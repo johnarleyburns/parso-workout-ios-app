@@ -27,6 +27,7 @@ bash scripts/tests/test-issue-pr-policy.sh
 bash scripts/tests/test-issue-backlog-order.sh
 bash scripts/tests/test-release-repair-policy.sh
 bash scripts/tests/test-testflight-delivery-body.sh
+bash scripts/tests/test-testflight-reconciler-discovery.sh
 if [[ -f scripts/tests/test-xcodebuild-safe.sh ]]; then
   /bin/bash scripts/tests/test-xcodebuild-safe.sh
 fi

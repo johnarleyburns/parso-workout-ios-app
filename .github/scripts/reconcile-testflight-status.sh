@@ -81,7 +81,9 @@ reconcile_issue() {
     echo "Reconciled #$issue: human QA failure is awaiting repair"
     return 0
   fi
-  delivery=$(rg '<!-- testflight-delivery:[^:]+:[^:]+:[^ ]+ -->' "$comments" | tail -1 || true)
+  # ubuntu-latest does not guarantee ripgrep, so keep this reconciler limited
+  # to POSIX tooling that is available on every hosted runner.
+  delivery=$(grep -hE '<!-- testflight-delivery:[^:]+:[^:]+:[^ ]+ -->' "$comments" | tail -n 1 || true)
   if [[ -z "$delivery" ]]; then
     # Historical upload-stage labels have no exact build to verify.  Do not
     # preserve a claim of QA readiness that App Store Connect cannot support.

@@ -58,6 +58,24 @@ struct HealthKitHeartRateSource: HealthHeartRateSource {
         return samples.map { ($0.date, $0.bpm) }
     }
 
+    func heartRateSamples(from: Date, to: Date) async throws -> [HealthHeartSample] {
+        guard HKHealthStore.isHealthDataAvailable() else { throw HealthRepairError.authorization }
+        let store = HKHealthStore()
+        let unit = HKUnit.count().unitDivided(by: .minute())
+        let predicate = HKQuery.predicateForSamples(withStart: from, end: to, options: .strictStartDate)
+        let result: [HealthHeartSample] = try await Self.run { done in
+            HKSampleQuery(sampleType: HKQuantityType(.heartRate), predicate: predicate, limit: HKObjectQueryNoLimit,
+                          sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)]) { _, samples, error in
+                done(((samples as? [HKQuantitySample]) ?? []).map {
+                    HealthHeartSample(date: $0.endDate, bpm: $0.quantity.doubleValue(for: unit),
+                                      isAppleWatch: ($0.sourceRevision.productType ?? "").hasPrefix("Watch"))
+                }, error)
+            }
+        } on: { store.execute($0) }
+        Self.log.info("window query returned \(result.count, privacy: .public) hr samples")
+        return result
+    }
+
     private static func run<T: Sendable>(_ make: (@escaping @Sendable (T, (any Error)?) -> Void) -> HKQuery,
                                          on execute: (HKQuery) -> Void) async throws -> T {
         try await withCheckedThrowingContinuation { continuation in

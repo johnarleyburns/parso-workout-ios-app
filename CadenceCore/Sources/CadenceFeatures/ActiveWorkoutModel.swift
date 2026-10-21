@@ -124,6 +124,27 @@ public final class ActiveWorkoutModel {
         return recorder
     }
 
+    /// Session whose final heart-rate flush failed and awaits retry. While set,
+    /// the summary shows honest pending/retry copy instead of a final zero.
+    public private(set) var heartRatePendingSessionID: UUID?
+
+    /// Final, awaitable flush of the session-owned recorder. Idempotent. On
+    /// failure the data stays in the recorder and the session is flagged pending.
+    @discardableResult
+    public func finalizeHeartRate(profile: CardioIntensityProfile, sessionID: UUID) -> Bool {
+        guard let recorder, recorder.sessionID == sessionID else {
+            if heartRatePendingSessionID == sessionID { heartRatePendingSessionID = nil }
+            return true
+        }
+        let ok = recorder.finalize(profile: profile)
+        if ok {
+            if heartRatePendingSessionID == sessionID { heartRatePendingSessionID = nil }
+        } else {
+            heartRatePendingSessionID = sessionID
+        }
+        return ok
+    }
+
     /// True while the active session's clock is paused (field-testing Round 4 A1).
     public var isPaused: Bool { clock.isPaused }
 

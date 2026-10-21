@@ -277,13 +277,13 @@ extension SessionView {
             _ = try? ScheduledWorkoutStore.markCompleted(recordID: scheduled.id, in: context)
         }
         try? context.save()
-        // Final flush of the session-owned recorder; the summary is built only
-        // from the persisted series, never a view-local array.
+        // Final flush of the session-owned recorder; summary uses the persisted series.
         let recorder = recorderForEnd
         Task {
             if let recorder, !recorder.snapshot.isEmpty {
                 let profile = await cardioIntensityProfile(model: model, settings: settings)
-                recorder.finalize(profile: profile)
+                active.finalizeHeartRate(profile: profile, sessionID: recorder.sessionID)
+                AccessibilityNotification.Announcement(active.heartRatePendingSessionID == nil ? String(localized: "Cardio measurements saved.") : String(localized: "Waiting for cardio measurements. Retry from the summary.")).post()
             }
             active.finishedSummary = FinishedSummary(data: .from(session: session, hrSamples: session.hrSamplePoints), session: session)
         }

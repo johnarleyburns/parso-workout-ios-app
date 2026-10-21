@@ -9,14 +9,36 @@ struct HeartRateRepairSection: View {
     let session: WorkoutSession
     @Environment(AppSettings.self) private var settings
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppModel.self) private var appModel
+    @Environment(ActiveWorkoutModel.self) private var active
     @State private var isLoading = false
     @State private var message: String?
     @State private var choices: [HealthWorkoutCandidate] = []
     @State private var pendingConfirmation: HealthWorkoutCandidate?
     @State private var showConfirm = false
+    @State private var preview: HeartRateRepairPreview?
+    @State private var previewChoice: HealthWorkoutCandidate?
 
     var body: some View {
-        if session.endedAt != nil, HeartRateRepair.isRepairable(session) || session.hrBackup != nil {
+        if active.heartRatePendingSessionID == session.id {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Waiting for cardio measurements. They are kept on this device and have not been saved yet.")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("Retry saving cardio measurements") {
+                    Task {
+                        let profile = await cardioIntensityProfile(model: appModel, settings: settings)
+                        if active.finalizeHeartRate(profile: profile, sessionID: session.id) {
+                            announce(String(localized: "Cardio measurements saved."))
+                            NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+                        } else {
+                            announce(String(localized: "Still couldn't save cardio measurements. Try again."))
+                        }
+                    }
+                }
+                .accessibilityIdentifier("summary.hrRetry")
+                if let message { Text(message).font(.footnote) }
+            }
+        } else if session.endedAt != nil, HeartRateRepair.isRepairable(session) || session.hrBackup != nil {
             VStack(alignment: .leading, spacing: 8) {
                 if HeartRateRepair.isRepairable(session) {
                     Text("Heart-rate coverage was incomplete, so part of this workout is unclassified. That reflects missing measurements, not low intensity.")
@@ -44,6 +66,17 @@ struct HeartRateRepairSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .sheet(isPresented: .init(get: { !choices.isEmpty }, set: { if !$0 { choices = [] } })) { selectionSheet }
+            .confirmationDialog("Apply these measurements?", isPresented: .init(get: { preview != nil }, set: { if !$0 { preview = nil } }),
+                                titleVisibility: .visible, presenting: preview) { p in
+                Button("Apply") {
+                    let chosen = previewChoice
+                    preview = nil
+                    Task { await repair(chosen: chosen, confirm: false, confirmed: true, legacy: p.isLegacyFallback) }
+                }
+                Button("Keep existing", role: .cancel) {}
+            } message: { p in
+                Text("\(p.sourceName): \(p.sampleCount) readings between \(p.sessionStart.formatted(date: .omitted, time: .shortened)) and \(p.sessionEnd.formatted(date: .omitted, time: .shortened)). Classified minutes: \(p.beforeClassifiedMinutes) now, \(p.afterClassifiedMinutes) after. You can restore the previous measurements afterward.")
+            }
             .confirmationDialog("Replace existing measurements?", isPresented: $showConfirm) {
                 Button("Replace") { if let c = pendingConfirmation { Task { await repair(chosen: c, confirm: true) } } }
                 Button("Keep existing", role: .cancel) {}
@@ -77,18 +110,24 @@ struct HeartRateRepairSection: View {
         AccessibilityNotification.Announcement(text).post()
     }
 
-    private func repair(chosen: HealthWorkoutCandidate? = nil, confirm: Bool = false) async {
+    private func repair(chosen: HealthWorkoutCandidate? = nil, confirm: Bool = false,
+                        confirmed: Bool = false, legacy: Bool = false) async {
         isLoading = true
         defer { isLoading = false }
         let profile = CardioIntensityProfile.resolved(userEnteredMaximumHR: settings.cardioMaximumHROverride,
                                                       age: settings.userAge)
         let outcome = await HeartRateRepair.run(session: session, source: HealthKitHeartRateSource(),
                                                 profile: profile, chosen: chosen, confirmReplacement: confirm,
+                                                confirmed: confirmed, allowLegacyFallback: true,
                                                 save: { try modelContext.save() })
         switch outcome {
         case .noMatch: announce(String(localized: "No matching Apple Health workout was found."))
         case .noHeartRateSamples: announce(String(localized: "Apple Health has no heart-rate samples for this workout."))
         case .accessError: announce(String(localized: "Couldn't read Apple Health. Check Health access in Settings and try again."))
+        case .preview(let p):
+            previewChoice = chosen
+            preview = p
+            AccessibilityNotification.Announcement(String(localized: "Review the proposed cardio measurements.")).post()
         case .needsSelection(let list): choices = list
         case .needsReplacementConfirmation:
             pendingConfirmation = chosen

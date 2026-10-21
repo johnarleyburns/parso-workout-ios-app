@@ -105,6 +105,8 @@ struct RootTabView: View {
             }
         }
         .onChange(of: active.isActive) { _, isActive in
+            // Workout start/end boundary: propagate summary state (bounded by the tracker).
+            model.pushSettingsContext(reason: .workoutBoundary)
             if isActive, let session = active.strengthSession {
                 WorkoutLiveActivityCoordinator.shared.start(
                     title: session.title.isEmpty ? String(localized: "Workout") : session.title,
@@ -153,7 +155,7 @@ struct RootTabView: View {
                     workoutIsActive: false, hasStrengthSession: false)
             }
             guard phase == .active else { return }
-            model.pushSettingsContext()
+            model.pushSettingsContext(reason: .activation)
             if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {
                 NotificationCenter.default.post(name: .cadenceLiveActivityActionRequested,
                                                 object: request)
@@ -229,7 +231,7 @@ struct RootTabView: View {
         active.present()
     }
 
-    private func showWatchSyncToast(for state: WatchSync.Status) {
+    private func showWatchSyncToast(for state: WatchSyncState) {
         guard let text = state.toastText else { return }
         let toast = WatchSyncToast(text: text, isFailure: state.isFailure)
         withAnimation(.easeInOut(duration: 0.18)) {

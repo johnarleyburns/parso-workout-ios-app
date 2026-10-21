@@ -124,7 +124,7 @@ final class WatchWorkoutManager: NSObject {
             }
         }
     }
-    var pendingApplicationContext: [String: Any]?
+    var pendingApplicationContext: [String: Any]?; var pendingSyncEnvelope: WatchSyncHandshake.Envelope?
 
     let uiTestMode: Bool
 

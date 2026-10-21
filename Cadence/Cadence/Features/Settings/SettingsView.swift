@@ -121,24 +121,26 @@ struct SettingsView: View {
                     Text(model.watchSyncState.settingsText(lastSyncAt: model.lastWatchSyncAt))
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
+                        .multilineTextAlignment(.trailing)
                         .accessibilityIdentifier("settings.watchSync.status")
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(Text("Watch sync status"))
+                .accessibilityValue(Text(model.watchSyncState.accessibilityText(lastConfirmedAt: model.lastWatchSyncAt)))
 
                 HStack {
-                    Label("Last synced", systemImage: "clock.arrow.2.circlepath")
+                    Label("Last confirmed by Watch", systemImage: "clock.arrow.2.circlepath")
                     Spacer()
-                    Text(WatchSync.Status.lastSyncText(model.lastWatchSyncAt))
+                    Text(WatchSyncState.lastConfirmedText(model.lastWatchSyncAt))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("settings.watchSync.lastSynced")
                 }
 
-                if let error = model.lastWatchSyncError {
-                    Text(error)
+                if model.watchSyncState.isFailure || model.watchSyncState.canRetry && !model.watchSyncState.isInProgress {
+                    Text(model.watchSyncState.detailText)
                         .font(.caption)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(model.watchSyncState.isFailure ? .red : .secondary)
                         .accessibilityIdentifier("settings.watchSync.error")
                 }
 
@@ -146,14 +148,15 @@ struct SettingsView: View {
                     model.pushSettingsContext(force: true)
                 } label: {
                     if model.watchSyncState.isInProgress {
-                        HStack { ProgressView(); Text("Syncing to Watch...") }
+                        HStack { ProgressView(); Text("Waiting for Apple Watch…") }
                     } else {
-                        Label("Sync to Watch Now", systemImage: "arrow.triangle.2.circlepath")
+                        Label(model.watchSyncState.isFailure ? "Retry" : "Sync now", systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
                 .disabled(model.watchSyncState.isInProgress)
+                .accessibilityHint(Text("Sends settings again and waits for your Apple Watch to confirm"))
                 .accessibilityIdentifier("settings.watchSync.force")
-                Text("Sends units, interval defaults, workout sounds, and recent partners to the Watch app.")
+                Text("Sends units, interval defaults, workout sounds, and recent partners to the Watch app. Cladiron shows Up to date only after your Apple Watch confirms it applied them, and re-checks automatically while the app is open.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

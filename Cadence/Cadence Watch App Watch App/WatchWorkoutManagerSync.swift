@@ -12,11 +12,18 @@ extension WatchWorkoutManager {
             recordPhoneSyncFailure(String(localized: "Phone unavailable"))
             return
         }
+        let request = WatchSyncHandshake.requestMessage(applied: Self.loadAppliedSyncRecord())
         guard session.isReachable else {
+            // Durable fallback: the phone answers with a fresh snapshot when it next runs.
+            for transfer in session.outstandingUserInfoTransfers
+            where transfer.userInfo[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
+                transfer.cancel()
+            }
+            session.transferUserInfo(request)
             recordPhoneSyncFailure(String(localized: "Open Cladiron on iPhone"))
             return
         }
-        session.sendMessage(WatchSync.requestSettingsSyncMessage(), replyHandler: nil) { [weak self] error in
+        session.sendMessage(request, replyHandler: nil) { [weak self] error in
             DispatchQueue.main.async {
                 self?.recordPhoneSyncFailure(error.localizedDescription)
             }
@@ -42,8 +49,12 @@ extension WatchWorkoutManager: WCSessionDelegate {
             self?.retryHeartRateOutbox(reason: "activation")
         }
         let applicationContext = UncheckedWatchPayload(value: session.receivedApplicationContext)
-        guard !applicationContext.value.isEmpty else { return }
         Task { @MainActor [weak self] in
+            guard !applicationContext.value.isEmpty else {
+                // Missing context: ask the phone for a snapshot.
+                self?.requestSettingsSync()
+                return
+            }
             self?.applySettingsContext(applicationContext.value)
         }
     }
@@ -159,11 +170,52 @@ extension WatchWorkoutManager: WCSessionDelegate {
         return result
     }
 
+    static let appliedSyncRecordKey = "watch.syncApplied.v1"
+
+    static func loadAppliedSyncRecord() -> WatchSyncAppliedRecord? {
+        UserDefaults.standard.data(forKey: appliedSyncRecordKey)
+            .flatMap { try? JSONDecoder().decode(WatchSyncAppliedRecord.self, from: $0) }
+    }
+
+    /// Sends an acknowledgement durably (`transferUserInfo`) and, as an optimization, immediately.
+    /// Older queued acknowledgements are cancelled so the phone only sees the newest.
+    func sendSyncAck(_ ack: WatchSyncHandshake.Ack) {
+        guard let session = wcSession, session.activationState == .activated else { return }
+        let message = ack.message
+        for transfer in session.outstandingUserInfoTransfers
+        where WatchSyncHandshake.Ack(message: transfer.userInfo) != nil {
+            transfer.cancel()
+        }
+        session.transferUserInfo(message)
+        if session.isReachable { session.sendMessage(message, replyHandler: nil, errorHandler: nil) }
+    }
+
     func applySettingsContext(_ applicationContext: [String: Any]) {
         guard let s = watchAppSettings else {
             pendingApplicationContext = applicationContext
             return
         }
+        let applied = Self.loadAppliedSyncRecord()
+        let decision = WatchSyncReceiveDecision.decide(context: applicationContext, applied: applied)
+        let envelope = WatchSyncHandshake.Envelope(context: applicationContext)
+        switch decision {
+        case .duplicate:
+            if let applied { sendSyncAck(applied.ack) }
+            return
+        case .stale:
+            // Never overwrite newer state; tell the phone what is applied so it can reconcile.
+            sendSyncAck(.init(revision: applied?.revision ?? 0, snapshotID: nil, components: nil))
+            return
+        case .incompatible:
+            sendSyncAck(.init(revision: applied?.revision ?? 0, snapshotID: nil, components: nil))
+            lastPhoneSyncError = String(localized: "Update Cladiron on iPhone and Watch")
+            return
+        case .legacy:
+            requestSettingsSync()
+        case .apply:
+            break
+        }
+        pendingSyncEnvelope = decision == .apply ? envelope : nil
         phoneSyncState = .syncing(Date())
         let current = WatchSync.Preferences(
             unit: s.unit,
@@ -206,6 +258,15 @@ extension WatchWorkoutManager: WCSessionDelegate {
             customExercisesUpdatedAt = incoming.updatedAt
         }
 
+        if let envelope = pendingSyncEnvelope {
+            pendingSyncEnvelope = nil
+            let record = WatchSyncAppliedRecord(revision: envelope.revision, snapshotID: envelope.snapshotID,
+                                                components: envelope.components)
+            if let data = try? JSONEncoder().encode(record) {
+                UserDefaults.standard.set(data, forKey: Self.appliedSyncRecordKey)
+            }
+            sendSyncAck(record.ack)
+        }
         lastPhoneSyncAt = incoming.updatedAt
         lastPhoneSyncError = nil
         UserDefaults.standard.set(incoming.updatedAt, forKey: "watch.lastPhoneSyncAt")

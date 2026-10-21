@@ -162,9 +162,17 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
     /// (a synchronous IPC call) from SwiftUI body evaluation.
     private(set) var watchAppInstalled: Bool = false
-    private(set) var watchSyncState: WatchSync.Status = .idle
-    private(set) var lastWatchSyncAt: Date? = UserDefaults.standard.object(forKey: "settings.lastWatchSyncAt") as? Date
-    private(set) var lastWatchSyncError: String?
+    /// Truthful Watch sync status. `upToDate` only follows a matching Watch acknowledgement;
+    /// a local `updateApplicationContext` success is merely queued/awaiting.
+    private(set) var watchSyncState: WatchSyncState = .activating
+    /// Last time the Watch *confirmed* applying a snapshot (never a local write time).
+    var lastWatchSyncAt: Date? { watchSyncTracker.lastConfirmedAt }
+    /// Legacy pre-handshake "synced" timestamps were local writes; they migrate to unconfirmed.
+    private let watchSyncTracker = WatchSyncTracker(
+        store: UserDefaultsWatchSyncLedgerStore(),
+        legacyLastSyncAt: UserDefaults.standard.object(forKey: "settings.lastWatchSyncAt") as? Date)
+    @ObservationIgnored private var watchReconcileTask: Task<Void, Never>?
+    private static let watchSyncLog = Logger(subsystem: "guru.parso.cladiron", category: "watch-sync")
     private let watchSessionDelegate: WatchSessionDelegateProxy
     private(set) var cloudKitAccountAvailability: CloudKitAccountAvailability = .checking
     private(set) var isRestoringCloudKitHistory = false
@@ -382,7 +390,6 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Workouts the user chose to send to the Watch; mirrored in the application context.
     private var cachedSentWorkouts: [WatchSync.TodayPlan.Session] = []
     private var watchPayloadTask: Task<Void, Never>?
-    private var lastWatchPayloadFingerprint: Int?
 
     private struct WatchPayloadSnapshot: Sendable {
         let customExercises: [WatchSync.CustomExercise]
@@ -414,7 +421,32 @@ final class AppModel: NSObject, @unchecked Sendable {
         applicationIsActive = active
         if active {
             drainPendingWatchImportsIfNeeded()
+            startWatchReconcileLoop()
+        } else {
+            watchReconcileTask?.cancel()
+            watchReconcileTask = nil
         }
+    }
+
+    /// Foreground-only conservative cadence: a cheap local check every 30 s that only writes
+    /// when the tracker's documented bounds allow it (confirmation older than 5 minutes, or an
+    /// unacknowledged snapshot past its backoff). It also refreshes the time-derived status.
+    private func startWatchReconcileLoop() {
+        guard watchReconcileTask == nil else { return }
+        watchReconcileTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(30))
+                guard !Task.isCancelled, let self else { return }
+                self.refreshWatchSyncState()
+                self.pushSettingsContext(reason: .periodic)
+            }
+        }
+    }
+
+    private func refreshWatchSyncState() {
+        let activated = wcSession?.activationState == .activated
+        let state = watchSyncTracker.state(installed: watchAppInstalled, activated: activated)
+        if state != watchSyncState { watchSyncState = state }
     }
 
     /// Checks the Apple-ID account that backs the private SwiftData store.
@@ -476,17 +508,26 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
-    func pushSettingsContext(force: Bool = false) {
+    /// Starts a (coalesced, acknowledged) settings reconciliation. `force` is the manual
+    /// "Sync now": it always produces a fresh revision but never reports success itself.
+    func pushSettingsContext(force: Bool = false, reason: WatchSyncTrigger = .contentChanged) {
+        let trigger: WatchSyncTrigger = force && reason == .contentChanged ? .manual : reason
         guard let settings = _settings else {
-            if force { recordWatchSyncFailure(String(localized: "Settings unavailable")) }
+            if force { watchSyncTracker.markSettingsUnavailable() }
+            refreshWatchSyncState()
             return
         }
         guard let session = wcSession, session.isWatchAppInstalled else {
-            if force { recordWatchSyncFailure(String(localized: "Watch unavailable")) }
+            // No Watch app: never write indefinitely.
+            refreshWatchSyncState()
+            return
+        }
+        guard watchSyncTracker.mayReconcile(trigger) else {
+            Self.watchSyncLog.debug("coalesced trigger=\(trigger.rawValue, privacy: .public)")
+            refreshWatchSyncState()
             return
         }
         let now = Date()
-        watchSyncState = .syncing(now)
         let basePreferences = WatchSync.Preferences(
             unit: settings.unit,
             intervalColorBlind: settings.intervalColorBlind,
@@ -526,7 +567,7 @@ final class AppModel: NSObject, @unchecked Sendable {
                 guard let self else { return }
                 self.finishWatchSettingsContext(basePreferences: basePreferences,
                                                 payload: payload, at: now,
-                                                force: force, session: session)
+                                                trigger: trigger, session: session)
             }
         }
     }
@@ -534,33 +575,10 @@ final class AppModel: NSObject, @unchecked Sendable {
     private func finishWatchSettingsContext(basePreferences: WatchSync.Preferences,
                                             payload: WatchPayloadSnapshot,
                                             at date: Date,
-                                            force: Bool,
+                                            trigger: WatchSyncTrigger,
                                             session: WCSession) {
         var prefs = basePreferences
         prefs.recentPartnerNames = payload.recentPartnerNames
-        var fingerprint = Hasher()
-        fingerprint.combine(prefs.unit.rawValue)
-        fingerprint.combine(prefs.intervalColorBlind)
-        fingerprint.combine(prefs.restSeconds)
-        fingerprint.combine(prefs.warmupMinutes)
-        fingerprint.combine(prefs.cooldownMinutes)
-        fingerprint.combine(prefs.workoutSounds)
-        fingerprint.combine(prefs.spokenCues)
-        fingerprint.combine(prefs.recentPartnerNames)
-        for exercise in payload.customExercises.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
-            fingerprint.combine(exercise.id)
-            fingerprint.combine(exercise.name)
-            fingerprint.combine(exercise.updatedAt)
-            fingerprint.combine(exercise.primaryMuscles)
-            fingerprint.combine(exercise.secondaryMuscles)
-        }
-        let value = fingerprint.finalize()
-        guard force || lastWatchPayloadFingerprint != value else {
-            watchSyncState = .synced(lastWatchSyncAt ?? date)
-            return
-        }
-        lastWatchPayloadFingerprint = value
-
         var context = WatchSync.Preferences.contextDict(prefs, updatedAt: date)
         context[WatchSync.Key.customExercises] = payload.customExercises.map(\.propertyList)
         if let plan = cachedTodayPlan {
@@ -579,23 +597,40 @@ final class AppModel: NSObject, @unchecked Sendable {
         if let week = cachedWeekSummary {
             context.merge(WatchSync.WeekSummary.contextDict(week)) { _, new in new }
         }
-        enqueueWatchContextWrite(context, on: session, at: date)
+        enqueueWatchContextWrite(context, on: session, at: date, trigger: trigger)
     }
 
+    /// The single choke point for phone→Watch context writes. It stamps a versioned envelope
+    /// (or coalesces the write away), then records the write as *queued only*; confirmation
+    /// comes exclusively from the Watch's acknowledgement.
     private func enqueueWatchContextWrite(_ context: [String: Any],
                                           on session: WCSession,
-                                          at date: Date) {
-        let write = WatchContextWrite(session: session, context: context)
+                                          at date: Date,
+                                          trigger: WatchSyncTrigger = .contentChanged) {
+        var stamped = WatchSyncHandshake.Envelope.stripping(context)
+        let components = WatchSyncHandshake.Components(context: stamped)
+        guard let envelope = watchSyncTracker.prepare(components: components, trigger: trigger) else {
+            Self.watchSyncLog.debug("coalesced unchanged trigger=\(trigger.rawValue, privacy: .public)")
+            refreshWatchSyncState()
+            return
+        }
+        stamped.merge(envelope.contextEntries) { _, new in new }
+        Self.watchSyncLog.info("snapshot queued trigger=\(trigger.rawValue, privacy: .public)")
+        refreshWatchSyncState()
+        let revision = envelope.revision
+        let write = WatchContextWrite(session: session, context: stamped)
         Self.watchContextQueue.async { [weak self] in
             do {
                 try write.session.updateApplicationContext(write.context)
                 Task { @MainActor [weak self] in
-                    self?.recordWatchSyncSuccess(date)
+                    self?.watchSyncTracker.markWritten(revision: revision)
+                    self?.refreshWatchSyncState()
                 }
             } catch {
-                let message = error.localizedDescription
                 Task { @MainActor [weak self] in
-                    self?.recordWatchSyncFailure(message)
+                    Self.watchSyncLog.error("context write failed")
+                    self?.watchSyncTracker.markWriteFailed(revision: revision)
+                    self?.refreshWatchSyncState()
                 }
             }
         }
@@ -1098,18 +1133,6 @@ final class AppModel: NSObject, @unchecked Sendable {
             .map(\.name)
             .prefix(3))
     }
-
-    private func recordWatchSyncSuccess(_ date: Date) {
-        lastWatchSyncAt = date
-        lastWatchSyncError = nil
-        UserDefaults.standard.set(date, forKey: "settings.lastWatchSyncAt")
-        watchSyncState = .synced(date)
-    }
-
-    private func recordWatchSyncFailure(_ message: String) {
-        lastWatchSyncError = message
-        watchSyncState = .failed(message, lastWatchSyncAt)
-    }
 }
 
 // MARK: - Main-actor WatchConnectivity handlers
@@ -1117,10 +1140,35 @@ final class AppModel: NSObject, @unchecked Sendable {
 extension AppModel {
     fileprivate func watchActivationCompleted(installed: Bool) {
         watchAppInstalled = installed
-        pushSettingsContext()
+        refreshWatchSyncState()
+        pushSettingsContext(reason: .activation)
         if installed, let rawType = pendingWatchStartType {
             pendingWatchStartType = nil
             performWatchStart(rawType: rawType, retryType: rawType, allowsRetry: true)
+        }
+    }
+
+    /// The Watch asked for a snapshot (it saw missing/stale context): reconcile without user action.
+    private func handleWatchSyncRequest(_ message: [String: Any]) {
+        let outcome = watchSyncTracker.receiveWatchRequest(
+            appliedRevision: message[WatchSyncHandshake.Key.appliedRevision] as? Int,
+            protocolVersion: message[WatchSyncHandshake.Key.protocolVersion] as? Int)
+        Self.watchSyncLog.info("watch request outcome=\(String(describing: outcome), privacy: .public)")
+        refreshWatchSyncState()
+        // An incompatible Watch keeps its current state; still offer the latest snapshot.
+        pushSettingsContext(reason: .watchRequest)
+    }
+
+    /// Only a matching, valid acknowledgement confirms a snapshot.
+    private func handleWatchSyncAck(_ ack: WatchSyncHandshake.Ack) {
+        let outcome = watchSyncTracker.receive(ack: ack)
+        Self.watchSyncLog.info("ack outcome=\(String(describing: outcome), privacy: .public)")
+        refreshWatchSyncState()
+        switch outcome {
+        case .watchAhead, .watchBehind:
+            pushSettingsContext(reason: .watchRequest)
+        default:
+            break
         }
     }
 
@@ -1129,10 +1177,12 @@ extension AppModel {
         watchAppInstalled = installed
         // Anything published while the Watch app was missing was dropped, so resend settings, the
         // Today plan and the This Week totals once it appears.
-        if becameInstalled { pushSettingsContext(force: true) }
+        refreshWatchSyncState()
+        if becameInstalled { pushSettingsContext(reason: .installed) }
     }
 
     fileprivate func watchReachabilityChanged(reachable: Bool) {
+        if reachable { pushSettingsContext(reason: .reachability) }
         if reachable {
             for route in WatchHeartRateRouteStore().routes where route.finalizationRequested
                 && !watchHeartRateReceiver.isFinalizationComplete(sessionID: route.sessionID) {
@@ -1193,9 +1243,12 @@ extension AppModel {
             return
         }
         if message[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
-            Task { @MainActor [weak self] in
-                self?.pushSettingsContext(force: true)
-            }
+            handleWatchSyncRequest(message)
+            replyHandler?(["ack": true])
+            return
+        }
+        if let ack = WatchSyncHandshake.Ack(message: message) {
+            handleWatchSyncAck(ack)
             replyHandler?(["ack": true])
             return
         }
@@ -1250,6 +1303,14 @@ extension AppModel {
     fileprivate func handleWatchUserInfo(_ userInfo: [String: Any]) {
         if WatchHRMessage.isWatchHRPayload(userInfo) {
             handleWatchHeartRateProtocol(userInfo)
+            return
+        }
+        if let ack = WatchSyncHandshake.Ack(message: userInfo) {
+            handleWatchSyncAck(ack)
+            return
+        }
+        if userInfo[WatchSync.Key.command] as? String == WatchSync.Key.requestSettingsSync {
+            handleWatchSyncRequest(userInfo)
             return
         }
         guard let action = userInfo["action"] as? String else { return }

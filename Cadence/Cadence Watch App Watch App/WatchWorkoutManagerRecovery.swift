@@ -131,6 +131,7 @@ extension WatchWorkoutManager {
 
         workoutType = recoveredType
         phoneRequestID = defaults.string(forKey: PersistedWorkoutKey.phoneRequestID)
+        restorePhoneWorkoutSession()
         isMonitoring = monitoring
         isActive = !monitoring
         heartRateEnabled = true
@@ -160,6 +161,13 @@ extension WatchWorkoutManager {
         }
     }
 
+    enum PersistedWorkoutKey {
+        static let active = "watch.activeWorkout.active"
+        static let type = "watch.activeWorkout.type"
+        static let monitoring = "watch.activeWorkout.monitoring"
+        static let phoneRequestID = "watch.activeWorkout.phoneRequestID"
+    }
+
     func persistWorkoutMetadata(type: String, monitoring: Bool) {
         let defaults = UserDefaults.standard
         defaults.set(true, forKey: PersistedWorkoutKey.active)
@@ -178,6 +186,7 @@ extension WatchWorkoutManager {
         defaults.removeObject(forKey: PersistedWorkoutKey.type)
         defaults.removeObject(forKey: PersistedWorkoutKey.monitoring)
         defaults.removeObject(forKey: PersistedWorkoutKey.phoneRequestID)
+        defaults.removeObject(forKey: Self.phoneWorkoutSessionIDKey)
     }
 
     static func rawType(for activity: HKWorkoutActivityType) -> String {

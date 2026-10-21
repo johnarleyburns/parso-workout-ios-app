@@ -37,10 +37,11 @@ extension WatchWorkoutManager {
 
     /// Attaches the phone's request to the workout its launch started.
     /// Returns false when there is no such workout to adopt.
-    func adoptPhoneLaunchedWorkout(requestID: UUID, type: String) -> Bool {
+    func adoptPhoneLaunchedWorkout(requestID: UUID, type: String, phoneWorkoutSessionID: UUID? = nil) -> Bool {
         guard phoneLaunchPendingSince != nil, phoneRequestID == nil, isActive else { return false }
         phoneLaunchPendingSince = nil
         phoneRequestID = requestID.uuidString
+        bindPhoneWorkoutSession(phoneWorkoutSessionID)
         workoutType = type
         persistWorkoutMetadata(type: type, monitoring: false)
         // Sends a reading that is already in, and arms the heartbeat, which

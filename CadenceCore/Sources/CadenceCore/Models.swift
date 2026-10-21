@@ -87,6 +87,10 @@ public struct PlannedExercisePrescription: Codable, Equatable, Sendable {
     public var exerciseName: String
     public var sets: [PlannedSetPrescription]
     public var supersetGroup: String?
+    /// Plan-authored rest policy (nil on legacy data). Resolved only through
+    /// `TransitionRestResolver`.
+    public var defaultRestSeconds: Int?
+    public var transitionRestSeconds: Int?
 
     /// Source-compatible initializer retained for clients compiled against the
     /// shipped prescription shape.
@@ -97,7 +101,11 @@ public struct PlannedExercisePrescription: Codable, Equatable, Sendable {
 
     public init(sourceItemID: UUID? = nil, exerciseKey: String? = nil,
                 exerciseName: String, sets: [PlannedSetPrescription],
-                supersetGroup: String? = nil) {
+                supersetGroup: String? = nil,
+                defaultRestSeconds: Int? = nil,
+                transitionRestSeconds: Int? = nil) {
+        self.defaultRestSeconds = defaultRestSeconds
+        self.transitionRestSeconds = transitionRestSeconds
         self.sourceItemID = sourceItemID
         self.exerciseKey = exerciseKey
         self.exerciseName = exerciseName

@@ -73,8 +73,20 @@ extension SessionView {
             } else { active.nextExercise = nil }
         }
         if settings.autoStartRest && !isWarmup && !isManualLog && active.strengthSession?.id == session.id {
-            rest.start(seconds: settings.restSeconds)
-            syncRestAlarm(to: rest.endsAt)
+            // Rest policy resolves through the single pure resolver so the
+            // set-rest vs exercise-transition distinction reaches the timer.
+            let completed = (session.orderedSets).filter {
+                $0.exercise?.id == exercise.id && !$0.isWarmup
+            }.count
+            if let seconds = TransitionRestResolver.restAfterSet(
+                prescriptions: session.plannedPrescriptions,
+                exerciseName: exercise.name,
+                completedSetCount: completed,
+                isWarmup: isWarmup,
+                fallbackSeconds: settings.restSeconds) {
+                rest.start(seconds: seconds)
+                syncRestAlarm(to: rest.endsAt)
+            }
         }
     }
 

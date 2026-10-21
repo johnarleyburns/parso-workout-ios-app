@@ -96,6 +96,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         guard let rawAction = message[WatchSync.Key.command] as? String,
               let action = WatchHRCommand.Action(rawValue: rawAction) else { return ["ack": false] }
         let command = WatchHRCommand(payload: message)
+        if action == .query { return stateReport(queryIssuedAt: command?.issuedAt).payload }
         let phoneSessionID = command?.phoneWorkoutSessionID
         if let command, !command.isNewer(than: lastAppliedWatchHRCommandAt) {
             if action == .start,

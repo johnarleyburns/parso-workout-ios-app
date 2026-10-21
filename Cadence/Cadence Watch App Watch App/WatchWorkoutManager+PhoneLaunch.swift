@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import WatchKit
+import CadenceFeatures
 
 // MARK: - Workouts the iPhone opens on the Watch
 //
@@ -17,7 +18,10 @@ extension WatchWorkoutManager {
     /// How long a phone-launched workout waits for the phone's command before
     /// ending itself, so a launch the phone never follows up (the phone app
     /// quit, or the attempt was cancelled) doesn't leave a workout running.
-    static let phoneLaunchAdoptionTimeout: Duration = .seconds(90)
+    /// Long enough for the durable (`transferUserInfo`) copy of the command and
+    /// the phone's reconciliation to arrive; a valid workout is not ended
+    /// merely because the interactive packet was missed.
+    static let phoneLaunchAdoptionTimeout: Duration = .seconds(600)
 
     func startPhoneLaunchedWorkout(configuration: HKWorkoutConfiguration) {
         setDisplayActive(WKApplication.shared().applicationState == .active)
@@ -29,6 +33,7 @@ extension WatchWorkoutManager {
         guard startWorkout(type: Self.rawType(for: configuration.activityType), spec: Self.swimSpec(from: configuration)) else { return }
         let launchedAt = Date()
         phoneLaunchPendingSince = launchedAt
+        unclaimedHR.discard()
         Task { @MainActor [weak self] in
             try? await Task.sleep(for: Self.phoneLaunchAdoptionTimeout)
             self?.endUnclaimedPhoneLaunch(startedAt: launchedAt)
@@ -44,6 +49,14 @@ extension WatchWorkoutManager {
         bindPhoneWorkoutSession(phoneWorkoutSessionID)
         workoutType = type
         persistWorkoutMetadata(type: type, monitoring: false)
+        // Readings measured before adoption belong to this launch's session
+        // window; relay the newest, then the heartbeat resumes normally.
+        if let launchStart = sessionStart,
+           let newest = unclaimedHR.claim(from: launchStart, through: Date()).last,
+           relaySchedule.observeReading(endingAt: newest.isHealthKit ? newest.sampleEnd : nil, uptime: ProcessInfo.processInfo.systemUptime) {
+            lastObservedReading = (newest.bpm, newest.sampleEnd, newest.isHealthKit)
+            currentBPM = newest.bpm
+        }
         // Sends a reading that is already in, and arms the heartbeat, which
         // reads the builder even while the screen is off.
         sendHeartRateToPhoneSoon()
@@ -68,6 +81,21 @@ extension WatchWorkoutManager {
 
     private func endUnclaimedPhoneLaunch(startedAt: Date) {
         guard phoneLaunchPendingSince == startedAt, phoneRequestID == nil, isActive else { return }
+        unclaimedHR.discard()
         stopWorkout(save: false)
+    }
+
+    /// Read-only answer to the phone's `query_state`: what this Watch actually
+    /// owns, without BPM values or HealthKit identifiers.
+    func stateReport(queryIssuedAt: TimeInterval?) -> WatchHRStateReport {
+        WatchHRStateReport(
+            isWorkoutActive: isActive || isMonitoring,
+            healthKitRunning: session?.state == .running,
+            workoutType: workoutType,
+            adoptedRequestID: phoneRequestID.flatMap(UUID.init(uuidString:)),
+            adoptedPhoneSessionID: phoneWorkoutSessionID,
+            awaitingAdoption: phoneLaunchPendingSince != nil && phoneRequestID == nil,
+            lastRealSampleAt: lastObservedReading?.isHealthKit == true ? lastObservedReading?.end : nil,
+            queryIssuedAt: queryIssuedAt)
     }
 }

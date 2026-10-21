@@ -23,8 +23,15 @@ extension WatchWorkoutManager {
     /// sample) or from a Bluetooth strap (`nil`). Sends it to the phone unless
     /// it was already handled.
     func relayReading(_ bpm: Double, endingAt sampleEnd: Date?) {
-        guard phoneRequestID != nil,
-              relaySchedule.observeReading(endingAt: sampleEnd, uptime: uptimeNow) else { return }
+        // Never drop a real reading just because the phone's command has not
+        // been adopted: hold it (bounded) until a matching adoption claims it.
+        if phoneRequestID == nil {
+            if phoneLaunchPendingSince != nil {
+                unclaimedHR.append(bpm: bpm, sampleEnd: sampleEnd ?? Date(), isHealthKit: sampleEnd != nil)
+            }
+            return
+        }
+        guard relaySchedule.observeReading(endingAt: sampleEnd, uptime: uptimeNow) else { return }
         // A strap reading has no sample time; stamp it when observed.
         lastObservedReading = (bpm, sampleEnd ?? Date(), sampleEnd != nil)
         sendHeartRateToPhoneSoon()

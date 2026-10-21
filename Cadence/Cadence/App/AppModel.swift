@@ -124,6 +124,11 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var watchError: String?
     let watchHRRelay: WatchHRRelay
     private var watchTimeout: Timer?
+    /// Handshake state for the current phone-owned Watch-HR connection.
+    private(set) var watchHRConnection = WatchHRConnection()
+    @ObservationIgnored private var watchReconcileTimer: Timer?
+    @ObservationIgnored private var lastWatchStartCommand: WatchHRCommand?
+    @ObservationIgnored private let watchHRLog = Logger(subsystem: "guru.parso.cladiron", category: "watch-hr")
     /// Monotonic stamp shared by immediate and guaranteed-background control
     /// messages. The Watch uses it to ignore a delayed stop from an older
     /// workout after a newer workout has already begun.
@@ -700,6 +705,12 @@ final class AppModel: NSObject, @unchecked Sendable {
         // Watch, this is delivered as soon as the launch below brings it up,
         // and names the workout the launch started. The Watch treats the
         // immediate and queued copies as one command.
+        lastWatchStartCommand = command
+        if let phoneSessionID {
+            watchHRConnection.start(.init(phoneSessionID: phoneSessionID, requestID: requestID), now: Date())
+            watchHRLog.info("command queued state=\(self.watchHRConnection.state.label, privacy: .public)")
+            scheduleWatchReconcile()
+        }
         session.transferUserInfo(command.payload)
         watchActive = false
         // Armed first so a launch that fails at once can cancel it.
@@ -742,6 +753,10 @@ final class AppModel: NSObject, @unchecked Sendable {
     private func applyWatchStartReply(requestID: UUID, accepted: Bool,
                                       rejection: WatchHRRejection?, activeRequestID: UUID?) {
         guard requestID == watchHRRelay.activeRequestID else { return }
+        if accepted, let sessionID = watchRequestSessionIDs[requestID],
+           watchHRConnection.adopted(.init(phoneSessionID: sessionID, requestID: requestID)) {
+            watchHRLog.info("adoption accepted")
+        }
         guard let pending = pendingWatchStart, pending.requestID == requestID else {
             if accepted { watchHRRelay.acknowledged() }
             return
@@ -851,6 +866,100 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
+    // MARK: - Watch HR reconciliation
+
+    /// Plain-language state for the live-workout HR row.
+    var watchHRStatusText: String {
+        switch watchHRConnection.state {
+        case .notRequested, .ended, .ending: return String(localized: "Apple Watch HR is not connected")
+        case .startingWatchWorkout: return String(localized: "Connecting to Watch")
+        case .awaitingWatchAdoption, .awaitingFirstSample: return String(localized: "Watch workout started—waiting for HR")
+        case .live: return watchHRConnection.isLive(now: Date())
+            ? String(localized: "Receiving live HR") : String(localized: "Connection needs attention")
+        case .reconciling: return String(localized: "Reconnecting")
+        case .recoverableFailure(.watchOnlyWorkoutActive, _):
+            return String(localized: "A workout is already running on your Apple Watch. End it there, then tap Reconnect Apple Watch HR.")
+        case .recoverableFailure: return String(localized: "Connection needs attention")
+        }
+    }
+
+    /// The "Reconnect Apple Watch HR" action: runs the scoped protocol; it
+    /// never starts a second Watch workout.
+    func reconnectWatchHR() {
+        guard let reason = watchHRConnection.userReconnect(now: Date()) else { return }
+        sendWatchStateQuery(reason)
+        scheduleWatchReconcile()
+    }
+
+    private func requestWatchReconcile(_ reason: WatchHRReconcileReason) {
+        guard let reason = watchHRConnection.reachabilityOrActivation(reason, now: Date()) else { return }
+        sendWatchStateQuery(reason)
+        scheduleWatchReconcile()
+    }
+
+    /// One-shot timer for the next bounded attempt; no continuous polling.
+    private func scheduleWatchReconcile() {
+        watchReconcileTimer?.invalidate()
+        watchReconcileTimer = Timer.scheduledTimer(withTimeInterval: WatchHRConnection.initialWait, repeats: false) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                if let reason = self.watchHRConnection.tick(now: Date()) {
+                    self.sendWatchStateQuery(reason)
+                    self.scheduleWatchReconcile()
+                } else if case .reconciling = self.watchHRConnection.state {
+                    self.scheduleWatchReconcile()
+                }
+            }
+        }
+    }
+
+    private func sendWatchStateQuery(_ reason: WatchHRReconcileReason) {
+        guard let identity = watchHRConnection.identity, let session = wcSession else { return }
+        watchHRLog.info("state query reason=\(reason.rawValue, privacy: .public) attempt=\(self.watchHRConnection.attempts)")
+        guard session.isReachable else {
+            // Guaranteed delivery: redeliver the idempotent start; the Watch
+            // treats a repeat of an adopted command as the same command.
+            redeliverWatchStart()
+            return
+        }
+        let query = WatchHRCommand(action: .query, requestID: identity.requestID,
+                                   issuedAt: nextWatchHRCommandIssuedAt())
+        session.sendMessage(query.payload, replyHandler: { [weak self] reply in
+            let box = UncheckedWatchUserInfo(value: reply)
+            Task { @MainActor [weak self] in self?.applyWatchStateReply(box.value, identity: identity) }
+        }, errorHandler: { [weak self] _ in
+            Task { @MainActor [weak self] in self?.redeliverWatchStart() }
+        })
+    }
+
+    private func redeliverWatchStart() {
+        guard let command = lastWatchStartCommand, command.requestID == watchHRConnection.identity?.requestID else { return }
+        wcSession?.transferUserInfo(command.payload)
+        if wcSession?.isReachable == true { wcSession?.sendMessage(command.payload, replyHandler: nil, errorHandler: nil) }
+    }
+
+    private func applyWatchStateReply(_ reply: [String: Any], identity: WatchHRConnectionIdentity) {
+        guard identity == watchHRConnection.identity, let report = WatchHRStateReport(payload: reply) else { return }
+        let decision = WatchHRConnection.decide(report: report, expecting: identity)
+        watchHRLog.info("reconcile decision applied")
+        watchHRConnection.apply(decision)
+        switch decision {
+        case .accept:
+            watchHRRelay.acknowledged()
+        case .redeliverStart:
+            redeliverWatchStart()
+        case .stopOrphan(let orphan):
+            // Only ever a phone-owned session (it carries a request ID); a
+            // Watch-only workout reports no ID and is a conflict instead.
+            let stop = WatchHRCommand(action: .stop, requestID: orphan, issuedAt: nextWatchHRCommandIssuedAt())
+            wcSession?.sendMessage(stop.payload, replyHandler: nil, errorHandler: nil)
+            wcSession?.transferUserInfo(stop.payload)
+            redeliverWatchStart()
+        case .conflict:
+            watchError = watchHRStatusText
+        }
+    }
+
     /// Tells the Apple Watch to end the `HKWorkoutSession` and stop streaming.
     func stopWatchWorkout() {
         stopWatchWorkout(targetRequestID: watchHRRelay.activeRequestID)
@@ -861,6 +970,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     private func stopWatchWorkout(targetRequestID: UUID?) {
         watchRetryArmed = false
         watchTimeout?.invalidate(); watchTimeout = nil
+        watchReconcileTimer?.invalidate(); watchReconcileTimer = nil
+        if watchHRConnection.identity?.requestID == targetRequestID { watchHRConnection.end() }
         watchHRRelay.cancel()
         if recordsWatchStop {
             watchStopCount += 1
@@ -1029,6 +1140,8 @@ extension AppModel {
             }
         }
         guard reachable, watchHRRelay.activeRequestID != nil else { return }
+        watchHRLog.info("reachability restored")
+        requestWatchReconcile(.reachabilityChanged)
         // The Watch retries its latest sample after reachability returns. This
         // keeps a transient Apple Fitness/WatchConnectivity interruption from
         // becoming a permanent phone-side HR failure.
@@ -1093,9 +1206,19 @@ extension AppModel {
             replyHandler?(["ack": false])
             return
         }
+        if let rejection = watchHRRelay.sampleRejection(requestID: requestID) {
+            // Explicit negative status, never `ack: true`, so the Watch and the
+            // user can see the sample was not applied.
+            watchHRLog.notice("sample rejected reason=\(rejection, privacy: .public)")
+            if rejection == "requestMismatch" { _ = watchHRConnection.receiveSample(requestID: requestID, at: Date()) }
+            replyHandler?(["ack": false, "rejection": rejection])
+            if rejection == "requestMismatch" { requestWatchReconcile(.requestMismatch) }
+            return
+        }
         Task { @MainActor [weak self] in
             guard let self else { return }
             if self.watchHRRelay.receive(bpm: Int(bpm), requestID: requestID) {
+                _ = self.watchHRConnection.receiveSample(requestID: requestID, at: Date())
                 self.watchTimeout?.invalidate(); self.watchTimeout = nil
                 self.watchError = nil
                 self.watchActive = true

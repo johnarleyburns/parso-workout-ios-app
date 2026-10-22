@@ -695,28 +695,20 @@ public enum CoachPlanOptimizer {
                                     experience: ExperienceLevel,
                                     desiredSetsPerExercise: Int,
                                     policy: PlanningConstraintPolicy) -> Int {
-        guard !deficits.isEmpty else {
-            return min(policy.maxSetsPerExercise, max(2, exercise.sets ?? desiredSetsPerExercise))
+        let perSet = deficits.isEmpty ? [:] : PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [copy(exercise, sets: 1)])
+        func keyed(_ d: [MuscleGroup: Double]) -> [String: Double] {
+            Dictionary(uniqueKeysWithValues: d.map { ($0.key.rawValue, $0.value) })
         }
-        let perSet = PlanAwareWeeklyAccounting.plannedSetsByGroup(from: [copy(exercise, sets: 1)])
-        guard perSet.contains(where: { deficits[$0.key] != nil && $0.value > 0 }) else { return 0 }
-        var needed = 1
-        for (group, amount) in deficits {
-            guard let contribution = perSet[group], contribution > 0 else { continue }
-            needed = max(needed, Int(ceil(amount / contribution)))
-        }
-
-        var safe = policy.maxSetsPerExercise
-        if policy.respectsMRVCeiling {
-            for (group, contribution) in perSet where contribution > 0 {
-                let bands = VolumeLandmarks.bands(for: group, experience: experience)
-                let remaining = bands.mrv - (projected[group] ?? 0)
-                safe = min(safe, Int(floor(max(0, remaining) / contribution)))
-            }
-        }
-
-        let desired = max(exercise.sets ?? desiredSetsPerExercise, needed)
-        return min(policy.maxSetsPerExercise, max(0, safe), max(1, desired))
+        return PlanningSetAllocator.plannedSets(
+            requestedSets: exercise.sets,
+            desiredSetsPerExercise: desiredSetsPerExercise,
+            perSetContribution: keyed(perSet),
+            deficits: keyed(deficits),
+            projected: keyed(projected),
+            mrv: Dictionary(uniqueKeysWithValues: perSet.keys.map {
+                ($0.rawValue, VolumeLandmarks.bands(for: $0, experience: experience).mrv)
+            }),
+            policy: policy)
     }
 
     private static func bestExercise(for group: MuscleGroup,
@@ -891,15 +883,12 @@ public enum CoachPlanOptimizer {
                                             schedulePreferences: CoachSchedulePreferences,
                                             policy: PlanningConstraintPolicy) -> Bool {
         let calendar = Calendar.current
-        if policy.respectsRestDays,
-           isRestDay(date: date, restPreference: schedulePreferences.restPreference, calendar: calendar) {
-            return false
-        }
-        if policy.respectsRecoveryEligibility, let wholeBody = facts.recovery.wholeBody {
-            let plannedMidday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-            if plannedMidday < wholeBody.hardEligibleAt { return false }
-        }
-        return true
+        let rest = policy.respectsRestDays
+            && isRestDay(date: date, restPreference: schedulePreferences.restPreference, calendar: calendar)
+        let midday = calendar.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+        return PlanningSetAllocator.hardStrengthAllowed(
+            isRestDay: rest, plannedMiddayTime: midday,
+            wholeBodyHardEligibleAt: facts.recovery.wholeBody?.hardEligibleAt, policy: policy)
     }
 
     private static func isExerciseEligible(_ exercise: CoachSession.RecommendedExercise,
@@ -1105,7 +1094,7 @@ public enum CoachPlanOptimizer {
     /// Inverse-e1RM at the planned rep target, rounded to the nearest half unit.
     private static func load(fromE1RM e1rm: Double, reps: Int) -> Double? {
         let suggested = WeightSuggestion.inverseE1RM(e1rm: e1rm, reps: reps, formula: .epley)
-        return suggested > 0 ? (suggested * 2).rounded() / 2 : nil
+        return PlanningSetAllocator.roundedLoad(suggested)
     }
 
     /// Catalog fallbacks per muscle group, in descending preference. Each list

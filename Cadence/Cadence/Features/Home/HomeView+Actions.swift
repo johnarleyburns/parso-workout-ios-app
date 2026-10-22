@@ -20,7 +20,8 @@ extension HomeView {
     func markWorkoutHistoryChanged() {
         Task { @MainActor in
             await Task.yield()
-            historyRefreshToken = UUID()
+            HomeTodayCache.invalidate()
+            historyRefreshToken = HomeTodayCache.revision
         }
     }
 

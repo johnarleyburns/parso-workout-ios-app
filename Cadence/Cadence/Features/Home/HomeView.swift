@@ -72,7 +72,7 @@ struct HomeView: View {
     @State var today: DayActivity?
     @State var activityTrend: [DayActivity] = []
     @State var passiveSamples: [PassiveReadinessSample] = []
-    @State var historyRefreshToken = UUID()
+    @State var historyRefreshToken = HomeTodayCache.revision
     @State var liveVolumeDelta: [MuscleGroup: Double] = [:]
     @State var timerCardioSetup: TimerCardioSetup?
     @State var pendingPlan: EditablePlan?
@@ -229,7 +229,7 @@ struct HomeView: View {
     /// now live in `HomeCoachModel` where they are unit-tested.
     var coachSignature: HomeCoachModel.Signature {
         HomeCoachModel.signature(
-            token: historyRefreshToken,
+            token: HomeTodayCache.revision,
             sessions: sessions,
             cardio: cardio,
             assessments: assessments,

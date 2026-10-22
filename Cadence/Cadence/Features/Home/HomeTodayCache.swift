@@ -9,6 +9,15 @@ import CadenceFeatures
 @MainActor
 enum HomeTodayCache {
     private static var snapshot: (key: Key, value: HomeCoachSnapshot)?
+    /// Process-wide history revision shared by every `HomeView` identity, so
+    /// recreating a view (or opening This Week) never changes the cache key.
+    /// Only a real invalidation (workout saved, ingest, day change) replaces it.
+    static var revision = UUID()
+
+    static func invalidate() {
+        revision = UUID()
+        snapshot = nil
+    }
     /// Durable same-local-day Today suggestion cache (see `TodaySuggestedWorkoutCacheStore`).
     static let suggestionStore = TodaySuggestedWorkoutCacheStore(
         fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL())
@@ -33,7 +42,8 @@ extension HomeView {
     func buildAndCacheCoachSnapshot() async -> HomeCoachSnapshot {
         let key = todayCacheKey
         let snapshot = await buildCoachSnapshot()
-        HomeTodayCache.store(snapshot, for: key)
+        // Only Today owns the cache; This Week must not evict its entry.
+        if surface == .today { HomeTodayCache.store(snapshot, for: key) }
         return snapshot
     }
 }

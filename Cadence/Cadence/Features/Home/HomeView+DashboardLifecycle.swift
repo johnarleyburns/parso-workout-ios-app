@@ -11,7 +11,8 @@ extension HomeView {
                 let today = Self.dayString()
                 if settings.lastCoachComputeDay != today {
                     settings.lastCoachComputeDay = today
-                    historyRefreshToken = UUID()
+                    HomeTodayCache.invalidate()
+                    historyRefreshToken = HomeTodayCache.revision
                 }
                 if contributionPromptAllowed { contributions.evaluate() }
                 if CadencePlatformRequestStore.consumeStartWorkout() {
@@ -107,9 +108,10 @@ extension HomeView {
                 if let cached = HomeTodayCache.cachedSnapshot(for: todayCacheKey) {
                     coachSnapshot = cached
                     coachSnapshotReady = true
-                } else {
-                    coachSnapshotReady = false
+                    if cachedDashboard == nil { cachedDashboard = makeDashboard() }
+                    return
                 }
+                coachSnapshotReady = false
                 await refreshCoachSnapshot()
             }
             .task(id: HomeActivityTaskIdentity(

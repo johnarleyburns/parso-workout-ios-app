@@ -9,55 +9,21 @@ import CadenceFeatures
 ///   renders the hero immediately after an app relaunch, and
 /// - an in-process full `HomeCoachSnapshot` so tab switches / view recreation
 ///   skip the coach pipeline entirely.
-/// This Week never writes here, so it cannot evict Today.
+/// The ownership boundary lives in `TodayRecommendationCoordinator`: calls
+/// from `.thisWeek` cannot write, restore-and-discard, or invalidate.
 @MainActor
 enum HomeTodayCache {
-    private static var snapshot: (fingerprint: String, passiveStamp: String, value: HomeCoachSnapshot)?
-    private static var pendingInvalidation: Task<Void, Never>?
+    static let coordinator = TodayRecommendationCoordinator<HomeCoachSnapshot>(
+        recommendationStore: TodayRecommendationCacheStore(
+            fileURL: TodayRecommendationCacheStore.defaultFileURL()),
+        suggestionStore: TodaySuggestedWorkoutCacheStore(
+            fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL()))
 
-    /// Durable same-local-day Today suggestion cache (see `TodaySuggestedWorkoutCacheStore`).
-    static let suggestionStore = TodaySuggestedWorkoutCacheStore(
-        fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL())
-    static let recommendationStore = TodayRecommendationCacheStore(
-        fileURL: TodayRecommendationCacheStore.defaultFileURL())
+    static var suggestionStore: TodaySuggestedWorkoutCacheStore { coordinator.suggestionStore }
+}
 
-    /// In-process hit. `passiveStamp == nil` = HealthKit readiness not loaded yet.
-    static func cachedSnapshot(fingerprint: String, passiveStamp: String?) -> HomeCoachSnapshot? {
-        guard let snapshot, snapshot.fingerprint == fingerprint,
-              passiveStamp == nil || snapshot.passiveStamp == passiveStamp else { return nil }
-        return snapshot.value
-    }
-
-    static func store(_ value: HomeCoachSnapshot, fingerprint: String, passiveStamp: String) {
-        snapshot = (fingerprint, passiveStamp, value)
-        let payload = TodayRecommendationPayload(
-            hero: TodayHeroPresenter.recommendation(value.decision),
-            primaryIsStrength: value.decision.primary.kind == .strength)
-        let store = recommendationStore
-        Task { await store.save(payload, fingerprint: fingerprint, passiveStamp: passiveStamp) }
-    }
-
-    /// Single invalidation point for history / preference / readiness changes
-    /// (workout complete, import, edit, delete, HealthKit and CloudKit refresh).
-    static func invalidate() {
-        snapshot = nil
-        let plans = suggestionStore, recs = recommendationStore
-        let previous = pendingInvalidation
-        pendingInvalidation = Task {
-            await previous?.value
-            await plans.invalidate()
-            await recs.invalidate()
-        }
-    }
-
-    /// Lets a just-requested invalidation reach disk before a restore reads it.
-    static func settleInvalidation() async { await pendingInvalidation?.value }
-
-    static func restoreDurable(fingerprint: String, passiveStamp: String?)
-        async -> (payload: TodayRecommendationPayload, passiveStamp: String)? {
-        await settleInvalidation()
-        return await recommendationStore.restore(fingerprint: fingerprint, passiveStamp: passiveStamp)
-    }
+extension HomeView.Surface {
+    var cacheSurface: TodayCacheSurface { self == .today ? .today : .thisWeek }
 }
 
 extension HomeView {
@@ -88,24 +54,31 @@ extension HomeView {
     func buildAndCacheCoachSnapshot() async -> HomeCoachSnapshot {
         let key = todayFingerprint
         let snapshot = await buildCoachSnapshot()
-        HomeTodayCache.store(snapshot, fingerprint: key.fingerprint, passiveStamp: key.passiveStamp)
+        HomeTodayCache.coordinator.store(
+            snapshot,
+            payload: TodayRecommendationPayload(
+                hero: TodayHeroPresenter.recommendation(snapshot.decision),
+                primaryIsStrength: snapshot.decision.primary.kind == .strength),
+            fingerprint: key.fingerprint, passiveStamp: key.passiveStamp,
+            surface: surface.cacheSurface)
         return snapshot
     }
 
     /// Restores a valid cached recommendation without running the coach
     /// pipeline. Returns true when no recomputation is needed.
     func restoreTodayRecommendation() async -> Bool {
-        await HomeTodayCache.settleInvalidation()
+        await HomeTodayCache.coordinator.settle()
         let key = todayFingerprint
         let passive: String? = passiveSamplesLoaded ? key.passiveStamp : nil
-        if let cached = HomeTodayCache.cachedSnapshot(fingerprint: key.fingerprint, passiveStamp: passive) {
+        if let cached = HomeTodayCache.coordinator.cachedSnapshot(fingerprint: key.fingerprint, passiveStamp: passive) {
             coachSnapshot = cached
             coachSnapshotReady = true
             restoredRecommendation = nil
             return true
         }
         guard !coachSnapshotReady,
-              let hit = await HomeTodayCache.restoreDurable(fingerprint: key.fingerprint, passiveStamp: passive)
+              let hit = await HomeTodayCache.coordinator.restoreDurable(
+                  fingerprint: key.fingerprint, passiveStamp: passive, surface: surface.cacheSurface)
         else {
             restoredRecommendation = nil
             return false
@@ -143,7 +116,7 @@ extension HomeView {
         Task {
             let key = todayFingerprint
             if coachSnapshotReady,
-               HomeTodayCache.cachedSnapshot(fingerprint: key.fingerprint,
+               HomeTodayCache.coordinator.cachedSnapshot(fingerprint: key.fingerprint,
                                              passiveStamp: key.passiveStamp) != nil { return }
             await refreshCoachSnapshot()
         }

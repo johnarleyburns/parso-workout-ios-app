@@ -20,7 +20,11 @@ extension HomeView {
         else { return }
         // Heavy catalog mapping runs off the main actor; the remaining
         // history capture is deferred past launch so first frames stay smooth.
-        try? await Task.sleep(for: .seconds(1.5))
+        // A valid durable same-day plan restores immediately; only a cold
+        // generation is deferred past launch.
+        if !(await HomeTodayCache.suggestionStore.hasSameDayEntry()) {
+            try? await Task.sleep(for: .seconds(1.5))
+        }
         guard !Task.isCancelled else { return }
         let candidates = await loadSuggestionCandidates()
         guard !Task.isCancelled, todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,

@@ -216,6 +216,14 @@ public actor TodaySuggestedWorkoutCacheStore {
         return String(format: "%04d-%02d-%02d@%@", c.year ?? 0, c.month ?? 0, c.day ?? 0, tz)
     }
 
+    /// True when a valid same-day, current-schema record exists, so Today can
+    /// skip the artificial generation delay (the fingerprint check still runs).
+    public func hasSameDayEntry() -> Bool {
+        guard let env = loadEnvelope() else { return false }
+        return env.schemaVersion == Self.schemaVersion && env.dayKey == dayKey()
+            && !env.plan.exercises.isEmpty
+    }
+
     /// Returns the cached plan for this day + fingerprint, deleting any stale,
     /// corrupt or wrong-version record.
     public func restore(fingerprint: String) -> TodaySuggestedPlanPayload? {

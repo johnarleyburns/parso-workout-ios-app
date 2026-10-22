@@ -104,13 +104,7 @@ extension HomeView {
             .task(id: HomeCoachTaskIdentity(
                 signature: coachSignature,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-                if let cached = HomeTodayCache.cachedSnapshot(for: todayCacheKey) {
-                    coachSnapshot = cached
-                    coachSnapshotReady = true
-                } else {
-                    coachSnapshotReady = false
-                }
-                await refreshCoachSnapshot()
+                await runCoachTask()
             }
             .task(id: HomeActivityTaskIdentity(
                 historyRefreshToken: historyRefreshToken,
@@ -136,7 +130,7 @@ extension HomeView {
             }
             .onChange(of: historyRefreshToken) { _, _ in
                 todaySuggestedPlan = nil
-                Task { await HomeTodayCache.suggestionStore.invalidate() }
+                HomeTodayCache.invalidate()
                 // A completion invalidates the request snapshot as well as
                 // the rendered plan. The detached solver may still be running;
                 // cancel it and invalidate its generation so its pre-completion
@@ -146,7 +140,7 @@ extension HomeView {
             // Passive HealthKit samples arrive asynchronously after the initial
             // pipeline run; rebuild the snapshot whenever they change.
             .onChange(of: passiveSamples) {
-                Task { await refreshCoachSnapshot() }
+                handlePassiveSamplesChanged()
             }
             .coachOverrideConfirmation(
                 pending: $pendingAddGapsDeficits,

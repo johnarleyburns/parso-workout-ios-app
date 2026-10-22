@@ -21,7 +21,14 @@ import Testing
                 if url.pathExtension == "swift" { files.append(url) }
             }
         }
-        #expect(files.count > 1)
+        let app = features.deletingLastPathComponent()
+        for rel in ["Coach/CoachDecisionCardView.swift", "Coach/CoachRow.swift",
+                    "Home/HomeTodayHeroCard.swift", "Home/MuscleFocusThumbnail.swift",
+                    "Progress/ProgressStrengthChartView.swift"] {
+            files.append(features.appendingPathComponent(rel))
+        }
+        files.append(app.appendingPathComponent("App/RootTabView.swift"))
+        #expect(files.count > 7)
         let pattern = try Regex(#"minimumScaleFactor\(\s*(0?\.\d+|0)\s*\)"#)
         for file in files {
             let text = try String(contentsOf: file, encoding: .utf8)

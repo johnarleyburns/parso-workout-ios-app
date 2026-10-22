@@ -96,8 +96,6 @@ struct ProgressStrengthChartView: View {
                             .accessibilityHidden(true)
                         Text(series.exercise)
                             .font(.subheadline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
                         Spacer()
                         Text(series.points.isEmpty
                              ? "—"

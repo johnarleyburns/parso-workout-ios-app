@@ -14,8 +14,7 @@ struct MuscleFocusThumbnail: View {
             Circle().fill(CadenceTheme.accent.opacity(0.14))
             Text("\(count)")
                 .font(.title.weight(.semibold))
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 .padding(8)
         }
         .frame(width: Self.size, height: Self.size)

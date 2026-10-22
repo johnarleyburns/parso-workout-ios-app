@@ -25,7 +25,10 @@ echo "accessibility ratchet: fixed_width=$fixed_width/$max_fixed_width lineLimit
 # Live workout roots must reflow (wrap / scroll / vertical layouts) instead of
 # shrinking text: no minimumScaleFactor below 1. ShareCardRenderer is a fixed
 # exported image and is intentionally excluded.
-live_roots=("$features/Train" "$features/Intervals" "$features/Shared/WorkoutElapsedHeader.swift")
+live_roots=("$features/Train" "$features/Intervals" "$features/Shared/WorkoutElapsedHeader.swift"
+  "$features/Coach/CoachDecisionCardView.swift" "$features/Coach/CoachRow.swift"
+  "$features/Home/HomeTodayHeroCard.swift" "$features/Home/MuscleFocusThumbnail.swift"
+  "$features/Progress/ProgressStrengthChartView.swift" "$root/Cadence/Cadence/App/RootTabView.swift")
 if rg -n 'minimumScaleFactor\((0?\.[0-9]+|0)\)' "${live_roots[@]}" --glob '*.swift'; then
   echo "accessibility ratchet failed: sub-1 minimumScaleFactor in a live workout root" >&2
   exit 1

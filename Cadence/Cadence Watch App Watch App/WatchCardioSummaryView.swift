@@ -50,8 +50,6 @@ struct WatchCardioSummaryView: View {
             Text(value)
                 .font(.system(.caption, design: .monospaced).bold())
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
         }
         .padding(.horizontal, 20)
     }

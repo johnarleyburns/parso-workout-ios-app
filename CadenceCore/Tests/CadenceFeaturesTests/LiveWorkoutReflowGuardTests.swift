@@ -36,4 +36,20 @@ import Testing
                     "\(file.lastPathComponent) shrinks text with minimumScaleFactor < 1")
         }
     }
+
+    /// Issue #305: every Watch source file must reflow, not shrink text.
+    @Test func watchSourcesDoNotShrinkText() throws {
+        let watchDir = Self.featuresDir.deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Cadence Watch App Watch App")
+        let enumerator = FileManager.default.enumerator(at: watchDir, includingPropertiesForKeys: nil)
+        var files: [URL] = []
+        while let url = enumerator?.nextObject() as? URL { if url.pathExtension == "swift" { files.append(url) } }
+        #expect(files.count > 10)
+        let pattern = try Regex(#"minimumScaleFactor\(\s*(0?\.\d+|0)\s*\)"#)
+        for file in files {
+            let text = try String(contentsOf: file, encoding: .utf8)
+            #expect(text.firstMatch(of: pattern) == nil,
+                    "\(file.lastPathComponent) shrinks text with minimumScaleFactor < 1")
+        }
+    }
 }

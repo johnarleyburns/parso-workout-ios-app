@@ -87,8 +87,6 @@ struct WatchIntervalSetupView: View {
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
                 .frame(width: 40, alignment: .leading)
 
             ForEach(options, id: \.value) { option in
@@ -97,8 +95,6 @@ struct WatchIntervalSetupView: View {
                 } label: {
                     Text(option.label)
                         .font(.system(size: 13, weight: .semibold))
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.75)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
                         .background(selection.wrappedValue == option.value ? Color.white.opacity(0.22) : Color.white.opacity(0.08))
@@ -119,8 +115,6 @@ struct WatchIntervalSetupView: View {
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
                 .frame(width: 40, alignment: .leading)
 
             stepButton(systemName: "minus.circle.fill", disabled: value.wrappedValue <= range.lowerBound) {
@@ -131,8 +125,6 @@ struct WatchIntervalSetupView: View {
             Text(format(value.wrappedValue))
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
                 .frame(width: 56)
 
             stepButton(systemName: "plus.circle.fill", disabled: value.wrappedValue >= range.upperBound) {
@@ -171,8 +163,6 @@ struct WatchIntervalSetupView: View {
             Text(label)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
                 .frame(width: 54, alignment: .leading)
 
             stepButton(systemName: "minus.circle.fill", disabled: value.wrappedValue <= range.lowerBound) {
@@ -183,8 +173,6 @@ struct WatchIntervalSetupView: View {
             Text(format(value.wrappedValue))
                 .font(.system(size: 15, weight: .semibold, design: .monospaced))
                 .monospacedDigit()
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
                 .frame(width: 48)
 
             stepButton(systemName: "plus.circle.fill", disabled: value.wrappedValue >= range.upperBound) {

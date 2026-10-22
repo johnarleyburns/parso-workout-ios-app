@@ -257,8 +257,6 @@ struct WatchAddExerciseView: View {
                         } label: {
                             Text(group.displayName)
                                 .font(.caption2.bold())
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
                                 .frame(maxWidth: .infinity, minHeight: 28)
                                 .background(customGroups.contains(group) ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
                         }

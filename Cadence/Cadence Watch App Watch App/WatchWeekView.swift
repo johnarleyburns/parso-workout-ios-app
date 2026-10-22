@@ -44,9 +44,8 @@ struct WatchWeekView: View {
     private func legend(_ ring: WatchWeekRing, unit: String, title: String) -> some View {
         VStack(spacing: 0) {
             Text(title).font(.caption2.weight(.semibold)).foregroundStyle(Self.color(ring.tone))
-                .lineLimit(1).minimumScaleFactor(0.7)
             Text("\(ring.displayValue)").font(.system(.title3, design: .rounded).weight(.bold))
-                .monospacedDigit().lineLimit(1).minimumScaleFactor(0.6)
+                .monospacedDigit()
             Text(unit).font(.caption2).foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)

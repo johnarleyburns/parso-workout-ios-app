@@ -37,8 +37,6 @@ struct WatchMetricField: View {
                 Text(value)
                     .font(.system(.title2, design: .rounded).weight(.bold))
                     .monospacedDigit()
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.42)
                     .allowsTightening(true)
                     .layoutPriority(1)
                 Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
@@ -69,8 +67,6 @@ struct WatchPillStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font((small ? Font.footnote : Font.headline).weight(.bold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.7)
             .foregroundStyle(foreground)
             .frame(maxWidth: .infinity, minHeight: small ? 34 : 46)
             .padding(.horizontal, 6)

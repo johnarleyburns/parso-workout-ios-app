@@ -822,6 +822,69 @@ public enum SuggestedWorkoutGenerator {
             personalizedHistoryWorkoutCount: input.historyWorkoutCount)
     }
 
+    /// Exact minimum set cover over `masks` (already in tie-break rank order).
+    /// Returns indices of a smallest subset covering every group in `required`
+    /// that any mask can reach; groups no mask reaches are ignored. Iterative
+    /// deepening returns the first smallest solution in rank order, so equal-size
+    /// ties are deterministic. Defined objective only: fewest exercises that
+    /// touch each group once — not a claim of physiological optimality.
+    static func minimumCoverIndices(masks: [UInt32], required: UInt32) -> [Int] {
+        let reachable = masks.reduce(UInt32(0)) { $0 | $1 } & required
+        guard reachable != 0 else { return [] }
+        var chosen: [Int] = []
+
+        func search(_ uncovered: UInt32, _ depth: Int) -> Bool {
+            if uncovered == 0 { return true }
+            if depth == 0 { return false }
+            var maxCover = 0
+            var coverCount = [Int](repeating: 0, count: 32)
+            for mask in masks {
+                let residual = mask & uncovered
+                guard residual != 0 else { continue }
+                maxCover = max(maxCover, residual.nonzeroBitCount)
+                var bits = residual
+                while bits != 0 {
+                    coverCount[bits.trailingZeroBitCount] += 1
+                    bits &= bits - 1
+                }
+            }
+            guard maxCover > 0,
+                  (uncovered.nonzeroBitCount + maxCover - 1) / maxCover <= depth else { return false }
+            var rarest = -1
+            var bits = uncovered
+            while bits != 0 {
+                let bit = bits.trailingZeroBitCount
+                if rarest < 0 || coverCount[bit] < coverCount[rarest] { rarest = bit }
+                bits &= bits - 1
+            }
+            let rarestBit = UInt32(1) << UInt32(rarest)
+            let options = masks.indices.filter { masks[$0] & rarestBit != 0 }
+            // Drop options whose useful coverage is dominated by another option
+            // (equal coverage keeps the better-ranked one).
+            let branch = options.filter { candidate in
+                let residual = masks[candidate] & uncovered
+                return !options.contains { other in
+                    guard other != candidate else { return false }
+                    let otherResidual = masks[other] & uncovered
+                    guard residual & otherResidual == residual else { return false }
+                    return residual != otherResidual || other < candidate
+                }
+            }
+            for candidate in branch {
+                chosen.append(candidate)
+                if search(uncovered & ~masks[candidate], depth - 1) { return true }
+                chosen.removeLast()
+            }
+            return false
+        }
+
+        for size in 1...max(1, masks.count) {
+            chosen = []
+            if search(reachable, size) { return chosen }
+        }
+        return []
+    }
+
     private struct Counters {
         var lookups = 0
         var visits = 0
@@ -872,73 +935,66 @@ public enum SuggestedWorkoutGenerator {
                                muscleSpace: index.muscleSpace)
         }
 
+        /// Coverage objective: choose the minimum number of exercises that
+        /// touch every still-required group at least once (exact search), with
+        /// deterministic rank-order tie-breaks. Nothing is trimmed afterwards.
         func fill(restrictedToStyle: Bool, membership: [Bool], outputMembership: [Bool]) {
-            var generations = Array(repeating: 0, count: deficits.count)
-            var activeMask = UInt32(0)
-            var heap = SuggestedWorkoutDeficitHeap()
+            var required = UInt32(0)
             for dimension in deficits.indices where deficits[dimension] > epsilon {
-                activeMask |= UInt32(1) << UInt32(dimension)
-                heap.push(.init(deficit: deficits[dimension], dimension: dimension,
-                                massPriority: index.muscleSpace.massPriority(of: dimension), generation: 0))
+                required |= UInt32(1) << UInt32(dimension)
             }
-
-            while let entry = heap.pop() {
-                guard entry.generation == generations[entry.dimension],
-                      deficits[entry.dimension] > epsilon,
-                      abs(entry.deficit - deficits[entry.dimension]) <= epsilon else { continue }
-
-                counters.lookups += 1
-                var best: Selection?
-                for candidateIndex in index.inverted[entry.dimension] where !selected[candidateIndex] {
-                    if restrictedToStyle && !membership[candidateIndex] { continue }
-                    counters.visits += 1
-                    let exercise = index.exercises[candidateIndex]
-                    if style == .personalized,
-                       excludedCandidateIDs.contains(exercise.candidate.id) {
-                        continue
-                    }
-                    let policyStyle = style == .personalized ? preferredStyle : style
-                    if policyStyle != .olympic,
-                       (exercise.candidate.trainingTypes.contains(.olympicWeightlifting)
-                        || ExerciseTrainingType.isOlympicOnlyMovement(named: exercise.candidate.name)) {
-                        continue
-                    }
-                    guard exercise.coverageMask & activeMask != 0 else { continue }
-                    let score = score(exercise, deficits: deficits, preferredSets: preferredSets)
-                    guard score.total > epsilon else { continue }
-                    let selection = Selection(candidateIndex: candidateIndex, score: score,
-                                              isInStyle: inStyle[candidateIndex])
-                    if best == nil || isBetter(selection, than: best!, index: index) {
-                        best = selection
-                    }
-                }
-
-                guard let best else {
-                    generations[entry.dimension] += 1
-                    activeMask &= ~(UInt32(1) << UInt32(entry.dimension))
+            guard required != 0 else { return }
+            counters.lookups += 1
+            var pool: [Selection] = []
+            for candidateIndex in index.exercises.indices where !selected[candidateIndex] {
+                if restrictedToStyle && !membership[candidateIndex] { continue }
+                counters.visits += 1
+                let exercise = index.exercises[candidateIndex]
+                if style == .personalized,
+                   excludedCandidateIDs.contains(exercise.candidate.id) {
                     continue
                 }
-
+                let policyStyle = style == .personalized ? preferredStyle : style
+                if policyStyle != .olympic,
+                   (exercise.candidate.trainingTypes.contains(.olympicWeightlifting)
+                    || ExerciseTrainingType.isOlympicOnlyMovement(named: exercise.candidate.name)) {
+                    continue
+                }
+                guard exercise.coverageMask & required != 0 else { continue }
+                let score = score(exercise, deficits: deficits, preferredSets: preferredSets)
+                guard score.total > epsilon else { continue }
+                pool.append(Selection(candidateIndex: candidateIndex, score: score,
+                                      isInStyle: inStyle[candidateIndex]))
+            }
+            pool.sort { isBetter($0, than: $1, index: index) }
+            let picks = minimumCoverIndices(
+                masks: pool.map { index.exercises[$0.candidateIndex].coverageMask },
+                required: required)
+            // Present largest need first, then larger muscle mass, then rank.
+            func need(_ pick: Int) -> (Double, Int) {
+                let open = index.exercises[pool[pick].candidateIndex].elements
+                    .filter { deficits[$0.dimension] > epsilon }
+                return (open.map { deficits[$0.dimension] }.max() ?? 0,
+                        open.map { index.muscleSpace.massPriority(of: $0.dimension) }.min() ?? Int.max)
+            }
+            let ordered = picks.sorted { lhs, rhs in
+                let (l, r) = (need(lhs), need(rhs))
+                if abs(l.0 - r.0) > epsilon { return l.0 > r.0 }
+                if l.1 != r.1 { return l.1 < r.1 }
+                return lhs < rhs
+            }
+            for pick in ordered {
+                let best = pool[pick]
                 selected[best.candidateIndex] = true
                 let exercise = index.exercises[best.candidateIndex]
                 choices.append(outputExercise(exercise, preferredSets: preferredSets,
                                               repRange: repRange, score: best.score.total,
                                               isInStyle: outputMembership[best.candidateIndex],
                                               muscleSpace: index.muscleSpace))
-                for element in exercise.elements where deficits[element.dimension] > epsilon {
-                    // Coverage-first: one planned contribution satisfies the
-                    // group's requirement; the dose remainder stays visible in
-                    // `remainingDeficits` rather than driving more exercises.
+            }
+            for pick in picks {
+                for element in index.exercises[pool[pick].candidateIndex].elements {
                     deficits[element.dimension] = 0
-                    generations[element.dimension] += 1
-                    if deficits[element.dimension] > epsilon {
-                        heap.push(.init(deficit: deficits[element.dimension],
-                                        dimension: element.dimension,
-                                        massPriority: index.muscleSpace.massPriority(of: element.dimension),
-                                        generation: generations[element.dimension]))
-                    } else {
-                        activeMask &= ~(UInt32(1) << UInt32(element.dimension))
-                    }
                 }
             }
         }

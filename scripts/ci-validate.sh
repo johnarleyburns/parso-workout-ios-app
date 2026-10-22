@@ -42,6 +42,10 @@ step "Swift package tests"
 swift test --package-path CadenceCore --parallel
 endstep
 
+step "Production-flow harness"
+bash scripts/run-verification-harness.sh
+endstep
+
 step "iPhone + embedded Watch build"
 # Release configuration, same as the release archive, so deprecation warnings
 # the archive gate would reject surface here before merge.

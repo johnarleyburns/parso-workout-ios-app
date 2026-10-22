@@ -31,3 +31,4 @@ Cladiron-Export-*.json.gz
 
 # Design docs and plans (historical, not needed in repo)
 plans/
+.harness-artifacts/

@@ -32,7 +32,7 @@ extension HomeView {
                 guard !Task.isCancelled else { return }
                 today = loadedToday
                 activityTrend = loadedTrend
-                passiveSamples = loadedReadiness
+                passiveSamples = loadedReadiness; passiveSamplesLoaded = true
 
                 try? await Task.sleep(for: .milliseconds(750))
                 guard !Task.isCancelled else { return }
@@ -41,7 +41,7 @@ extension HomeView {
             .refreshable {
                 today = await model.health.todayActivity()
                 activityTrend = await model.health.activityTrend(days: 7)
-                passiveSamples = await model.health.passiveReadinessSamples(days: 60)
+                passiveSamples = await model.health.passiveReadinessSamples(days: 60); passiveSamplesLoaded = true
                 await syncCardioFromHealth()
             }
             .sheet(isPresented: $logPickerPresented) {

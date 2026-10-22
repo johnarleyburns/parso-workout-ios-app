@@ -125,11 +125,11 @@ struct HomeView: View {
     @State var routeDiagnostics: HomeRouteDiagnostics?
     #endif
     @State var confirmCancelPrevious = false
-    @State var readinessPresented = false
-    @State var readinessExpanded = false
+    @State var readinessPresented = false; @State var readinessExpanded = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     @State var coachSnapshotReady = false
-    @State var homeActivityReady = false  // first weekly projection applied
+    @State var restoredRecommendation: TodayRecommendationPayload?  // durable hero before hydration
+    @State var passiveSamplesLoaded = false; @State var homeActivityReady = false  // first weekly projection applied
     // Historical Home projections are cached separately from the coach snapshot.
     @State var cachedWorkoutsTodayRows: [WorkoutsTodayPresenter.Row] = []
     @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []

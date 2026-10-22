@@ -63,7 +63,11 @@ extension HomeView {
             .map { String(localized: "\($0.displayName) \(WeeklySetProgress.formattedSets($0.sets)) / 12") }
         let reason = deficits.isEmpty ? String(localized: "Why today: keep your weekly strength habit moving.") :
             String(localized: "Why today: \(deficits.formatted(.list(type: .and))) sets this week.")
-        let coachRecommendsStrength = coachSnapshotReady && coachDecision.primary.kind == .strength
+        // A durable restore renders the hero before the snapshot hydrates.
+        let recommendationReady = coachSnapshotReady || restoredRecommendation != nil
+        let coachRecommendsStrength = coachSnapshotReady
+            ? coachDecision.primary.kind == .strength
+            : (restoredRecommendation?.primaryIsStrength ?? false)
         let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
             TodayHero(kind: .suggested, title: plan.title,
                       estimatedMinutes: WorkoutDurationEstimator.estimate(
@@ -78,7 +82,9 @@ extension HomeView {
         // launch timing. The already-computed Coach decision is the stable
         // fallback until the personalized plan arrives (or if generation has
         // no launchable catalog result).
-        let coachFallback = coachSnapshotReady ? TodayHeroPresenter.recommendation(coachDecision) : nil
+        let coachFallback = coachSnapshotReady
+            ? TodayHeroPresenter.recommendation(coachDecision)
+            : restoredRecommendation?.makeHero()
         let scheduled = todayScheduled.map {
             TodayHero(kind: .scheduled, title: $0.title,
                       estimatedMinutes: WorkoutDurationEstimator.estimate(
@@ -137,7 +143,7 @@ extension HomeView {
                                            completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count,
                                            completedToday: completedSummary,
                                            remainingScheduledToday: remainingScheduledToday,
-                                           recommendationReady: coachSnapshotReady)
+                                           recommendationReady: recommendationReady)
         let tag: String = switch hero.kind {
         case .inProgress: String(localized: "In progress")
         case .scheduled: String(localized: "Scheduled for you")

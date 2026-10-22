@@ -65,6 +65,36 @@ public enum TodaySuggestedWorkoutFingerprint {
     }
 }
 
+/// Cheap deterministic key over the inputs that decide the Today plan, computed
+/// without loading the exercise catalog. Callers pass stable value stamps only.
+public enum TodaySuggestedWorkoutEarlyKey {
+    public static func make(_ parts: [String]) -> String {
+        var state: UInt64 = 0xcbf29ce484222325
+        for part in ["early-v1"] + parts {
+            var n = UInt64(part.utf8.count)
+            for _ in 0..<8 { state = (state ^ UInt64(n & 0xff)) &* 0x100000001b3; n >>= 8 }
+            for b in part.utf8 { state = (state ^ UInt64(b)) &* 0x100000001b3 }
+        }
+        return String(state, radix: 16)
+    }
+}
+
+/// Launch-order seam for Today: restores the durable plan before any candidate
+/// catalog work, and only on a miss loads candidates and generates.
+public enum TodaySuggestionLaunch {
+    public enum Result: Sendable, Equatable {
+        case restored(TodaySuggestedPlanPayload)
+        case generated(TodaySuggestedPlanPayload?)
+    }
+
+    public static func run(store: TodaySuggestedWorkoutCacheStore,
+                           earlyKey: String,
+                           loadAndGenerate: @Sendable () async -> TodaySuggestedPlanPayload?) async -> Result {
+        if let hit = await store.restoreEarly(earlyKey: earlyKey) { return .restored(hit) }
+        return .generated(await loadAndGenerate())
+    }
+}
+
 /// App-owned Codable representation of a generated Today plan. Transient UI
 /// identities (`EditablePlan.id`, set ids) are regenerated on reconstruction.
 public struct TodaySuggestedPlanPayload: Codable, Equatable, Sendable {
@@ -184,6 +214,9 @@ public actor TodaySuggestedWorkoutCacheStore {
         var schemaVersion: Int
         var dayKey: String
         var fingerprint: String
+        /// Lightweight semantic key (no catalog needed) for restore before
+        /// candidate loading. Optional so older records still decode.
+        var earlyKey: String?
         var updatedAt: Date
         var plan: TodaySuggestedPlanPayload
     }
@@ -224,6 +257,22 @@ public actor TodaySuggestedWorkoutCacheStore {
             && !env.plan.exercises.isEmpty
     }
 
+    /// Restores the persisted plan using only the lightweight early key, so Today
+    /// can show it before the exercise catalog is loaded. A same-day record with
+    /// a different early key is genuinely stale and is discarded; a record that
+    /// predates early keys is left for the full-fingerprint path.
+    public func restoreEarly(earlyKey: String) -> TodaySuggestedPlanPayload? {
+        guard let env = loadEnvelope() else { return nil }
+        guard env.schemaVersion == Self.schemaVersion, env.dayKey == dayKey(),
+              !env.plan.exercises.isEmpty else {
+            discard()
+            return nil
+        }
+        guard let stored = env.earlyKey else { return nil }
+        guard stored == earlyKey else { discard(); return nil }
+        return env.plan
+    }
+
     /// Returns the cached plan for this day + fingerprint, deleting any stale,
     /// corrupt or wrong-version record.
     public func restore(fingerprint: String) -> TodaySuggestedPlanPayload? {
@@ -244,8 +293,14 @@ public actor TodaySuggestedWorkoutCacheStore {
     /// Restores a hit, or runs `generate` exactly once for concurrent callers of
     /// the same day + fingerprint and persists a launchable result.
     public func resolve(fingerprint: String,
+                        earlyKey: String? = nil,
                         generate: @escaping @Sendable () async -> TodaySuggestedPlanPayload?) async -> TodaySuggestedPlanPayload? {
-        if let hit = restore(fingerprint: fingerprint) { return hit }
+        if let hit = restore(fingerprint: fingerprint) {
+            if let earlyKey, memory?.earlyKey != earlyKey {
+                save(hit, fingerprint: fingerprint, earlyKey: earlyKey)
+            }
+            return hit
+        }
         let key = dayKey() + "|" + fingerprint
         if let running = inFlight[key] { return await running.value }
         let startEpoch = epoch
@@ -255,14 +310,15 @@ public actor TodaySuggestedWorkoutCacheStore {
         inFlight[key] = nil
         guard let plan, !Task.isCancelled,
               startEpoch == epoch, key == dayKey() + "|" + fingerprint else { return plan }
-        save(plan, fingerprint: fingerprint)
+        save(plan, fingerprint: fingerprint, earlyKey: earlyKey)
         return plan
     }
 
-    public func save(_ plan: TodaySuggestedPlanPayload, fingerprint: String) {
+    public func save(_ plan: TodaySuggestedPlanPayload, fingerprint: String,
+                     earlyKey: String? = nil) {
         guard !plan.exercises.isEmpty else { return }
         let env = Envelope(schemaVersion: Self.schemaVersion, dayKey: dayKey(),
-                           fingerprint: fingerprint, updatedAt: now(),
+                           fingerprint: fingerprint, earlyKey: earlyKey, updatedAt: now(),
                            plan: plan)
         memory = env; memoryLoaded = true
         if let fileURL, let data = try? JSONEncoder().encode(env) {

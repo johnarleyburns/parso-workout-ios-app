@@ -56,13 +56,11 @@ struct CoachDecisionCardView: View {
                     Text(heroTitle)
                         .font(.title2.bold())
                         .lineLimit(2)
-                        .minimumScaleFactor(0.7)
                         .accessibilityIdentifier("coach.card.heroTitle")
                     Text(heroSubtitle)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .lineLimit(3)
-                        .minimumScaleFactor(0.8)
                         .accessibilityIdentifier("coach.card.heroSubtitle")
                 }
             }
@@ -255,12 +253,10 @@ struct CoachDecisionCardView: View {
                             Text(topInsight.title)
                                 .font(.subheadline.weight(.semibold))
                                 .lineLimit(2)
-                                .minimumScaleFactor(0.8)
                             Text(topInsight.message)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(2)
-                                .minimumScaleFactor(0.8)
                         }
                     }
 

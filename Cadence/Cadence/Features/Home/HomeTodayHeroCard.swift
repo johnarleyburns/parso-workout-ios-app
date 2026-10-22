@@ -29,7 +29,6 @@ struct HomeTodayHeroCard: View {
             HStack {
                 Label(tag, systemImage: "sparkles")
                     .font(.caption.weight(.bold))
-                    .lineLimit(1).minimumScaleFactor(0.7)
                     .foregroundStyle(CadenceTheme.accent)
                 Spacer()
                 if let estimatedMinutes {
@@ -102,7 +101,6 @@ struct HomeTodayHeroCard: View {
                     } label: {
                         Label("Why this workout", systemImage: "questionmark.circle")
                             .font(.caption.weight(.semibold))
-                            .lineLimit(1).minimumScaleFactor(0.7)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(CadenceTheme.link)
@@ -129,7 +127,6 @@ struct HomeTodayHeroCard: View {
                     Button(action: onStart) {
                         Label(tag == "In progress" ? "Resume" : "Start Workout",
                               systemImage: tag == String(localized: "In progress") ? "play.fill" : "play.fill")
-                            .lineLimit(1).minimumScaleFactor(0.7)
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.borderedProminent)
@@ -142,7 +139,6 @@ struct HomeTodayHeroCard: View {
                         Button("Choose another", action: onChooseAnother)
                     }
                     .font(.subheadline.weight(.semibold))
-                    .lineLimit(1).minimumScaleFactor(0.7)
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.plain)
                     .foregroundStyle(CadenceTheme.link)

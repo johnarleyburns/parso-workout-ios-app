@@ -320,8 +320,6 @@ private struct WatchSyncToastView: View {
     var body: some View {
         Label(toast.text, systemImage: toast.isFailure ? "exclamationmark.triangle.fill" : "applewatch")
             .font(.caption.weight(.semibold))
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
             .background(.regularMaterial, in: Capsule())

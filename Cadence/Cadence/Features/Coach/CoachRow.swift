@@ -26,15 +26,12 @@ struct CoachRow: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
-                            .minimumScaleFactor(0.8)
                     } else {
                         Text("Coach")
                             .font(.subheadline.weight(.semibold))
                         Text("Builds and adjusts your program")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
                     }
                 }
                 Spacer(minLength: 8)

@@ -115,6 +115,21 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
     }
 }
 
+/// Why a durable Today record was or was not used. Carries no workout content,
+/// so it is safe to log for device-QA diagnosis.
+public enum TodayCacheOutcome: String, Equatable, Sendable {
+    case noFile, corrupt, schemaRejected, dayRejected
+    case provisionalRestore, stableMatch, stableInvalidation
+}
+
+/// A display-eligible (same day, supported schema, decodable) durable record
+/// whose freshness has not yet been checked against stable inputs.
+public struct TodayProvisionalRecord: Equatable, Sendable {
+    public var payload: TodayRecommendationPayload
+    public var fingerprint: String
+    public var passiveStamp: String
+}
+
 /// Durable, versioned, same-local-day cache of the Today recommendation.
 /// Separate file from the suggested-plan cache so neither (nor This Week) can
 /// evict the other; `invalidate()` is called alongside the plan store's.
@@ -135,6 +150,7 @@ public actor TodayRecommendationCacheStore {
     private let now: @Sendable () -> Date
     private var memory: Envelope?
     private var memoryLoaded = false
+    private var loadFailure: TodayCacheOutcome?
 
     public init(fileURL: URL?, calendar: Calendar = .current,
                 now: @escaping @Sendable () -> Date = { Date() }) {
@@ -169,11 +185,22 @@ public actor TodayRecommendationCacheStore {
         return (env.payload, env.passiveStamp)
     }
 
+    /// Display eligibility only: never judges the fingerprint, and never deletes
+    /// a record because startup inputs are still settling. Only unusable records
+    /// (corrupt, unsupported schema, wrong local day) are rejected and cleaned up.
+    public func peekDisplayable() -> (record: TodayProvisionalRecord?, outcome: TodayCacheOutcome) {
+        guard let env = loadEnvelope() else { return (nil, loadFailure ?? .noFile) }
+        guard env.schemaVersion == Self.schemaVersion else { discard(); return (nil, .schemaRejected) }
+        guard env.dayKey == dayKey() else { discard(); return (nil, .dayRejected) }
+        return (TodayProvisionalRecord(payload: env.payload, fingerprint: env.fingerprint,
+                                       passiveStamp: env.passiveStamp), .provisionalRestore)
+    }
+
     public func save(_ payload: TodayRecommendationPayload, fingerprint: String, passiveStamp: String) {
         let env = Envelope(schemaVersion: Self.schemaVersion, dayKey: dayKey(),
                            fingerprint: fingerprint, passiveStamp: passiveStamp,
                            updatedAt: now(), payload: payload)
-        memory = env; memoryLoaded = true
+        memory = env; memoryLoaded = true; loadFailure = nil
         if let fileURL, let data = try? JSONEncoder().encode(env) {
             try? data.write(to: fileURL, options: .atomic)
         }
@@ -182,7 +209,7 @@ public actor TodayRecommendationCacheStore {
     public func invalidate() { discard() }
 
     private func discard() {
-        memory = nil; memoryLoaded = true
+        memory = nil; memoryLoaded = true; loadFailure = nil
         if let fileURL { try? FileManager.default.removeItem(at: fileURL) }
     }
 
@@ -192,6 +219,7 @@ public actor TodayRecommendationCacheStore {
         guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return nil }
         guard let env = try? JSONDecoder().decode(Envelope.self, from: data) else {
             try? FileManager.default.removeItem(at: fileURL)
+            loadFailure = .corrupt
             return nil
         }
         memory = env

@@ -94,8 +94,6 @@ struct WatchCardioView: View {
         Text(text)
             .font(.system(size: size, weight: .bold, design: .rounded))
             .monospacedDigit()
-            .lineLimit(1)
-            .minimumScaleFactor(0.6)
     }
 
     private func zoneColor(_ tint: HRZoneTint) -> Color {

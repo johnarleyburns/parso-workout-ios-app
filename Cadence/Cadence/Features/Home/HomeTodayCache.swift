@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import os
 import CadenceCore
 import CadenceFeatures
 
@@ -13,11 +14,18 @@ import CadenceFeatures
 /// from `.thisWeek` cannot write, restore-and-discard, or invalidate.
 @MainActor
 enum HomeTodayCache {
-    static let coordinator = TodayRecommendationCoordinator<HomeCoachSnapshot>(
-        recommendationStore: TodayRecommendationCacheStore(
-            fileURL: TodayRecommendationCacheStore.defaultFileURL()),
-        suggestionStore: TodaySuggestedWorkoutCacheStore(
-            fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL()))
+    private static let log = Logger(subsystem: "guru.parso.cadence", category: "TodayCache")
+
+    static let coordinator: TodayRecommendationCoordinator<HomeCoachSnapshot> = {
+        let c = TodayRecommendationCoordinator<HomeCoachSnapshot>(
+            recommendationStore: TodayRecommendationCacheStore(
+                fileURL: TodayRecommendationCacheStore.defaultFileURL()),
+            suggestionStore: TodaySuggestedWorkoutCacheStore(
+                fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL()))
+        // Outcome names only; never workout content.
+        c.outcomeObserver = { log.info("today cache outcome: \($0.rawValue, privacy: .public)") }
+        return c
+    }()
 
     static var suggestionStore: TodaySuggestedWorkoutCacheStore { coordinator.suggestionStore }
 }
@@ -77,14 +85,13 @@ extension HomeView {
             return true
         }
         guard !coachSnapshotReady,
-              let hit = await HomeTodayCache.coordinator.restoreDurable(
-                  fingerprint: key.fingerprint, passiveStamp: passive, surface: surface.cacheSurface)
+              let hit = await HomeTodayCache.coordinator.restoreProvisional(surface: surface.cacheSurface)
         else {
             restoredRecommendation = nil
             return false
         }
-        // Hero renders from the durable DTO now; the full snapshot hydrates
-        // for the other coach surfaces behind it without a loading state.
+        // Hero renders from the durable DTO now, without waiting for SwiftData
+        // or HealthKit inputs to settle; freshness is reconciled afterwards.
         restoredRecommendation = hit.payload
         return false
     }
@@ -98,12 +105,24 @@ extension HomeView {
         if restoredRecommendation == nil {
             coachSnapshotReady = false
         } else {
-            // Hydrate once with the real HealthKit inputs so the hero does not
-            // flip when readiness samples arrive.
-            for _ in 0..<100 where !passiveSamplesLoaded && !Task.isCancelled {
+            // Provisional hero stays visible while inputs settle: HealthKit
+            // readiness loaded and the initial Health ingest finished, then a
+            // quiet period with an unchanged fingerprint (a change restarts
+            // this task via `coachSignature`). Bounded so it cannot hang.
+            for _ in 0..<200 where !(passiveSamplesLoaded && coachInputsSettled) && !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             guard !Task.isCancelled else { return }
+            let before = todayFingerprint
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            let key = todayFingerprint
+            guard key == before else { return await runCoachTask() }
+            // Matching or not, the full snapshot still hydrates for the other
+            // coach surfaces; a mismatch replaces the record via `store`.
+            HomeTodayCache.coordinator.reconcileProvisional(
+                stableFingerprint: key.fingerprint, stablePassiveStamp: key.passiveStamp,
+                surface: surface.cacheSurface)
         }
         await refreshCoachSnapshot()
         restoredRecommendation = nil

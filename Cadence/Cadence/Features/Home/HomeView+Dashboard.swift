@@ -33,10 +33,10 @@ extension HomeView {
                 today = loadedToday
                 activityTrend = loadedTrend
                 passiveSamples = loadedReadiness; passiveSamplesLoaded = true
-
                 try? await Task.sleep(for: .milliseconds(750))
                 guard !Task.isCancelled else { return }
                 await syncCardioFromHealth()
+                coachInputsSettled = true
             }
             .refreshable {
                 today = await model.health.todayActivity()

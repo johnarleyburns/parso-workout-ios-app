@@ -169,4 +169,91 @@ final class TodayRecommendationCoordinatorTests: XCTestCase {
         let warm = await c.suggestionStore.hasSameDayEntry()
         XCTAssertTrue(warm)
     }
+
+    // MARK: Provisional cold-launch restore (mirrors HomeView.runCoachTask)
+
+    private func seed(_ c: TodayRecommendationCoordinator<String>, key: TodayRecommendationFingerprint.Result) async {
+        c.store("A", payload: payload("A"), fingerprint: key.fingerprint,
+                passiveStamp: key.passiveStamp, surface: .today)
+        await c.settle()
+    }
+
+    func testPartialStartupInputsShowCachedImmediatelyWithoutDeleteOrRecompute() async {
+        let rec = url(), plan = url()
+        let key = fp(sessions: "full")
+        await seed(make(rec: rec, plan: plan), key: key)
+        // New process: fresh coordinator, same files.
+        let c = make(rec: rec, plan: plan)
+        var outcomes: [TodayCacheOutcome] = []
+        c.outcomeObserver = { outcomes.append($0) }
+        let hit = await c.restoreProvisional(surface: .today)
+        XCTAssertEqual(hit?.payload.title, "A")            // rendered, no Loading
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
+        // Provisional (partial) inputs are never compared; settled inputs match.
+        XCTAssertTrue(c.reconcileProvisional(stableFingerprint: key.fingerprint,
+                                             stablePassiveStamp: key.passiveStamp, surface: .today))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
+        XCTAssertEqual(outcomes, [.provisionalRestore, .stableMatch])
+    }
+
+    func testSettledDifferentInputsInvalidateThenReplaceOnce() async {
+        let rec = url(), plan = url()
+        await seed(make(rec: rec, plan: plan), key: fp(sessions: "old"))
+        let c = make(rec: rec, plan: plan)
+        let hit = await c.restoreProvisional(surface: .today)
+        XCTAssertEqual(hit?.payload.title, "A")
+        let stable = fp(sessions: "new")
+        XCTAssertFalse(c.reconcileProvisional(stableFingerprint: stable.fingerprint,
+                                              stablePassiveStamp: stable.passiveStamp, surface: .today))
+        XCTAssertEqual(c.lastOutcome, .stableInvalidation)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))  // not deleted on mismatch
+        c.store("B", payload: payload("B"), fingerprint: stable.fingerprint,
+                passiveStamp: stable.passiveStamp, surface: .today)
+        await c.settle()
+        let again = await make(rec: rec, plan: plan).restoreProvisional(surface: .today)
+        XCTAssertEqual(again?.payload.title, "B")
+    }
+
+    func testUnusableRecordsFallBackToLoading() async {
+        // wrong day
+        let rec = url(), plan = url()
+        let day1 = Date(timeIntervalSince1970: 1_800_000_000)
+        await seed(make(rec: rec, plan: plan, now: { day1 }), key: fp())
+        let nextDay = make(rec: rec, plan: plan, now: { day1.addingTimeInterval(86_400) })
+        let none = await nextDay.restoreProvisional(surface: .today)
+        XCTAssertNil(none); XCTAssertEqual(nextDay.lastOutcome, .dayRejected)
+        // corrupt
+        let bad = url()
+        try? Data("not json".utf8).write(to: bad)
+        let c = make(rec: bad, plan: plan)
+        let corrupt = await c.restoreProvisional(surface: .today)
+        XCTAssertNil(corrupt); XCTAssertEqual(c.lastOutcome, .corrupt)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: bad.path))
+        // old schema
+        let old = url()
+        let json = """
+        {"schemaVersion":0,"dayKey":"x","fingerprint":"f","passiveStamp":"p","updatedAt":0,
+         "payload":{"isRest":false,"primaryIsStrength":true,"title":"t","exercises":[],"citationIDs":[]}}
+        """
+        try? Data(json.utf8).write(to: old)
+        let c2 = make(rec: old, plan: plan)
+        let schema = await c2.restoreProvisional(surface: .today)
+        XCTAssertNil(schema); XCTAssertEqual(c2.lastOutcome, .schemaRejected)
+        // no file
+        let c3 = make(rec: url(), plan: plan)
+        _ = await c3.restoreProvisional(surface: .today)
+        XCTAssertEqual(c3.lastOutcome, .noFile)
+    }
+
+    func testThisWeekCannotProvisionallyRestoreOrReconcile() async {
+        let rec = url(), plan = url()
+        let key = fp()
+        await seed(make(rec: rec, plan: plan), key: key)
+        let c = make(rec: rec, plan: plan)
+        let none = await c.restoreProvisional(surface: .thisWeek)
+        XCTAssertNil(none)
+        XCTAssertFalse(c.reconcileProvisional(stableFingerprint: key.fingerprint,
+                                              stablePassiveStamp: key.passiveStamp, surface: .thisWeek))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
+    }
 }

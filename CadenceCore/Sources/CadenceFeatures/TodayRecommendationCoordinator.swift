@@ -23,6 +23,12 @@ public final class TodayRecommendationCoordinator<Snapshot> {
     private var persistence: Task<Void, Never>?
     private var epoch = 0
 
+    /// Last durable record shown provisionally, awaiting stable-input validation.
+    private var provisional: TodayProvisionalRecord?
+    public private(set) var lastOutcome: TodayCacheOutcome?
+    /// Observability hook (e.g. os.Logger); receives outcomes only, no content.
+    public var outcomeObserver: (@MainActor (TodayCacheOutcome) -> Void)?
+
     public let recommendationStore: TodayRecommendationCacheStore
     public let suggestionStore: TodaySuggestedWorkoutCacheStore
 
@@ -59,6 +65,7 @@ public final class TodayRecommendationCoordinator<Snapshot> {
     public func invalidate(surface: TodayCacheSurface) {
         guard surface == .today else { return }
         entry = nil
+        provisional = nil
         epoch += 1
         let plans = suggestionStore, recs = recommendationStore
         enqueue {
@@ -76,6 +83,36 @@ public final class TodayRecommendationCoordinator<Snapshot> {
         guard surface == .today else { return nil }
         await settle()
         return await recommendationStore.restore(fingerprint: fingerprint, passiveStamp: passiveStamp)
+    }
+
+    /// Cold-launch restore for display only. Never compares fingerprints, so a
+    /// transient startup mismatch cannot erase a same-day record. Today only.
+    public func restoreProvisional(surface: TodayCacheSurface) async -> TodayProvisionalRecord? {
+        guard surface == .today else { return nil }
+        await settle()
+        let result = await recommendationStore.peekDisplayable()
+        provisional = result.record
+        record(result.outcome)
+        return result.record
+    }
+
+    /// Strict freshness check once inputs are stable. Returns true when the
+    /// provisional record still matches. A mismatch deletes nothing: the caller
+    /// recomputes and `store` atomically replaces the record.
+    @discardableResult
+    public func reconcileProvisional(stableFingerprint: String, stablePassiveStamp: String,
+                                     surface: TodayCacheSurface) -> Bool {
+        guard surface == .today, let provisional else { return false }
+        let matches = provisional.fingerprint == stableFingerprint
+            && provisional.passiveStamp == stablePassiveStamp
+        self.provisional = nil
+        record(matches ? .stableMatch : .stableInvalidation)
+        return matches
+    }
+
+    private func record(_ outcome: TodayCacheOutcome) {
+        lastOutcome = outcome
+        outcomeObserver?(outcome)
     }
 
     private func enqueue(_ work: @escaping @MainActor () async -> Void) {

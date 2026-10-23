@@ -788,4 +788,20 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(payload?["plan_key"] as? String, "preset-push")
         XCTAssertNotNil(payload?["ended_at"])
     }
+
+    func testDirectSummaryHeartRateSnapshotIsKeptAndIdempotent() throws {
+        let m = makeModel()
+        m.start(title: "Push", plannedExerciseNames: ["Bench Press"], createSession: true)
+        let dense = (0..<5).map { HRSamplePoint(t: Double($0) * 5, bpm: 110 + Double($0)) }
+        m.startLogSet(for: m.exerciseList[0].exercise)
+        _ = m.logSet()
+        m.finish()
+        m.skipCooldown()
+        m.recordHeartRate(dense)
+        m.recordHeartRate(dense)  // reappearing summary / retried send
+        m.recordHeartRate([])     // post-teardown empty recorder must not erase it
+        let payload = try XCTUnwrap(m.endSessionPayload())
+        XCTAssertNotNil(payload[WatchStrengthHeartRate.transportKey])
+        XCTAssertEqual(m.recordedHeartRate, dense)
+    }
 }

@@ -620,6 +620,10 @@ public final class WorkoutSession {
 
     /// Source/coverage metadata for `hrSamplesData` (JSON `HeartRateCoverage`); additive, "" when none.
     public var hrCoverageData: String = ""
+    /// Highest final HR sequence applied from a Watch end_session (-1 when none/unknown); additive.
+    public var hrAppliedFinalSequence: Int = -1
+    /// True when a completion arrived without usable HR samples and none are stored yet.
+    public var hrCompletionPending: Bool = false
     /// Prior HR/summary/coverage retained for one "Restore previous measurements" (JSON
     /// `HeartRateBackup`); replaced by the next repair. "" when none.
     public var hrBackupData: String = ""

@@ -68,3 +68,30 @@ struct WatchHeartRateRouteStore {
     }
     func remove(sessionID: UUID) { routes = routes.filter { $0.sessionID != sessionID } }
 }
+
+/// Identity of a cancelled preflight capture.
+struct WatchHRTombstone: Codable, Equatable {
+    let sessionID: UUID; let requestID: UUID; let captureEpoch: UUID
+    var cancelledAt = Date()
+}
+
+/// Durable, bounded tombstones. They expire only after the maximum durable
+/// replay window (WatchConnectivity user-info queue; generous 30 days).
+struct WatchHRTombstoneStore {
+    static let key = "watchHR.tombstones.v1"
+    static let limit = 32
+    static let retention: TimeInterval = 30 * 86_400
+    var tombstones: [WatchHRTombstone] {
+        get { UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([WatchHRTombstone].self, from: $0) } ?? [] }
+        nonmutating set { UserDefaults.standard.set(try? JSONEncoder().encode(Array(newValue.suffix(Self.limit))), forKey: Self.key) }
+    }
+    func tombstone(for message: WatchHRMessage, now: Date = Date()) -> WatchHRTombstone? {
+        tombstones.first { $0.sessionID == message.phoneWorkoutSessionID &&
+            $0.requestID == message.watchRequestID &&
+            $0.captureEpoch == message.captureEpoch &&
+            now.timeIntervalSince($0.cancelledAt) < Self.retention }
+    }
+    func add(_ tombstone: WatchHRTombstone, now: Date = Date()) {
+        tombstones = tombstones.filter { now.timeIntervalSince($0.cancelledAt) < Self.retention && $0.sessionID != tombstone.sessionID } + [tombstone]
+    }
+}

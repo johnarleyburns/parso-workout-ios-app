@@ -70,6 +70,8 @@ public struct WatchHRRoute: Equatable, Sendable {
 public enum WatchHRReceiveOutcome: Equatable, Sendable {
     case accepted(count: Int)
     case duplicate
+    /// Matched a cancelled preflight identity: acknowledged and dropped, never recorded.
+    case tombstoned
     case finalizationUpdated(complete: Bool)
     case rejected(WatchHRMessageRejection)
     /// Not acknowledged; the Watch keeps the batch and retries.
@@ -91,6 +93,8 @@ public final class WatchHeartRateReceiver {
     /// Persists observations into the session; false means not durable.
     private let persist: (UUID, [WatchHRObservation]) -> Bool
     private let finalizationStore: WatchHeartRateFinalizationStore
+    /// True when `(session, request, epoch)` was cancelled; such packets are ACKed and dropped.
+    private let isTombstoned: (WatchHRMessage) -> Bool
     /// Fired exactly once per session when finalization first reaches complete.
     /// The app refreshes summary, History, This Week, watch snapshot and Health backup here.
     public var onFinalizationComplete: ((UUID) -> Void)?
@@ -98,9 +102,10 @@ public final class WatchHeartRateReceiver {
     public init(store: WatchHeartRateReceiptStore, transport: WatchHeartRateTransport,
                 finalizationStore: WatchHeartRateFinalizationStore = InMemoryWatchHeartRateFinalizationStore(),
                 expectedRoute: @escaping (UUID) -> WatchHRRoute?,
+                isTombstoned: @escaping (WatchHRMessage) -> Bool = { _ in false },
                 persist: @escaping (UUID, [WatchHRObservation]) -> Bool) {
         self.store = store; self.transport = transport; self.finalizationStore = finalizationStore
-        self.expectedRoute = expectedRoute; self.persist = persist
+        self.expectedRoute = expectedRoute; self.isTombstoned = isTombstoned; self.persist = persist
     }
 
     /// The pending/complete state for a session, or nil if none for this capture epoch.
@@ -137,7 +142,13 @@ public final class WatchHeartRateReceiver {
         case .success(let parsed): message = parsed
         }
         // Identity must match exactly before anything is persisted or acknowledged.
-        guard let route = expectedRoute(message.phoneWorkoutSessionID) else { return reject(.identityMismatch) }
+        guard let route = expectedRoute(message.phoneWorkoutSessionID) else {
+            if message.kind != .finalizeRequest, isTombstoned(message) {
+                acknowledge(message, cursor: message.sequence)
+                return .tombstoned
+            }
+            return reject(.identityMismatch)
+        }
         if let reason = message.validateScope(phoneWorkoutSessionID: message.phoneWorkoutSessionID,
                                               watchRequestID: route.requestID, captureEpoch: route.captureEpoch) {
             return reject(reason)

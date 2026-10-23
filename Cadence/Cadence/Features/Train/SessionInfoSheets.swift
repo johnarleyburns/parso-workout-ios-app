@@ -12,6 +12,7 @@ import CadenceFeatures
 
 struct SessionLiveHRBand: View {
     @Environment(AppModel.self) private var model
+    var sessionID: UUID? = nil
 
     @ViewBuilder
     var body: some View {
@@ -20,6 +21,12 @@ struct SessionLiveHRBand: View {
                 band(bpm)
             }
             if model.watchHRConnection.identity != nil { watchRow }
+            if let sessionID, let text = model.watchHRFinalizationStatusText(sessionID: sessionID) {
+                Label(text, systemImage: "arrow.triangle.2.circlepath")
+                    .font(.caption).frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 12).padding(.vertical, 4)
+                    .accessibilityIdentifier("session.watch.hrFinalization")
+            }
         }
     }
 

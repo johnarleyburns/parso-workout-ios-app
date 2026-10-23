@@ -65,6 +65,7 @@ struct WorkoutSummaryView: View {
                 } else if onEditCardioMinutes != nil {
                     editMinutesButton
                 }
+                if let coverage = data.hrCoveragePresentation { hrCoverageRow(coverage) }
                 if data.kind == .strength, let repairSession { HeartRateRepairSection(session: repairSession) }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
@@ -193,6 +194,24 @@ struct WorkoutSummaryView: View {
                     metric(String(localized: "Max HR"), Format.heartRate(mx), id: "summary.metric.maxHR")
                 }
             }
+        }
+    }
+
+    private func hrCoverageRow(_ coverage: HeartRateCoveragePresentation) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            LabeledContent("Heart-rate coverage") { Text(coverage.text).multilineTextAlignment(.trailing) }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("\(String(localized: "Heart-rate coverage")). \(coverage.accessibilityLabel)"))
+                .accessibilityIdentifier("summary.hrCoverage")
+            #if DEBUG
+            if let line = data.hrCoverage?.diagnosticsLine {
+                DisclosureGroup("Developer diagnostics") {
+                    Text(line).font(.caption.monospaced()).textSelection(.enabled)
+                        .accessibilityIdentifier("summary.hrCoverage.diagnostics")
+                }
+                .font(.caption)
+            }
+            #endif
         }
     }
 

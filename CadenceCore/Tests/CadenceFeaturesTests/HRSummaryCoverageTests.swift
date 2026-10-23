@@ -47,3 +47,28 @@ final class HRSummaryCoverageTests: XCTestCase {
         XCTAssertEqual(d.hrCoverageState, .none)
     }
 }
+
+final class WatchStrengthHRCoverageTests: XCTestCase {
+    private let profile = CardioIntensityProfile.ageEstimated(age: 40)
+    private func present(_ samples: [HRSamplePoint], pending: Bool = false) -> HeartRateCoveragePresentation {
+        WatchStrengthHRCoverage.presentation(samples: samples, duration: 1_000, profile: profile, pending: pending)
+    }
+
+    func testWatchSummaryStates() {
+        let dense = stride(from: 0.0, to: 1_000, by: 5).map { HRSamplePoint(t: $0, bpm: 130) }
+        let sparse = [0, 100, 200, 300].map { HRSamplePoint(t: Double($0), bpm: 130) }
+        XCTAssertEqual(present([]).kind, .noMeasurements)
+        XCTAssertEqual(present(sparse).kind, .incomplete)
+        XCTAssertEqual(present(dense).kind, .complete)
+        XCTAssertEqual(present(sparse, pending: true).kind, .pending)
+        XCTAssertTrue(present([]).accessibilityLabel.contains("unknown"))
+        XCTAssertTrue(present(sparse).accessibilityLabel.contains("unclassified"))
+    }
+
+    func testDiagnosticsLineIsPrivacySafe() {
+        let c = HeartRateCoverage(source: .phone, sampleCount: 9, firstOffset: 0, lastOffset: 10, largestGap: 130, recordedAt: Date())
+        let line = c.diagnosticsLine
+        XCTAssertFalse(line.contains("bpm"))
+        XCTAssertFalse(line.contains("-"), "no UUIDs or dates")
+    }
+}

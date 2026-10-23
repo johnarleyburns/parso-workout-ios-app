@@ -10,6 +10,7 @@ struct WatchStrengthSummaryView: View {
     let model: WatchStrengthFlowModel
     let onDismiss: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchSettings
     @State private var sentEnd = false
     @State private var receipt = WatchSaveReceipt.make(savedOnWatch: true, pendingTransfers: 0,
                                                        phoneReachable: false, transferError: nil)
@@ -27,6 +28,7 @@ struct WatchStrengthSummaryView: View {
                     .font(.caption2).foregroundStyle(.secondary)
                     .accessibilityLabel(Text("Duration \(model.durationText)") + Text(verbatim: ", ") + Text("\(model.setCount) sets"))
                 WatchHeartRateSection(hrSamples: model.recordedHeartRate)
+                hrCoverageRow
                 WatchReceiptRow(title: "Saved on watch", state: receipt.watch)
                 WatchReceiptRow(title: "iPhone", state: receipt.iPhone)
                 WatchReceiptRow(title: "Apple Health", state: receipt.health)
@@ -58,6 +60,18 @@ struct WatchStrengthSummaryView: View {
                 try? await Task.sleep(for: .seconds(1))
             }
         }
+    }
+
+    private var hrCoverageRow: some View {
+        let coverage = WatchStrengthHRCoverage.presentation(
+            samples: model.recordedHeartRate,
+            duration: model.recordedHeartRate.map(\.t).max() ?? 0,
+            profile: CardioIntensityProfile.resolved(userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
+                                                     age: watchSettings.userAge),
+            pending: watchManager.strengthCompletionOutbox.failedRecoverably || model.completionHeartRateOmitted)
+        return Text(coverage.text).font(.caption2).foregroundStyle(.secondary)
+            .accessibilityLabel(coverage.accessibilityLabel)
+            .accessibilityIdentifier("watchSummary.hrCoverage")
     }
 
     private func refreshReceipt() {

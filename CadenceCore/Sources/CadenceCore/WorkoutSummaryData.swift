@@ -126,6 +126,12 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     /// Strength only: actual warm-up / cool-down time consumed, in seconds (batch 6).
     public let warmupSec: TimeInterval
     public let cooldownSec: TimeInterval
+    /// Strength only: persisted HR capture metadata (nil for sessions saved before it existed).
+    public let hrCoverage: HeartRateCoverage?
+    /// Strength only: stored HR sample count, used when `hrCoverage` is absent.
+    public let hrSampleCount: Int
+    /// Strength only: the Watch/phone is still delivering the remaining HR measurements.
+    public let hrCompletionPending: Bool
 
     public init(kind: Kind,
                 symbol: String = "figure.mixed.cardio",
@@ -153,7 +159,13 @@ public struct WorkoutSummaryData: Equatable, Sendable {
                 standardMETMinutes: Double? = nil,
                 isLogged: Bool = false,
                 warmupSec: TimeInterval = 0,
-                cooldownSec: TimeInterval = 0) {
+                cooldownSec: TimeInterval = 0,
+                hrCoverage: HeartRateCoverage? = nil,
+                hrSampleCount: Int = 0,
+                hrCompletionPending: Bool = false) {
+        self.hrCoverage = hrCoverage
+        self.hrSampleCount = hrSampleCount
+        self.hrCompletionPending = hrCompletionPending
         self.kind = kind
         self.symbol = symbol
         self.title = title
@@ -188,7 +200,15 @@ public struct WorkoutSummaryData: Equatable, Sendable {
     public var hrCoverageState: HeartRateCoverageState {
         guard kind == .strength else { return .none }
         return HeartRateCoverageState.evaluate(summary: cardioIntensity,
-                                               sampleCount: cardioIntensity == nil ? 0 : 1)
+                                               sampleCount: hrCoverage?.sampleCount ?? hrSampleCount)
+    }
+
+    /// Distinct, accessible wording for HR capture; missing samples are never "easy".
+    public var hrCoveragePresentation: HeartRateCoveragePresentation? {
+        guard kind == .strength else { return nil }
+        return HeartRateCoveragePresentation.make(
+            state: hrCoverageState, sampleCount: hrCoverage?.sampleCount ?? hrSampleCount,
+            pending: hrCompletionPending)
     }
 
     // Tuple-typed arrays block Equatable synthesis, so compare element-wise.
@@ -288,7 +308,10 @@ public struct WorkoutSummaryData: Equatable, Sendable {
             cardioIntensity: session.intensitySummary,
             isLogged: session.isLogged,
             warmupSec: session.warmupSeconds,
-            cooldownSec: session.cooldownSeconds
+            cooldownSec: session.cooldownSeconds,
+            hrCoverage: session.hrCoverage,
+            hrSampleCount: session.hrCoverage?.sampleCount ?? sortedHR.count,
+            hrCompletionPending: session.hrCompletionPending
         )
     }
 

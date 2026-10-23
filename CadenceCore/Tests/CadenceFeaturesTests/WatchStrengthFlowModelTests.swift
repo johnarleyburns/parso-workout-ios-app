@@ -804,4 +804,18 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertNotNil(payload[WatchStrengthHeartRate.transportKey])
         XCTAssertEqual(m.recordedHeartRate, dense)
     }
+
+    func testLegacyPayloadHasSourceButNoInventedFinalSequence() throws {
+        let m = makeModel()
+        m.start(title: "Push", plannedExerciseNames: ["Bench Press"], createSession: true)
+        let dense = (0..<5).map { HRSamplePoint(t: Double($0) * 5, bpm: 110 + Double($0)) }
+        m.recordHeartRate(dense)
+        let legacy = try XCTUnwrap(m.endSessionPayload())
+        XCTAssertNil(legacy["hr_final_sequence"])
+        XCTAssertEqual(legacy["hr_source"] as? String, HeartRateSource.watchHealthKit.rawValue)
+        XCTAssertNotNil(legacy["hr_captured_at"])
+        let durable = try XCTUnwrap(m.endSessionPayload(finalSequence: 2))
+        XCTAssertEqual(durable["hr_final_sequence"] as? Int, 2)
+        XCTAssertNotEqual(durable["hr_sample_count"] as? Int, 2)
+    }
 }

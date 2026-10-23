@@ -93,6 +93,11 @@ public final class WatchHeartRateOutbox {
         if state.finalizeRequested { return outstanding ? .pendingDelivery : .awaitingFinalization }
         return .streaming
     }
+    /// Last durable batch sequence once finalization was requested; nil before.
+    public var finalSequence: Int? {
+        guard let state, state.finalizeRequested else { return nil }
+        return state.nextSequence - 1
+    }
     public var unacknowledgedCount: Int {
         (state?.pending.count ?? 0) + (state?.batches.reduce(0) { $0 + $1.observations.count } ?? 0)
     }

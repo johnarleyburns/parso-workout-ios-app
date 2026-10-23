@@ -28,6 +28,8 @@ final class FakeReceiptStore: WatchHeartRateReceiptStore {
     func clear(sessionID: UUID) { states[sessionID] = nil }
 }
 
+let testEpoch = UUID(uuidString: "00000000-0000-0000-0000-00000000E0C0")!
+
 @MainActor
 struct WatchHeartRateDeliveryTests {
     let session = UUID(), request = UUID()
@@ -43,7 +45,7 @@ struct WatchHeartRateDeliveryTests {
             counter.n += 1
             return UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", counter.n))!
         })
-        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request)
+        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: testEpoch)
         return (outbox, store, transport)
     }
 
@@ -57,7 +59,7 @@ struct WatchHeartRateDeliveryTests {
         init(known: [UUID: UUID]) {
             self.known = known
             receiver = WatchHeartRateReceiver(store: receipts, transport: transport,
-                expectedRequestID: { [unowned self] in self.known[$0] },
+                expectedRoute: { [unowned self] in self.known[$0].map { WatchHRRoute(requestID: $0, captureEpoch: testEpoch) } },
                 persist: { [unowned self] id, obs in
                     if self.failPersist { return false }
                     self.persisted[id, default: []] += obs; return true })
@@ -84,7 +86,7 @@ struct WatchHeartRateDeliveryTests {
         outbox.flush()
         let first = transport.immediate[0]
         let ack = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: session,
-                                 watchRequestID: request, acknowledgement: .init(deliveryID: first.deliveryID, cursor: 0))
+                                 watchRequestID: request, captureEpoch: testEpoch, acknowledgement: .init(deliveryID: first.deliveryID, cursor: 0))
         #expect(outbox.handleAcknowledgement(ack))
         #expect(outbox.unacknowledgedCount == 1)
         #expect(outbox.state?.batches.first?.sequence == 2)
@@ -158,14 +160,15 @@ struct WatchHeartRateDeliveryTests {
         let good = WatchHRObservation(observationID: UUID(), source: .watchHealthKit, sampleEnd: t0.timeIntervalSince1970, bpm: 110)
         func msg(_ edit: (inout WatchHRMessage) -> Void) -> [String: Any] {
             var m = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: session,
-                                   watchRequestID: request, sequence: 1, observations: [good])
+                                   watchRequestID: request, captureEpoch: testEpoch, sequence: 1, observations: [good])
             edit(&m); return m.payload
         }
         #expect(phone.receiver.handle(msg { $0.observations[0].bpm = 400 }) == .rejected(.invalidBPM))
         #expect(phone.receiver.handle(msg { $0.observations[0].sampleEnd = 0 }) == .rejected(.invalidTimestamp))
         #expect(phone.receiver.handle(msg { $0.version = 9 }) == .rejected(.unsupportedVersion))
-        #expect(phone.receiver.handle(msg { $0.phoneWorkoutSessionID = UUID() }) == .rejected(.sessionMismatch))
+        #expect(phone.receiver.handle(msg { $0.phoneWorkoutSessionID = UUID() }) == .rejected(.identityMismatch))
         #expect(phone.receiver.handle(msg { $0.watchRequestID = UUID() }) == .rejected(.requestMismatch))
+        #expect(phone.receiver.handle(msg { $0.captureEpoch = UUID() }) == .rejected(.identityMismatch))
         #expect(phone.receiver.handle(["watchHRv1": Data([1, 2])]) == .rejected(.malformed))
         #expect(phone.persisted.isEmpty)
         #expect(phone.transport.durable.isEmpty && phone.transport.immediate.isEmpty)
@@ -190,11 +193,11 @@ struct WatchHeartRateDeliveryTests {
         outbox.flush()
         let sessionB = UUID(), requestB = UUID()
         let phone = Phone(known: [sessionB: requestB]) // A is no longer known
-        #expect(phone.receiver.handle(transport.durable[0].payload) == .rejected(.sessionMismatch))
+        #expect(phone.receiver.handle(transport.durable[0].payload) == .rejected(.identityMismatch))
         #expect(phone.persisted[sessionB] == nil)
         // Watch side: B-scoped ack must not touch A's batches
         let bAck = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: sessionB,
-                                  watchRequestID: requestB,
+                                  watchRequestID: requestB, captureEpoch: testEpoch,
                                   acknowledgement: .init(deliveryID: transport.durable[0].deliveryID, cursor: 5))
         #expect(!outbox.handleAcknowledgement(bAck))
         #expect(outbox.unacknowledgedCount == 1)
@@ -204,7 +207,7 @@ struct WatchHeartRateDeliveryTests {
         let (outbox, _, transport) = makeOutbox(transport: { let t = FakeHRTransport(); t.isReachable = false; return t }())
         outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
         let phone = Phone(known: [session: request])
-        phone.receiver.requestFinalization(sessionID: session, watchRequestID: request)
+        phone.receiver.requestFinalization(sessionID: session, watchRequestID: request, captureEpoch: testEpoch)
         let req = phone.transport.durable[0]
         #expect(outbox.handleFinalizeRequest(req))
         #expect(outbox.unacknowledgedCount == 1) // retained until acknowledged
@@ -262,17 +265,17 @@ struct WatchHeartRateRetiredJournalTests {
         let store = FakeHRStore(), transport = FakeHRTransport()
         transport.isReachable = false
         let outbox = WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 })
-        let a = UUID(), ra = UUID(), b = UUID(), rb = UUID()
-        outbox.bind(phoneWorkoutSessionID: a, watchRequestID: ra)
+        let a = UUID(), ra = UUID(), b = UUID(), rb = UUID(), epochA = UUID()
+        outbox.bind(phoneWorkoutSessionID: a, watchRequestID: ra, captureEpoch: epochA)
         outbox.record(bpm: 120, sampleEnd: Date(timeIntervalSince1970: 1_800_000_000), source: .watchHealthKit)
-        outbox.bind(phoneWorkoutSessionID: b, watchRequestID: rb)
+        outbox.bind(phoneWorkoutSessionID: b, watchRequestID: rb, captureEpoch: UUID())
         outbox.record(bpm: 90, sampleEnd: Date(timeIntervalSince1970: 1_800_000_500), source: .watchHealthKit)
         outbox.flush()
         let sessions = Set(transport.durable.map(\.phoneWorkoutSessionID))
         #expect(sessions == [a, b])
         // acknowledging A leaves B untouched
         let batchA = transport.durable.first { $0.phoneWorkoutSessionID == a }!
-        let ack = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: a, watchRequestID: ra,
+        let ack = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: a, watchRequestID: ra, captureEpoch: epochA,
                                  acknowledgement: .init(deliveryID: batchA.deliveryID, cursor: 1))
         #expect(outbox.handleAcknowledgement(ack))
         #expect(outbox.state?.phoneWorkoutSessionID == b)
@@ -312,12 +315,12 @@ struct WatchHeartRateTransactionalDeliveryTests {
         let store = FailingReceiptStore(), transport = FakeHRTransport()
         var persisted = 0
         let receiver = WatchHeartRateReceiver(store: store, transport: transport,
-                                              expectedRequestID: { _ in request },
+                                              expectedRoute: { _ in WatchHRRoute(requestID: request, captureEpoch: testEpoch) },
                                               persist: { _, _ in persisted += 1; return true })
         let obs = WatchHRObservation(observationID: UUID(), source: .watchHealthKit,
                                      sampleEnd: 1_800_000_000, bpm: 120, sampleID: nil)
         let message = WatchHRMessage(kind: .observations, deliveryID: UUID(), phoneWorkoutSessionID: session,
-                                     watchRequestID: request, sequence: 1, observations: [obs])
+                                     watchRequestID: request, captureEpoch: testEpoch, sequence: 1, observations: [obs])
         #expect(receiver.handle(message.payload) == .persistenceFailed)
         #expect(transport.immediate.isEmpty && transport.durable.isEmpty)
         store.failSaves = false
@@ -333,13 +336,65 @@ struct WatchHeartRateTransactionalDeliveryTests {
         var ids: [UUID] = []
         for i in 0...WatchHeartRateOutbox.maximumRetiredJournals {
             let id = UUID(); ids.append(id)
-            #expect(outbox.bind(phoneWorkoutSessionID: id, watchRequestID: UUID()))
+            #expect(outbox.bind(phoneWorkoutSessionID: id, watchRequestID: UUID(), captureEpoch: UUID()))
             outbox.record(bpm: 100, sampleEnd: Date(timeIntervalSince1970: 1_800_000_000 + Double(i)), source: .watchHealthKit)
         }
-        #expect(!outbox.bind(phoneWorkoutSessionID: UUID(), watchRequestID: UUID()))
+        #expect(!outbox.bind(phoneWorkoutSessionID: UUID(), watchRequestID: UUID(), captureEpoch: UUID()))
         #expect(outbox.failedRecoverably && outbox.bindingRefused)
         #expect(outbox.state?.retired.count == WatchHeartRateOutbox.maximumRetiredJournals)
         #expect(outbox.state?.retired.allSatisfy { !$0.batches.isEmpty } == true)
         #expect(outbox.record(bpm: 100, sampleEnd: Date(timeIntervalSince1970: 1_800_000_999), source: .watchHealthKit) == .notPersisted)
+    }
+}
+
+@MainActor
+struct WatchHeartRateCaptureEpochTests {
+    @Test func delayedEpochABatchCannotModifySameSessionEpochB() {
+        let session = UUID(), request = UUID(), epochA = UUID(), epochB = UUID()
+        let store = FakeHRStore(), transport = FakeHRTransport()
+        transport.store = store
+        let outbox = WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 })
+        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: epochA)
+        outbox.record(bpm: 120, sampleEnd: Date(timeIntervalSince1970: 1_800_000_000), source: .watchHealthKit)
+        outbox.flush()
+        var persisted = 0
+        let phoneTransport = FakeHRTransport()
+        let receiver = WatchHeartRateReceiver(store: FakeReceiptStore(), transport: phoneTransport,
+            expectedRoute: { _ in WatchHRRoute(requestID: request, captureEpoch: epochB) },
+            persist: { _, _ in persisted += 1; return true })
+        #expect(receiver.handle(transport.immediate[0].payload) == .rejected(.identityMismatch))
+        #expect(persisted == 0)
+        #expect(phoneTransport.immediate.isEmpty && phoneTransport.durable.isEmpty)
+    }
+
+    @Test func matchingEpochPersistsOriginalSampleTimeAndDuplicateIsIdempotent() {
+        let session = UUID(), request = UUID(), epoch = UUID()
+        let store = FakeHRStore(), transport = FakeHRTransport()
+        transport.store = store
+        let outbox = WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 })
+        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: epoch)
+        outbox.record(bpm: 120, sampleEnd: Date(timeIntervalSince1970: 1_800_000_000), source: .watchHealthKit)
+        outbox.flush()
+        var seen: [WatchHRObservation] = []
+        let receiver = WatchHeartRateReceiver(store: FakeReceiptStore(), transport: FakeHRTransport(),
+            expectedRoute: { _ in WatchHRRoute(requestID: request, captureEpoch: epoch) },
+            persist: { _, o in seen += o; return true })
+        let payload = transport.immediate[0].payload
+        #expect(receiver.handle(payload) == .accepted(count: 1))
+        #expect(receiver.handle(payload) == .duplicate)
+        #expect(seen.count == 1 && seen[0].sampleEnd == 1_800_000_000)
+    }
+
+    @Test func outboxRecreationPreservesEpoch() {
+        let session = UUID(), request = UUID(), epoch = UUID()
+        let store = FakeHRStore(), transport = FakeHRTransport()
+        let first = WatchHeartRateOutbox(store: store, transport: transport)
+        first.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: epoch)
+        let revived = WatchHeartRateOutbox(store: store, transport: transport)
+        #expect(revived.state?.captureEpoch == epoch)
+        #expect(revived.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: epoch))
+        // A different epoch for the same pair is a new lifecycle, never merged.
+        #expect(revived.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: UUID()))
+        #expect(revived.state?.captureEpoch != epoch)
     }
 }

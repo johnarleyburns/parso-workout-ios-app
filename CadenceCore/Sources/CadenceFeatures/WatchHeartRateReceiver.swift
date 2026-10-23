@@ -23,6 +23,13 @@ public protocol WatchHeartRateReceiptStore {
     func clear(sessionID: UUID)
 }
 
+/// Phone-side identity of a workout that may still receive Watch HR.
+public struct WatchHRRoute: Equatable, Sendable {
+    public var requestID: UUID
+    public var captureEpoch: UUID
+    public init(requestID: UUID, captureEpoch: UUID) { self.requestID = requestID; self.captureEpoch = captureEpoch }
+}
+
 public enum WatchHRReceiveOutcome: Equatable, Sendable {
     case accepted(count: Int)
     case duplicate
@@ -41,17 +48,17 @@ public final class WatchHeartRateReceiver {
 
     private let store: WatchHeartRateReceiptStore
     private let transport: WatchHeartRateTransport
-    /// Returns the Watch request ID bound to a workout that may still receive
-    /// data (active or finished-pending), or nil if the workout is unknown.
-    private let expectedRequestID: (UUID) -> UUID?
+    /// Returns the request ID and capture epoch bound to a workout that may
+    /// still receive data (active or finished-pending), or nil if unknown.
+    private let expectedRoute: (UUID) -> WatchHRRoute?
     /// Persists observations into the session; false means not durable.
     private let persist: (UUID, [WatchHRObservation]) -> Bool
 
     public init(store: WatchHeartRateReceiptStore, transport: WatchHeartRateTransport,
-                expectedRequestID: @escaping (UUID) -> UUID?,
+                expectedRoute: @escaping (UUID) -> WatchHRRoute?,
                 persist: @escaping (UUID, [WatchHRObservation]) -> Bool) {
         self.store = store; self.transport = transport
-        self.expectedRequestID = expectedRequestID; self.persist = persist
+        self.expectedRoute = expectedRoute; self.persist = persist
     }
 
     @discardableResult
@@ -61,8 +68,10 @@ public final class WatchHeartRateReceiver {
         case .failure(let reason): return reject(reason)
         case .success(let parsed): message = parsed
         }
-        guard let request = expectedRequestID(message.phoneWorkoutSessionID) else { return reject(.sessionMismatch) }
-        if let reason = message.validateScope(phoneWorkoutSessionID: message.phoneWorkoutSessionID, watchRequestID: request) {
+        // Identity must match exactly before anything is persisted or acknowledged.
+        guard let route = expectedRoute(message.phoneWorkoutSessionID) else { return reject(.identityMismatch) }
+        if let reason = message.validateScope(phoneWorkoutSessionID: message.phoneWorkoutSessionID,
+                                              watchRequestID: route.requestID, captureEpoch: route.captureEpoch) {
             return reject(reason)
         }
         var state = store.load(sessionID: message.phoneWorkoutSessionID)
@@ -106,9 +115,10 @@ public final class WatchHeartRateReceiver {
     }
 
     /// Phone side of the finalize handshake: asks the Watch to flush.
-    public func requestFinalization(sessionID: UUID, watchRequestID: UUID, deliveryID: UUID = UUID()) {
+    public func requestFinalization(sessionID: UUID, watchRequestID: UUID, captureEpoch: UUID, deliveryID: UUID = UUID()) {
         let message = WatchHRMessage(kind: .finalizeRequest, deliveryID: deliveryID,
-                                     phoneWorkoutSessionID: sessionID, watchRequestID: watchRequestID)
+                                     phoneWorkoutSessionID: sessionID, watchRequestID: watchRequestID,
+                                     captureEpoch: captureEpoch)
         if transport.isReachable { transport.sendImmediate(message) }
         transport.transferUserInfo(message)
         Self.log.info("finalization requested")
@@ -124,7 +134,8 @@ public final class WatchHeartRateReceiver {
         let ack = WatchHRMessage(kind: message.kind == .finalizeAcknowledgement ? .finalizeAcknowledgement : .observations,
                                  deliveryID: UUID(uuid: message.deliveryID.uuid),
                                  phoneWorkoutSessionID: message.phoneWorkoutSessionID,
-                                 watchRequestID: message.watchRequestID, sequence: message.sequence,
+                                 watchRequestID: message.watchRequestID, captureEpoch: message.captureEpoch,
+                                 sequence: message.sequence,
                                  acknowledgement: WatchHRAcknowledgement(deliveryID: message.deliveryID, cursor: cursor))
         if transport.isReachable { transport.sendImmediate(ack) }
         transport.transferUserInfo(ack)

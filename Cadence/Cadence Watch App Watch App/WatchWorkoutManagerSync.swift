@@ -126,7 +126,8 @@ extension WatchWorkoutManager: WCSessionDelegate {
             guard !isActive, !isMonitoring else {
                 // The phone opened this app with `startWatchApp`, which already
                 // started the workout; this command names it.
-                if adoptPhoneLaunchedWorkout(requestID: uuid, type: type, phoneWorkoutSessionID: phoneSessionID) {
+                if adoptPhoneLaunchedWorkout(requestID: uuid, type: type, phoneWorkoutSessionID: phoneSessionID,
+                                              captureEpoch: command?.captureEpoch) {
                     if let command { lastAppliedWatchHRCommandAt = command.issuedAt }
                     return reply(for: uuid, accepted: true)
                 }
@@ -135,7 +136,8 @@ extension WatchWorkoutManager: WCSessionDelegate {
                     : reply(for: uuid, accepted: false, rejection: .alreadyActive,
                             activeRequestID: phoneRequestID.flatMap(UUID.init(uuidString:)))
             }
-            guard startWorkout(type: type, phoneRequestID: uuid, phoneWorkoutSessionID: phoneSessionID) else {
+            guard startWorkout(type: type, phoneRequestID: uuid, phoneWorkoutSessionID: phoneSessionID,
+                                captureEpoch: command?.captureEpoch) else {
                 return reply(for: uuid, accepted: false, rejection: .sessionStartFailed)
             }
             if let command { lastAppliedWatchHRCommandAt = command.issuedAt }

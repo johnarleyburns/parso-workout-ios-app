@@ -36,6 +36,8 @@ public enum WatchHRMessageRejection: String, Error, Sendable, Equatable {
     case malformed, unsupportedVersion, missingIdentifier, emptyBatch, invalidSequence
     case invalidBPM, invalidTimestamp, invalidSource
     case sessionMismatch, requestMismatch
+    /// Session/request/capture-epoch triple does not match a known route.
+    case identityMismatch
 }
 
 public struct WatchHRMessage: Codable, Equatable, Sendable {
@@ -49,6 +51,8 @@ public struct WatchHRMessage: Codable, Equatable, Sendable {
     public var deliveryID: UUID
     public var phoneWorkoutSessionID: UUID
     public var watchRequestID: UUID
+    /// Capture attempt this message belongs to; stamped from the adopted start command.
+    public var captureEpoch: UUID
     /// Batch sequence (1-based, monotonic). For `finalizeAcknowledgement` it is
     /// the last batch sequence the Watch ever produced for this workout.
     public var sequence: Int
@@ -56,10 +60,11 @@ public struct WatchHRMessage: Codable, Equatable, Sendable {
     public var acknowledgement: WatchHRAcknowledgement?
 
     public init(version: Int = WatchHRMessage.currentVersion, kind: WatchHRMessageKind, deliveryID: UUID,
-                phoneWorkoutSessionID: UUID, watchRequestID: UUID, sequence: Int = 0,
+                phoneWorkoutSessionID: UUID, watchRequestID: UUID, captureEpoch: UUID, sequence: Int = 0,
                 observations: [WatchHRObservation] = [], acknowledgement: WatchHRAcknowledgement? = nil) {
         self.version = version; self.kind = kind; self.deliveryID = deliveryID
         self.phoneWorkoutSessionID = phoneWorkoutSessionID; self.watchRequestID = watchRequestID
+        self.captureEpoch = captureEpoch
         self.sequence = sequence; self.observations = observations; self.acknowledgement = acknowledgement
     }
 
@@ -111,9 +116,11 @@ public struct WatchHRMessage: Codable, Equatable, Sendable {
 
     /// Whether this message belongs to the expected workout. Used by both sides.
     public func validateScope(phoneWorkoutSessionID expectedSession: UUID,
-                              watchRequestID expectedRequest: UUID) -> WatchHRMessageRejection? {
+                              watchRequestID expectedRequest: UUID,
+                              captureEpoch expectedEpoch: UUID) -> WatchHRMessageRejection? {
         if phoneWorkoutSessionID != expectedSession { return .sessionMismatch }
         if watchRequestID != expectedRequest { return .requestMismatch }
+        if captureEpoch != expectedEpoch { return .identityMismatch }
         return nil
     }
 }

@@ -37,16 +37,22 @@ struct WatchHeartRateDefaultsStore: WatchHeartRateOutboxStore {
 
 extension WatchWorkoutManager {
     static let phoneWorkoutSessionIDKey = "watch.activeWorkout.phoneWorkoutSessionID"
+    static let phoneCaptureEpochKey = "watch.activeWorkout.phoneCaptureEpoch"
     private static let outboxFlushGap: TimeInterval = 10
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "WatchHRDelivery")
 
     /// Pairs the phone's workout identity with its request ID, persisted with
     /// the active workout metadata and restored on recovery.
-    func bindPhoneWorkoutSession(_ id: UUID?) {
+    /// The epoch comes from the adopted start command, never from current state;
+    /// without one (older phone) no durable journal is bound.
+    func bindPhoneWorkoutSession(_ id: UUID?, captureEpoch: UUID? = nil) {
         phoneWorkoutSessionID = id
-        if let id, let request = phoneRequestID.flatMap(UUID.init(uuidString:)) {
-            hrOutbox.bind(phoneWorkoutSessionID: id, watchRequestID: request)
+        phoneCaptureEpoch = id == nil ? nil : captureEpoch
+        if let id, let epoch = phoneCaptureEpoch, let request = phoneRequestID.flatMap(UUID.init(uuidString:)) {
+            hrOutbox.bind(phoneWorkoutSessionID: id, watchRequestID: request, captureEpoch: epoch)
         }
+        if let epoch = phoneCaptureEpoch { UserDefaults.standard.set(epoch.uuidString, forKey: Self.phoneCaptureEpochKey) }
+        else { UserDefaults.standard.removeObject(forKey: Self.phoneCaptureEpochKey) }
         if let id { UserDefaults.standard.set(id.uuidString, forKey: Self.phoneWorkoutSessionIDKey) }
         else { UserDefaults.standard.removeObject(forKey: Self.phoneWorkoutSessionIDKey) }
     }
@@ -61,15 +67,16 @@ extension WatchWorkoutManager {
     func restorePhoneWorkoutSession() {
         let id = UserDefaults.standard.string(forKey: Self.phoneWorkoutSessionIDKey).flatMap(UUID.init(uuidString:))
         phoneWorkoutSessionID = id
-        if let id, let request = phoneRequestID.flatMap(UUID.init(uuidString:)) {
-            hrOutbox.bind(phoneWorkoutSessionID: id, watchRequestID: request)
+        phoneCaptureEpoch = UserDefaults.standard.string(forKey: Self.phoneCaptureEpochKey).flatMap(UUID.init(uuidString:))
+        if let id, let epoch = phoneCaptureEpoch, let request = phoneRequestID.flatMap(UUID.init(uuidString:)) {
+            hrOutbox.bind(phoneWorkoutSessionID: id, watchRequestID: request, captureEpoch: epoch)
         }
     }
 
     /// Journals a real reading (never a heartbeat repeat) and delivers it in
     /// bounded batches.
     func journalHeartRate(_ bpm: Double, sampleEnd: Date?) {
-        guard phoneWorkoutSessionID != nil, phoneRequestID != nil else { return }
+        guard phoneWorkoutSessionID != nil, phoneCaptureEpoch != nil, phoneRequestID != nil else { return }
         let source: HeartRateObservationSource = sampleEnd == nil ? .watchBLE : .watchHealthKit
         hrOutbox.record(bpm: bpm, sampleEnd: sampleEnd ?? Date(), source: source)
         flushHeartRateOutboxIfDue()

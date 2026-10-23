@@ -76,6 +76,8 @@ public final class WatchHeartRateOutbox {
     /// unacknowledged journals would exceed `maximumRetiredJournals`.
     public private(set) var bindingRefused = false
     private var lastImmediateAt: TimeInterval?
+    /// Counts only; see `WatchHRTransportDiagnostics`.
+    public private(set) var diagnostics = WatchHRTransportDiagnostics()
 
     public init(store: WatchHeartRateOutboxStore, transport: WatchHeartRateTransport,
                 clock: @escaping () -> TimeInterval = { Date().timeIntervalSince1970 },
@@ -179,7 +181,8 @@ public final class WatchHeartRateOutbox {
         sealPending(&s)
         state = s
         persist()
-        Self.log.info("retry: \(reason, privacy: .public)")
+        diagnostics.retryCount += 1
+        Self.log.info("retry: \(reason, privacy: .public), unacknowledged chunks \(s.batches.count)")
         deliver()
     }
 
@@ -195,8 +198,19 @@ public final class WatchHeartRateOutbox {
 
     private func deliver(_ s: inout WatchHeartRateOutboxState, now: TimeInterval) -> Bool {
         var changed = false
+        let chunker = WatchHRChunker(phoneWorkoutSessionID: s.phoneWorkoutSessionID, watchRequestID: s.watchRequestID,
+                                     captureEpoch: s.captureEpoch)
         for i in s.batches.indices {
             let batch = s.batches[i]
+            // An unencodable/oversized chunk stays in the outbox (never dropped or truncated).
+            let bytes = chunker.encodedSize(batch.observations)
+            if bytes > WatchHRChunker.maxEncodedBytes {
+                diagnostics.oversizedChunkCount += 1
+                failedRecoverably = true
+                Self.log.error("chunk exceeds byte budget, retained")
+                continue
+            }
+            diagnostics.largestChunkBytes = max(diagnostics.largestChunkBytes, bytes)
             let message = WatchHRMessage(kind: .observations, deliveryID: batch.deliveryID,
                                          phoneWorkoutSessionID: s.phoneWorkoutSessionID,
                                          watchRequestID: s.watchRequestID, captureEpoch: s.captureEpoch,
@@ -249,6 +263,7 @@ public final class WatchHeartRateOutbox {
             return false
         }
         persist()
+        diagnostics.receiptCount += 1
         Self.log.info("acknowledgement accepted")
         if message.kind == .finalizeAcknowledgement { releaseIfFullyDelivered() }
         return true
@@ -331,9 +346,13 @@ public final class WatchHeartRateOutbox {
     private func sealPending(_ s: inout WatchHeartRateOutboxState) {
         guard !s.pending.isEmpty else { return }
         s.pending.sort { $0.sampleEnd < $1.sampleEnd }
-        while !s.pending.isEmpty {
-            let chunk = Array(s.pending.prefix(Self.maximumBatchSize))
-            s.pending.removeFirst(chunk.count)
+        let chunker = WatchHRChunker(phoneWorkoutSessionID: s.phoneWorkoutSessionID, watchRequestID: s.watchRequestID,
+                                     captureEpoch: s.captureEpoch)
+        let chunks = chunker.chunks(s.pending)
+        s.pending = []
+        diagnostics.observationCount += chunks.reduce(0) { $0 + $1.count }
+        diagnostics.chunkCount += chunks.count
+        for chunk in chunks {
             s.batches.append(.init(deliveryID: makeUUID(), sequence: s.nextSequence, observations: chunk, durableQueuedAt: nil))
             s.nextSequence += 1
         }

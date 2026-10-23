@@ -203,6 +203,23 @@ public final class WatchHeartRateReceiver {
         }
     }
 
+    /// Watch-started workout: `end_session` carried a transfer route and the final
+    /// watermark. Registers the route, then finalizes once every chunk (possibly
+    /// already received) is persisted. Throws if the pending state is not durable.
+    public func registerCompletionTransfer(sessionID: UUID, transferID: UUID, captureEpoch: UUID,
+                                           finalSequence: Int, addRoute: (WatchHRRoute) -> Void) throws {
+        addRoute(WatchHRRoute(requestID: transferID, captureEpoch: captureEpoch))
+        var fin = finalizationStore.load(sessionID: sessionID)
+        if fin?.captureEpoch != captureEpoch { fin = WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch) }
+        fin?.finalSequence = finalSequence
+        if let fin { try finalizationStore.save(fin) }
+        let receipt = store.load(sessionID: sessionID) ?? WatchHRReceiptState(phoneWorkoutSessionID: sessionID)
+        var state = receipt
+        state.finalSequence = finalSequence
+        try store.save(state)
+        try advanceFinalization(sessionID: sessionID, receipt: state)
+    }
+
     /// Completion requires a durable finalization state; a receipt cursor alone never claims it.
     public func isFinalizationComplete(sessionID: UUID) -> Bool {
         finalizationState(sessionID: sessionID)?.status == .complete

@@ -168,6 +168,30 @@ public final class WatchHeartRateOutbox {
         return .accepted
     }
 
+    /// Journals a finished workout's complete series in one durable write, seals
+    /// it into budgeted chunks and marks the journal final. Nothing is delivered
+    /// here (the caller sends its own message first, then `flush()`). Returns the
+    /// final batch sequence (0 when nothing was valid) or nil when it could not be
+    /// persisted; every chunk stays retained until the phone acknowledges it.
+    public func sealCompletion(_ points: [(bpm: Double, sampleEnd: TimeInterval)]) -> Int? {
+        guard var s = state, !bindingRefused else { return nil }
+        state = nil
+        defer { state = s }
+        for p in points {
+            guard p.bpm.isFinite, p.bpm >= Self.minimumBPM, p.bpm <= Self.maximumBPM,
+                  p.sampleEnd.isFinite, p.sampleEnd > 0 else { continue }
+            let key = Self.key(source: .watchHealthKit, sampleEnd: p.sampleEnd, bpm: p.bpm, sampleID: nil)
+            guard s.seenKeys.insert(key).inserted else { continue }
+            s.pending.append(WatchHRObservation(observationID: makeUUID(), source: .watchHealthKit,
+                                                sampleEnd: p.sampleEnd, bpm: p.bpm))
+        }
+        s.finalizeRequested = true
+        sealPending(&s)
+        state = s
+        guard persist() else { return nil }
+        return s.nextSequence - 1
+    }
+
     /// Seals pending observations and attempts delivery. Observations are
     /// always persisted before this runs.
     public func flush() {

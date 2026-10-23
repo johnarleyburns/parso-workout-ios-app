@@ -49,9 +49,10 @@ struct WatchCoolDownView: View {
     }
 
     private func sendEndSession() {
-        guard let payload = model.endSessionPayload() else { return }
+        guard let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
+        watchManager.strengthCompletionOutbox.flush()
     }
 }
 
@@ -83,8 +84,10 @@ private final class WatchCooldownTimerController {
     }
 
     private func sendEndSession(_ model: WatchStrengthFlowModel) {
-        guard let payload = model.endSessionPayload() else { return }
+        guard let watchManager,
+              let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
+        watchManager.strengthCompletionOutbox.flush()
     }
 }

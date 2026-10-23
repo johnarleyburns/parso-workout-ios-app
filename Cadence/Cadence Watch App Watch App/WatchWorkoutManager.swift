@@ -126,6 +126,9 @@ final class WatchWorkoutManager: NSObject {
     var phoneCaptureEpoch: UUID? // adopted from the start command
     var phoneWorkoutSessionID: UUID? // paired with phoneRequestID; see +HeartRateOutbox
     @ObservationIgnored var lastOutboxFlushUptime: TimeInterval = 0
+    /// Watch-started strength completion HR: its own durable chunk journal, independent of phone-launch identity.
+    @ObservationIgnored lazy var strengthCompletionOutbox = WatchStrengthCompletionOutbox(
+        outbox: WatchHeartRateOutbox(store: WatchStrengthCompletionDefaultsStore(), transport: WatchWCHeartRateTransport()))
     @ObservationIgnored lazy var hrOutbox = WatchHeartRateOutbox(store: WatchHeartRateDefaultsStore(), transport: WatchWCHeartRateTransport())
     /// Workout screens on show (strength, cardio, intervals). A running session with none of these,
     /// no phone workout and no resumable lift is recording for no one; see `WatchSessionOwnership`.

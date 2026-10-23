@@ -1479,6 +1479,19 @@ extension AppModel {
             case .logSet:
                 NotificationCenter.default.post(name: .watchSetLogged, object: nil)
             case .endSession:
+                // Watch-started completion: resolve the transfer route to this session and
+                // finalize only when the chunk watermark is reached.
+                if let sessionID = (info["session_id"] as? String).flatMap(UUID.init(uuidString:)),
+                   let transfer = (info[WatchStrengthCompletionKey.transferID] as? String).flatMap(UUID.init(uuidString:)),
+                   let epoch = (info[WatchStrengthCompletionKey.captureEpoch] as? String).flatMap(UUID.init(uuidString:)),
+                   let final = info[WatchStrengthCompletionKey.finalSequence] as? Int {
+                    do {
+                        try watchHeartRateReceiver.registerCompletionTransfer(
+                            sessionID: sessionID, transferID: transfer, captureEpoch: epoch, finalSequence: final) {
+                            WatchHeartRateRouteStore().add(sessionID: sessionID, requestID: $0.requestID, captureEpoch: $0.captureEpoch)
+                        }
+                    } catch { return false }
+                }
                 NotificationCenter.default.post(name: .watchSessionEnded, object: nil)
             default:
                 break

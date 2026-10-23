@@ -89,7 +89,7 @@ extension SessionView {
             if isActiveSession {
                 VStack(spacing: 0) {
                     WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused, timers: $timers)
-                    SessionLiveHRBand()
+                    SessionLiveHRBand(sessionID: session.id)
                 }
             }
         }

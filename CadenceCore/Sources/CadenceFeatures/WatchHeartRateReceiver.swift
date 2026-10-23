@@ -17,6 +17,43 @@ public struct WatchHRReceiptState: Codable, Equatable, Sendable {
     public var finalizationComplete: Bool { finalSequence.map { cursor >= $0 } ?? false }
 }
 
+/// Durable, session-owned finalization watermark. `finalSequence` is
+/// `unknownWatermark` until the Watch reports its last batch sequence, so
+/// completion is impossible before the real watermark is known; an explicit
+/// zero-measurement workout reports `finalSequence == 0` and completes.
+public struct WatchHRFinalizationState: Codable, Equatable, Sendable {
+    public enum Status: String, Codable, Sendable { case pending, complete, failedRecoverably }
+    public static let unknownWatermark = Int.max
+
+    public let sessionID: UUID
+    public let captureEpoch: UUID
+    public var finalSequence: Int
+    public var receiptCursor: Int
+    public var status: Status
+
+    public init(sessionID: UUID, captureEpoch: UUID, finalSequence: Int = unknownWatermark,
+                receiptCursor: Int = 0, status: Status = .pending) {
+        self.sessionID = sessionID; self.captureEpoch = captureEpoch
+        self.finalSequence = finalSequence; self.receiptCursor = receiptCursor; self.status = status
+    }
+    public var watermarkKnown: Bool { finalSequence != Self.unknownWatermark }
+}
+
+public protocol WatchHeartRateFinalizationStore {
+    func load(sessionID: UUID) -> WatchHRFinalizationState?
+    func save(_ state: WatchHRFinalizationState) throws
+    func clear(sessionID: UUID)
+}
+
+/// Process-local default; the app injects a persistent store.
+public final class InMemoryWatchHeartRateFinalizationStore: WatchHeartRateFinalizationStore {
+    private var states: [UUID: WatchHRFinalizationState] = [:]
+    public init() {}
+    public func load(sessionID: UUID) -> WatchHRFinalizationState? { states[sessionID] }
+    public func save(_ state: WatchHRFinalizationState) throws { states[state.sessionID] = state }
+    public func clear(sessionID: UUID) { states[sessionID] = nil }
+}
+
 public protocol WatchHeartRateReceiptStore {
     func load(sessionID: UUID) -> WatchHRReceiptState?
     func save(_ state: WatchHRReceiptState) throws
@@ -53,12 +90,43 @@ public final class WatchHeartRateReceiver {
     private let expectedRoute: (UUID) -> WatchHRRoute?
     /// Persists observations into the session; false means not durable.
     private let persist: (UUID, [WatchHRObservation]) -> Bool
+    private let finalizationStore: WatchHeartRateFinalizationStore
+    /// Fired exactly once per session when finalization first reaches complete.
+    /// The app refreshes summary, History, This Week, watch snapshot and Health backup here.
+    public var onFinalizationComplete: ((UUID) -> Void)?
 
     public init(store: WatchHeartRateReceiptStore, transport: WatchHeartRateTransport,
+                finalizationStore: WatchHeartRateFinalizationStore = InMemoryWatchHeartRateFinalizationStore(),
                 expectedRoute: @escaping (UUID) -> WatchHRRoute?,
                 persist: @escaping (UUID, [WatchHRObservation]) -> Bool) {
-        self.store = store; self.transport = transport
+        self.store = store; self.transport = transport; self.finalizationStore = finalizationStore
         self.expectedRoute = expectedRoute; self.persist = persist
+    }
+
+    /// The pending/complete state for a session, or nil if none for this capture epoch.
+    public func finalizationState(sessionID: UUID) -> WatchHRFinalizationState? {
+        guard let state = finalizationStore.load(sessionID: sessionID),
+              let route = expectedRoute(sessionID), route.captureEpoch == state.captureEpoch else { return nil }
+        return state
+    }
+
+    /// True while a finished workout is still receiving Watch measurements
+    /// (UI: "Receiving remaining Apple Watch measurements").
+    public func isReceivingRemainingMeasurements(sessionID: UUID) -> Bool {
+        guard let state = finalizationState(sessionID: sessionID) else { return false }
+        return state.status != .complete
+    }
+
+    /// Advances the durable finalization state from the receipt journal; a throw
+    /// means the caller must not acknowledge.
+    private func advanceFinalization(sessionID: UUID, receipt: WatchHRReceiptState) throws {
+        guard var fin = finalizationState(sessionID: sessionID), fin.status != .complete else { return }
+        fin.receiptCursor = receipt.cursor
+        if let final = receipt.finalSequence { fin.finalSequence = final }
+        let wasComplete = fin.status == .complete
+        fin.status = fin.watermarkKnown && fin.receiptCursor >= fin.finalSequence ? .complete : .pending
+        try finalizationStore.save(fin)
+        if fin.status == .complete && !wasComplete { onFinalizationComplete?(sessionID) }
     }
 
     @discardableResult
@@ -81,6 +149,9 @@ public final class WatchHeartRateReceiver {
             guard message.acknowledgement == nil || !message.observations.isEmpty else { return reject(.emptyBatch) }
             if state.deliveryIDs.contains(message.deliveryID) || state.sequences.contains(message.sequence) {
                 Self.log.debug("duplicate delivery")
+                do { try advanceFinalization(sessionID: message.phoneWorkoutSessionID, receipt: state) } catch {
+                    return .persistenceFailed
+                }
                 acknowledge(message, cursor: state.cursor)
                 return .duplicate
             }
@@ -97,11 +168,18 @@ public final class WatchHeartRateReceiver {
                 Self.log.error("receipt journal save failed, not acknowledged")
                 return .persistenceFailed
             }
+            do { try advanceFinalization(sessionID: message.phoneWorkoutSessionID, receipt: state) } catch {
+                Self.log.error("finalization save failed, not acknowledged")
+                return .persistenceFailed
+            }
             acknowledge(message, cursor: state.cursor)
             return .accepted(count: message.observations.count)
         case .finalizeAcknowledgement:
             state.finalSequence = message.sequence
-            do { try store.save(state) } catch { return .persistenceFailed }
+            do {
+                try store.save(state)
+                try advanceFinalization(sessionID: message.phoneWorkoutSessionID, receipt: state)
+            } catch { return .persistenceFailed }
             if state.finalizationComplete { acknowledge(message, cursor: state.cursor) }
             Self.log.info("finalization \(state.finalizationComplete ? "complete" : "pending", privacy: .public)")
             return .finalizationUpdated(complete: state.finalizationComplete)
@@ -111,11 +189,20 @@ public final class WatchHeartRateReceiver {
     }
 
     public func isFinalizationComplete(sessionID: UUID) -> Bool {
-        store.load(sessionID: sessionID)?.finalizationComplete ?? false
+        if let fin = finalizationState(sessionID: sessionID) { return fin.status == .complete }
+        return store.load(sessionID: sessionID)?.finalizationComplete ?? false
     }
 
     /// Phone side of the finalize handshake: asks the Watch to flush.
     public func requestFinalization(sessionID: UUID, watchRequestID: UUID, captureEpoch: UUID, deliveryID: UUID = UUID()) {
+        // Persist pending BEFORE asking the Watch to stop; if that fails, still send so
+        // the Watch flushes, but nothing can be marked complete without a durable state.
+        if finalizationStore.load(sessionID: sessionID)?.captureEpoch != captureEpoch {
+            try? finalizationStore.save(WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch))
+        } else if var existing = finalizationStore.load(sessionID: sessionID), existing.status == .failedRecoverably {
+            existing.status = .pending
+            try? finalizationStore.save(existing)
+        }
         let message = WatchHRMessage(kind: .finalizeRequest, deliveryID: deliveryID,
                                      phoneWorkoutSessionID: sessionID, watchRequestID: watchRequestID,
                                      captureEpoch: captureEpoch)
@@ -127,6 +214,7 @@ public final class WatchHeartRateReceiver {
     /// Explicit user discard of one workout's receipt journal.
     public func discard(sessionID: UUID) {
         store.clear(sessionID: sessionID)
+        finalizationStore.clear(sessionID: sessionID)
         Self.log.info("terminal discard")
     }
 

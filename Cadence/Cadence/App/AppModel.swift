@@ -1051,13 +1051,27 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     private func makeWatchHeartRateReceiver() -> WatchHeartRateReceiver {
-        WatchHeartRateReceiver(
+        let receiver = WatchHeartRateReceiver(
         store: WatchHeartRateReceiptDefaultsStore(),
         transport: PhoneWCHeartRateTransport(),
+        finalizationStore: WatchHeartRateFinalizationDefaultsStore(),
         expectedRoute: { WatchHeartRateRouteStore().route(for: $0) },
         persist: { [weak self] sessionID, observations in
             self?.persistWatchObservations(observations, sessionID: sessionID) ?? false
         })
+        // Once, when the durable watermark is reached: refresh summary/History/This Week
+        // (via the history-changed observers), the watch snapshot, and the Health backup.
+        receiver.onFinalizationComplete = { [weak self] _ in
+            NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+            self?.refreshWatchSyncState()
+        }
+        return receiver
+    }
+
+    /// Plain-language status while a finished workout awaits final Watch HR batches.
+    func watchHRFinalizationStatusText(sessionID: UUID) -> String? {
+        watchHeartRateReceiver.isReceivingRemainingMeasurements(sessionID: sessionID)
+            ? "Receiving remaining Apple Watch measurements" : nil
     }
 
     /// Handles a versioned Watch HR protocol message. Returns the legacy

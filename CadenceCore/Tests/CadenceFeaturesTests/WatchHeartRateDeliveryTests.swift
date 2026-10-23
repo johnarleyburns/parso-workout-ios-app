@@ -398,3 +398,74 @@ struct WatchHeartRateCaptureEpochTests {
         #expect(revived.state?.captureEpoch != epoch)
     }
 }
+
+@MainActor
+struct WatchHeartRateFinalizationWatermarkTests {
+    let session = UUID(), request = UUID(), epoch = UUID()
+    func obs(_ n: Int) -> WatchHRObservation {
+        WatchHRObservation(observationID: UUID(), source: .watchHealthKit,
+                           sampleEnd: 1_800_000_000 + Double(n), bpm: 100 + Double(n))
+    }
+    func msg(_ kind: WatchHRMessageKind, seq: Int, _ o: [WatchHRObservation] = []) -> [String: Any] {
+        WatchHRMessage(kind: kind, deliveryID: UUID(), phoneWorkoutSessionID: session, watchRequestID: request,
+                       captureEpoch: epoch, sequence: seq, observations: o).payload
+    }
+    func make(receipts: FakeReceiptStore = FakeReceiptStore(), fin: WatchHeartRateFinalizationStore = InMemoryWatchHeartRateFinalizationStore(),
+              epochRoute: UUID? = nil, completed: @escaping (UUID) -> Void = { _ in }) -> WatchHeartRateReceiver {
+        let r = WatchHeartRateReceiver(store: receipts, transport: FakeHRTransport(), finalizationStore: fin,
+                                       expectedRoute: { [epoch, request] _ in WatchHRRoute(requestID: request, captureEpoch: epochRoute ?? epoch) },
+                                       persist: { _, _ in true })
+        r.onFinalizationComplete = completed
+        return r
+    }
+
+    @Test func finishBeforeFinalBatchCompletesExactlyOnceAndSurvivesRelaunch() {
+        let receipts = FakeReceiptStore(), fin = InMemoryWatchHeartRateFinalizationStore()
+        var completions = 0
+        let a = make(receipts: receipts, fin: fin) { _ in completions += 1 }
+        a.requestFinalization(sessionID: session, watchRequestID: request, captureEpoch: epoch)
+        #expect(fin.load(sessionID: session)?.status == .pending)
+        #expect(a.isReceivingRemainingMeasurements(sessionID: session))
+        _ = a.handle(msg(.finalizeAcknowledgement, seq: 1))
+        #expect(!a.isFinalizationComplete(sessionID: session))
+        // relaunch: new receiver, same stores
+        let b = make(receipts: receipts, fin: fin) { _ in completions += 1 }
+        #expect(b.isReceivingRemainingMeasurements(sessionID: session))
+        #expect(b.handle(msg(.observations, seq: 1, [obs(1)])) == .accepted(count: 1))
+        #expect(b.handle(msg(.observations, seq: 1, [obs(1)])) == .duplicate)
+        #expect(b.isFinalizationComplete(sessionID: session))
+        #expect(!b.isReceivingRemainingMeasurements(sessionID: session))
+        #expect(completions == 1)
+    }
+
+    @Test func explicitZeroCompletesButUnknownWatermarkDoesNot() {
+        let r = make()
+        r.requestFinalization(sessionID: session, watchRequestID: request, captureEpoch: epoch)
+        #expect(!r.isFinalizationComplete(sessionID: session))
+        #expect(r.handle(msg(.finalizeAcknowledgement, seq: 0)) == .finalizationUpdated(complete: true))
+        #expect(r.isFinalizationComplete(sessionID: session))
+    }
+
+    @Test func finalizationSaveFailureIsNotAcknowledged() {
+        final class Failing: WatchHeartRateFinalizationStore {
+            var inner = InMemoryWatchHeartRateFinalizationStore(); var fail = false
+            struct Boom: Error {}
+            func load(sessionID: UUID) -> WatchHRFinalizationState? { inner.load(sessionID: sessionID) }
+            func save(_ s: WatchHRFinalizationState) throws { if fail { throw Boom() }; try inner.save(s) }
+            func clear(sessionID: UUID) { inner.clear(sessionID: sessionID) }
+        }
+        let fin = Failing()
+        let r = make(fin: fin)
+        r.requestFinalization(sessionID: session, watchRequestID: request, captureEpoch: epoch)
+        fin.fail = true
+        #expect(r.handle(msg(.observations, seq: 1, [obs(1)])) == .persistenceFailed)
+    }
+
+    @Test func otherWorkoutEpochCannotUseFinalizationState() {
+        let fin = InMemoryWatchHeartRateFinalizationStore()
+        let a = make(fin: fin)
+        a.requestFinalization(sessionID: session, watchRequestID: request, captureEpoch: epoch)
+        let b = make(fin: fin, epochRoute: UUID())
+        #expect(b.finalizationState(sessionID: session) == nil)
+    }
+}

@@ -9,6 +9,8 @@ import Testing
 import HealthKit
 import WatchConnectivity
 import CadenceFeatures
+import CadenceCore
+import SwiftData
 @testable import Cadence_Watch_App_Watch_App
 
 struct Cadence_Watch_App_Watch_AppTests {
@@ -112,6 +114,22 @@ struct Cadence_Watch_App_Watch_AppTests {
             #expect(second.source == .watchHealthKit)
             manager.resetFinalizedStrengthCapture()
             #expect(manager.finalizedStrengthCapture == nil)
+        }
+    }
+
+    @Test func directSummaryCapturesBeforeManagerTeardown() async throws {
+        try await MainActor.run {
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            #expect(manager.startWorkout(type: "strength"))
+            manager.recordHeartRateSample(118, sampleEnd: Date())
+            manager.recordHeartRateSample(132, sampleEnd: Date().addingTimeInterval(5))
+            let container = try CadenceStore.makeModelContainer(inMemory: true)
+            let model = WatchStrengthFlowModel(context: ModelContext(container), cooldownDefault: 0)
+            model.start(title: "Push", plannedExerciseNames: [], createSession: true)
+            model.recordHeartRate(manager.finalizeStrengthHRCapture().samples)
+            manager.stopWorkout(save: false)
+            #expect(model.endSessionPayload()?[WatchStrengthHeartRate.transportKey] != nil)
+            #expect(manager.finalizeStrengthHRCapture().samples.count == 2)
         }
     }
 

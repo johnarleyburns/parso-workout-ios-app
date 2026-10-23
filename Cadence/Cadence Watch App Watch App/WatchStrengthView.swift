@@ -77,6 +77,14 @@ struct WatchStrengthView: View {
                 watchManager.resetFinalizedStrengthCapture()
                 dismiss()
             case .summary:
+                // A zero-cooldown finish reaches here directly. Capture before
+                // stopWorkout clears hrRecorder/sessionStart. Idempotent for
+                // cooldown paths which already captured the same snapshot.
+                if let model = flowModel {
+                    model.recordHeartRate(
+                        watchManager.finalizeStrengthHRCapture().samples
+                    )
+                }
                 // The workout is over; stop recording now rather than when Done is tapped, which
                 // the user may never do (field test 2026-10-03: a session ran for 27 hours).
                 if watchManager.isActive, watchManager.phoneRequestID == nil {

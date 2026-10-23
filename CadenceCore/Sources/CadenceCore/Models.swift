@@ -651,7 +651,7 @@ public final class WorkoutSession {
             return try? JSONDecoder().decode(CardioMinuteSummary.self, from: data)
         }
         set {
-            guard let newValue, let data = try? JSONEncoder().encode(newValue) else {
+            guard let newValue, let data = try? intensitySummaryEncoder().encode(newValue) else {
                 intensitySummaryData = ""
                 return
             }
@@ -1256,7 +1256,7 @@ public final class CardioWorkout {
         }
         set {
             guard let newValue,
-                  let data = try? JSONEncoder().encode(newValue),
+                  let data = try? intensitySummaryEncoder().encode(newValue),
                   let json = String(data: data, encoding: .utf8) else {
                 intensitySummaryData = ""
                 return
@@ -1461,4 +1461,11 @@ public final class HRMDevice {
         self.lastConnectedAt = lastConnectedAt
         self.updatedAt = updatedAt
     }
+}
+
+/// Sorted keys keep the stored summary string byte-stable so repeated saves compare equal.
+private func intensitySummaryEncoder() -> JSONEncoder {
+    let e = JSONEncoder()
+    e.outputFormatting = [.sortedKeys]
+    return e
 }

@@ -871,7 +871,9 @@ public final class WatchStrengthFlowModel {
         if samples.count >= recordedHeartRate.count { recordedHeartRate = samples }
     }
 
-    public func endSessionPayload() -> [String: Any]? {
+    /// `finalSequence` must come only from the durable HR outbox (`WatchHeartRateOutbox.finalSequence`);
+    /// legacy Watch-only payloads pass nil and carry no sequence.
+    public func endSessionPayload(finalSequence: Int? = nil) -> [String: Any]? {
         guard let session else { return nil }
         var payload: [String: Any] = [
             "action": "end_session",
@@ -893,7 +895,9 @@ public final class WatchStrengthFlowModel {
         if !recordedHeartRate.isEmpty {
             payload[WatchStrengthHeartRate.transportKey] = WatchStrengthHeartRate.encode(recordedHeartRate)
             payload["hr_sample_count"] = recordedHeartRate.count
-            payload["hr_final_sequence"] = recordedHeartRate.count
+            // Legacy end_session has no durable outbox cursor. Never invent one.
+            if let finalSequence { payload["hr_final_sequence"] = finalSequence }
+            payload["hr_source"] = HeartRateSource.watchHealthKit.rawValue
             payload["hr_captured_at"] = Date().timeIntervalSince1970
         }
         return payload

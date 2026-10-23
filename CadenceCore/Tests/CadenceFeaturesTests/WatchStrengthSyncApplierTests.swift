@@ -54,6 +54,27 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         XCTAssertFalse(session.hrCompletionPending)
     }
 
+    func testHeartRateFinalizedNotificationPostsOnlyOnReplacement() throws {
+        let id = UUID()
+        var posts = 0
+        let token = NotificationCenter.default.addObserver(forName: .workoutHeartRateFinalized, object: nil, queue: nil) { if ($0.object as? UUID) == id { posts += 1 } }
+        defer { NotificationCenter.default.removeObserver(token) }
+        try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(5)), in: context)
+        XCTAssertEqual(posts, 1)
+        try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(5)), in: context)  // duplicate
+        try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(3)), in: context)  // keep
+        try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: nil), in: context)
+        XCTAssertEqual(posts, 1)
+        try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(10), final: 4), in: context)
+        XCTAssertEqual(posts, 2)
+        // Stale by real sequence, though it has more samples than the sequence suggests.
+        try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(12), final: 3), in: context)
+        XCTAssertEqual(posts, 2)
+        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        XCTAssertEqual(session.hrSamplePoints.count, 10)
+        XCTAssertEqual(session.hrAppliedFinalSequence, 4)
+    }
+
     func testStaleFinalSequenceAndLargerSeries() throws {
         let id = UUID()
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(10), final: 5), in: context)

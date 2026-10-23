@@ -140,8 +140,10 @@ public enum WatchStrengthSyncApplier {
         let appliedFinal = session.hrAppliedFinalSequence >= 0 ? session.hrAppliedFinalSequence : nil
         let decision = HRCompletionPolicy.decide(existing: existing, incoming: samples,
                                                  incomingFinal: incomingFinal, appliedFinal: appliedFinal)
+        var changedHeartRate = false
         switch decision {
         case .replace(let accepted):
+            changedHeartRate = accepted != existing
             // Preserve a user-confirmed manual cardio override; the measured series is still stored.
             let manual = session.isManualCardioMinutesOverride
             let explicit = session.hasManualCardioMinutesOverride
@@ -164,6 +166,9 @@ public enum WatchStrengthSyncApplier {
         Self.log.info("end_session HR outcome=\(String(describing: decision.label), privacy: .public) incoming=\(samples.count) existing=\(existing.count) final=\(incomingFinal ?? -1)")
         session.updatedAt = Date()
         try context.save()
+        if changedHeartRate {
+            NotificationCenter.default.post(name: .workoutHeartRateFinalized, object: session.id)
+        }
         return .endSession
     }
 

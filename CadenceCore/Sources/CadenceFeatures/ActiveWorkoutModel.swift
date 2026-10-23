@@ -11,6 +11,10 @@ public extension Notification.Name {
     /// A lightweight per-set volume callback. The set is already persisted when
     /// this is posted; consumers update their projections without rebuilding the
     /// whole coach pipeline on the UI thread.
+    /// Posted once (object: session UUID) after an accepted end_session replacement
+    /// changed a session's persisted heart-rate series. Consumers refresh summary,
+    /// History, This Week, Watch snapshot and Health backup idempotently.
+    static let workoutHeartRateFinalized = Notification.Name("cadence.workoutHeartRateFinalized")
     static let workoutVolumeChanged = Notification.Name("cadence.workoutVolumeChanged")
 }
 

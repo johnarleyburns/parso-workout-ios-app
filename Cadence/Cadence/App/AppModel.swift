@@ -1056,6 +1056,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         transport: PhoneWCHeartRateTransport(),
         finalizationStore: WatchHeartRateFinalizationDefaultsStore(),
         expectedRoute: { WatchHeartRateRouteStore().route(for: $0) },
+        isTombstoned: { WatchHRTombstoneStore().tombstone(for: $0) != nil },
         persist: { [weak self] sessionID, observations in
             self?.persistWatchObservations(observations, sessionID: sessionID) ?? false
         })
@@ -1080,7 +1081,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     @discardableResult
     private func handleWatchHeartRateProtocol(_ message: [String: Any]) -> Bool {
         switch watchHeartRateReceiver.handle(message) {
-        case .accepted, .duplicate, .finalizationUpdated: return true
+        case .accepted, .duplicate, .tombstoned, .finalizationUpdated: return true
         case .rejected, .persistenceFailed: return false
         }
     }
@@ -1119,6 +1120,11 @@ final class AppModel: NSObject, @unchecked Sendable {
         var ledger = watchPreflightLedger
         guard let cancelled = ledger.cancel() else { return }
         watchPreflightLedger = ledger
+        // Persist the tombstone before the route disappears so delayed packets are ACKed, not replayed.
+        if let route = WatchHeartRateRouteStore().routes.first(where: { $0.sessionID == cancelled }) {
+            WatchHRTombstoneStore().add(WatchHRTombstone(sessionID: cancelled, requestID: route.requestID,
+                                                         captureEpoch: route.captureEpoch))
+        }
         WatchHeartRateRouteStore().remove(sessionID: cancelled)
         watchRequestSessionIDs = watchRequestSessionIDs.filter { $0.value != cancelled }
     }

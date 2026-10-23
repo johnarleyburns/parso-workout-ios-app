@@ -55,11 +55,14 @@ struct WatchHeartRateDeliveryTests {
         var persisted: [UUID: [WatchHRObservation]] = [:]
         var failPersist = false
         var known: [UUID: UUID]
+        var tombstones: [(UUID, UUID, UUID)] = []
         var receiver: WatchHeartRateReceiver!
         init(known: [UUID: UUID]) {
             self.known = known
             receiver = WatchHeartRateReceiver(store: receipts, transport: transport,
                 expectedRoute: { [unowned self] in self.known[$0].map { WatchHRRoute(requestID: $0, captureEpoch: testEpoch) } },
+                isTombstoned: { [unowned self] m in
+                    self.tombstones.contains { $0 == (m.phoneWorkoutSessionID, m.watchRequestID, m.captureEpoch) } },
                 persist: { [unowned self] id, obs in
                     if self.failPersist { return false }
                     self.persisted[id, default: []] += obs; return true })
@@ -144,6 +147,30 @@ struct WatchHeartRateDeliveryTests {
         #expect(outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit) == .accepted)
         #expect(outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit, sampleID: "HK-1") == .duplicate)
         #expect(outbox.unacknowledgedCount == 1)
+    }
+
+    @Test func tombstonedCancelledPreflightIsAckedAndDroppedWithoutRecording() {
+        let (outbox, _, transport) = makeOutbox()
+        outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
+        outbox.flush()
+        let sessionB = UUID(), requestB = UUID()
+        let phone = Phone(known: [sessionB: requestB]) // A cancelled: no route
+        phone.tombstones = [(session, request, testEpoch)]
+        #expect(phone.receiver.handle(transport.durable[0].payload) == .tombstoned)
+        #expect(phone.persisted.isEmpty)
+        #expect(phone.transport.durable.count == 1)
+        #expect(phone.transport.durable[0].acknowledgement != nil)
+        #expect(phone.receipts.load(sessionID: sessionB) == nil)
+    }
+
+    @Test func unknownIdentityIsRejectedWithoutAckEvenWithOtherTombstones() {
+        let (outbox, _, transport) = makeOutbox()
+        outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
+        outbox.flush()
+        let phone = Phone(known: [:])
+        phone.tombstones = [(session, request, UUID())] // different epoch
+        #expect(phone.receiver.handle(transport.durable[0].payload) == .rejected(.identityMismatch))
+        #expect(phone.transport.durable.isEmpty && phone.transport.immediate.isEmpty)
     }
 
     @Test func repeatedHeartbeatDoesNotCreateObservations() {

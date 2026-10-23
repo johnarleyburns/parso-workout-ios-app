@@ -98,6 +98,23 @@ struct Cadence_Watch_App_Watch_AppTests {
         }
     }
 
+    @Test func finalizedStrengthHRCaptureSurvivesTeardown() async {
+        await MainActor.run {
+            let manager = WatchWorkoutManager(uiTestMode: true)
+            #expect(manager.startWorkout(type: "strength"))
+            manager.recordHeartRateSample(110, sampleEnd: Date())
+            manager.recordHeartRateSample(120, sampleEnd: Date().addingTimeInterval(1))
+            let first = manager.finalizeStrengthHRCapture()
+            manager.stopWorkout(save: false)
+            let second = manager.finalizeStrengthHRCapture()
+            #expect(first.samples == second.samples)
+            #expect(first.capturedAt == second.capturedAt)
+            #expect(second.source == .watchHealthKit)
+            manager.resetFinalizedStrengthCapture()
+            #expect(manager.finalizedStrengthCapture == nil)
+        }
+    }
+
     @Test func visibleStopEndsPhoneStartedWorkout() async {
         await MainActor.run {
             let manager = WatchWorkoutManager(uiTestMode: true)

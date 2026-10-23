@@ -27,6 +27,7 @@ struct WatchCoolDownView: View {
                     Button("Skip") {
                         WatchHaptics.success()
                         model.cooldownTimerModel.skip()
+                        model.recordHeartRate(watchManager.finalizeStrengthHRCapture().samples)
                         model.skipCooldown()
                         sendEndSession()
                     }
@@ -48,7 +49,6 @@ struct WatchCoolDownView: View {
     }
 
     private func sendEndSession() {
-        model.recordHeartRate(watchManager.currentHRSamplesForSummary)
         guard let payload = model.endSessionPayload() else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
@@ -72,6 +72,9 @@ private final class WatchCooldownTimerController {
                 if model.cooldownTimerModel.remaining <= 0 {
                     self.timer?.invalidate()
                     self.timer = nil
+                    if let watchManager = self.watchManager {
+                        model.recordHeartRate(watchManager.finalizeStrengthHRCapture().samples)
+                    }
                     model.completeCooldown()
                     self.sendEndSession(model)
                 }
@@ -80,7 +83,6 @@ private final class WatchCooldownTimerController {
     }
 
     private func sendEndSession(_ model: WatchStrengthFlowModel) {
-        if let watchManager { model.recordHeartRate(watchManager.currentHRSamplesForSummary) }
         guard let payload = model.endSessionPayload() else { return }
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)

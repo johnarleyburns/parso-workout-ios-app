@@ -64,7 +64,6 @@ struct WatchStrengthSummaryView: View {
     }
 
     private func sendEnd(force: Bool) {
-        model.recordHeartRate(watchManager.currentHRSamplesForSummary)
         guard force || !sentEnd, let payload = model.endSessionPayload() else { return }
         sentEnd = true
         WatchSyncSender.send(payload)

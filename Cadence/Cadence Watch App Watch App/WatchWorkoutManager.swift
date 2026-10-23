@@ -47,6 +47,27 @@ final class WatchWorkoutManager: NSObject {
     var currentHRSamplesForSummary: [HRSamplePoint] {
         hrRecorder.finalSamples(duration: cardioSessionStart != nil ? cardioElapsed : effectiveElapsed)
     }
+    /// Immutable end-of-strength HR snapshot taken before any teardown; `stopWorkout`
+    /// leaves it alone so the summary can still send it.
+    struct FinalizedStrengthHRCapture: Sendable {
+        let samples: [HRSamplePoint]
+        let source: HeartRateSource
+        let capturedAt: Date
+    }
+    private(set) var finalizedStrengthCapture: FinalizedStrengthHRCapture?
+
+    /// Returns the same capture on every call until `resetFinalizedStrengthCapture()`.
+    @discardableResult
+    func finalizeStrengthHRCapture() -> FinalizedStrengthHRCapture {
+        if let finalizedStrengthCapture { return finalizedStrengthCapture }
+        let samples = hrRecorder.finalSamples(duration: effectiveElapsed)
+        let capture = FinalizedStrengthHRCapture(
+            samples: samples, source: .watchHealthKit, capturedAt: Date())
+        finalizedStrengthCapture = capture
+        return capture
+    }
+
+    func resetFinalizedStrengthCapture() { finalizedStrengthCapture = nil }
     var phoneSyncState: WatchSync.Status = .idle
     var lastPhoneSyncAt: Date? = UserDefaults.standard.object(forKey: "watch.lastPhoneSyncAt") as? Date
     var lastPhoneSyncError: String?
@@ -162,6 +183,7 @@ final class WatchWorkoutManager: NSObject {
                       phoneWorkoutSessionID: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
         workoutStartError = nil
+        finalizedStrengthCapture = nil
         // Only `startPhoneLaunchedWorkout` marks a start as awaiting the phone.
         phoneLaunchPendingSince = nil
         let resolvedSpec = spec ?? WorkoutConfigurationSpec(for: rawType)

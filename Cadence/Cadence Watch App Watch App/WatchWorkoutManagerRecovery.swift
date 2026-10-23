@@ -187,6 +187,7 @@ extension WatchWorkoutManager {
         defaults.removeObject(forKey: PersistedWorkoutKey.monitoring)
         defaults.removeObject(forKey: PersistedWorkoutKey.phoneRequestID)
         defaults.removeObject(forKey: Self.phoneWorkoutSessionIDKey)
+        defaults.removeObject(forKey: Self.phoneCaptureEpochKey)
     }
 
     static func rawType(for activity: HKWorkoutActivityType) -> String {

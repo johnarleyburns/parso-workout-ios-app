@@ -27,7 +27,7 @@ struct ProductionFlowHarnessTests {
                             _ transport: FakeHRTransport = FakeHRTransport()) -> WatchHeartRateOutbox {
         transport.store = store
         let outbox = WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 })
-        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request)
+        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: testEpoch)
         return outbox
     }
 
@@ -35,7 +35,7 @@ struct ProductionFlowHarnessTests {
         let box = Box<[UUID: [WatchHRObservation]]>([:])
         let receiver = WatchHeartRateReceiver(
             store: FakeReceiptStore(), transport: FakeHRTransport(),
-            expectedRequestID: { known[$0] },
+            expectedRoute: { known[$0].map { WatchHRRoute(requestID: $0, captureEpoch: testEpoch) } },
             persist: { id, obs in box.value[id, default: []] += obs; return true })
         return (receiver, box)
     }
@@ -87,7 +87,7 @@ struct ProductionFlowHarnessTests {
         outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
         outbox.flush()
         let (phone, box) = makePhone(known: [UUID(): UUID()])
-        #expect(phone.handle(transport.immediate[0].payload) == .rejected(.sessionMismatch), c)
+        #expect(phone.handle(transport.immediate[0].payload) == .rejected(.identityMismatch), c)
         #expect(box.value.isEmpty, c)
     }
 

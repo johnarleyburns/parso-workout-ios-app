@@ -734,16 +734,19 @@ final class AppModel: NSObject, @unchecked Sendable {
         // the reserved identity the session will be created with.
         let reservation = (_active?.strengthSession == nil && rawType == "strength") ? reserveWatchPreflight() : nil
         let phoneSessionID = _active?.strengthSession?.id ?? reservation?.phoneWorkoutSessionID
+        // A start inside an already-running strength session has no reservation;
+        // it still gets its own epoch so every envelope is identity-complete.
+        let captureEpoch = reservation?.captureEpoch ?? UUID()
         if let phoneSessionID {
             watchRequestSessionIDs[requestID] = phoneSessionID
-            WatchHeartRateRouteStore().add(sessionID: phoneSessionID, requestID: requestID)
+            WatchHeartRateRouteStore().add(sessionID: phoneSessionID, requestID: requestID, captureEpoch: captureEpoch)
         }
         pendingWatchStart = PendingWatchStart(requestID: requestID, retryType: retryType,
                                               allowsRetry: allowsRetry)
         let command = WatchHRCommand(action: .start, requestID: requestID,
                                      workoutType: rawType, issuedAt: nextWatchHRCommandIssuedAt(),
                                      phoneWorkoutSessionID: phoneSessionID,
-                                     captureEpoch: reservation?.captureEpoch)
+                                     captureEpoch: phoneSessionID == nil ? nil : captureEpoch)
         // Durable, ordered copy first. When Cladiron isn't running on the
         // Watch, this is delivered as soon as the launch below brings it up,
         // and names the workout the launch started. The Watch treats the
@@ -1051,7 +1054,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         WatchHeartRateReceiver(
         store: WatchHeartRateReceiptDefaultsStore(),
         transport: PhoneWCHeartRateTransport(),
-        expectedRequestID: { WatchHeartRateRouteStore().requestID(for: $0) },
+        expectedRoute: { WatchHeartRateRouteStore().route(for: $0) },
         persist: { [weak self] sessionID, observations in
             self?.persistWatchObservations(observations, sessionID: sessionID) ?? false
         })
@@ -1164,9 +1167,11 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// stays retained so a late batch merges into this exact session.
     private func requestWatchHeartRateFinalization(requestID: UUID) {
         let routes = WatchHeartRateRouteStore()
-        guard let sessionID = routes.sessionID(for: requestID) else { return }
+        guard let route = routes.routes.last(where: { $0.requestID == requestID }) else { return }
+        let sessionID = route.sessionID
         routes.markFinalizationRequested(sessionID: sessionID)
-        watchHeartRateReceiver.requestFinalization(sessionID: sessionID, watchRequestID: requestID)
+        watchHeartRateReceiver.requestFinalization(sessionID: sessionID, watchRequestID: requestID,
+                                                   captureEpoch: route.captureEpoch)
     }
 
     /// True while a finished workout still awaits the Watch's final heart-rate
@@ -1260,7 +1265,8 @@ extension AppModel {
         if reachable {
             for route in WatchHeartRateRouteStore().routes where route.finalizationRequested
                 && !watchHeartRateReceiver.isFinalizationComplete(sessionID: route.sessionID) {
-                watchHeartRateReceiver.requestFinalization(sessionID: route.sessionID, watchRequestID: route.requestID)
+                watchHeartRateReceiver.requestFinalization(sessionID: route.sessionID, watchRequestID: route.requestID,
+                                                           captureEpoch: route.captureEpoch)
             }
         }
         guard reachable, watchHRRelay.activeRequestID != nil else { return }

@@ -32,7 +32,9 @@ struct WatchHeartRateReceiptDefaultsStore: WatchHeartRateReceiptStore {
 /// so late batches route to the exact finished session. Bounded to the most
 /// recent `limit` workouts.
 struct WatchHeartRateRouteStore {
-    struct Route: Codable, Equatable { var sessionID: UUID; var requestID: UUID; var finalizationRequested = false }
+    struct Route: Codable, Equatable {
+        var sessionID: UUID; var requestID: UUID; var captureEpoch: UUID; var finalizationRequested = false
+    }
     static let key = "watchHR.routes.v1"
     static let limit = 8
     var routes: [Route] {
@@ -40,10 +42,13 @@ struct WatchHeartRateRouteStore {
         nonmutating set { UserDefaults.standard.set(try? JSONEncoder().encode(Array(newValue.suffix(Self.limit))), forKey: Self.key) }
     }
     func requestID(for sessionID: UUID) -> UUID? { routes.first { $0.sessionID == sessionID }?.requestID }
+    func route(for sessionID: UUID) -> WatchHRRoute? {
+        routes.first { $0.sessionID == sessionID }.map { WatchHRRoute(requestID: $0.requestID, captureEpoch: $0.captureEpoch) }
+    }
     func sessionID(for requestID: UUID) -> UUID? { routes.last { $0.requestID == requestID }?.sessionID }
-    func add(sessionID: UUID, requestID: UUID) {
+    func add(sessionID: UUID, requestID: UUID, captureEpoch: UUID) {
         var all = routes.filter { $0.sessionID != sessionID }
-        all.append(Route(sessionID: sessionID, requestID: requestID))
+        all.append(Route(sessionID: sessionID, requestID: requestID, captureEpoch: captureEpoch))
         routes = all
     }
     func markFinalizationRequested(sessionID: UUID) {

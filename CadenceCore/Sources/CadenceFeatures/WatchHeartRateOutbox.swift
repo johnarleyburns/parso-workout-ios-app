@@ -12,6 +12,8 @@ public struct WatchHeartRateOutboxState: Codable, Equatable, Sendable {
     }
     public var phoneWorkoutSessionID: UUID
     public var watchRequestID: UUID
+    /// Adopted from the phone's start command; stamped on every envelope.
+    public var captureEpoch: UUID
     public var nextSequence = 1
     /// Observations accepted but not yet sealed into a batch.
     public var pending: [WatchHRObservation] = []
@@ -96,9 +98,11 @@ public final class WatchHeartRateOutbox {
     /// Scopes the journal to a phone-owned workout. Re-binding the same pair
     /// keeps the persisted state; a different pair replaces it.
     @discardableResult
-    public func bind(phoneWorkoutSessionID: UUID, watchRequestID: UUID) -> Bool {
-        if let state, state.phoneWorkoutSessionID == phoneWorkoutSessionID, state.watchRequestID == watchRequestID { return true }
-        var fresh = WatchHeartRateOutboxState(phoneWorkoutSessionID: phoneWorkoutSessionID, watchRequestID: watchRequestID)
+    public func bind(phoneWorkoutSessionID: UUID, watchRequestID: UUID, captureEpoch: UUID) -> Bool {
+        if let state, state.phoneWorkoutSessionID == phoneWorkoutSessionID, state.watchRequestID == watchRequestID,
+           state.captureEpoch == captureEpoch { return true }
+        var fresh = WatchHeartRateOutboxState(phoneWorkoutSessionID: phoneWorkoutSessionID, watchRequestID: watchRequestID,
+                                              captureEpoch: captureEpoch)
         if var old = state {
             fresh.retired = old.retired
             old.retired = []
@@ -195,7 +199,8 @@ public final class WatchHeartRateOutbox {
             let batch = s.batches[i]
             let message = WatchHRMessage(kind: .observations, deliveryID: batch.deliveryID,
                                          phoneWorkoutSessionID: s.phoneWorkoutSessionID,
-                                         watchRequestID: s.watchRequestID, sequence: batch.sequence,
+                                         watchRequestID: s.watchRequestID, captureEpoch: s.captureEpoch,
+                                         sequence: batch.sequence,
                                          observations: batch.observations)
             let due = batch.durableQueuedAt.map { now - $0 >= Self.retryInterval } ?? true
             if transport.isReachable && (due || lastImmediateAt.map { now - $0 >= Self.retryInterval } ?? true) {
@@ -215,13 +220,14 @@ public final class WatchHeartRateOutbox {
     }
 
     /// Runs `body` on the journal (current or retired) that owns this scope.
-    private func withJournal<T>(sessionID: UUID, requestID: UUID,
+    private func withJournal<T>(sessionID: UUID, requestID: UUID, captureEpoch: UUID,
                                 _ body: (inout WatchHeartRateOutboxState) -> T) -> T? {
         guard var s = state else { return nil }
         state = nil
         defer { state = s }
-        if s.phoneWorkoutSessionID == sessionID, s.watchRequestID == requestID { return body(&s) }
-        guard let i = s.retired.firstIndex(where: { $0.phoneWorkoutSessionID == sessionID && $0.watchRequestID == requestID })
+        if s.phoneWorkoutSessionID == sessionID, s.watchRequestID == requestID, s.captureEpoch == captureEpoch { return body(&s) }
+        guard let i = s.retired.firstIndex(where: { $0.phoneWorkoutSessionID == sessionID && $0.watchRequestID == requestID
+            && $0.captureEpoch == captureEpoch })
         else { return nil }
         let result = body(&s.retired[i])
         if s.retired[i].batches.isEmpty && s.retired[i].pending.isEmpty {
@@ -235,7 +241,7 @@ public final class WatchHeartRateOutbox {
     @discardableResult
     public func handleAcknowledgement(_ message: WatchHRMessage) -> Bool {
         guard message.structuralRejection == nil, let ack = message.acknowledgement,
-              withJournal(sessionID: message.phoneWorkoutSessionID, requestID: message.watchRequestID, { (s: inout WatchHeartRateOutboxState) -> Bool in
+              withJournal(sessionID: message.phoneWorkoutSessionID, requestID: message.watchRequestID, captureEpoch: message.captureEpoch, { (s: inout WatchHeartRateOutboxState) -> Bool in
                   s.batches.removeAll { $0.deliveryID == ack.deliveryID || $0.sequence <= ack.cursor }
                   return true
               }) != nil else {
@@ -256,7 +262,8 @@ public final class WatchHeartRateOutbox {
     public func handleFinalizeRequest(_ message: WatchHRMessage) -> Bool {
         guard message.kind == .finalizeRequest, message.structuralRejection == nil, transport.isActivated,
               let lastSequence = withJournal(sessionID: message.phoneWorkoutSessionID,
-                                             requestID: message.watchRequestID, { s -> Int in
+                                             requestID: message.watchRequestID,
+                                             captureEpoch: message.captureEpoch, { s -> Int in
                   s.finalizeRequested = true
                   sealPending(&s)
                   for i in s.batches.indices { s.batches[i].durableQueuedAt = nil }
@@ -268,13 +275,15 @@ public final class WatchHeartRateOutbox {
         Self.log.info("finalization requested")
         guard persist() else { return false }
         deliver() // persisted first; hands every batch to WatchConnectivity
-        let handedOver = withJournal(sessionID: message.phoneWorkoutSessionID, requestID: message.watchRequestID) {
+        let handedOver = withJournal(sessionID: message.phoneWorkoutSessionID, requestID: message.watchRequestID,
+                                 captureEpoch: message.captureEpoch) {
             $0.batches.allSatisfy { $0.durableQueuedAt != nil }
         } ?? true
         guard handedOver else { return false }
         let final = WatchHRMessage(kind: .finalizeAcknowledgement, deliveryID: makeUUID(),
                                    phoneWorkoutSessionID: message.phoneWorkoutSessionID,
-                                   watchRequestID: message.watchRequestID, sequence: lastSequence)
+                                   watchRequestID: message.watchRequestID, captureEpoch: message.captureEpoch,
+                                   sequence: lastSequence)
         if transport.isReachable { transport.sendImmediate(final) }
         transport.transferUserInfo(final)
         Self.log.info("finalization complete")

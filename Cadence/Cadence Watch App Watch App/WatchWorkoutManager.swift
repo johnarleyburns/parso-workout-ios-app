@@ -123,6 +123,7 @@ final class WatchWorkoutManager: NSObject {
     /// ending it must not tear that session down.
     var cardioOwnsSession = false
     var phoneRequestID: String?
+    var phoneCaptureEpoch: UUID? // adopted from the start command
     var phoneWorkoutSessionID: UUID? // paired with phoneRequestID; see +HeartRateOutbox
     @ObservationIgnored var lastOutboxFlushUptime: TimeInterval = 0
     @ObservationIgnored lazy var hrOutbox = WatchHeartRateOutbox(store: WatchHeartRateDefaultsStore(), transport: WatchWCHeartRateTransport())
@@ -180,7 +181,7 @@ final class WatchWorkoutManager: NSObject {
     @discardableResult
     func startWorkout(type rawType: String, cardioType: CardioType? = nil,
                       spec: WorkoutConfigurationSpec? = nil, phoneRequestID: UUID? = nil,
-                      phoneWorkoutSessionID: UUID? = nil) -> Bool {
+                      phoneWorkoutSessionID: UUID? = nil, captureEpoch: UUID? = nil) -> Bool {
         guard !isActive, !isMonitoring else { return false }
         workoutStartError = nil
         finalizedStrengthCapture = nil
@@ -188,7 +189,7 @@ final class WatchWorkoutManager: NSObject {
         phoneLaunchPendingSince = nil
         let resolvedSpec = spec ?? WorkoutConfigurationSpec(for: rawType)
         self.phoneRequestID = phoneRequestID?.uuidString
-        bindPhoneWorkoutSession(phoneRequestID == nil ? nil : phoneWorkoutSessionID)
+        bindPhoneWorkoutSession(phoneRequestID == nil ? nil : phoneWorkoutSessionID, captureEpoch: captureEpoch)
         heartRateEnabled = resolvedSpec.heartRateEnabled
         gpsEnabled = resolvedSpec.usesGPS
         workoutType = rawType

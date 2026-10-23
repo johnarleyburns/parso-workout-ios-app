@@ -488,6 +488,44 @@ struct WatchHeartRateFinalizationWatermarkTests {
         #expect(r.handle(msg(.observations, seq: 1, [obs(1)])) == .persistenceFailed)
     }
 
+    @Test func failedPendingSaveSendsNothingThenRetrySendsOnce() {
+        final class Flaky: WatchHeartRateFinalizationStore {
+            var inner = InMemoryWatchHeartRateFinalizationStore(); var failPending = true
+            struct Boom: Error {}
+            func load(sessionID: UUID) -> WatchHRFinalizationState? { inner.load(sessionID: sessionID) }
+            func save(_ s: WatchHRFinalizationState) throws {
+                if failPending && s.status == .pending { throw Boom() }
+                try inner.save(s)
+            }
+            func clear(sessionID: UUID) { inner.clear(sessionID: sessionID) }
+        }
+        let fin = Flaky(), transport = FakeHRTransport()
+        func recreate() -> WatchHeartRateReceiver {
+            WatchHeartRateReceiver(store: FakeReceiptStore(), transport: transport, finalizationStore: fin,
+                                   expectedRoute: { [epoch, request] _ in WatchHRRoute(requestID: request, captureEpoch: epoch) },
+                                   persist: { _, _ in true })
+        }
+        let a = recreate()
+        let failure = a.requestFinalization(sessionID: session, watchRequestID: request, captureEpoch: epoch)
+        if case .failure(let error) = failure { #expect(error == .pendingStateNotPersisted) } else { Issue.record("expected failure") }
+        #expect(transport.immediate.isEmpty && transport.durable.isEmpty)
+        #expect(a.isFinalizationFailedRecoverably(sessionID: session))
+        let b = recreate()
+        #expect(b.isFinalizationFailedRecoverably(sessionID: session))
+        #expect(!b.isFinalizationComplete(sessionID: session))
+        fin.failPending = false
+        #expect(b.retryFinalization(sessionID: session, watchRequestID: request, captureEpoch: epoch).isSuccess)
+        #expect(fin.load(sessionID: session)?.status == .pending)
+        #expect(transport.durable.count == 1)
+    }
+
+    @Test func receiptCursorAloneCannotClaimCompletion() {
+        let receipts = FakeReceiptStore()
+        try? receipts.save(WatchHRReceiptState(phoneWorkoutSessionID: session, deliveryIDs: [], sequences: [1], finalSequence: 1))
+        let r = make(receipts: receipts)
+        #expect(!r.isFinalizationComplete(sessionID: session))
+    }
+
     @Test func otherWorkoutEpochCannotUseFinalizationState() {
         let fin = InMemoryWatchHeartRateFinalizationStore()
         let a = make(fin: fin)
@@ -495,4 +533,8 @@ struct WatchHeartRateFinalizationWatermarkTests {
         let b = make(fin: fin, epochRoute: UUID())
         #expect(b.finalizationState(sessionID: session) == nil)
     }
+}
+
+private extension Result {
+    var isSuccess: Bool { if case .success = self { true } else { false } }
 }

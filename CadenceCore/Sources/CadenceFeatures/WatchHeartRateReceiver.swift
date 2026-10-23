@@ -39,6 +39,10 @@ public struct WatchHRFinalizationState: Codable, Equatable, Sendable {
     public var watermarkKnown: Bool { finalSequence != Self.unknownWatermark }
 }
 
+public enum WatchHRFinalizationError: Error, Equatable, Sendable {
+    case pendingStateNotPersisted
+}
+
 public protocol WatchHeartRateFinalizationStore {
     func load(sessionID: UUID) -> WatchHRFinalizationState?
     func save(_ state: WatchHRFinalizationState) throws
@@ -199,20 +203,44 @@ public final class WatchHeartRateReceiver {
         }
     }
 
+    /// Completion requires a durable finalization state; a receipt cursor alone never claims it.
     public func isFinalizationComplete(sessionID: UUID) -> Bool {
-        if let fin = finalizationState(sessionID: sessionID) { return fin.status == .complete }
-        return store.load(sessionID: sessionID)?.finalizationComplete ?? false
+        finalizationState(sessionID: sessionID)?.status == .complete
     }
 
-    /// Phone side of the finalize handshake: asks the Watch to flush.
-    public func requestFinalization(sessionID: UUID, watchRequestID: UUID, captureEpoch: UUID, deliveryID: UUID = UUID()) {
-        // Persist pending BEFORE asking the Watch to stop; if that fails, still send so
-        // the Watch flushes, but nothing can be marked complete without a durable state.
-        if finalizationStore.load(sessionID: sessionID)?.captureEpoch != captureEpoch {
-            try? finalizationStore.save(WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch))
-        } else if var existing = finalizationStore.load(sessionID: sessionID), existing.status == .failedRecoverably {
-            existing.status = .pending
-            try? finalizationStore.save(existing)
+    /// True when the pending state could not be persisted; the user can Retry.
+    public func isFinalizationFailedRecoverably(sessionID: UUID) -> Bool {
+        finalizationState(sessionID: sessionID)?.status == .failedRecoverably
+    }
+
+    /// Retry action for a `failedRecoverably` finalization; same durable-first path.
+    @discardableResult
+    public func retryFinalization(sessionID: UUID, watchRequestID: UUID, captureEpoch: UUID,
+                                  deliveryID: UUID = UUID()) -> Result<Void, WatchHRFinalizationError> {
+        requestFinalization(sessionID: sessionID, watchRequestID: watchRequestID,
+                            captureEpoch: captureEpoch, deliveryID: deliveryID)
+    }
+
+    /// Phone side of the finalize handshake: asks the Watch to flush. Durable pending
+    /// state is saved BEFORE any transport; if that fails nothing is sent and the
+    /// failure is recorded (best effort) as `failedRecoverably`.
+    @discardableResult
+    public func requestFinalization(sessionID: UUID, watchRequestID: UUID, captureEpoch: UUID,
+                                    deliveryID: UUID = UUID()) -> Result<Void, WatchHRFinalizationError> {
+        do {
+            if var existing = finalizationStore.load(sessionID: sessionID), existing.captureEpoch == captureEpoch {
+                if existing.status == .failedRecoverably {
+                    existing.status = .pending
+                    try finalizationStore.save(existing)
+                }
+            } else {
+                try finalizationStore.save(WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch))
+            }
+        } catch {
+            Self.log.error("pending finalization state not persisted; not sending")
+            try? finalizationStore.save(WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch,
+                                                                 status: .failedRecoverably))
+            return .failure(.pendingStateNotPersisted)
         }
         let message = WatchHRMessage(kind: .finalizeRequest, deliveryID: deliveryID,
                                      phoneWorkoutSessionID: sessionID, watchRequestID: watchRequestID,
@@ -220,6 +248,7 @@ public final class WatchHeartRateReceiver {
         if transport.isReachable { transport.sendImmediate(message) }
         transport.transferUserInfo(message)
         Self.log.info("finalization requested")
+        return .success(())
     }
 
     /// Explicit user discard of one workout's receipt journal.

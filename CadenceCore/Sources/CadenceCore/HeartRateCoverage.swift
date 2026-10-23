@@ -52,6 +52,39 @@ public enum HeartRateCoverageState: Equatable, Sendable {
     }
 }
 
+/// User-facing coverage explanation. Never describes missing samples as low intensity.
+public struct HeartRateCoveragePresentation: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable { case noMeasurements, pending, incomplete, complete }
+    public let kind: Kind
+    public let text: String
+    public let accessibilityLabel: String
+
+    public static func make(state: HeartRateCoverageState, sampleCount: Int, pending: Bool) -> HeartRateCoveragePresentation {
+        func p(_ k: Kind, _ t: String) -> HeartRateCoveragePresentation {
+            HeartRateCoveragePresentation(kind: k, text: t, accessibilityLabel: t)
+        }
+        if pending {
+            return p(.pending, String(localized: "Receiving the remaining heart-rate measurements. Intensity will update when they arrive.", bundle: .module))
+        }
+        switch state {
+        case .none:
+            return p(.noMeasurements, String(localized: "No heart-rate measurements were captured. Intensity is unknown, not low.", bundle: .module))
+        case .incomplete(let fraction):
+            let pct = Int((fraction * 100).rounded())
+            return p(.incomplete, String(localized: "Heart rate was missing for about \(pct)% of this workout. That time is unclassified, not easy.", bundle: .module))
+        case .complete:
+            return p(.complete, String(localized: "Heart-rate coverage is complete for this workout.", bundle: .module))
+        }
+    }
+}
+
+extension HeartRateCoverage {
+    /// Privacy-safe diagnostics line: count, largest gap and source only.
+    public var diagnosticsLine: String {
+        "HR coverage: samples=\(sampleCount) largestGap=\(Int(largestGap))s source=\(source.rawValue)"
+    }
+}
+
 /// Canonical validate / sort / dedupe / downsample used by Watch capture,
 /// phone import and Apple Health repair.
 public enum HRSampleNormalizer {

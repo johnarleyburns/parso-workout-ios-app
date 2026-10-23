@@ -74,6 +74,7 @@ struct WatchStrengthView: View {
                 if let payload = flowModel?.discardPayload { WatchSyncSender.send(payload) }
                 shouldStopWorkoutOnDisappear = true
                 watchManager.stopWorkout(save: false)
+                watchManager.resetFinalizedStrengthCapture()
                 dismiss()
             case .summary:
                 // The workout is over; stop recording now rather than when Done is tapped, which

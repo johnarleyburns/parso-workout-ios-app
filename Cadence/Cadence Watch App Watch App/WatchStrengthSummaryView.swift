@@ -30,6 +30,11 @@ struct WatchStrengthSummaryView: View {
                 WatchReceiptRow(title: "Saved on watch", state: receipt.watch)
                 WatchReceiptRow(title: "iPhone", state: receipt.iPhone)
                 WatchReceiptRow(title: "Apple Health", state: receipt.health)
+                if watchManager.strengthCompletionOutbox.failedRecoverably || model.completionHeartRateOmitted {
+                    Text("Heart rate is saved on this watch and will retry sending to iPhone.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                        .accessibilityIdentifier("watchSummary.hrRetained")
+                }
                 if case .failed = receipt.iPhone {
                     Button("Retry") { sendEnd(force: true) }
                         .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
@@ -64,8 +69,9 @@ struct WatchStrengthSummaryView: View {
     }
 
     private func sendEnd(force: Bool) {
-        guard force || !sentEnd, let payload = model.endSessionPayload() else { return }
+        guard force || !sentEnd, let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
         sentEnd = true
         WatchSyncSender.send(payload)
+        watchManager.strengthCompletionOutbox.flush()
     }
 }

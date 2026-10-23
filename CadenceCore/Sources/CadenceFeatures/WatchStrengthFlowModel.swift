@@ -871,6 +871,30 @@ public final class WatchStrengthFlowModel {
         if samples.count >= recordedHeartRate.count { recordedHeartRate = samples }
     }
 
+    /// Durable completion-transfer identity, minted once per Watch session.
+    public private(set) var completionRoute: WatchStrengthCompletionRoute?
+    /// True when the last chunked enqueue failed and the payload carries no HR.
+    public private(set) var completionHeartRateOmitted = false
+
+    /// Journals the finalized HR as chunks and builds a small `end_session`. The caller
+    /// sends the payload, then `outbox.flush()`. Falls back to the legacy payload (no HR
+    /// chunks) when there is no HR or the journal could not be persisted.
+    @MainActor
+    public func endSessionPayload(completionOutbox: WatchStrengthCompletionOutbox) -> [String: Any]? {
+        guard let session else { return nil }
+        guard !recordedHeartRate.isEmpty else { return endSessionPayload() }
+        let route = completionRoute ?? WatchStrengthCompletionRoute(sessionID: session.id, transferID: UUID(), captureEpoch: UUID())
+        completionRoute = route
+        guard let final = completionOutbox.enqueue(samples: recordedHeartRate, startedAt: session.date, route: route),
+              final > 0 else {
+            // Never fall back to the unbudgeted flat payload; the series stays in memory for Retry.
+            completionHeartRateOmitted = true
+            return endSessionPayload()
+        }
+        completionHeartRateOmitted = false
+        return endSessionPayload(finalSequence: final)
+    }
+
     /// `finalSequence` must come only from the durable HR outbox (`WatchHeartRateOutbox.finalSequence`);
     /// legacy Watch-only payloads pass nil and carry no sequence.
     public func endSessionPayload(finalSequence: Int? = nil) -> [String: Any]? {
@@ -892,7 +916,15 @@ public final class WatchStrengthFlowModel {
         if let planKey = session.planKey {
             payload["plan_key"] = planKey
         }
-        if !recordedHeartRate.isEmpty {
+        if let route = completionRoute, let finalSequence, !recordedHeartRate.isEmpty {
+            // Chunked, receipt-backed delivery: only the route and watermark travel here.
+            payload[WatchStrengthCompletionKey.transferID] = route.transferID.uuidString
+            payload[WatchStrengthCompletionKey.captureEpoch] = route.captureEpoch.uuidString
+            payload[WatchStrengthCompletionKey.finalSequence] = finalSequence
+            payload["hr_sample_count"] = recordedHeartRate.count
+            payload["hr_source"] = HeartRateSource.watchHealthKit.rawValue
+            payload["hr_captured_at"] = Date().timeIntervalSince1970
+        } else if !recordedHeartRate.isEmpty && !completionHeartRateOmitted {
             payload[WatchStrengthHeartRate.transportKey] = WatchStrengthHeartRate.encode(recordedHeartRate)
             payload["hr_sample_count"] = recordedHeartRate.count
             // Legacy end_session has no durable outbox cursor. Never invent one.

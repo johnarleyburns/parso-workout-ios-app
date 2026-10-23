@@ -35,6 +35,18 @@ struct WatchHeartRateDefaultsStore: WatchHeartRateOutboxStore {
     func clear() { UserDefaults.standard.removeObject(forKey: Self.key) }
 }
 
+/// Separate persisted journal for Watch-started completion chunks.
+struct WatchStrengthCompletionDefaultsStore: WatchHeartRateOutboxStore {
+    static let key = "watch.strengthCompletionOutbox.v1"
+    func load() -> WatchHeartRateOutboxState? {
+        UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(WatchHeartRateOutboxState.self, from: $0) }
+    }
+    func save(_ state: WatchHeartRateOutboxState) throws {
+        UserDefaults.standard.set(try JSONEncoder().encode(state), forKey: Self.key)
+    }
+    func clear() { UserDefaults.standard.removeObject(forKey: Self.key) }
+}
+
 extension WatchWorkoutManager {
     static let phoneWorkoutSessionIDKey = "watch.activeWorkout.phoneWorkoutSessionID"
     static let phoneCaptureEpochKey = "watch.activeWorkout.phoneCaptureEpoch"
@@ -92,6 +104,7 @@ extension WatchWorkoutManager {
     /// Re-attempts unacknowledged data after activation/reachability recovery.
     func retryHeartRateOutbox(reason: String) {
         hrOutbox.retry(reason: reason)
+        strengthCompletionOutbox.retry(reason: reason)
     }
 
     /// Handles a protocol message from the phone (finalize request or ack).
@@ -104,7 +117,9 @@ extension WatchWorkoutManager {
             switch parsed.kind {
             case .finalizeRequest: return ["ack": hrOutbox.handleFinalizeRequest(parsed)]
             case .observations, .finalizeAcknowledgement:
-                return ["ack": parsed.acknowledgement != nil && hrOutbox.handleAcknowledgement(parsed)]
+                guard parsed.acknowledgement != nil else { return ["ack": false] }
+                let phoneStarted = hrOutbox.handleAcknowledgement(parsed)
+                return ["ack": strengthCompletionOutbox.handleAcknowledgement(parsed) || phoneStarted]
             }
         }
     }

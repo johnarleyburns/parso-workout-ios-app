@@ -1,8 +1,35 @@
 import Foundation
 import SwiftData
+import OSLog
 import CadenceCore
 
+public enum HRCompletionDecision: Equatable, Sendable {
+    case replace([HRSamplePoint])
+    case keepExisting
+    case rejectStale
+
+    var label: String {
+        switch self {
+        case .replace: return "replace"
+        case .keepExisting: return "keepExisting"
+        case .rejectStale: return "rejectStale"
+        }
+    }
+}
+
+/// Monotonic merge policy for a completed session's HR series: never regress to less data.
+public enum HRCompletionPolicy {
+    public static func decide(existing: [HRSamplePoint], incoming: [HRSamplePoint],
+                              incomingFinal: Int?, appliedFinal: Int?) -> HRCompletionDecision {
+        guard !incoming.isEmpty else { return .keepExisting }
+        if let incomingFinal, let appliedFinal, incomingFinal < appliedFinal { return .rejectStale }
+        return incoming.count >= existing.count ? .replace(incoming) : .keepExisting
+    }
+}
+
 public enum WatchStrengthSyncApplier {
+    private static let log = Logger(subsystem: "guru.parso.cadence", category: "WatchStrengthSync")
+
     public enum AppliedAction: Equatable, Sendable {
         case logSet
         case endSession
@@ -108,12 +135,33 @@ public enum WatchStrengthSyncApplier {
         let known = max(session.duration, endedAt.timeIntervalSince(session.date))
         let window: TimeInterval? = known > 0 ? known : nil
         let samples = WatchStrengthHeartRate.decode(info[WatchStrengthHeartRate.transportKey], duration: window)
-        if !samples.isEmpty {
-            // Idempotent: a redelivered end_session rewrites the same samples.
+        let incomingFinal = info["hr_final_sequence"] as? Int
+        let existing = session.hrSamplePoints
+        let appliedFinal = session.hrAppliedFinalSequence >= 0 ? session.hrAppliedFinalSequence : nil
+        let decision = HRCompletionPolicy.decide(existing: existing, incoming: samples,
+                                                 incomingFinal: incomingFinal, appliedFinal: appliedFinal)
+        switch decision {
+        case .replace(let accepted):
+            // Preserve a user-confirmed manual cardio override; the measured series is still stored.
+            let manual = session.isManualCardioMinutesOverride
+            let explicit = session.hasManualCardioMinutesOverride
+            let manualSummary = session.intensitySummary
             let source: HeartRateSource = (info["hr_source"] as? String).flatMap(HeartRateSource.init(rawValue:)) ?? .watchHealthKit
-            session.recordHeartRate(samples, profile: intensityProfile ?? .ageEstimated(age: nil),
-                                    source: source)
+            session.recordHeartRate(accepted, profile: intensityProfile ?? .ageEstimated(age: nil),
+                                    source: source,
+                                    at: date(info["hr_captured_at"]) ?? Date())
+            if manual {
+                session.hasManualCardioMinutesOverride = explicit
+                session.intensitySummary = manualSummary
+            }
+            if let incomingFinal { session.hrAppliedFinalSequence = max(incomingFinal, appliedFinal ?? -1) }
+            session.hrCompletionPending = false
+        case .keepExisting:
+            if existing.isEmpty { session.hrCompletionPending = true }
+        case .rejectStale:
+            break
         }
+        Self.log.info("end_session HR outcome=\(String(describing: decision.label), privacy: .public) incoming=\(samples.count) existing=\(existing.count) final=\(incomingFinal ?? -1)")
         session.updatedAt = Date()
         try context.save()
         return .endSession

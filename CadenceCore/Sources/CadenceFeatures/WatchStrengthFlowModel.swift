@@ -892,6 +892,9 @@ public final class WatchStrengthFlowModel {
         }
         if !recordedHeartRate.isEmpty {
             payload[WatchStrengthHeartRate.transportKey] = WatchStrengthHeartRate.encode(recordedHeartRate)
+            payload["hr_sample_count"] = recordedHeartRate.count
+            payload["hr_final_sequence"] = recordedHeartRate.count
+            payload["hr_captured_at"] = Date().timeIntervalSince1970
         }
         return payload
     }

@@ -111,7 +111,7 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
             "TemplateExercise": ["exerciseName", "id", "order", "targetReps", "targetSets"],
             "WorkoutSession": ["activePartnerIDsData", "cooldownSeconds", "date", "deletedAt", "endedAt",
                                 "enginePlanId", "enginePlanJSON", "engineRevisionId",
-                                "healthKitWorkoutUUID", "hrBackupData", "hrCoverageData", "hasManualCardioMinutesOverride", "hrSamplesData", "id", "intensitySummaryData", "isLogged", "notes", "originDevice", "planKey",
+                                "healthKitWorkoutUUID", "hrAppliedFinalSequence", "hrCompletionPending", "hrBackupData", "hrCoverageData", "hasManualCardioMinutesOverride", "hrSamplesData", "id", "intensitySummaryData", "isLogged", "notes", "originDevice", "planKey",
                                 "planSessionID", "plannedExerciseNamesData", "plannedPerformerPrescriptionsData",
                                 "plannedPrescriptionsData", "plannedRepLadderData", "prescribedLoadKg",
                                 "scheduledWorkoutID", "templateName", "title", "updatedAt", "warmupSeconds"]

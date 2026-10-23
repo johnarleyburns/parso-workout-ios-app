@@ -28,6 +28,18 @@ struct WatchHeartRateReceiptDefaultsStore: WatchHeartRateReceiptStore {
     func clear(sessionID: UUID) { UserDefaults.standard.removeObject(forKey: key(sessionID)) }
 }
 
+/// Finalization watermark that survives process recreation.
+struct WatchHeartRateFinalizationDefaultsStore: WatchHeartRateFinalizationStore {
+    private func key(_ id: UUID) -> String { "watchHR.finalization.\(id.uuidString)" }
+    func load(sessionID: UUID) -> WatchHRFinalizationState? {
+        UserDefaults.standard.data(forKey: key(sessionID)).flatMap { try? JSONDecoder().decode(WatchHRFinalizationState.self, from: $0) }
+    }
+    func save(_ state: WatchHRFinalizationState) throws {
+        UserDefaults.standard.set(try JSONEncoder().encode(state), forKey: key(state.sessionID))
+    }
+    func clear(sessionID: UUID) { UserDefaults.standard.removeObject(forKey: key(sessionID)) }
+}
+
 /// Retained phone workout → Watch request pairing (and finalization state),
 /// so late batches route to the exact finished session. Bounded to the most
 /// recent `limit` workouts.

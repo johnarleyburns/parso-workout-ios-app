@@ -179,12 +179,12 @@ module CrashIntake
       @out.puts "App #{@config.fetch('bundle_id')} / #{app}; scan since #{@since.utc.iso8601}; mode #{@dry ? 'dry-run' : 'ingest'}"
       @issues=@client.pages('github',"#{@issue_path}?state=all&per_page=100&page=1").reject { |i| i['pull_request'] }
       @issues.select! { |i| i.dig('user','login')=='johnarleyburns' }
-      submissions=@client.pages('apple',"/v1/apps/#{app}/betaFeedbackCrashSubmissions?limit=200&sort=-createdDate")
+      submissions=@client.pages('apple',"/v1/apps/#{app}/betaFeedbackCrashSubmissions?limit=200&sort=-createdDate&include=build")
       @counts[:listed]=submissions.length
       labels unless @dry
       submissions.each do |submission|
-        id=submission.fetch('id')
-        raise 'Invalid Apple submission ID' unless id.match?(/\A[a-zA-Z0-9-]+\z/)
+        # Apple IDs are opaque and can contain URL-sensitive characters.
+        id=URI.encode_www_form_component(submission.fetch('id'))
         attrs=submission.fetch('attributes',{})
         next unless CrashIntake.in_range?(attrs['createdDate'],@since)
         @counts[:in_window]+=1

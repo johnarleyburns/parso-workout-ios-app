@@ -213,3 +213,12 @@ class CrashAuthTest < Minitest::Test
     assert_equal 'appstoreconnect-v1',JSON.parse(Base64.urlsafe_decode64(payload))['aud']
   end
 end
+
+class CrashRunnerTest
+  def test_opaque_apple_submission_identifiers_are_url_encoded
+    @api.submissions[0]['id']='opaque_id/with+characters='
+    run_collector
+    assert_equal 1,@api.issues.length
+    assert_includes @api.issues[0]['body'],'opaque_id%2Fwith%2Bcharacters%3D'
+  end
+end

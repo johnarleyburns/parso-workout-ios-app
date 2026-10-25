@@ -9,6 +9,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if rg -n --hidden \
   --glob '!.git/**' \
   --glob '!scripts/check-xcodebuild-platform.sh' \
+  --glob '!**/scripts/tests/test-xcodebuild-safe.sh' \
   --glob '!current_status.md' \
   -- '-sdk[=[:space:]]+(iphoneos|iphonesimulator|watchos|watchsimulator)|SDKROOT[[:space:]]*=[[:space:]]*(iphoneos|iphonesimulator|watchos|watchsimulator)' \
   "$ROOT/Makefile" "$ROOT/README.md" "$ROOT/CLAUDE.md" \

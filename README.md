@@ -131,3 +131,20 @@ All users see the coach's **live insights** continuously — real, cited
 observations about their own training that update after every workout. The coach
 also provides editable prescriptions and adapting weekly plans to every user.
 The optional Supporter contribution is an ad-free tip jar and unlocks nothing.
+
+## Automatic TestFlight crash intake
+
+`TestFlight Crash Intake` polls Apple hourly and supports manual dry-run/backfill.
+Owner-authored issues are atomically held with `tracking` until usable app crash
+evidence is present. Existing controlled issue intake owns repair dispatch; crash
+collection never grants CI-maintenance permission or sets human QA labels. The
+bootstrap floor is 2026-10-18T20:53:31Z; overlapping scans continue picking up new
+and delayed reports automatically. Only sanitized app-owned stack excerpts are
+published. Use `TESTFLIGHT_CRASH_INTAKE_ENABLED` and
+`TESTFLIGHT_CRASH_AUTOFIX_ENABLED` to control collection and release of new
+issues. Already-running repairs need the existing pipeline stop procedure.
+
+Run `ruby scripts/tests/test-testflight-crash-intake.rb` for collector regressions.
+The workflow uses existing App Store Connect and owner workflow-token secrets.
+Missing logs/symbols remain held and retry hourly; Apple feedback is not a complete
+feed of every dashboard crash. Only the owner closes repair issues after device QA.

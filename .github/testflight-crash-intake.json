@@ -1,0 +1,13 @@
+{
+  "name": "Cladiron",
+  "bundle_id": "guru.parso.ios-workout-app",
+  "modules": [
+    "Cadence",
+    "CadenceCore",
+    "CadenceFeatures",
+    "Cadence Watch App Watch App",
+    "CadenceWidgets",
+    "CadenceWatchWidgets"
+  ],
+  "backfill_start": "2026-10-18T20:53:31Z"
+}

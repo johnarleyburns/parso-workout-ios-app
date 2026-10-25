@@ -1,0 +1,55 @@
+name: TestFlight Crash Intake
+run-name: Collect TestFlight crashes (${{ inputs.mode || 'ingest' }})
+on:
+  schedule:
+    - cron: '13 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Dry run or create repair issues
+        type: choice
+        options: [dry-run, ingest]
+        default: dry-run
+      since:
+        description: Optional ISO-8601 backfill start (blank uses permanent bootstrap floor)
+        type: string
+        default: ''
+      max_new_issues:
+        description: Maximum new issues in this run (1-100)
+        type: string
+        default: '20'
+permissions:
+  contents: read
+concurrency:
+  group: testflight-crash-intake
+  cancel-in-progress: false
+jobs:
+  collect:
+    if: github.event_name == 'workflow_dispatch' || vars.TESTFLIGHT_CRASH_INTAKE_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Collect crash feedback and reconcile repair issues
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+          ASC_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          ASC_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          CRASH_INTAKE_MODE: ${{ inputs.mode || 'ingest' }}
+          CRASH_INTAKE_SINCE: ${{ inputs.since || '' }}
+          CRASH_INTAKE_MAX_ISSUES: ${{ inputs.max_new_issues || '20' }}
+          TESTFLIGHT_CRASH_BACKFILL_START: ${{ vars.TESTFLIGHT_CRASH_BACKFILL_START }}
+          TESTFLIGHT_CRASH_AUTOFIX_ENABLED: ${{ vars.TESTFLIGHT_CRASH_AUTOFIX_ENABLED }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Log only collector-produced sanitized summaries, never raw API payloads.
+          ruby .github/scripts/testflight-crash-intake.rb 2>&1 | tee "$RUNNER_TEMP/crash-intake-summary.txt"
+          cat "$RUNNER_TEMP/crash-intake-summary.txt" >> "$GITHUB_STEP_SUMMARY"
+      - name: Report collection failure
+        if: failure()
+        run: echo 'Crash collection failed or was incomplete. Review this run and manually dispatch again after resolving API access or ledger errors; the hourly schedule will retry.' >> "$GITHUB_STEP_SUMMARY"

@@ -221,3 +221,15 @@ and push unless the user explicitly says otherwise.
 7. **Monitor CI** — check `git log --oneline -1` to confirm the push SHA, then
    use `gh run list --branch main --limit 1` to watch the workflow.
 8. **Report the commit SHA and CI status** to the user.
+
+## Automatic TestFlight crash intake
+
+`TestFlight Crash Intake` polls Apple hourly and supports manual dry-run/backfill.
+Owner-authored issues are atomically held with `tracking` until usable app crash
+evidence is present. Existing controlled issue intake owns repair dispatch; crash
+collection never grants CI-maintenance permission or sets human QA labels. The
+bootstrap floor is 2026-10-18T20:53:31Z; overlapping scans continue picking up new
+and delayed reports automatically. Only sanitized app-owned stack excerpts are
+published. Use `TESTFLIGHT_CRASH_INTAKE_ENABLED` and
+`TESTFLIGHT_CRASH_AUTOFIX_ENABLED` to control collection and release of new
+issues. Already-running repairs need the existing pipeline stop procedure.

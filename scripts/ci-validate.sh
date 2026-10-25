@@ -22,7 +22,13 @@ while IFS= read -r f; do
 done < <(git ls-files '.github/workflows/*.yml')
 endstep
 
+step "TestFlight crash collector"
+ruby -c .github/scripts/testflight-crash-intake.rb
+ruby scripts/tests/test-testflight-crash-intake.rb
+endstep
+
 step "Automation regression tests"
+bash scripts/tests/test-xcodebuild-platform.sh
 bash scripts/tests/test-issue-pr-policy.sh
 bash scripts/tests/test-issue-backlog-order.sh
 bash scripts/tests/test-release-repair-policy.sh

@@ -970,12 +970,25 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
         let query = WatchHRCommand(action: .query, requestID: identity.requestID,
                                    issuedAt: nextWatchHRCommandIssuedAt())
-        session.sendMessage(query.payload, replyHandler: { [weak self] reply in
+        session.sendMessage(query.payload,
+                            replyHandler: Self.watchStateReplyHandler(owner: self, identity: identity),
+                            errorHandler: Self.watchStateErrorHandler(owner: self))
+    }
+
+    /// WatchConnectivity invokes these on a background queue; closures formed
+    /// inside a main-actor method inherit its isolation and trap there.
+    nonisolated private static func watchStateReplyHandler(owner: AppModel,
+                                                           identity: WatchHRConnectionIdentity) -> ([String: Any]) -> Void {
+        { [weak owner] reply in
             let box = UncheckedWatchUserInfo(value: reply)
-            Task { @MainActor [weak self] in self?.applyWatchStateReply(box.value, identity: identity) }
-        }, errorHandler: { [weak self] _ in
-            Task { @MainActor [weak self] in self?.redeliverWatchStart() }
-        })
+            Task { @MainActor [weak owner] in owner?.applyWatchStateReply(box.value, identity: identity) }
+        }
+    }
+
+    nonisolated private static func watchStateErrorHandler(owner: AppModel) -> @Sendable (Error) -> Void {
+        { [weak owner] _ in
+            Task { @MainActor [weak owner] in owner?.redeliverWatchStart() }
+        }
     }
 
     private func redeliverWatchStart() {

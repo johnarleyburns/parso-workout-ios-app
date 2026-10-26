@@ -308,7 +308,10 @@ struct ExercisePickerView: View {
         .onChange(of: selectedGroup) { _, _ in
             // Group is the primary filter only by muscle group; in the equipment-first
             // flow it narrows, so the selected equipment must be preserved.
-            if browseMode == .byMuscleGroup { selectedEquipment = nil }
+            if ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(
+                mode: browseMode == .byMuscleGroup ? .byMuscleGroup : .byEquipment) {
+                selectedEquipment = nil
+            }
         }
         .onChange(of: selectedTab) { _, newTab in
             if newTab == .browse { selectedEquipment = nil; selectedGroup = nil }

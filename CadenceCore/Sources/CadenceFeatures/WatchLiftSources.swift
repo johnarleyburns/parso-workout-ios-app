@@ -56,13 +56,15 @@ public struct WatchLiftLaunch: Equatable, Sendable {
 public struct WatchSuggestReview: Equatable, Sendable {
     public static let emptyMessage = "No strength suggestion is synced yet. Open Cladiron on iPhone to refresh suggestions."
 
-    public var heading = "Suggested for you"
+    public var heading = "Synced from iPhone"
     public var title: String
     public var exerciseLines: [String]
     public var prescriptionDetail: String
     public var isStale: Bool
     public var syncedAt: Date
     public var launch: WatchLiftLaunch
+    /// false → review only (e.g. already trained today); no Start button.
+    public var canStart = true
 
     /// nil → show `emptyMessage`; nothing may be launched.
     public static func make(plan: WatchSync.TodayPlan?, now: Date = Date(),
@@ -90,28 +92,21 @@ public struct WatchSuggestReview: Equatable, Sendable {
                                     repLadder: session.repLadder, planPayload: session.planPayload))
     }
 
-    /// Standalone Watch suggestion: no iPhone needed. Repeats the newest completed
-    /// strength workout on the Watch, or offers a bodyweight starter when there is none.
-    public static func makeLocal(previous: [WatchPreviousWorkout], now: Date = Date()) -> WatchSuggestReview {
-        if let last = previous.first {
-            return WatchSuggestReview(
-                heading: "Suggested from your last workout", title: last.title,
-                exerciseLines: last.structureLines, prescriptionDetail: "\(last.workingSetCount) working sets",
-                isStale: false, syncedAt: now, launch: last.launch)
+    /// Offline recommendation from Watch-local history. This is a newly materialized
+    /// plan, not a template launch of the previous workout.
+    public static func makeLocal(sessions: [WorkoutSession], now: Date = Date(),
+                                 calendar: Calendar = .current) -> WatchSuggestReview {
+        let result = WatchLocalSuggestionGenerator.generate(sessions: sessions, now: now, calendar: calendar)
+        let heading: String
+        switch result.source {
+        case .starter: heading = "Starter workout"
+        case .watchHistory: heading = "Suggested on Apple Watch"
+        case .alreadyTrainedToday: heading = "Suggested on Apple Watch"
         }
-        let names = ["Bodyweight Squat", "Push-Up", "Plank"]
-        let prescriptions = names.map { name in
-            PlannedExercisePrescription(
-                exerciseName: name, sets: (0..<3).map { _ in PlannedSetPrescription(targetReps: 10) })
-        }
-        let title = "Starter Full Body"
-        let payload = WatchPlanPayload(
-            title: title, strength: .init(exerciseNames: names, repLadder: [10, 10, 10], prescriptions: prescriptions))
         return WatchSuggestReview(
-            heading: "Starter workout", title: title,
-            exerciseLines: names.map { "\($0) · 3×10" }, prescriptionDetail: "9 working sets",
-            isStale: false, syncedAt: now,
-            launch: WatchLiftLaunch(title: title, exerciseNames: names, repLadder: [10, 10, 10], planPayload: payload))
+            heading: heading, title: result.launch.title, exerciseLines: result.exerciseLines,
+            prescriptionDetail: result.prescriptionDetail, isStale: false, syncedAt: now,
+            launch: result.launch, canStart: result.source != .alreadyTrainedToday)
     }
 
     static func repsText(_ reps: [Int]) -> String {

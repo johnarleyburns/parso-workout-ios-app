@@ -112,4 +112,19 @@ final class WatchLiftSourcesTests: XCTestCase {
         XCTAssertFalse(review.launch.exerciseNames.isEmpty)
         XCTAssertNotNil(review.launch.planPayload?.strength)
     }
+
+    func testSuggestMirrorsPhoneGeneratedPlanInsteadOfPreviousWorkout() throws {
+        let plan = EditablePlan(title: "Fitness Workout", warmupMinutes: 0, cooldownMinutes: 0, exercises: [
+            EditableExercise(name: "Goblet Squat", sets: [
+                EditableSet(targetReps: 10, targetWeight: 20), EditableSet(targetReps: 10, targetWeight: 20)], notes: ""),
+            EditableExercise(name: "Row", sets: [EditableSet(targetReps: 8, targetWeight: 30)], notes: "")])
+        let session = try XCTUnwrap(CoachWatchTodayBridge.suggestedStrengthSession(from: plan))
+        let today = WatchSync.TodayPlan(sessions: [session], updatedAt: Date())
+        let review = try XCTUnwrap(WatchSuggestReview.make(plan: today))
+        XCTAssertEqual(review.title, "Fitness Workout")
+        XCTAssertEqual(review.exerciseLines, ["Goblet Squat · 2×10", "Row · 1×8"])
+        XCTAssertEqual(review.launch.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg, 20)
+        XCTAssertNil(CoachWatchTodayBridge.suggestedStrengthSession(
+            from: EditablePlan(warmupMinutes: 0, cooldownMinutes: 0, exercises: [])))
+    }
 }

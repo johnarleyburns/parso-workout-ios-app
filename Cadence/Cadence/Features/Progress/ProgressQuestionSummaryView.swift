@@ -14,9 +14,19 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             questionPicker
-            focusedQuestion
+            if showsFocused { focusedQuestion }
         }
     }
+
+    /// Picker only; the caller owns the content below so the bar keeps one
+    /// stable identity (and scroll position) across every question.
+    static func pickerOnly(selection: Binding<ProgressQuestionSelection>) -> some View {
+        ProgressQuestionSummaryView<EmptyView>(selection: selection, sessions: [],
+                                               detailContent: { _ in EmptyView() },
+                                               showsFocused: false)
+    }
+
+    var showsFocused = true
 
     private var questionPicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -58,6 +68,24 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
 
     @ViewBuilder
     private var focusedQuestion: some View {
+        switch selection.selected {
+        case .consistency:
+            ConsistencyHeatmapView(sessions: sessions)
+        case .strengthOverTime, .tests, .personalRecords, .intensity, .effort:
+            detailContent(selection.selected)
+        case .workoutHistory:
+            EmptyView()
+        }
+    }
+}
+
+/// Content for the selected question, rendered below the pinned picker.
+struct ProgressQuestionContentView<DetailContent: View>: View {
+    let selection: ProgressQuestionSelection
+    let sessions: [WorkoutSession]
+    @ViewBuilder let detailContent: (ProgressQuestion) -> DetailContent
+
+    var body: some View {
         switch selection.selected {
         case .consistency:
             ConsistencyHeatmapView(sessions: sessions)

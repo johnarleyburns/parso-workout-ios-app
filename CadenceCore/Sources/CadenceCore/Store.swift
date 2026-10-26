@@ -115,15 +115,25 @@ public enum CadenceStore {
     public static func makeApplicationModelContainer(
         cloudKitEnabled: Bool = true,
         directory: URL = applicationSupportDirectory(),
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        splitFactory: (URL, URL, Bool) throws -> ModelContainer = {
+            try makeSplitModelContainer(localURL: $0, syncURL: $1, cloudKitEnabled: $2)
+        }
     ) throws -> ModelContainer {
         let legacy = legacyStoreURL(in: directory)
         let urls = splitStoreURLs(in: directory)
         let hasLegacy = fileManager.fileExists(atPath: legacy.path)
         if splitStoreReady(in: directory, fileManager: fileManager) || !hasLegacy {
             try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-            return try makeSplitModelContainer(localURL: urls.local, syncURL: urls.sync,
-                                                cloudKitEnabled: cloudKitEnabled)
+            do {
+                return try splitFactory(urls.local, urls.sync, cloudKitEnabled)
+            } catch where cloudKitEnabled {
+                // A CloudKit mirroring setup failure (account, entitlement, or
+                // schema state) must not crash launch. Open the same on-disk
+                // stores local-only: no data is deleted or replaced, and
+                // mirroring resumes once CloudKit is usable again.
+                return try splitFactory(urls.local, urls.sync, false)
+            }
         }
         return try makeModelContainer(inMemory: false, cloudKitEnabled: cloudKitEnabled)
     }

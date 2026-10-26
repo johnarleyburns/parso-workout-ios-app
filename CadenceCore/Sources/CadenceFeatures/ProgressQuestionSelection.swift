@@ -24,6 +24,10 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /// Whether the question renders its own list below the picker instead of
+    /// the shared scrolling page. The picker itself is identical either way.
+    public var hostsOwnList: Bool { self == .workoutHistory }
+
     public static var alphabetical: [ProgressQuestion] {
         allCases.sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
     }

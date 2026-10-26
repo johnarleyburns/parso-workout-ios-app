@@ -37,29 +37,20 @@ struct TrainingProgressView: View {
     }
     var body: some View {
         NavigationStack(path: $path) {
-            Group {
-                if questionSelection.selected == .workoutHistory {
-                    VStack(spacing: 0) {
-                        ProgressQuestionSummaryView(
-                            selection: $questionSelection,
-                            sessions: activeSessions,
-                            detailContent: { progressQuestionContent(for: $0) })
-                        .padding(.horizontal)
-                        .padding(.top, 8)
-                        HistoryView(path: $path, embedded: true)
-                    }
+            VStack(spacing: 0) {
+                ProgressQuestionSummaryView<EmptyView>.pickerOnly(selection: $questionSelection)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                if questionSelection.selected.hostsOwnList {
+                    HistoryView(path: $path, embedded: true)
                 } else {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 14) {
-                            ProgressQuestionSummaryView(
-                                selection: $questionSelection,
-                                sessions: activeSessions,
-                                detailContent: { question in
-                                    progressQuestionContent(for: question)
-                                })
-                        }
-                        .padding()
-                        .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
+                        ProgressQuestionContentView(selection: questionSelection,
+                                                    sessions: activeSessions,
+                                                    detailContent: { progressQuestionContent(for: $0) })
+                            .padding(.horizontal)
+                            .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
                     }
                 }
             }

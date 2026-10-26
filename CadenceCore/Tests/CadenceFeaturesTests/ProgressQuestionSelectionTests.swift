@@ -35,4 +35,16 @@ final class ProgressQuestionSelectionTests: XCTestCase {
         XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected,
                        .personalRecords)
     }
+
+    func testOnlyWorkoutHistoryHostsItsOwnList() {
+        XCTAssertEqual(ProgressQuestion.allCases.filter(\.hostsOwnList), [.workoutHistory])
+    }
+
+    func testSelectingHistoryKeepsPickerStateStable() {
+        var selection = ProgressQuestionSelection(selected: .tests)
+        selection.select(.workoutHistory)
+        XCTAssertEqual(selection.selected, .workoutHistory)
+        selection.select(.tests)
+        XCTAssertEqual(selection.selected, .tests)
+    }
 }

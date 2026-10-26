@@ -8,10 +8,11 @@ struct WatchSuggestReviewView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(\.modelContext) private var context
     @State private var launch: WatchLiftLaunch?
-    @State private var localReview: WatchSuggestReview?
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var localSessions: [WorkoutSession]
 
     var body: some View {
-        let review = WatchSuggestReview.make(plan: watchManager.todayPlan) ?? localReview
+        let review: WatchSuggestReview? = WatchSuggestReview.make(plan: watchManager.todayPlan)
+            ?? WatchSuggestReview.makeLocal(sessions: localSessions)
         List {
             if let review {
                 Section {
@@ -31,6 +32,7 @@ struct WatchSuggestReviewView: View {
                         Text(review.prescriptionDetail).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
+                if review.canStart {
                 Section {
                     if watchManager.isActive {
                         Text("Finish or resume your current workout first.")
@@ -47,6 +49,7 @@ struct WatchSuggestReviewView: View {
                     .accessibilityIdentifier("watchStrength.suggest.start")
                     .accessibilityHint("Creates a new workout from the suggestion")
                 }
+                }
             } else {
                 Text(WatchSuggestReview.emptyMessage)
                     .font(.footnote)
@@ -54,9 +57,6 @@ struct WatchSuggestReviewView: View {
             }
         }
         .navigationTitle("Suggest")
-        .onAppear {
-            localReview = WatchSuggestReview.makeLocal(previous: WatchPreviousWorkout.load(from: context))
-        }
         .navigationDestination(isPresented: Binding(get: { launch != nil }, set: { if !$0 { launch = nil } })) {
             if let config = launch {
             WatchStrengthView(title: config.title, plannedExerciseNames: config.exerciseNames,

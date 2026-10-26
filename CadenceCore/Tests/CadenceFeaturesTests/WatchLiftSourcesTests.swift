@@ -108,7 +108,8 @@ final class WatchLiftSourcesTests: XCTestCase {
     }
 
     func testLocalSuggestWorksWithoutPhone() {
-        let review = WatchSuggestReview.makeLocal(previous: [])
+        let review = WatchSuggestReview.makeLocal(sessions: [])
+        XCTAssertEqual(review.heading, "Starter workout")
         XCTAssertFalse(review.launch.exerciseNames.isEmpty)
         XCTAssertNotNil(review.launch.planPayload?.strength)
     }
@@ -126,5 +127,35 @@ final class WatchLiftSourcesTests: XCTestCase {
         XCTAssertEqual(review.launch.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg, 20)
         XCTAssertNil(CoachWatchTodayBridge.suggestedStrengthSession(
             from: EditablePlan(warmupMinutes: 0, cooldownMinutes: 0, exercises: [])))
+    }
+
+    func testLocalSuggestExcludesLatestWorkoutAndIsDeterministic() throws {
+        let ctx = try makeContext()
+        let day: TimeInterval = 86_400
+        let now = Date(timeIntervalSince1970: 100 * day)
+        let old = try addSession(ctx, title: "Old", end: now.addingTimeInterval(-5 * day),
+                                 sets: [("Row", 8), ("Lunge", 10), ("Curl", 12), ("Press", 8)],
+                                 date: now.addingTimeInterval(-5 * day))
+        let latest = try addSession(ctx, title: "Latest", end: now.addingTimeInterval(-2 * day),
+                                    sets: [("Bench Press", 8), ("Squat", 5)], date: now.addingTimeInterval(-2 * day))
+        let sessions = [latest, old]
+        let a = WatchSuggestReview.makeLocal(sessions: sessions, now: now)
+        let b = WatchSuggestReview.makeLocal(sessions: sessions, now: now)
+        XCTAssertEqual(a, b)
+        XCTAssertEqual(a.heading, "Suggested on Apple Watch")
+        XCTAssertTrue(a.canStart)
+        let names = a.launch.exerciseNames
+        XCTAssertFalse(names.contains("Bench Press"))
+        XCTAssertFalse(names.contains("Squat"))
+        XCTAssertEqual(names, ["Curl", "Lunge", "Press", "Row"])
+        XCTAssertEqual(a.launch.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg, 50)
+    }
+
+    func testLocalSuggestSameDayProtectionHasNoStart() throws {
+        let ctx = try makeContext()
+        let now = Date(timeIntervalSince1970: 100 * 86_400 + 3600)
+        let today = try addSession(ctx, title: "Today", end: now, sets: [("Squat", 5)], date: now)
+        let review = WatchSuggestReview.makeLocal(sessions: [today], now: now)
+        XCTAssertFalse(review.canStart)
     }
 }

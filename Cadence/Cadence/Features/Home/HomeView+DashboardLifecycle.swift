@@ -128,6 +128,12 @@ extension HomeView {
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
                 await prepareTodaySuggestion()
             }
+            .onChange(of: todaySuggestedPlan?.id) { _, _ in
+                // Watch Suggest mirrors the phone's generated Today plan.
+                guard coachSnapshotReady, let plan = todaySuggestedPlan else { return }
+                model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(
+                    from: coachDecision, suggestedStrength: plan))
+            }
             .onChange(of: historyRefreshToken) { _, _ in
                 todaySuggestedPlan = nil
                 HomeTodayCache.coordinator.invalidate(surface: surface.cacheSurface)

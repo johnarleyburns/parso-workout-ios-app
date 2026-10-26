@@ -281,7 +281,7 @@ struct HomeView: View {
 
         // No hidden weekly plan is rebuilt here. The Watch Today hero mirrors the
         // phone's advisory suggestion; the Watch still lets the user start anything.
-        model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(from: snapshot.decision))
+        model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(from: snapshot.decision, suggestedStrength: todaySuggestedPlan))
         let todayScheduled = PlannedWorkoutsPresenter.today(
             scheduledWorkouts.map(HomePlannedWorkoutsSection.item))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(

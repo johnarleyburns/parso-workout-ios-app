@@ -126,6 +126,7 @@ final class TodayRecommendationCoordinatorTests: XCTestCase {
         let c2 = make(rec: rec, plan: plan, now: { clock.d })
         _ = await runLifecycle(c2, surface: .today, key: key, computed: &n, title: "y")
         XCTAssertEqual(n, 2)
+        await c2.settle()   // its queued save must not land after the file is tampered with
         try? Data("{not json".utf8).write(to: rec)
         let c3 = make(rec: rec, plan: plan, now: { clock.d })
         _ = await runLifecycle(c3, surface: .today, key: key, computed: &n, title: "z")

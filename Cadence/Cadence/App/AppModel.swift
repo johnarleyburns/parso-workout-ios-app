@@ -753,6 +753,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         // immediate and queued copies as one command.
         lastWatchStartCommand = command
         if let phoneSessionID {
+            watchLastSampleEnd = nil
             watchHRConnection.start(.init(phoneSessionID: phoneSessionID, requestID: requestID), now: Date())
             watchHRLog.info("command queued state=\(self.watchHRConnection.state.label, privacy: .public)")
             scheduleWatchReconcile()
@@ -920,8 +921,14 @@ final class AppModel: NSObject, @unchecked Sendable {
         case .notRequested, .ended, .ending: return String(localized: "Apple Watch HR is not connected")
         case .startingWatchWorkout: return String(localized: "Connecting to Watch")
         case .awaitingWatchAdoption, .awaitingFirstSample: return String(localized: "Watch workout started—waiting for HR")
-        case .live: return watchHRConnection.isLive(now: Date())
-            ? String(localized: "Receiving live HR") : String(localized: "Connection needs attention")
+        case .live:
+            let now = Date()
+            if watchHRConnection.isTransportLive(now: now) {
+                return watchHRConnection.isSampleFresh(now: now)
+                    ? String(localized: "Receiving live HR")
+                    : String(localized: "Apple Watch connected — waiting for fresh heart rate")
+            }
+            return String(localized: "Apple Watch connection needs attention")
         case .reconciling: return String(localized: "Reconnecting")
         case .recoverableFailure(.watchOnlyWorkoutActive, _):
             return String(localized: "A workout is already running on your Apple Watch. End it there, then tap Reconnect Apple Watch HR.")
@@ -946,15 +953,22 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// One-shot timer for the next bounded attempt; no continuous polling.
     private func scheduleWatchReconcile() {
         watchReconcileTimer?.invalidate()
-        watchReconcileTimer = Timer.scheduledTimer(withTimeInterval: WatchHRConnection.initialWait, repeats: false) { [weak self] _ in
+        guard let delay = watchHRConnection.nextWakeDelay(now: Date()) else {
+            watchReconcileTimer = nil
+            return
+        }
+        watchReconcileTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                if let reason = self.watchHRConnection.tick(now: Date()) {
+                let now = Date()
+                if let reason = self.watchHRConnection.tick(now: now) {
                     self.sendWatchStateQuery(reason)
-                    self.scheduleWatchReconcile()
-                } else if case .reconciling = self.watchHRConnection.state {
-                    self.scheduleWatchReconcile()
                 }
+                // A stale external BPM must not stay visible to any consumer.
+                if self.hrm.source == .appleWatch, !self.watchHRConnection.isSampleFresh(now: now) {
+                    self.hrm.clearExternalBPM()
+                }
+                self.scheduleWatchReconcile()
             }
         }
     }
@@ -1028,6 +1042,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// The request ID scopes a delayed copy to the session it was meant for.
     private func stopWatchWorkout(targetRequestID: UUID?) {
         watchRetryArmed = false
+        watchLastSampleEnd = nil
         watchTimeout?.invalidate(); watchTimeout = nil
         watchReconcileTimer?.invalidate(); watchReconcileTimer = nil
         if watchHRConnection.identity?.requestID == targetRequestID { watchHRConnection.end() }
@@ -1366,6 +1381,22 @@ extension AppModel {
             return
         }
 
+        if let status = WatchHRLiveStatus(payload: message) {
+            switch watchHRConnection.receiveTransportHeartbeat(requestID: status.requestID, at: Date()) {
+            case .accepted:
+                if let end = status.lastRealSampleEnd {
+                    watchLastSampleEnd = max(watchLastSampleEnd ?? .distantPast, end)
+                }
+                // A transport heartbeat must not inject or revive a stale BPM.
+                if !status.sensorHasFreshReading { hrm.clearExternalBPM() }
+                scheduleWatchReconcile()
+                replyHandler?(["ack": true])
+            case .rejectedMismatch, .rejectedInactive:
+                replyHandler?(["ack": false])
+            }
+            return
+        }
+
         guard let bpm = message["bpm"] as? Double,
               let requestIDString = message["requestID"] as? String,
               let requestID = UUID(uuidString: requestIDString) else {
@@ -1385,6 +1416,7 @@ extension AppModel {
             guard let self else { return }
             if self.watchHRRelay.receive(bpm: Int(bpm), requestID: requestID) {
                 _ = self.watchHRConnection.receiveSample(requestID: requestID, at: Date())
+                self.scheduleWatchReconcile()
                 self.watchTimeout?.invalidate(); self.watchTimeout = nil
                 self.watchError = nil
                 self.watchActive = true

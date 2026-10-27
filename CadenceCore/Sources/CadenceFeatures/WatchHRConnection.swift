@@ -80,13 +80,18 @@ public struct WatchHRConnection: Sendable {
     public private(set) var lastFailure: WatchHRFailureReason?
     public private(set) var lastTransition = "notRequested"
     private var lastSampleAt: Date?
+    /// Last accepted immediate WatchConnectivity liveness message. This is
+    /// transport evidence, not evidence of a fresh physiological measurement.
+    private var lastTransportAt: Date?
     private var nextQueryAt: Date?
+
+    public static let transportStaleAfter: TimeInterval = 3 * WatchHRRelaySchedule.heartbeatInterval
 
     public init() {}
 
     public mutating func start(_ identity: WatchHRConnectionIdentity, now: Date) {
         self.identity = identity
-        attempts = 0; lastFailure = nil; lastSampleAt = nil
+        attempts = 0; lastFailure = nil; lastSampleAt = nil; lastTransportAt = nil
         nextQueryAt = now.addingTimeInterval(Self.initialWait)
         move(.startingWatchWorkout(identity))
     }
@@ -121,9 +126,49 @@ public struct WatchHRConnection: Sendable {
             return .rejectedMismatch
         }
         lastSampleAt = at
+        lastTransportAt = at
         attempts = 0
+        // Every real sample moves the watchdog deadline forward; the caller
+        // re-arms its one-shot timer from `nextWakeDelay`.
+        nextQueryAt = at.addingTimeInterval(Self.transportStaleAfter)
         move(.live(lastSampleAt: at))
         return .accepted
+    }
+
+    /// Accepts a Watch heartbeat/status packet for the active request. It
+    /// proves the interactive route is alive but never revives a stale BPM
+    /// or overwrites `lastSampleAt`.
+    @discardableResult
+    public mutating func receiveTransportHeartbeat(requestID: UUID, at: Date) -> SampleOutcome {
+        guard let identity else { return .rejectedInactive }
+        guard requestID == identity.requestID else {
+            lastFailure = .requestMismatch
+            return .rejectedMismatch
+        }
+        guard state != .notRequested, state != .ending, state != .ended else { return .rejectedInactive }
+        lastTransportAt = at
+        attempts = 0
+        nextQueryAt = at.addingTimeInterval(Self.transportStaleAfter)
+        return .accepted
+    }
+
+    public func isTransportLive(now: Date) -> Bool {
+        guard let lastTransportAt else { return false }
+        return now.timeIntervalSince(lastTransportAt) <= Self.transportStaleAfter
+    }
+
+    public func isSampleFresh(now: Date) -> Bool {
+        guard let lastSampleAt else { return false }
+        return now.timeIntervalSince(lastSampleAt) <= WatchHRRelay.staleAfter
+    }
+
+    /// The timer scheduling API: lets the owner keep exactly one one-shot
+    /// timer armed while a capture is active.
+    public func nextWakeDelay(now: Date) -> TimeInterval? {
+        guard identity != nil, state != .ending, state != .ended else { return nil }
+        guard let nextQueryAt else { return nil }
+        // `isLive` uses <=, so avoid waking at an equality boundary.
+        return max(0.25, nextQueryAt.timeIntervalSince(now) + 0.25)
     }
 
     public func displayedSampleAge(now: Date) -> TimeInterval? {

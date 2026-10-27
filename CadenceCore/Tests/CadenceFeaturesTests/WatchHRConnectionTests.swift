@@ -8,6 +8,36 @@ final class WatchHRConnectionTests: XCTestCase {
         var c = WatchHRConnection(); c.start(id, now: t0); return c
     }
 
+    func testFreshSampleMovesWatchdogDeadlineAndHeartbeatDoesNotRefreshSample() {
+        let id = ids(); var c = started(id)
+        _ = c.receiveSample(requestID: id.requestID, at: t0)
+        XCTAssertTrue(c.isTransportLive(now: t0.addingTimeInterval(14)))
+        XCTAssertTrue(c.isSampleFresh(now: t0.addingTimeInterval(14)))
+        _ = c.receiveTransportHeartbeat(requestID: id.requestID, at: t0.addingTimeInterval(14))
+        XCTAssertTrue(c.isTransportLive(now: t0.addingTimeInterval(28)))
+        XCTAssertFalse(c.isSampleFresh(now: t0.addingTimeInterval(28)))
+    }
+
+    func testHealthyFirstWatchdogDoesNotDisableLaterStaleRecovery() {
+        let id = ids(); var c = started(id)
+        _ = c.receiveSample(requestID: id.requestID, at: t0)
+        XCTAssertEqual(c.tick(now: t0.addingTimeInterval(16)), .initialWaitElapsed)
+        XCTAssertEqual(c.state, .reconciling(.initialWaitElapsed))
+    }
+
+    func testHeartbeatForOtherRequestIsRejectedAndCannotKeepLinkLive() {
+        let id = ids(); var c = started(id)
+        XCTAssertEqual(c.receiveTransportHeartbeat(requestID: UUID(), at: t0), .rejectedMismatch)
+        XCTAssertFalse(c.isTransportLive(now: t0))
+    }
+
+    func testNextWakeDelayNilAfterEndAndNonNilWhileAwaitingSample() {
+        let id = ids(); var c = started(id)
+        XCTAssertNotNil(c.nextWakeDelay(now: t0))
+        c.end()
+        XCTAssertNil(c.nextWakeDelay(now: t0))
+    }
+
     func testLaunchFirstThenDurableCommandAdoptsAndBufferedHRGoesLiveOnce() {
         let id = ids()
         var c = started(id)

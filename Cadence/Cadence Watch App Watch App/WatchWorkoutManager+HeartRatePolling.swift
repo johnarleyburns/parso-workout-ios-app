@@ -1,6 +1,9 @@
 import Foundation
 import HealthKit
+import OSLog
 import CadenceFeatures
+
+private let hrPollingLog = Logger(subsystem: "guru.parso.cadence", category: "WatchHRLiveStatus")
 
 // MARK: - Heart rate to the phone
 //
@@ -55,10 +58,20 @@ extension WatchWorkoutManager {
     /// sensor shows as stale on the phone instead of a frozen live value.
     private func sendHeartRateToPhone() {
         defer { scheduleHeartRateRelay(after: WatchHRRelaySchedule.heartbeatInterval) }
-        guard !relaySchedule.isNewestReadingStale(uptime: uptimeNow) else { return }
-        guard let bpm = currentBPM, bpm > 0,
-              let requestID = phoneRequestID,
+        guard let requestID = phoneRequestID,
+              let liveRequestID = UUID(uuidString: requestID),
               let session = wcSession, session.isReachable else { return }
+        if relaySchedule.isNewestReadingStale(uptime: uptimeNow) {
+            // Liveness only: proves the route works without resending a stale BPM.
+            let status = WatchHRLiveStatus(requestID: liveRequestID,
+                                           lastRealSampleEnd: lastObservedReading?.end,
+                                           sensorHasFreshReading: false)
+            session.sendMessage(status.payload, replyHandler: nil, errorHandler: { error in
+                hrPollingLog.debug("live HR status send failed: \(error.localizedDescription, privacy: .public)")
+            })
+            return
+        }
+        guard let bpm = currentBPM, bpm > 0 else { return }
         var payload: [String: Any] = ["bpm": bpm, "active": true, "requestID": requestID, "v": 1]
         // Only a real measurement carries its own end time; a heartbeat resend
         // reuses it, so the phone deduplicates instead of inventing coverage.
@@ -67,7 +80,9 @@ extension WatchWorkoutManager {
             payload["sampleEnd"] = observed.end.timeIntervalSince1970
             payload["source"] = observed.isHealthKit ? "watchHealthKit" : "watchBLE"
         }
-        session.sendMessage(payload, replyHandler: nil, errorHandler: nil)
+        session.sendMessage(payload, replyHandler: nil, errorHandler: { error in
+            hrPollingLog.debug("live HR sample send failed: \(error.localizedDescription, privacy: .public)")
+        })
         relaySchedule.recordSend(uptime: uptimeNow)
     }
 

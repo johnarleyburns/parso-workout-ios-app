@@ -31,6 +31,10 @@ struct ExercisePickerView: View {
         case exercise(UUID)
     }
 
+    /// `.picker` is the modal Add/Swap/Use chooser; `.find` is the root Find tab
+    /// (large title, no Cancel, no pick completion).
+    enum Presentation: Equatable { case picker, find }
+
     enum PickerTab: String, CaseIterable { case browse, recents, popular }
 
     enum BrowseMode: String, CaseIterable { case byMuscleGroup, byEquipment }
@@ -66,12 +70,16 @@ struct ExercisePickerView: View {
     /// Search tab browses the catalog and has nothing to "use" the exercise for
     /// (field report: remove the meaningless Use Exercise button).
     var showsPickAction: Bool = true
+    var presentation: Presentation = .picker
+    var isFind: Bool { presentation == .find }
 
     init(action: PickAction = .add, source: Exercise? = nil,
-         showsPickAction: Bool = true, onPick: @escaping (Exercise) -> Void) {
+         showsPickAction: Bool = true, presentation: Presentation = .picker,
+         onPick: @escaping (Exercise) -> Void) {
         self.action = action
         self.source = source
-        self.showsPickAction = showsPickAction
+        self.showsPickAction = showsPickAction && presentation == .picker
+        self.presentation = presentation
         self.onPick = onPick
     }
 
@@ -221,7 +229,7 @@ struct ExercisePickerView: View {
                         }
                     }
 
-                    if !trimmedQuery.isEmpty, let match = bestLibraryMatch {
+                    if !isFind, !trimmedQuery.isEmpty, let match = bestLibraryMatch {
                         Section {
                             HStack {
                                 Image(systemName: "sparkle.magnifyingglass")
@@ -266,9 +274,9 @@ struct ExercisePickerView: View {
                 }
                 .listStyle(.insetGrouped)
             }
-            .navigationTitle(action.navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
-            .scrollDismissesKeyboard(.immediately)
+            .navigationTitle(isFind ? String(localized: "Find") : action.navigationTitle)
+            .navigationBarTitleDisplayMode(isFind ? .large : .inline)
+            .scrollDismissesKeyboard(isFind ? .interactively : .immediately)
             .searchable(text: $query, prompt: "Search name, muscle, or equipment")
             .navigationDestination(for: ExerciseDetailRoute.self) { route in
                 switch route {
@@ -293,12 +301,14 @@ struct ExercisePickerView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }.accessibilityIdentifier("picker.cancel")
+                if !isFind {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { dismiss() }.accessibilityIdentifier("picker.cancel")
+                    }
                 }
             }
         }
-        .accessibilityIdentifier("picker.search")
+        .accessibilityIdentifier(isFind ? "find.root" : "picker.search")
         .task(id: newestExercise.first?.updatedAt) {
             search = await ExercisePickerSearch.load(from: context.container)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

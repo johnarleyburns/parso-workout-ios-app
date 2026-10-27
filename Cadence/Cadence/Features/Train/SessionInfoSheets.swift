@@ -17,8 +17,14 @@ struct SessionLiveHRBand: View {
     @ViewBuilder
     var body: some View {
         VStack(spacing: 0) {
-            if let bpm = model.hrm.currentBPM {
-                band(bpm)
+            TimelineView(.periodic(from: .now, by: 5)) { context in
+                // Never show a frozen injected Watch value.
+                if model.hrm.source == .appleWatch,
+                   !model.watchHRConnection.isSampleFresh(now: context.date) {
+                    EmptyView()
+                } else if let bpm = model.hrm.currentBPM {
+                    band(bpm)
+                }
             }
             if model.watchHRConnection.identity != nil { watchRow }
             if let sessionID, let text = model.watchHRFinalizationStatusText(sessionID: sessionID) {

@@ -61,6 +61,9 @@ struct ExercisePickerView: View {
     @State var selectedEquipment: Equipment?
     @State var browseMode: BrowseMode = .byMuscleGroup
     @State var browseAll = false
+    /// Search results narrowed by the active facets; recomputed only when the
+    /// outcome or a facet changes, never in `body`.
+    @State var searchResults: [ExerciseCatalogEntry] = []
     @State var showCreationSheet = false
     @State var selectedCreationCategory: ExerciseCategory = .other
     @State var selectedCreationMuscles: Set<String> = []
@@ -103,8 +106,19 @@ struct ExercisePickerView: View {
 
     var popular: [ExerciseCatalogEntry] { search.popular }
 
+    var filterState: ExerciseBrowseFilterState {
+        ExerciseBrowseFilterState(
+            tab: { switch selectedTab { case .browse: .browse; case .recents: .recents; case .popular: .popular } }(),
+            mode: browseMode == .byMuscleGroup ? .byMuscleGroup : .byEquipment,
+            group: selectedGroup, equipment: selectedEquipment)
+    }
+
+    func refreshSearchResults() {
+        searchResults = filterState.filterSearchResults(outcome.results)
+    }
+
     var filtered: [ExerciseCatalogEntry] {
-        if !trimmedQuery.isEmpty { return outcome.results }
+        if !trimmedQuery.isEmpty { return searchResults }
         switch selectedTab {
         case .recents: return catalog.recent
         case .popular: return browseAll ? catalog.entries : popular
@@ -175,7 +189,11 @@ struct ExercisePickerView: View {
     }
 
     var sectionTitle: String {
-        if !trimmedQuery.isEmpty { return String(localized: "Results") }
+        if !trimmedQuery.isEmpty {
+            let facets = [selectedEquipment?.displayName, selectedGroup?.displayName].compactMap { $0 }
+            return facets.isEmpty ? String(localized: "Results")
+                : String(localized: "Results") + " · " + facets.joined(separator: " + ")
+        }
         switch selectedTab {
         case .recents: return String(localized: "Recent")
         case .popular: return browseAll ? String(localized: "All") : String(localized: "Popular")
@@ -213,7 +231,7 @@ struct ExercisePickerView: View {
                     // The tab and browse-mode segmented controls live in the
                     // List so they share the rows' horizontal margins; outside
                     // it they spanned wider than the exercise rows.
-                    tabPicker
+                    if trimmedQuery.isEmpty { tabPicker }
 
                     if !catalog.isLoaded {
                         Section {
@@ -225,7 +243,7 @@ struct ExercisePickerView: View {
                             .accessibilityIdentifier("picker.loading")
                         }
                     }
-                    if showsFilterChips {
+                    if showsBrowseControls {
                         browseControls
                     }
 
@@ -264,6 +282,18 @@ struct ExercisePickerView: View {
                                                    systemImage: "clock.arrow.circlepath",
                                                    description: Text("Log a workout to see exercises here."))
                         }
+                    } else if selectedTab == .popular, trimmedQuery.isEmpty, catalog.isLoaded, popular.isEmpty, !browseAll {
+                        Section {
+                            ContentUnavailableView {
+                                Label("No popular exercises", systemImage: "star")
+                            } description: {
+                                Text("The popular list is empty for this catalog.")
+                            } actions: {
+                                Button("Browse all exercises") { browseAll = true }
+                            }
+                        }
+                    } else if catalog.isLoaded, filtered.isEmpty, !showsGrouped {
+                        Section { noMatchesView }
                     } else if showsGrouped {
                         // Precomputed with the catalog; it used to be regrouped
                         // and re-sorted on every redraw.
@@ -311,6 +341,9 @@ struct ExercisePickerView: View {
                 }
             }
             .toolbar {
+                if selectedTab == .browse || !trimmedQuery.isEmpty {
+                    ToolbarItem(placement: .topBarTrailing) { filterMenu }
+                }
                 if !isFind {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }.accessibilityIdentifier("picker.cancel")
@@ -325,7 +358,10 @@ struct ExercisePickerView: View {
                 outcome = search.outcome(for: query)
             }
         }
+        .onChange(of: outcome) { _, _ in refreshSearchResults() }
+        .onChange(of: selectedEquipment) { _, _ in refreshSearchResults() }
         .onChange(of: selectedGroup) { _, _ in
+            refreshSearchResults()
             // Group is the primary filter only by muscle group; in the equipment-first
             // flow it narrows, so the selected equipment must be preserved.
             if ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(
@@ -351,7 +387,4 @@ struct ExercisePickerView: View {
         }
         .sheet(isPresented: $showCreationSheet) { creationSheet }
     }
-
-    // MARK: Browse mode picker
-
 }

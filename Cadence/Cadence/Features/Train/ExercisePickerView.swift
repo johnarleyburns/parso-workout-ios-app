@@ -31,9 +31,12 @@ struct ExercisePickerView: View {
         case exercise(UUID)
     }
 
-    /// `.picker` is the modal Add/Swap/Use chooser; `.find` is the root Find tab
-    /// (large title, no Cancel, no pick completion).
-    enum Presentation: Equatable { case picker, find }
+    /// Add/Swap/Use call sites complete a modal picker; Find browses and opens
+    /// details, with no completion closure and no dismissal.
+    enum ExerciseBrowserMode: Equatable {
+        case picker(action: PickAction)
+        case browse
+    }
 
     enum PickerTab: String, CaseIterable { case browse, recents, popular }
 
@@ -63,24 +66,30 @@ struct ExercisePickerView: View {
     @State var selectedCreationMuscles: Set<String> = []
     @State var selectedCreationSecondary: Set<String> = []
     @Namespace var searchTransition
-    let action: PickAction
+    @State var path: [ExerciseDetailRoute] = []
+    let mode: ExerciseBrowserMode
     let source: Exercise?
-    let onPick: (Exercise) -> Void
-    /// When false, exercise detail shows no "Use Exercise" action. The system
-    /// Search tab browses the catalog and has nothing to "use" the exercise for
-    /// (field report: remove the meaningless Use Exercise button).
-    var showsPickAction: Bool = true
-    var presentation: Presentation = .picker
-    var isFind: Bool { presentation == .find }
+    /// Present only in `.picker` mode; `.browse` has no completion to invoke.
+    let completion: ((Exercise) -> Void)?
+    var isFind: Bool { mode == .browse }
+    var action: PickAction {
+        if case .picker(let action) = mode { return action }
+        return .use
+    }
+    var showsPickAction: Bool { !isFind }
 
     init(action: PickAction = .add, source: Exercise? = nil,
-         showsPickAction: Bool = true, presentation: Presentation = .picker,
          onPick: @escaping (Exercise) -> Void) {
-        self.action = action
+        self.mode = .picker(action: action)
         self.source = source
-        self.showsPickAction = showsPickAction && presentation == .picker
-        self.presentation = presentation
-        self.onPick = onPick
+        self.completion = onPick
+    }
+
+    /// Find: browse the catalog; selecting or creating opens details.
+    init() {
+        self.mode = .browse
+        self.source = nil
+        self.completion = nil
     }
 
     var trimmedQuery: String { outcome.query }
@@ -191,14 +200,14 @@ struct ExercisePickerView: View {
     @ViewBuilder
     var body: some View {
         if action == .swap, let source {
-            ExerciseSwapView(source: source, onPick: onPick)
+            ExerciseSwapView(source: source, onPick: { completion?($0) })
         } else {
             standardBody
         }
     }
 
     private var standardBody: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 List {
                     // The tab and browse-mode segmented controls live in the
@@ -229,7 +238,7 @@ struct ExercisePickerView: View {
                         }
                     }
 
-                    if !isFind, !trimmedQuery.isEmpty, let match = bestLibraryMatch {
+                    if !trimmedQuery.isEmpty, let match = bestLibraryMatch {
                         Section {
                             HStack {
                                 Image(systemName: "sparkle.magnifyingglass")
@@ -242,7 +251,8 @@ struct ExercisePickerView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button("Use this exercise") { pick(match) }
+                                Button(ExerciseSelectionPolicy.nearMatchTitle(isBrowse: isFind)) { pick(match) }
+                                    .accessibilityIdentifier(isFind ? "find.viewMatch" : "picker.useMatch")
                                 .buttonStyle(.bordered).controlSize(.small)
                             }
                         }
@@ -284,7 +294,7 @@ struct ExercisePickerView: View {
                     if let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) {
                         if showsPickAction {
                             ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
-                                onPick(picked)
+                                completion?(picked)
                                 dismiss()
                             }
                             .navigationTransition(.zoom(sourceID: id, in: searchTransition))

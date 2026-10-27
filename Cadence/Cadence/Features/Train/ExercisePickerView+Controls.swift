@@ -181,8 +181,18 @@ extension ExercisePickerView {
     /// Rows are catalog values; the stored exercise is read only when picked.
     func pick(_ entry: ExerciseCatalogEntry) {
         guard let exercise = ExerciseCatalogSnapshot.exercise(id: entry.id, in: context) else { return }
-        onPick(exercise)
-        dismiss()
+        finish(with: exercise)
+    }
+
+    /// Picker modes complete and dismiss; browse mode only opens the detail.
+    func finish(with exercise: Exercise) {
+        switch ExerciseSelectionPolicy.outcome(isBrowse: isFind) {
+        case .completeAndDismiss:
+            completion?(exercise)
+            dismiss()
+        case .openDetail:
+            path.append(.exercise(exercise.id))
+        }
     }
 
     func create() {
@@ -190,7 +200,7 @@ extension ExercisePickerView {
         guard !name.isEmpty else { return }
         if let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) {
             appModel.pushSettingsContext()
-            onPick(ex); dismiss()
+            finish(with: ex)
         }
     }
 
@@ -204,9 +214,8 @@ extension ExercisePickerView {
             secondaryMuscles: Array(selectedCreationSecondary),
             in: context) {
             appModel.pushSettingsContext()
-            onPick(ex)
             showCreationSheet = false
-            dismiss()
+            finish(with: ex)
         }
     }
 

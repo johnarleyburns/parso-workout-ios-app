@@ -77,11 +77,14 @@ final class NativeDatabaseExportTests: XCTestCase {
             id: UUID(uuidString: "00000000-0000-0000-0000-000000000022")!,
             scheduledDate: date, scheduledDayKey: "2025-01-01", title: "Scheduled",
             updatedAt: date)
+        let draft = PlanningDraft(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000023")!,
+            title: "Draft", payloadData: Data([9]), updatedAt: date)
 
         let rows: [any PersistentModel] = [
             person, exercise, session, set, template, templateExercise, cardio, heartRate,
             route, readiness, device, assessment, plan, header, week, day, planSession, item,
-            planSet, relationship, exclusion, scheduled
+            planSet, relationship, exclusion, scheduled, draft
         ]
         rows.forEach { source.insert($0) }
         try source.save()

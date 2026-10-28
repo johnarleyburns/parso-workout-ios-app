@@ -15,6 +15,7 @@ public enum CadenceStore {
     public static let cloudKitContainerID = "iCloud.guru.parso.ios-workout-app"
 
     public static let schema = Schema([
+        PlanningDraft.self,
         WorkoutSession.self,
         Exercise.self,
         SetEntry.self,
@@ -54,6 +55,7 @@ public enum CadenceStore {
     ])
 
     public static let syncSchema = Schema([
+        PlanningDraft.self,
         Exercise.self,
         SessionTemplate.self,
         TemplateExercise.self,

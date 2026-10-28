@@ -176,6 +176,15 @@ CD_Person	CD_isMe	INT64
 CD_Person	CD_name	STRING
 CD_Person	CD_originDevice	STRING
 CD_Person	CD_updatedAt	TIMESTAMP
+CD_PlanningDraft	CD_createdAt	TIMESTAMP
+CD_PlanningDraft	CD_deletedAt	TIMESTAMP
+CD_PlanningDraft	CD_entityName	STRING
+CD_PlanningDraft	CD_id	STRING
+CD_PlanningDraft	CD_originDevice	STRING
+CD_PlanningDraft	CD_payloadData	BYTES
+CD_PlanningDraft	CD_payloadVersion	INT64
+CD_PlanningDraft	CD_title	STRING
+CD_PlanningDraft	CD_updatedAt	TIMESTAMP
 CD_ReadinessEntry	CD_date	TIMESTAMP
 CD_ReadinessEntry	CD_entityName	STRING
 CD_ReadinessEntry	CD_fatigueEnergy	INT64

@@ -30,3 +30,25 @@ struct WorkoutDockPresenterTests {
             == ["workout.endConfirm", "workout.endCancel"])
     }
 }
+
+/// Consumer matrix: every host of `WorkoutControlBar` and its dock ids.
+struct WorkoutDockConsumerMatrixTests {
+    /// strength SessionView, cardio, interval, swim, outdoor cardio.
+    static let consumers = ["workout", "record", "interval", "swim", "outdoor"]
+
+    @Test(arguments: consumers) func consumerExposesPauseAndEndOnly(prefix: String) {
+        #expect(WorkoutDockPresenter.primaryActionIds(idPrefix: prefix)
+            == ["\(prefix).pause", "\(prefix).end"])
+    }
+
+    @Test func accessibilitySizeStacksAndStaysTallEnough() {
+        #expect(WorkoutDockLayout.resolve(isAccessibilitySize: true) == .vertical)
+        #expect(WorkoutDockPresenter.minimumTargetHeight >= 56)
+    }
+
+    @Test func coolDownIsNeverAPrimaryAction() {
+        for prefix in Self.consumers {
+            #expect(!WorkoutDockPresenter.primaryActionIds(idPrefix: prefix).contains { $0.contains("oolDown") })
+        }
+    }
+}

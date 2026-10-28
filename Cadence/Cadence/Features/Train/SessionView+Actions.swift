@@ -102,10 +102,7 @@ extension SessionView {
             voiceWeightAdjustmentKg += deltaKg
         case .addExercise(let name):
             guard let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) else { return }
-            if !session.plannedExerciseNames.contains(where: { $0.caseInsensitiveCompare(ex.name) == .orderedSame }) {
-                session.plannedExerciseNames.append(ex.name)
-                try? context.save()
-            }
+            _ = try? WorkoutRepository.addAdHocExercise(ex, to: session, in: context)
             openInlineEditor(for: ex)
         case .switchExercise(let name):
             guard let currentContext = cache.state.contexts.first,

@@ -78,8 +78,7 @@ extension SessionView {
         let isAlreadyInWorkout = session.exercisesInOrder.contains { $0.id == exercise.id }
         let isAlreadyPlanned = session.plannedExerciseNames.contains(exercise.name)
         if !isAlreadyInWorkout && !isAlreadyPlanned {
-            session.plannedExerciseNames.append(exercise.name)
-            try? context.save()
+            _ = try? WorkoutRepository.addAdHocExercise(exercise, to: session, in: context)
         }
         recordActivity() // Return to the workout screen; the user adds the set.
     }

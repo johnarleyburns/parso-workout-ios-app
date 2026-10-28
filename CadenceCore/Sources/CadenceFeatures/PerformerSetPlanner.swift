@@ -24,6 +24,7 @@ public enum PerformerSetPlanner {
         case explicitPlan
         case ownerPlan
         case currentSession
+        case lastWorkingSet
         case exactHistory
         case estimatedHistory
         case priorHistory
@@ -67,19 +68,24 @@ public enum PerformerSetPlanner {
         /// Prior working sets for this performer and movement, oldest first.
         /// Used to make a transparent, rep-aware load suggestion.
         public var weightSamples: [SetSample]
+        /// The literal final non-warmup set from this performer's most recent
+        /// prior session for this movement: the default when no plan applies.
+        public var lastPriorWorkingSet: SetSample?
 
         public init(repsLoggedThisSession: [Int] = [],
                     repLadders: [[Int]] = [],
                     generalRepLadders: [[Int]] = [],
                     firstWorkingWeightKg: Double? = nil,
                     lastWeightThisSessionKg: Double? = nil,
-                    weightSamples: [SetSample] = []) {
+                    weightSamples: [SetSample] = [],
+                    lastPriorWorkingSet: SetSample? = nil) {
             self.repsLoggedThisSession = repsLoggedThisSession
             self.repLadders = repLadders
             self.generalRepLadders = generalRepLadders
             self.firstWorkingWeightKg = firstWorkingWeightKg
             self.lastWeightThisSessionKg = lastWeightThisSessionKg
             self.weightSamples = weightSamples
+            self.lastPriorWorkingSet = lastPriorWorkingSet
         }
 
         public static let empty = History()
@@ -152,6 +158,9 @@ public enum PerformerSetPlanner {
                   currentSessionWeight > 0 {
             weight = currentSessionWeight
             weightBasis = .currentSession
+        } else if let lastWeight = history.lastPriorWorkingSet?.weight, lastWeight > 0 {
+            weight = lastWeight
+            weightBasis = .lastWorkingSet
         } else if let suggestion = WeightSuggestion.suggest(
             targetReps: reps(setIndex: setIndex, planned: planned,
                              ownerPlanned: ownerPlanned,
@@ -197,6 +206,7 @@ public enum PerformerSetPlanner {
         if let ladder = ownerLadder, setIndex < ladder.count, ladder[setIndex] > 0 {
             return ladder[setIndex]
         }
+        if let last = history.lastPriorWorkingSet?.reps, last > 0 { return last }
         let ladders = history.repLadders.filter { !$0.isEmpty }
         if setIndex > 0,
            let guess = RepPattern.guess(setIndex: setIndex,

@@ -45,6 +45,37 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertEqual(session.orderedSets.map(\.order), [0, 1])
     }
 
+    func testAdHocExerciseDoesNotInheritLegacyPlan() throws {
+        let ctx = try makeContext()
+        let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", in: ctx)
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let session = try WorkoutRepository.createSession(date: Date(), in: ctx)
+        session.plannedExerciseNames = ["Back Squat"]
+        session.plannedRepLadder = [6, 6, 6]
+        session.prescribedLoadKg = 88.5
+        XCTAssertNotNil(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat"))
+
+        XCTAssertTrue(try WorkoutRepository.addAdHocExercise(bench, to: session, in: ctx))
+        XCTAssertNil(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Bench Press"))
+        XCTAssertEqual(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat")?.first?.targetWeightKg, 88.5)
+        XCTAssertTrue(session.plannedExerciseNames.contains("Bench Press"))
+        XCTAssertFalse(try WorkoutRepository.addAdHocExercise(bench, to: session, in: ctx))
+        XCTAssertEqual(session.plannedExerciseNames.count, 2)
+        _ = squat
+    }
+
+    func testLastWorkingSetIsLiteralLastNonWarmupSet() throws {
+        let ctx = try makeContext()
+        let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
+        let old = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 1000), in: ctx)
+        _ = try WorkoutRepository.addSet(to: old, exercise: ex, weightKg: 56.699, reps: 8, in: ctx)
+        _ = try WorkoutRepository.addSet(to: old, exercise: ex, weightKg: 20, reps: 10, isWarmup: true, in: ctx)
+        let today = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 9000), in: ctx)
+        let last = WorkoutRepository.lastWorkingSet(for: ex, performedBy: nil, excluding: today)
+        XCTAssertEqual(last?.reps, 8)
+        XCTAssertEqual(last?.weight ?? 0, 56.699, accuracy: 0.0001)
+    }
+
     func testLastTimeSets() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Squat", in: ctx)

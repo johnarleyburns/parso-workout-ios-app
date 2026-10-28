@@ -906,6 +906,36 @@ public enum WorkoutRepository {
         return (mostRecent ?? []).sorted { $0.order < $1.order }
     }
 
+    /// The literal last completed non-warmup set of the performer's most recent
+    /// prior session for the exercise, with exact canonical reps and load.
+    public static func lastWorkingSet(for exercise: Exercise,
+                                      performedBy person: Person?,
+                                      excluding session: WorkoutSession?) -> SetSample? {
+        lastTimeSets(for: exercise, performedBy: person, excluding: session)
+            .last { !$0.isWarmup && $0.reps > 0 }
+            .map { SetSample.from($0) }
+    }
+
+    /// Adds a visible, ad-hoc movement to a live session without making it an
+    /// explicit plan movement. Legacy sessions synthesize a prescription for every
+    /// planned name from the session-wide ladder/load, so the existing projection
+    /// is materialized first; only the original movements stay explicitly planned.
+    @discardableResult
+    public static func addAdHocExercise(_ exercise: Exercise,
+                                        to session: WorkoutSession,
+                                        in context: ModelContext) throws -> Bool {
+        guard !session.plannedExerciseNames.contains(where: {
+            $0.caseInsensitiveCompare(exercise.name) == .orderedSame
+        }) else { return false }
+        let explicitBeforeAdd = session.plannedPrescriptions
+        if !explicitBeforeAdd.isEmpty {
+            session.plannedPrescriptions = explicitBeforeAdd
+        }
+        session.plannedExerciseNames.append(exercise.name)
+        try context.save()
+        return true
+    }
+
     /// First prior working weight for the performer, mirroring the owner-only
     /// default used by the logger while allowing partner-attributed history.
     public static func firstWorkingSetWeight(for exercise: Exercise,

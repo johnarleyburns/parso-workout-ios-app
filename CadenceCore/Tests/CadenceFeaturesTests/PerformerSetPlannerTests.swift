@@ -166,3 +166,52 @@ final class PerformerSetPlannerTests: XCTestCase {
         XCTAssertTrue(PerformerSetPlanner.History(repsLoggedThisSession: [20]).hasMovementHistory)
     }
 }
+
+final class PerformerSetPlannerLastWorkingSetTests: XCTestCase {
+    private let lastSet = SetSample(weight: 56.699, reps: 8)
+
+    func testLastPriorWorkingSetBeatsRepPatternAndEstimatedLoadWithoutPlan() {
+        let history = PerformerSetPlanner.History(
+            repLadders: [[12, 10, 8]], firstWorkingWeightKg: 88.5,
+            weightSamples: [SetSample(weight: 88.5, reps: 12)], lastPriorWorkingSet: lastSet)
+        let r = PerformerSetPlanner.resolve(setIndex: 0, performerPlan: nil, ownerPlan: [],
+                                            ownerLadder: nil, isOwner: true, history: history)
+        XCTAssertEqual(r.reps, 8)
+        XCTAssertEqual(r.weightKg ?? 0, 56.699, accuracy: 0.0001)
+        XCTAssertEqual(r.weightBasis, .lastWorkingSet)
+    }
+
+    func testExplicitPlanOverridesFieldByField() {
+        let history = PerformerSetPlanner.History(lastPriorWorkingSet: lastSet)
+        let repsOnly = PerformerSetPlanner.resolve(
+            setIndex: 0, performerPlan: [PlannedSetPrescription(targetReps: 6, targetWeightKg: nil)],
+            ownerPlan: [], ownerLadder: nil, isOwner: true, history: history)
+        XCTAssertEqual(repsOnly.reps, 6)
+        XCTAssertEqual(repsOnly.weightKg ?? 0, 56.699, accuracy: 0.0001)
+        let full = PerformerSetPlanner.resolve(
+            setIndex: 0, performerPlan: [PlannedSetPrescription(targetReps: 6, targetWeightKg: 88.5)],
+            ownerPlan: [], ownerLadder: nil, isOwner: true, history: history)
+        XCTAssertEqual(full.reps, 6)
+        XCTAssertEqual(full.weightKg, 88.5)
+    }
+
+    func testExtraSetBeyondPlanReturnsToHistory() {
+        let history = PerformerSetPlanner.History(lastPriorWorkingSet: lastSet)
+        let r = PerformerSetPlanner.resolve(
+            setIndex: 1, performerPlan: [PlannedSetPrescription(targetReps: 6, targetWeightKg: 88.5)],
+            ownerPlan: [], ownerLadder: nil, isOwner: true, history: history)
+        XCTAssertEqual(r.reps, 8)
+        XCTAssertEqual(r.weightKg ?? 0, 56.699, accuracy: 0.0001)
+    }
+
+    func testPartnerIgnoresOwnerPlanAndUsesOwnLastSet() {
+        let history = PerformerSetPlanner.History(
+            lastPriorWorkingSet: SetSample(weight: 40, reps: 12))
+        let r = PerformerSetPlanner.resolve(
+            setIndex: 0, performerPlan: nil,
+            ownerPlan: [PlannedSetPrescription(targetReps: 6, targetWeightKg: 88.5)],
+            ownerLadder: [6], isOwner: false, history: history)
+        XCTAssertEqual(r.reps, 12)
+        XCTAssertEqual(r.weightKg, 40)
+    }
+}

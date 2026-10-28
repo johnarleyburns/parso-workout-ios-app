@@ -148,11 +148,14 @@ public enum SessionRenderModel {
         /// first — how they train in general when they have never done THIS lift
         /// (field test 2026-08-19 #3).
         public var generalRepLadders: [[Int]] = []
+        /// Literal last non-warmup set of the most recent prior session.
+        public var lastPriorWorkingSet: SetSample?
 
         public init(performerID: UUID?, label: String, isMe: Bool,
                     lastTimeSets: [SetDisplay], pr: Double?, prRuleName: String,
                     priorSamples: [SetSample], firstWorkingWeightKg: Double?,
-                    repLadders: [[Int]], generalRepLadders: [[Int]] = []) {
+                    repLadders: [[Int]], generalRepLadders: [[Int]] = [],
+                    lastPriorWorkingSet: SetSample? = nil) {
             self.performerID = performerID
             self.label = label
             self.isMe = isMe
@@ -163,6 +166,7 @@ public enum SessionRenderModel {
             self.firstWorkingWeightKg = firstWorkingWeightKg
             self.repLadders = repLadders
             self.generalRepLadders = generalRepLadders
+            self.lastPriorWorkingSet = lastPriorWorkingSet
         }
     }
 
@@ -272,7 +276,8 @@ public enum SessionRenderModel {
                 repLadders: performer.repLadders,
                 generalRepLadders: performer.generalRepLadders,
                 firstWorkingWeightKg: performer.firstWorkingWeightKg,
-                weightSamples: performer.priorSamples)
+                weightSamples: performer.priorSamples,
+                lastPriorWorkingSet: performer.lastPriorWorkingSet)
         }
     }
 
@@ -393,6 +398,10 @@ public enum SessionRenderModel {
             }
 
             let ownerPlan = plannedSets(forPerformerID: nil, exerciseName: exercise.name, session: session)
+            // The legacy session ladder sizes pending rows but is not an explicit
+            // plan for this movement, so it must not outrank the performer's history.
+            let explicitOwnerPlan = session.explicitPlannedSets(forPerformerID: nil,
+                                                                exerciseName: exercise.name)
             var pendingByPerformer: [(performerID: UUID?, rows: [PendingSetDisplay])] = []
             for performer in performerContexts {
                 // A per-performer plan entered in the editor is that performer's
@@ -410,14 +419,15 @@ public enum SessionRenderModel {
                     repLadders: performer.repLadders,
                     generalRepLadders: performer.generalRepLadders,
                     firstWorkingWeightKg: performer.firstWorkingWeightKg,
-                    lastWeightThisSessionKg: performerSets.last?.weight)
+                    lastWeightThisSessionKg: performerSets.last?.weight,
+                    lastPriorWorkingSet: performer.lastPriorWorkingSet)
                 var rows: [PendingSetDisplay] = []
                 if performerSets.count < plan.count {
                     for index in performerSets.count..<plan.count {
                         let resolved = PerformerSetPlanner.resolve(
                             setIndex: index,
                             performerPlan: explicitPlan,
-                            ownerPlan: ownerPlan,
+                            ownerPlan: explicitOwnerPlan ?? [],
                             ownerLadder: nil,
                             isOwner: performer.isMe,
                             history: history,
@@ -474,8 +484,10 @@ public enum SessionRenderModel {
         let samples: [SetSample]
         let firstWeight: Double?
         let ladders: [[Int]]
+        let lastWorking: SetSample?
 
         if isMe {
+            lastWorking = WorkoutRepository.lastWorkingSet(for: exercise, performedBy: nil, excluding: session)
             last = WorkoutRepository.lastTimeSets(for: exercise, excluding: session)
             pr = WorkoutRepository.currentPR(for: exercise, rule: prRule, formula: formula, excluding: session)
             samples = (exercise.sets ?? [])
@@ -485,6 +497,7 @@ public enum SessionRenderModel {
             ladders = WorkoutRepository.repLadderHistory(for: exercise, performedBy: nil, excluding: session)
         } else {
             let person = (exercise.sets ?? []).compactMap(\.performedBy).first { $0.id == performerID }
+            lastWorking = person.flatMap { WorkoutRepository.lastWorkingSet(for: exercise, performedBy: $0, excluding: session) }
             // A partner with no sets on this movement has no "last time" — the
             // repository's nil-person query means the owner, so guard on the
             // person actually existing (field test 2026-08-20 issue 2, D5).
@@ -508,7 +521,8 @@ public enum SessionRenderModel {
             priorSamples: samples,
             firstWorkingWeightKg: firstWeight,
             repLadders: ladders,
-            generalRepLadders: generalRepLadders
+            generalRepLadders: generalRepLadders,
+            lastPriorWorkingSet: lastWorking
         )
     }
 

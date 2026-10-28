@@ -293,6 +293,8 @@ extension SessionView {
                 .filter { $0.session?.id != session.id && !$0.isWarmup && setPerformedBy($0, performerID: performerID) }
                 .map(SetSample.from)
         }
+        history.lastPriorWorkingSet = WorkoutRepository.lastWorkingSet(
+            for: exercise, performedBy: people(for: performerID), excluding: session)
         history.repsLoggedThisSession = loggedReps(for: exercise, performerID: performerID)
         history.lastWeightThisSessionKg = loggedSets(for: exercise, performerID: performerID).last?.weight
         // What they lifted for this movement *today* is a better starting load
@@ -322,6 +324,11 @@ extension SessionView {
             return String(localized: "From the workout plan")
         case .currentSession:
             return String(localized: "Same load as your previous set today")
+        case .lastWorkingSet:
+            guard let performer else {
+                return String(localized: "Using your last \(exerciseName) working set · exact load")
+            }
+            return String(localized: "Using \(performer)’s last \(exerciseName) working set · exact load")
         case .exactHistory:
             guard let performer else {
                 return String(localized: "Matched your previous \(exerciseName) set · exact historical load")

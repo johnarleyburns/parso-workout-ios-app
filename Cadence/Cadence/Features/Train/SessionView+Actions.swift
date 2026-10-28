@@ -9,9 +9,7 @@ extension SessionView {
     var toolbarContent: some ToolbarContent {
         if active.strengthSession?.id == session.id {
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    active.minimize()
-                } label: { Image(systemName: "chevron.down") }
+                Button { active.minimize() } label: { Image(systemName: "chevron.down") }
                     .accessibilityIdentifier("session.minimize")
                     .accessibilityLabel("Minimize workout")
             }
@@ -20,9 +18,7 @@ extension SessionView {
             // from Summary. That presentation has no navigation Back button,
             // so always provide an explicit escape hatch for non-live editing.
             ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    dismiss()
-                } label: { Image(systemName: "xmark") }
+                Button { dismiss() } label: { Image(systemName: "xmark") }
                     .accessibilityIdentifier("session.close")
                     .accessibilityLabel("Close workout")
             }
@@ -55,6 +51,11 @@ extension SessionView {
                     Button { workoutSettings = settings.lastStrengthSettings; workoutSettingsPresented = true } label: {
                         Label("Workout settings", systemImage: "gearshape")
                     }
+                    if active.strengthSession?.id == session.id {
+                        Button { coolDownConfirm = true } label: {
+                            Label("Start Cool Down", systemImage: "figure.cooldown")
+                        }.accessibilityIdentifier("session.startCoolDown")
+                    }
                     Button(role: .destructive) { showDeleteConfirm = true } label: {
                         Label("Delete workout", systemImage: "trash")
                     }
@@ -63,9 +64,7 @@ extension SessionView {
                 }
                 .accessibilityIdentifier("session.menu")
                 .accessibilityLabel("Workout options")
-                Button {
-                    Task { await saveToHealth() }
-                } label: {
+                Button { Task { await saveToHealth() } } label: {
                     Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square")
                 }
                 .disabled(session.orderedSets.isEmpty)

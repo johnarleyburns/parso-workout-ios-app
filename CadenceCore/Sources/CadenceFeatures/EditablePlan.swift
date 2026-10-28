@@ -6,7 +6,7 @@ import CadenceCore
 /// the four `from(...)` mappers are pure and were ideal unit-test material. The
 /// SwiftUI editor view stays in the app.
 public struct EditablePlan: Hashable, Identifiable {
-    public let id = UUID()
+    public var id = UUID()
     public var title: String = "Workout"
     public var warmupMinutes: Int
     public var cooldownMinutes: Int
@@ -30,7 +30,9 @@ public struct EditablePlan: Hashable, Identifiable {
                 enginePlanId: String? = nil, engineRevisionId: String? = nil,
                 enginePlanJSON: Data? = nil,
                 suggestedWorkoutStyle: SuggestedWorkoutStyle? = nil,
-                recommendationRationale: SuggestedWorkoutRationale? = nil) {
+                recommendationRationale: SuggestedWorkoutRationale? = nil,
+                id: UUID = UUID()) {
+        self.id = id
         self.title = title
         self.warmupMinutes = warmupMinutes
         self.cooldownMinutes = cooldownMinutes
@@ -324,7 +326,7 @@ public struct EditablePlan: Hashable, Identifiable {
 }
 
 public struct EditableExercise: Identifiable, Hashable {
-    public let id = UUID()
+    public var id = UUID()
     public var name: String
     public var sets: [EditableSet]
     public var notes: String
@@ -336,7 +338,9 @@ public struct EditableExercise: Identifiable, Hashable {
 
     public init(name: String, sets: [EditableSet], notes: String,
                 performerPlans: [EditablePerformerPlan] = [],
-                supersetGroup: SupersetGroupID? = nil) {
+                supersetGroup: SupersetGroupID? = nil,
+                id: UUID = UUID()) {
+        self.id = id
         self.name = name
         self.sets = sets
         self.notes = notes

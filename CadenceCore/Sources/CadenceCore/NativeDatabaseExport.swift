@@ -15,7 +15,7 @@ public struct ExportNativeDatabase: Codable, Equatable, Sendable {
         "PersistedPlanHeader", "PersistedPlanWeek", "PersistedPlanDay",
         "PersistedPlanSession", "PersistedPlanItem", "PersistedPlanSet",
         "PersistedClientRelationship", "ExerciseSuggestionExclusion",
-        "ScheduledWorkout"
+        "ScheduledWorkout", "PlanningDraft"
     ]
 
     public var schemaVersion: Int
@@ -360,6 +360,17 @@ private struct NativeScheduledWorkout: Codable, Equatable, Sendable {
     var originDevice: String
 }
 
+private struct NativePlanningDraft: Codable, Equatable, Sendable {
+    var id: UUID
+    var title: String
+    var payloadData: Data
+    var payloadVersion: Int
+    var createdAt: Date
+    var updatedAt: Date
+    var originDevice: String
+    var deletedAt: Date?
+}
+
 private enum NativeArchiveCodec {
     static let encoder = JSONEncoder()
     static let decoder = JSONDecoder()
@@ -589,6 +600,13 @@ public enum NativeDatabaseExport {
                                                   reasonRaw: row.reasonRaw, isActive: row.isActive,
                                                   createdAt: row.createdAt, updatedAt: row.updatedAt,
                                                   originDevice: row.originDevice))
+        }
+        for row in try context.fetch(FetchDescriptor<PlanningDraft>()) {
+            try append("PlanningDraft", id: row.id, updatedAt: row.updatedAt,
+                        NativePlanningDraft(id: row.id, title: row.title, payloadData: row.payloadData,
+                                            payloadVersion: row.payloadVersion, createdAt: row.createdAt,
+                                            updatedAt: row.updatedAt, originDevice: row.originDevice,
+                                            deletedAt: row.deletedAt))
         }
         for row in try context.fetch(FetchDescriptor<ScheduledWorkout>()) {
             try append("ScheduledWorkout", id: row.id, updatedAt: row.updatedAt,
@@ -907,6 +925,7 @@ public enum NativeDatabaseExport {
         }
         try mergeTemplates(records, in: context, changed: &changed)
         try mergeScheduled(records, in: context, changed: &changed)
+        try mergePlanningDrafts(records, in: context, changed: &changed)
         try mergePlanRows(records, in: context, changed: &changed)
         try mergeExclusions(records, in: context, changed: &changed)
     }
@@ -929,6 +948,19 @@ public enum NativeDatabaseExport {
             row.exerciseName = v.exerciseName; row.order = v.order; row.targetSets = v.targetSets
             row.targetReps = v.targetReps; row.template = v.templateID.flatMap { templates[$0] }
             if children[v.id] == nil { context.insert(row); children[v.id] = row; changed += 1 }
+        }
+    }
+
+    private static func mergePlanningDrafts(_ records: [ExportNativeRecord], in context: ModelContext,
+                                            changed: inout Int) throws {
+        var rows = Dictionary(uniqueKeysWithValues: try context.fetch(FetchDescriptor<PlanningDraft>()).map { ($0.id, $0) })
+        for record in records where record.entity == "PlanningDraft" {
+            let v = try NativeArchiveCodec.decode(NativePlanningDraft.self, from: record.payload)
+            let row = rows[v.id] ?? PlanningDraft(id: v.id, payloadData: v.payloadData)
+            row.title = v.title; row.payloadData = v.payloadData; row.payloadVersion = v.payloadVersion
+            row.createdAt = v.createdAt; row.updatedAt = v.updatedAt; row.deletedAt = v.deletedAt
+            row.originDevice = v.originDevice
+            if rows[v.id] == nil { context.insert(row); rows[v.id] = row; changed += 1 }
         }
     }
 

@@ -666,8 +666,20 @@ final class SmokeLaunchTests: CadenceUITestCase {
                       "Partner's set did not save")
         app.dismissRestBar()
 
+        // Start Cool Down is a secondary Workout options entry that reuses the
+        // existing confirmation; cancelling leaves the live workout untouched.
+        XCTAssertTrue(app.buttons["session.menu"].waitTap(timeout: 5), "Workout options did not open")
+        XCTAssertTrue(app.buttons["session.startCoolDown"].waitTap(timeout: 5),
+                      "Workout options did not offer Start Cool Down")
+        XCTAssertTrue(app.dialogButton("workout.coolDownConfirm").waitForExistence(timeout: 5),
+                      "Start Cool Down did not present the existing confirmation")
+        XCTAssertTrue(app.buttons["Cancel"].firstMatch.waitTap(timeout: 5),
+                      "Cool-down confirmation did not cancel")
+        XCTAssertTrue(app.buttons["session.menu"].waitForExistence(timeout: 5),
+                      "Cancelling cool-down left the live workout")
+
         XCTAssertTrue(app.scrollToHittableAndTap("workout.end"), "End workout button did not tap")
-        let end = app.dialogButton("workout.endConfirm")
+        let end =app.dialogButton("workout.endConfirm")
         XCTAssertTrue(end.waitForExistence(timeout: 5), "End confirmation did not appear")
         end.tap()
 

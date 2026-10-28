@@ -1,4 +1,5 @@
 import SwiftUI
+import CadenceFeatures
 
 /// The shared in-workout control pair (field-testing Round 4 A1/A2): a big
 /// Pause/Resume toggle and a big End button that routes through an
@@ -15,8 +16,9 @@ struct WorkoutControlBar: View {
     /// Called only AFTER the user confirms End (or immediately when
     /// `confirmEnd == false`).
     let onEnd: () -> Void
-    /// When set, a "Cool Down" button appears above Pause/End (feedback batch 4);
-    /// it runs a guided cool-down timer that finishes the workout on completion.
+    /// When set, the End confirmation offers "Cool down, then finish" (it is no
+    /// longer a persistent row); it runs a guided cool-down timer that finishes
+    /// the workout on completion.
     /// Strength passes this; cardio/interval (which bake in their own
     /// cool-down) leave it nil.
     var onCoolDown: (() -> Void)? = nil
@@ -37,36 +39,20 @@ struct WorkoutControlBar: View {
 
     @State private var confirming = false
 
-    var body: some View {
-        VStack(spacing: 12) {
-            if let onCoolDown {
-                Button(action: onCoolDown) {
-                    Label("Cool Down", systemImage: "figure.cooldown")
-                        .frame(maxWidth: .infinity, minHeight: 56)
-                }
-                .cadenceGlassButton(tint: .teal)
-                .accessibilityIdentifier("\(idPrefix).coolDown")
-            }
-            HStack(spacing: 16) {
-                Button(action: onPauseToggle) {
-                    Label(isPaused ? "Resume" : "Pause",
-                          systemImage: isPaused ? "play.fill" : "pause.fill")
-                        .frame(maxWidth: .infinity, minHeight: 56)
-                }
-                .cadenceGlassButton(tint: pauseTint)
-                .accessibilityIdentifier("\(idPrefix).pause")
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-                Button(role: .destructive) {
-                    if confirmEnd { confirming = true } else { onEnd() }
-                } label: {
-                    Label(endTitle, systemImage: "stop.fill")
-                        .frame(maxWidth: .infinity, minHeight: 56)
+    var body: some View {
+        Group {
+            if WorkoutDockLayout.resolve(isAccessibilitySize: dynamicTypeSize.isAccessibilitySize) == .vertical {
+                VStack(spacing: 12) { dockActions }
+            } else {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) { dockActions }
+                    VStack(spacing: 12) { dockActions }
                 }
-                .cadenceGlassButton(prominent: true, tint: endTint)
-                .accessibilityIdentifier("\(idPrefix).end")
             }
         }
-        .glassGroup()
+        .glassGroup(spacing: 12)
         .confirmationDialog(confirmTitle, isPresented: $confirming, titleVisibility: .visible) {
             if let onCoolDown {
                 Button("Cool down, then finish") { onCoolDown() }
@@ -79,5 +65,24 @@ struct WorkoutControlBar: View {
         } message: {
             if let confirmMessage { Text(confirmMessage) }
         }
+    }
+
+    @ViewBuilder private var dockActions: some View {
+        let pause = WorkoutDockPresenter.pauseContent(isPaused: isPaused)
+        Button(action: onPauseToggle) {
+            Label(LocalizedStringKey(pause.title), systemImage: pause.systemImage)
+                .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.minimumTargetHeight)
+        }
+        .cadenceGlassButton(tint: pauseTint)
+        .accessibilityIdentifier("\(idPrefix).pause")
+
+        Button(role: .destructive) {
+            if confirmEnd { confirming = true } else { onEnd() }
+        } label: {
+            Label(endTitle, systemImage: WorkoutDockPresenter.endSystemImage)
+                .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.minimumTargetHeight)
+        }
+        .cadenceGlassButton(prominent: false, tint: endTint)
+        .accessibilityIdentifier("\(idPrefix).end")
     }
 }

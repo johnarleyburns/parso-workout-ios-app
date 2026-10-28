@@ -58,15 +58,7 @@ extension SessionView {
 
                 suggestExerciseButton
 
-                if active.strengthSession?.id == session.id {
-                    WorkoutControlBar(
-                        isPaused: active.isPaused,
-                        onPauseToggle: togglePause,
-                        onEnd: endWorkout,
-                        onCoolDown: { coolDownConfirm = true },
-                        confirmMessage: String(localized: "This finishes and saves your workout.")
-                    )
-                } else if isManualLog {
+                if !isActiveSession && isManualLog {
                     CadenceActionButton(title: String(localized: "Done"), systemImage: "checkmark") {
                         finishManualLog()
                     }
@@ -83,6 +75,20 @@ extension SessionView {
 
     private var sessionSurfaceBase: some View {
         sessionScrollSurface
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if isActiveSession {
+                WorkoutControlBar(
+                    isPaused: active.isPaused,
+                    onPauseToggle: togglePause,
+                    onEnd: endWorkout,
+                    onCoolDown: { coolDownConfirm = true },
+                    confirmMessage: String(localized: "This finishes and saves your workout.")
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 8)
+            }
+        }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {

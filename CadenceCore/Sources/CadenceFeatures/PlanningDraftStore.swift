@@ -52,6 +52,19 @@ public struct PlanningDraftStore: PlanningDraftManaging {
         try PlanningDraftCodec.decode(draft)
     }
 
+    public func exerciseCount(for draft: PlanningDraft) throws -> Int {
+        try plan(for: draft).exercises.count
+    }
+
+    /// Case-insensitive, matching the duplicate rule in `add`.
+    public func contains(exerciseNamed name: String, in draft: PlanningDraft) throws -> Bool {
+        try plan(for: draft).exercises.contains { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    public func exerciseNames(for draft: PlanningDraft) throws -> [String] {
+        try plan(for: draft).exercises.map(\.name)
+    }
+
     // MARK: Mutations
 
     public func createIfNeeded(in context: ModelContext) throws -> PlanningDraft {

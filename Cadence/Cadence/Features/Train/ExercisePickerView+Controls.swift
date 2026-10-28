@@ -201,7 +201,33 @@ extension ExercisePickerView {
 
     // MARK: Rows
 
+    @ViewBuilder
     func exerciseRow(_ ex: ExerciseCatalogEntry) -> some View {
+        if isFind {
+            HStack(spacing: 4) {
+                exerciseLink(ex)
+                addToDraftButton(ex)
+            }
+        } else {
+            exerciseLink(ex)
+        }
+    }
+
+    func addToDraftButton(_ ex: ExerciseCatalogEntry) -> some View {
+        let isAdded = draftNames.contains(ex.name.lowercased())
+        return Button { pick(ex) } label: {
+            Label(isAdded ? "Added to workout draft" : "Add to workout draft",
+                  systemImage: isAdded ? "checkmark" : "plus")
+                .labelStyle(.iconOnly)
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityIdentifier("find.addToDraft.\(ex.id.uuidString)")
+        .accessibilityLabel(isAdded ? "\(ex.name), added to workout draft"
+                                    : "Add \(ex.name) to workout draft")
+    }
+
+    func exerciseLink(_ ex: ExerciseCatalogEntry) -> some View {
         NavigationLink(value: ExercisePickerView.ExerciseDetailRoute.exercise(ex.id)) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -245,9 +271,11 @@ extension ExercisePickerView {
         finish(with: exercise)
     }
 
-    /// Picker modes complete and dismiss; browse mode only opens the detail.
+    /// Picker modes complete and dismiss; Find adds to the draft and stays.
     func finish(with exercise: Exercise) {
-        switch ExerciseSelectionPolicy.outcome(isBrowse: isFind) {
+        switch ExerciseSelectionPolicy.outcome(isPlanning: isFind) {
+        case .addToDraftAndStay:
+            addToPlanningDraft(exercise)
         case .completeAndDismiss:
             completion?(exercise)
             dismiss()

@@ -7,6 +7,8 @@ struct ExerciseDetailView: View {
     let exercise: Exercise
     var actionTitle: String = "Add"
     var onPick: ((Exercise) -> Void)?
+    /// Modal pickers pop after picking; Find's planning draft stays put.
+    var dismissesAfterPick = true
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
@@ -77,7 +79,7 @@ struct ExerciseDetailView: View {
                     }
                     .accessibilityLabel(exercise.isFavorite ? "Remove from favorites" : "Add to favorites")
                     if let onPick {
-                        Button(actionTitle) { onPick(exercise); dismiss() }
+                        Button(actionTitle) { onPick(exercise); if dismissesAfterPick { dismiss() } }
                             .accessibilityIdentifier("detail.add")
                     }
                 }

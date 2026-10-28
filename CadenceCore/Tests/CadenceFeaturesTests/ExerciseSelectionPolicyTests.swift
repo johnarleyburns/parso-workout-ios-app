@@ -22,3 +22,18 @@ final class ExerciseSelectionPolicyTests: XCTestCase {
         XCTAssertEqual(ExerciseSelectionPolicy.outcome(isBrowse: false), .completeAndDismiss)
     }
 }
+
+final class PlanningSelectionPolicyTests: XCTestCase {
+    func testPlanningAddsAndStaysWhilePickersDismiss() {
+        XCTAssertEqual(ExerciseSelectionPolicy.outcome(isPlanning: true), .addToDraftAndStay)
+        XCTAssertEqual(ExerciseSelectionPolicy.outcome(isPlanning: false), .completeAndDismiss)
+    }
+
+    func testSummaryTexts() {
+        XCTAssertEqual(PlanningDraftSummary.headline(nil), PlanningDraftSummary.emptyMessage)
+        let s = PlanningDraftSummary(id: UUID(), title: "Push", exerciseCount: 2)
+        XCTAssertEqual(PlanningDraftSummary.headline(s), "Push")
+        XCTAssertEqual(PlanningDraftSummary.countText(1), "1 exercise")
+        XCTAssertEqual(PlanningDraftSummary.countText(2), "2 exercises")
+    }
+}

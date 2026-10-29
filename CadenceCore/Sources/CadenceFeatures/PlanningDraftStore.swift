@@ -26,8 +26,8 @@ public struct PlanningDraftStore: PlanningDraftManaging {
     private let originDevice: String
     private let historyProvider: HistoryProvider
     private let encode: (EditablePlan) throws -> Data
-    private let save: (ModelContext) throws -> Void
-    private let now: () -> Date
+    let save: (ModelContext) throws -> Void
+    let now: () -> Date
 
     public init(originDevice: String = "",
                 historyProvider: @escaping HistoryProvider = { _, _ in .empty },

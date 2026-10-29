@@ -117,4 +117,16 @@ final class PlanningDraftStoreTests: XCTestCase {
         XCTAssertEqual(try visibleCount(context), 1)
         XCTAssertNotNil(newest.deletedAt)
     }
+
+    func testCountAndMembershipIgnoreDuplicateAdds() throws {
+        let context = try makeContext()
+        let store = PlanningDraftStore()
+        let draft = try store.add(Exercise(name: "Squat"), to: nil, in: context)
+        _ = try store.add(Exercise(name: "squat"), to: nil, in: context)
+        _ = try store.add(Exercise(name: "Row"), to: nil, in: context)
+        XCTAssertEqual(try store.exerciseCount(for: draft), 2)
+        XCTAssertTrue(try store.contains(exerciseNamed: "SQUAT", in: draft))
+        XCTAssertFalse(try store.contains(exerciseNamed: "Press", in: draft))
+        XCTAssertEqual(try store.exerciseNames(for: draft), ["Squat", "Row"])
+    }
 }

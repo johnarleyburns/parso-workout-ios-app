@@ -29,13 +29,20 @@ struct ExercisePickerView: View {
     /// merge cannot leave a live model embedded in the path.
     enum ExerciseDetailRoute: Hashable {
         case exercise(UUID)
+        case draft
     }
 
-    /// Add/Swap/Use call sites complete a modal picker; Find browses and opens
-    /// details, with no completion closure and no dismissal.
+    /// Why the picker is open: a modal pick, or Find feeding the planning draft.
+    enum Destination: Equatable {
+        case picker(action: PickAction)
+        case planningDraft
+    }
+
+    /// Add/Swap/Use call sites complete a modal picker; Find adds to the
+    /// planning draft, with no completion closure and no dismissal.
     enum ExerciseBrowserMode: Equatable {
         case picker(action: PickAction)
-        case browse
+        case planningDraft
     }
 
     enum PickerTab: String, CaseIterable { case browse, recents, popular }
@@ -70,11 +77,15 @@ struct ExercisePickerView: View {
     @State var selectedCreationSecondary: Set<String> = []
     @Namespace var searchTransition
     @State var path: [ExerciseDetailRoute] = []
+    @State var draftNames: Set<String> = []
+    @State var draftSummary: PlanningDraftSummary?
+    @State var planningDraftError: String?
+    let planningDrafts = PlanningDraftCoordinator.makeStore()
     let mode: ExerciseBrowserMode
     let source: Exercise?
-    /// Present only in `.picker` mode; `.browse` has no completion to invoke.
+    /// Present only in `.picker` mode; Find has no completion to invoke.
     let completion: ((Exercise) -> Void)?
-    var isFind: Bool { mode == .browse }
+    var isFind: Bool { mode == .planningDraft }
     var action: PickAction {
         if case .picker(let action) = mode { return action }
         return .use
@@ -88,11 +99,17 @@ struct ExercisePickerView: View {
         self.completion = onPick
     }
 
-    /// Find: browse the catalog; selecting or creating opens details.
-    init() {
-        self.mode = .browse
-        self.source = nil
-        self.completion = nil
+    init(destination: Destination, source: Exercise? = nil,
+         onPick: @escaping (Exercise) -> Void = { _ in }) {
+        switch destination {
+        case .picker(let action):
+            self.mode = .picker(action: action)
+            self.completion = onPick
+        case .planningDraft:
+            self.mode = .planningDraft
+            self.completion = nil
+        }
+        self.source = source
     }
 
     var trimmedQuery: String { outcome.query }
@@ -269,7 +286,8 @@ struct ExercisePickerView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer()
-                                Button(ExerciseSelectionPolicy.nearMatchTitle(isBrowse: isFind)) { pick(match) }
+                                Button(isFind ? String(localized: "Add to workout draft")
+                                       : ExerciseSelectionPolicy.nearMatchTitle(isBrowse: false)) { pick(match) }
                                     .accessibilityIdentifier(isFind ? "find.viewMatch" : "picker.useMatch")
                                 .buttonStyle(.bordered).controlSize(.small)
                             }
@@ -314,32 +332,14 @@ struct ExercisePickerView: View {
                 }
                 .listStyle(.insetGrouped)
             }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if isFind { draftSummaryBar }
+            }
             .navigationTitle(isFind ? String(localized: "Find") : action.navigationTitle)
             .navigationBarTitleDisplayMode(isFind ? .large : .inline)
             .scrollDismissesKeyboard(isFind ? .interactively : .immediately)
             .searchable(text: $query, prompt: "Search name, muscle, or equipment")
-            .navigationDestination(for: ExerciseDetailRoute.self) { route in
-                switch route {
-                case .exercise(let id):
-                    if let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) {
-                        if showsPickAction {
-                            ExerciseDetailView(exercise: exercise, actionTitle: action.detailActionTitle) { picked in
-                                completion?(picked)
-                                dismiss()
-                            }
-                            .navigationTransition(.zoom(sourceID: id, in: searchTransition))
-                        } else {
-                            ExerciseDetailView(exercise: exercise)
-                                .navigationTransition(.zoom(sourceID: id, in: searchTransition))
-                        }
-                    } else {
-                        ContentUnavailableView(
-                            "Exercise unavailable",
-                            systemImage: "exclamationmark.triangle",
-                            description: Text("This exercise is no longer available in the local catalog. Return and try again."))
-                    }
-                }
-            }
+            .navigationDestination(for: ExerciseDetailRoute.self) { routeDestination($0) }
             .toolbar {
                 if selectedTab == .browse || !trimmedQuery.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) { filterMenu }
@@ -386,5 +386,11 @@ struct ExercisePickerView: View {
             outcome = search.outcome(for: query)
         }
         .sheet(isPresented: $showCreationSheet) { creationSheet }
+        .onAppear { if isFind { refreshDraftState() } }
+        .alert("Couldn't update workout draft", isPresented: Binding(
+            get: { planningDraftError != nil },
+            set: { if !$0 { planningDraftError = nil } })) {
+            Button("OK", role: .cancel) {}
+        } message: { Text(planningDraftError ?? "") }
     }
 }

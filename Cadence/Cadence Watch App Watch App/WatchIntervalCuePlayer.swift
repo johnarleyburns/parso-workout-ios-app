@@ -1,73 +1,32 @@
-import AVFoundation
 import CadenceFeatures
 import Foundation
 
+/// Bell cues for one view/workout owner. Playback lifetime is driven by completion
+/// callbacks inside `WatchCueBellController`; this type never touches the audio session.
 @MainActor
 final class WatchIntervalCuePlayer {
-    private let bell = WatchIntervalCuePlayer.player(named: "opening-closing-bell")
-    private let warningBell = WatchIntervalCuePlayer.player(named: "warning-bell")
-    private let audioSession: WatchWorkoutAudioSession
-    private var sequenceToken = 0
+    let owner: UUID
+    private let bells: WatchCueBellController
 
-    init() {
-        self.audioSession = .shared
-    }
-
-    init(audioSession: WatchWorkoutAudioSession) {
-        self.audioSession = audioSession
+    init(owner: UUID = UUID(), bells: WatchCueBellController = WatchCueAudioHub.shared.bells) {
+        self.owner = owner
+        self.bells = bells
     }
 
     func phaseTransition(soundsEnabled: Bool, isBoxing: Bool) {
-        guard soundsEnabled else { return }
-        play(bell)
+        bells.play(.phase, owner: owner, enabled: soundsEnabled)
     }
 
     func warning(soundsEnabled: Bool, isBoxing: Bool) {
-        guard soundsEnabled, isBoxing else { return }
-        play(warningBell)
+        bells.play(.warning, owner: owner, enabled: soundsEnabled && isBoxing)
     }
 
     /// Three clear bells when a strength rest timer reaches zero.
     func restComplete(soundsEnabled: Bool) {
-        guard soundsEnabled else { return }
-        sequenceToken += 1
-        let token = sequenceToken
-        for offset in WatchWorkoutCuePolicy.restCompletionBellOffsets {
-            DispatchQueue.main.asyncAfter(deadline: .now() + offset) { [weak self] in
-                guard let self, token == self.sequenceToken else { return }
-                self.play(self.warningBell)
-            }
-        }
+        bells.restComplete(owner: owner, enabled: soundsEnabled)
     }
 
     func stop() {
-        sequenceToken += 1
-        bell?.stop()
-        warningBell?.stop()
-        audioSession.deactivate()
-    }
-
-    private static func player(named name: String) -> AVAudioPlayer? {
-        guard let url = Bundle.main.url(forResource: name, withExtension: "mp3") else { return nil }
-        let player = try? AVAudioPlayer(contentsOf: url)
-        player?.prepareToPlay()
-        return player
-    }
-
-    private func play(_ player: AVAudioPlayer?) {
-        audioSession.activateForCues()
-        player?.currentTime = 0
-        player?.play()
-        releaseSessionWhenIdle(after: (player?.duration ?? 0) + 0.15)
-    }
-
-    /// Hand audio focus back once the cue ends so music that was ducked by a
-    /// bell or spoken cue returns to full volume instead of staying quiet.
-    private func releaseSessionWhenIdle(after delay: TimeInterval) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self else { return }
-            let playing = (self.bell?.isPlaying ?? false) || (self.warningBell?.isPlaying ?? false)
-            if !playing { self.audioSession.deactivate() }
-        }
+        bells.stop(owner: owner)
     }
 }

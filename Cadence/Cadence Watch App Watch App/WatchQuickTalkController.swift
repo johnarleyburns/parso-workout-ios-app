@@ -162,11 +162,16 @@ final class WatchQuickTalkController {
         meterTask?.cancel()
         replyTimeoutTask?.cancel()
         replyTimeoutTask = nil
+        // Only a recording that actually started owns the session; cancelling an idle
+        // controller must never deactivate the session the cue coordinator holds.
+        let ownedRecording = recorder != nil
         recorder?.stop()
         recorder?.deleteRecording()
         recorder = nil
         recordingURL = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        if ownedRecording {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
         phase = .idle
     }
 

@@ -15,6 +15,9 @@ private final class HealthKitLocationAccumulator: @unchecked Sendable {
 final class HealthKitProvider: HealthDataProviding {
     private let store = HKHealthStore()
 
+    /// Why the last workout scan skipped rows (unknown type, zero duration, ...).
+    private(set) var lastImportDiagnostics: [String] = []
+
     /// Anchors are device-local cursors. They deliberately live outside
     /// SwiftData/CloudKit because a cursor belongs to this HealthKit database
     /// and must never be mirrored to another device.
@@ -242,18 +245,19 @@ final class HealthKitProvider: HealthDataProviding {
             store.execute(q)
         }
         var result: [IngestedWorkout] = []
+        var diagnostics: [String] = []
         for w in workouts {
-            let source: CardioSource = Self.isWatchSource(w.sourceRevision) ? .watch : .iphone
-            let importedKind = Self.importedWorkoutKind(from: w.workoutActivityType)
-            let type = Self.cardioType(from: w.workoutActivityType)
-            let summary = IngestedWorkout(
-                id: w.uuid,
-                type: type,
-                start: w.startDate, end: w.endDate,
-                source: source,
-                importedKind: importedKind)
-            guard WorkoutRepository.shouldAutoImport(summary) else { continue }
-
+            guard !Self.isCladironAuthored(w) else { continue }
+            guard w.endDate > w.startDate else {
+                diagnostics.append("Skipped \(w.uuid): zero or negative duration")
+                continue
+            }
+            let decision = HealthKitCardioEligibility.evaluate(rawActivityType: w.workoutActivityType.rawValue)
+            guard let eligibility = decision.eligibility else {
+                if case .excluded(let reason) = decision { diagnostics.append("Skipped \(w.uuid): \(reason)") }
+                continue
+            }
+            let type = eligibility.cardioType
             let distance = w.totalDistance?.doubleValue(for: .meter())
             let energy = w.statistics(for: HKQuantityType(.activeEnergyBurned))?
                 .sumQuantity()?.doubleValue(for: .kilocalorie())
@@ -270,12 +274,14 @@ final class HealthKitProvider: HealthDataProviding {
                 distanceMeters: distance, activeEnergyKcal: energy,
                 avgHeartRate: bpms.isEmpty ? nil : bpms.reduce(0, +) / Double(bpms.count),
                 maxHeartRate: bpms.max(),
-                source: source,
+                source: .watch, // legacy recording-location field only; never ownership
                 hrSamples: hr,
                 routeSamples: route,
-                importedKind: importedKind,
-                provenance: Self.provenance(for: w)))
+                importedKind: eligibility.importedKind,
+                origin: .healthKitImported,
+                provenance: Self.provenance(for: w, eligibility: eligibility)))
         }
+        lastImportDiagnostics = diagnostics
         return result
     }
 
@@ -862,20 +868,16 @@ final class HealthKitProvider: HealthDataProviding {
         }
     }
 
-    private static func isWatchSource(_ sourceRevision: HKSourceRevision) -> Bool {
-        let source = sourceRevision.source
-        let fields = [
-            source.name,
-            source.bundleIdentifier,
-            sourceRevision.productType ?? ""
-        ]
-        return fields.contains { $0.localizedCaseInsensitiveContains("watch") }
+    private static func isCladironAuthored(_ workout: HKWorkout) -> Bool {
+        HealthKitCardioEligibility.isCladironAuthored(
+            bundleIdentifier: workout.sourceRevision.source.bundleIdentifier)
     }
 }
 
 extension HealthKitProvider {
     /// Source/device facts for an imported workout; absent metadata is tolerated.
-    static func provenance(for workout: HKWorkout) -> HealthKitWorkoutProvenance {
+    static func provenance(for workout: HKWorkout,
+                           eligibility: HealthKitCardioEligibility? = nil) -> HealthKitWorkoutProvenance {
         let revision = workout.sourceRevision
         let source = revision.source
         let device = workout.device
@@ -891,6 +893,8 @@ extension HealthKitProvider {
             deviceHardwareVersion: device?.hardwareVersion,
             deviceSoftwareVersion: device?.softwareVersion,
             workoutBrandName: metadata[HKMetadataKeyWorkoutBrandName] as? String,
-            isAppleFitnessPlus: (metadata[HKMetadataKeyAppleFitnessPlusSession] as? NSNumber)?.boolValue == true)
+            isAppleFitnessPlus: (metadata[HKMetadataKeyAppleFitnessPlusSession] as? NSNumber)?.boolValue == true,
+            activityTypeRaw: Int(workout.workoutActivityType.rawValue),
+            activityTypeName: eligibility?.activityName)
     }
 }

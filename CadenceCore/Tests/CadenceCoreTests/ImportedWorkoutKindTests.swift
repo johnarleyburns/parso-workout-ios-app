@@ -21,19 +21,16 @@ final class ImportedWorkoutKindTests: XCTestCase {
         XCTAssertTrue(all.isEmpty)
     }
 
-    func testAutoImportRejectsIPhoneOrigin() throws {
+    func testAutoImportAcceptsAnyLegacySourceField() throws {
         let ctx = try makeContext()
         let ingested = IngestedWorkout(
             id: UUID(), type: .run, start: Date(), end: Date().addingTimeInterval(1800),
             source: .iphone, importedKind: .running
         )
-        XCTAssertEqual(try WorkoutRepository.ingest([ingested], in: ctx), 0)
-
-        let all = try WorkoutRepository.allCardio(ctx)
-        XCTAssertTrue(all.isEmpty)
+        XCTAssertEqual(try WorkoutRepository.ingest([ingested], in: ctx), 1)
     }
 
-    func testAutoImportRejectsOtherAndAmbiguousKind() throws {
+    func testAutoImportAcceptsOtherCardioButRejectsUnclassifiedKind() throws {
         let ctx = try makeContext()
         let other = IngestedWorkout(
             id: UUID(), type: .other, start: Date(), end: Date().addingTimeInterval(1200),
@@ -44,8 +41,8 @@ final class ImportedWorkoutKindTests: XCTestCase {
             source: .watch, importedKind: nil
         )
 
-        XCTAssertEqual(try WorkoutRepository.ingest([other, ambiguous], in: ctx), 0)
-        XCTAssertTrue(try WorkoutRepository.allCardio(ctx).isEmpty)
+        XCTAssertEqual(try WorkoutRepository.ingest([other, ambiguous], in: ctx), 1)
+        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
     }
 
     func testDeduplicationByHKUUID() throws {

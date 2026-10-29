@@ -1214,24 +1214,32 @@ public enum WorkoutRepository {
     // MARK: Cardio ingest (FR-2.1)
 
     /// Inserts ingested HealthKit workouts that aren't already present, keyed by
-    /// HealthKit UUID (UC-2 alternate: duplicates skipped by UUID). Returns the
+    /// HealthKit UUID. Ordered rules: (1) an exact UUID match never inserts and
+    /// only fills missing data; (2) a Cladiron-recorded row with no HealthKit
+    /// UUID and a narrow type/start/end match gets the UUID attached;
+    /// (3) distinct third-party UUIDs are never time-matched to each other.
+    /// Cladiron-authored and zero-duration workouts are skipped. Returns the
     /// number newly inserted.
     @discardableResult
     public static func ingest(_ workouts: [IngestedWorkout], in context: ModelContext) throws -> Int {
-        let existing = try context.fetch(FetchDescriptor<CardioWorkout>())
+        var existing = try context.fetch(FetchDescriptor<CardioWorkout>())
         var inserted = 0
         var changed = false
-        for w in workouts where shouldAutoImport(w) {
+        for w in workouts {
+            guard w.origin == .healthKitImported, w.end > w.start,
+                  let kind = w.importedKind, !kind.isStrength else { continue }
+            if let match = existing.first(where: { $0.healthKitWorkoutUUID == w.id }) {
+                if enrich(match, with: w, in: context) { changed = true }
+                continue
+            }
             if let match = existing.first(where: {
-                $0.healthKitWorkoutUUID == w.id ||
-                ($0.sourceValue == .watch && $0.typeValue == w.type &&
-                 abs($0.start.timeIntervalSince(w.start)) < 10 &&
-                 abs(($0.end ?? $0.start).timeIntervalSince(w.end)) < 10)
+                $0.originValue == .cladironRecorded && $0.healthKitWorkoutUUID == nil &&
+                $0.sourceValue == .watch && $0.typeValue == w.type &&
+                abs($0.start.timeIntervalSince(w.start)) < 10 &&
+                abs(($0.end ?? $0.start).timeIntervalSince(w.end)) < 10
             }) {
-                if match.healthKitWorkoutUUID != w.id {
-                    match.healthKitWorkoutUUID = w.id
-                    changed = true
-                }
+                match.healthKitWorkoutUUID = w.id
+                changed = true
                 continue
             }
             let c = CardioWorkout(type: w.type, start: w.start, end: w.end,
@@ -1254,10 +1262,37 @@ public enum WorkoutRepository {
                 context.insert(RouteSample(t: route.t, lat: route.lat, lon: route.lon,
                                            elevation: route.elevation, cardio: c))
             }
+            existing.append(c)
             inserted += 1
         }
         if inserted > 0 || changed { try context.save() }
         return inserted
+    }
+
+    /// Fills only missing fields on the row that already owns this UUID.
+    /// Third-party provenance never replaces a Cladiron-recorded row's identity.
+    private static func enrich(_ row: CardioWorkout, with w: IngestedWorkout,
+                               in context: ModelContext) -> Bool {
+        var changed = false
+        if row.originValue == .healthKitImported, row.healthKitProvenance == nil, let p = w.provenance {
+            row.healthKitProvenance = p; changed = true
+        }
+        if row.distance == nil, let d = w.distanceMeters { row.distance = d; changed = true }
+        if row.activeEnergy == nil, let e = w.activeEnergyKcal { row.activeEnergy = e; changed = true }
+        if row.avgHeartRate == nil, let a = w.avgHeartRate { row.avgHeartRate = a; changed = true }
+        if row.maxHeartRate == nil, let m = w.maxHeartRate { row.maxHeartRate = m; changed = true }
+        if row.orderedHRSamples.isEmpty, !w.hrSamples.isEmpty {
+            for p in w.hrSamples { context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: row)) }
+            changed = true
+        }
+        if row.orderedRouteSamples.isEmpty, !w.routeSamples.isEmpty {
+            for r in w.routeSamples {
+                context.insert(RouteSample(t: r.t, lat: r.lat, lon: r.lon,
+                                           elevation: r.elevation, cardio: row))
+            }
+            changed = true
+        }
+        return changed
     }
 
     /// Ingests the app-level Watch completion before HealthKit becomes
@@ -1297,21 +1332,6 @@ public enum WorkoutRepository {
             try context.save()
         }
         return true
-    }
-
-    /// Auto-import policy for HealthKit workouts: clear Apple Watch cardio only.
-    /// iPhone-origin workouts, strength, `.other`, and unknown/ambiguous kinds are
-    /// ignored so local history does not fill with false positives.
-    public static func shouldAutoImport(_ workout: IngestedWorkout) -> Bool {
-        guard workout.source == .watch else { return false }
-        guard workout.type != .other else { return false }
-        guard let kind = workout.importedKind else { return false }
-        switch kind {
-        case .running, .walking, .cycling, .swimming, .rowing, .hiit, .boxing:
-            return true
-        case .traditionalStrength, .functionalStrength, .other:
-            return false
-        }
     }
 
     public static func allCardio(_ context: ModelContext) throws -> [CardioWorkout] {

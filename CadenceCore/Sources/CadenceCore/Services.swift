@@ -104,6 +104,7 @@ public struct IngestedWorkout: Equatable, Sendable, Identifiable {
     public var routeSamples: [LocationFix]
     public var importedKind: ImportedWorkoutKind?
     public var provenance: HealthKitWorkoutProvenance?
+    public var origin: CardioRecordOrigin
 
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
@@ -111,7 +112,9 @@ public struct IngestedWorkout: Equatable, Sendable, Identifiable {
                 source: CardioSource = .watch, hrSamples: [HRSamplePoint] = [],
                 routeSamples: [LocationFix] = [],
                 importedKind: ImportedWorkoutKind? = nil,
+                origin: CardioRecordOrigin = .healthKitImported,
                 provenance: HealthKitWorkoutProvenance? = nil) {
+        self.origin = origin
         self.provenance = provenance
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal

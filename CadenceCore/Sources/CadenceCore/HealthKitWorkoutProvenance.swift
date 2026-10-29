@@ -26,13 +26,17 @@ public struct HealthKitWorkoutProvenance: Codable, Equatable, Sendable {
     public let deviceSoftwareVersion: String?
     public let workoutBrandName: String?
     public let isAppleFitnessPlus: Bool
+    /// Raw `HKWorkoutActivityType` value and name, kept for future UI mappings.
+    public let activityTypeRaw: Int?
+    public let activityTypeName: String?
 
     public init(sourceName: String, sourceBundleIdentifier: String,
                 sourceVersion: String? = nil, productType: String? = nil,
                 deviceName: String? = nil, deviceManufacturer: String? = nil,
                 deviceModel: String? = nil, deviceHardwareVersion: String? = nil,
                 deviceSoftwareVersion: String? = nil, workoutBrandName: String? = nil,
-                isAppleFitnessPlus: Bool = false) {
+                isAppleFitnessPlus: Bool = false,
+                activityTypeRaw: Int? = nil, activityTypeName: String? = nil) {
         self.sourceName = sourceName
         self.sourceBundleIdentifier = sourceBundleIdentifier
         self.sourceVersion = sourceVersion
@@ -44,6 +48,8 @@ public struct HealthKitWorkoutProvenance: Codable, Equatable, Sendable {
         self.deviceSoftwareVersion = deviceSoftwareVersion
         self.workoutBrandName = workoutBrandName
         self.isAppleFitnessPlus = isAppleFitnessPlus
+        self.activityTypeRaw = activityTypeRaw
+        self.activityTypeName = activityTypeName
     }
 
     /// Versioned on-disk envelope so the shape can evolve additively.

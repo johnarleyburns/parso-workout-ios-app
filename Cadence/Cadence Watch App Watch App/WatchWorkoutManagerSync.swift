@@ -249,6 +249,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
                                                    needsDurableExercises: incoming.customExercises != nil)
             if outcome == .discard { return }
         }
+        guard applyCoachSuggestion(incoming, isHandshake: envelope != nil) else { return }
         let preferences = incoming.preferences
         s.unit = preferences.unit
         s.distanceUnit = preferences.distanceUnit
@@ -375,7 +376,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
 
     static let appliedCustomExercisesKey = "watch.customExercises.appliedFingerprint"
 
-    private func recordPhoneSyncFailure(_ message: String) {
+    func recordPhoneSyncFailure(_ message: String) {
         lastPhoneSyncError = message
         phoneSyncState = .failed(message, lastPhoneSyncAt)
     }

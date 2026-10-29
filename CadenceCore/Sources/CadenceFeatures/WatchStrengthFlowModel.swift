@@ -433,6 +433,7 @@ public final class WatchStrengthFlowModel {
 
     @discardableResult
     public func deleteExercise(_ exercise: Exercise) -> [String: Any]? {
+        WatchLocalHistoryMutation.notify()
         if let session {
             do {
                 _ = try WorkoutRepository.removeExercise(exercise, from: session, in: context)
@@ -468,6 +469,7 @@ public final class WatchStrengthFlowModel {
 
     @discardableResult
     public func deleteSet(id setID: UUID) -> [String: Any]? {
+        WatchLocalHistoryMutation.notify()
         guard let session,
               let set = session.orderedSets.first(where: { $0.id == setID }) else { return nil }
         do {
@@ -535,6 +537,7 @@ public final class WatchStrengthFlowModel {
     }
 
     public func cancel() {
+        WatchLocalHistoryMutation.notify()
         if let session {
             let syncSets = !(session.sets ?? []).isEmpty
             context.delete(session)
@@ -823,12 +826,14 @@ public final class WatchStrengthFlowModel {
     }
 
     private func completeSession(cooldown seconds: TimeInterval) {
+        WatchLocalHistoryMutation.notify()
         session?.endedAt = Date()
         session?.cooldownSeconds = seconds
         try? context.save()
     }
 
     private func syncLogSet(session: WorkoutSession, exercise: Exercise, set: SetEntry) {
+        WatchLocalHistoryMutation.notify()
         var dict: [String: Any] = [
             "action": "log_set",
             "session_id": session.id.uuidString,

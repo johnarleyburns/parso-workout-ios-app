@@ -16,6 +16,7 @@ public enum WatchResumableSession {
     /// phone has nothing to forget in that case).
     @discardableResult
     public static func discard(_ session: WorkoutSession, in context: ModelContext) -> [String: String]? {
+        WatchLocalHistoryMutation.notify()
         let hadSets = !(session.sets ?? []).isEmpty
         let id = session.id.uuidString
         context.delete(session)

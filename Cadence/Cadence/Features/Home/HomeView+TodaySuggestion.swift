@@ -78,6 +78,9 @@ extension HomeView {
         let store = HomeTodayCache.suggestionStore
         let earlyKey = todaySuggestionEarlyKey()
         let snapshot = request.snapshot
+        // Publish the exact snapshot the shared service consumes; never rebuilt during sync.
+        model.updateWatchCoachSuggestion(WatchCoachSuggestionEnvelope.make(
+            snapshot: snapshot, issuedAt: snapshot.generatedAt))
         let unit = request.unit
         let warmup = request.warmupMinutes
         let cooldown = request.cooldownMinutes
@@ -110,5 +113,22 @@ extension HomeView {
         }
         todaySuggestedPlan = nil
         suggestedWorkoutPlan = plan
+    }
+}
+
+/// Watch `request_settings_sync` → rebuild the Coach snapshot through the normal builder path.
+struct WatchCoachRefreshModifier: ViewModifier {
+    let action: () -> Void
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: .watchCoachSuggestionRefreshRequested)) { _ in
+            action()
+        }
+    }
+}
+
+extension HomeView {
+    func refreshWatchCoachSuggestion() {
+        guard surface == .today, suggestedWorkoutTask == nil else { return }
+        requestSuggestedStrength(present: false, preloadedCandidates: nil)
     }
 }

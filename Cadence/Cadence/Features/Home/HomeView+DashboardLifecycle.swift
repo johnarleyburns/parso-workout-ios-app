@@ -141,7 +141,9 @@ extension HomeView {
                 model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(
                     from: coachDecision, suggestedStrength: plan))
             }
+            .modifier(WatchCoachRefreshModifier(action: refreshWatchCoachSuggestion))
             .onChange(of: historyRefreshToken) { _, _ in
+                model.invalidateWatchCoachSuggestion()
                 todaySuggestedPlan = nil
                 HomeTodayCache.coordinator.invalidate(surface: surface.cacheSurface)
                 // A completion invalidates the request snapshot as well as

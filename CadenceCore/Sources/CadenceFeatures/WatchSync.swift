@@ -57,6 +57,10 @@ public enum WatchSync {
         /// Workouts designed on the iPhone and sent to the Watch ("Send Workout to Watch").
         public static let sentWorkouts = "sentWorkouts.sessions"
 
+        /// Separate JSON `Data` payload of `WatchCoachSuggestionEnvelope`; never a Codable object.
+        public static let coachSuggestionSnapshot = "coachSuggestion.snapshot"
+        public static let coachSuggestionSnapshotUpdatedAt = "coachSuggestion.updatedAt"
+
         public static let weekSets = "week.sets"
         public static let weekSetsMinimum = "week.setsMinimum"
         public static let weekSetsTarget = "week.setsTarget"
@@ -476,12 +480,16 @@ public enum WatchSync {
         public let weekSummary: WeekSummary?
         /// Workouts sent from the iPhone; nil when the context carries no such key.
         public let sentWorkouts: [TodayPlan.Session]?
+        /// Decoded off the main actor. `.absent` in a handshake snapshot means the phone removed it.
+        public let coachSuggestion: WatchCoachSuggestionPayload
 
         public init(preferences: Preferences, todayPlan: TodayPlan?,
                     customExercises: [CustomExercise]?, updatedAt: Date,
                     weekSummary: WeekSummary? = nil,
-                    sentWorkouts: [TodayPlan.Session]? = nil) {
+                    sentWorkouts: [TodayPlan.Session]? = nil,
+                    coachSuggestion: WatchCoachSuggestionPayload = .absent) {
             self.sentWorkouts = sentWorkouts
+            self.coachSuggestion = coachSuggestion
             self.preferences = preferences
             self.todayPlan = todayPlan
             self.customExercises = customExercises
@@ -503,7 +511,8 @@ public enum WatchSync {
                 customExercises: customExercises,
                 updatedAt: (context[Key.contextUpdatedAt] as? Date) ?? Date(),
                 weekSummary: WeekSummary.from(context: context),
-                sentWorkouts: context[Key.sentWorkouts] == nil ? nil : WatchSentWorkouts.sessions(from: context))
+                sentWorkouts: context[Key.sentWorkouts] == nil ? nil : WatchSentWorkouts.sessions(from: context),
+                coachSuggestion: WatchCoachSuggestionPayload(context: context))
         }
     }
 

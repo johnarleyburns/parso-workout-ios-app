@@ -89,7 +89,7 @@ struct SettingsView: View {
                 Toggle("Auto-save to Apple Health", isOn: $settings.autoSaveHealth)
                     .accessibilityIdentifier("settings.autoSaveHealth")
 
-                if let lastSync = model.lastHealthSync {
+                if let lastSync = model.lastHealthCheckedAt {
                     HStack {
                         Label("Last sync", systemImage: "clock.arrow.2.circlepath")
                         Spacer()

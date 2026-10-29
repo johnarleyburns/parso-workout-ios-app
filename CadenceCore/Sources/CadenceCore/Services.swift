@@ -89,6 +89,19 @@ public struct StepActivitySummary: Equatable, Sendable {
 
 // MARK: - Ingested workout summary (FR-2.1)
 
+/// One anchored HealthKit cardio change set. `nextAnchor` is an opaque archived
+/// cursor owned by the import consumer; it is committed only after persistence.
+public struct CardioImportDelta: Equatable, Sendable {
+    public var upserts: [IngestedWorkout]
+    public var deletedHealthKitUUIDs: [UUID]
+    public var nextAnchor: Data
+    public init(upserts: [IngestedWorkout], deletedHealthKitUUIDs: [UUID], nextAnchor: Data) {
+        self.upserts = upserts
+        self.deletedHealthKitUUIDs = deletedHealthKitUUIDs
+        self.nextAnchor = nextAnchor
+    }
+}
+
 /// A summary of a workout read back from HealthKit (e.g. one the Watch saved).
 public struct IngestedWorkout: Equatable, Sendable, Identifiable {
     public var id: UUID                 // HealthKit workout UUID
@@ -240,8 +253,11 @@ public protocol HealthDataProviding: AnyObject {
     func todayActivity() async -> DayActivity
     /// Most-recent-first daily activity, `days` entries ending today.
     func activityTrend(days: Int) async -> [DayActivity]
-    /// Workouts saved after `since` (e.g. by the Watch), for ingest (FR-2.1).
-    func newWorkouts(since: Date?) async -> [IngestedWorkout]
+    /// Reads the next lossless cardio delta from the dedicated import cursor
+    /// (FR-2.1). Never persists the cursor; callers commit it after saving.
+    func fetchImportedCardioDelta() async throws -> CardioImportDelta
+    /// Advances the import cursor. Call only after the delta was saved.
+    func commitImportedCardioAnchor(_ anchor: Data)
     /// Cladiron-authored HealthKit objects for restore. This is separate from
     /// third-party cardio ingest: only objects carrying Cladiron metadata are
     /// returned, including legacy summary workouts without that metadata.

@@ -25,6 +25,8 @@ final class HealthKitProvider: HealthDataProviding {
 
     private enum AnchorKey {
         static let workouts = "health.restore.workouts.anchor.v1"
+        /// Dedicated cardio-import cursor. Independent of `workouts` (backup restore).
+        static let importedCardioV1 = "health.import.cardio.anchor.v1"
         static let vo2Max = "health.restore.vo2max.anchor.v1"
     }
 
@@ -233,20 +235,53 @@ final class HealthKitProvider: HealthDataProviding {
 
     // MARK: Workout ingest (FR-2.1)
 
-    func newWorkouts(since: Date?) async -> [IngestedWorkout] {
-        let workouts: [HKWorkout] = await withCheckedContinuation { cont in
-            let predicate = since.map { HKQuery.predicateForSamples(withStart: $0, end: nil) }
-            let sort = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
-            let q = HKSampleQuery(sampleType: .workoutType(), predicate: predicate,
-                                  limit: HKObjectQueryNoLimit,
-                                  sortDescriptors: [sort]) { _, samples, _ in
-                cont.resume(returning: (samples as? [HKWorkout]) ?? [])
-            }
-            store.execute(q)
+    /// Reads the next cardio change set from the dedicated anchor. A nil anchor
+    /// (first run) returns the whole available workout history; UUID
+    /// deduplication makes that safe. The anchor is NOT saved here.
+    func fetchImportedCardioDelta() async throws -> CardioImportDelta {
+        let anchor = loadAnchor(forKey: AnchorKey.importedCardioV1)
+        let result = try await anchoredObjectsThrowing(sampleType: .workoutType(), anchor: anchor)
+        guard let data = try? NSKeyedArchiver.archivedData(withRootObject: result.anchor,
+                                                           requiringSecureCoding: true) else {
+            throw HealthImportError.anchorEncodingFailed
         }
+        let upserts = try await mapWorkouts(result.objects.compactMap { $0 as? HKWorkout })
+        return CardioImportDelta(upserts: upserts,
+                                 deletedHealthKitUUIDs: result.deleted.map(\.uuid),
+                                 nextAnchor: data)
+    }
+
+    func commitImportedCardioAnchor(_ anchor: Data) {
+        anchorDefaults.set(anchor, forKey: AnchorKey.importedCardioV1)
+    }
+
+    private enum HealthImportError: LocalizedError {
+        case anchorEncodingFailed
+        var errorDescription: String? { "Could not encode the Health import cursor." }
+    }
+
+    private func anchoredObjectsThrowing(sampleType: HKSampleType, anchor: HKQueryAnchor?) async throws
+        -> (objects: [HKSample], deleted: [HKDeletedObject], anchor: HKQueryAnchor) {
+        try await withCheckedThrowingContinuation { continuation in
+            let query = HKAnchoredObjectQuery(type: sampleType, predicate: nil, anchor: anchor,
+                                              limit: HKObjectQueryNoLimit) { _, samples, deleted, newAnchor, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if let newAnchor {
+                    continuation.resume(returning: (samples ?? [], deleted ?? [], newAnchor))
+                } else {
+                    continuation.resume(throwing: HealthImportError.anchorEncodingFailed)
+                }
+            }
+            store.execute(query)
+        }
+    }
+
+    private func mapWorkouts(_ workouts: [HKWorkout]) async throws -> [IngestedWorkout] {
         var result: [IngestedWorkout] = []
         var diagnostics: [String] = []
         for w in workouts {
+            try Task.checkCancellation()
             guard !Self.isCladironAuthored(w) else { continue }
             guard w.endDate > w.startDate else {
                 diagnostics.append("Skipped \(w.uuid): zero or negative duration")

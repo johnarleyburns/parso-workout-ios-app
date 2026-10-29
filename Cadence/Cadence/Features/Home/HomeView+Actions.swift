@@ -104,24 +104,27 @@ extension HomeView {
         defer { os_signpost(.end, log: Self.healthIngestLog, name: "healthIngest", signpostID: signpostID) }
         model.healthSyncStatus = .syncing
         do {
-            let new = await model.health.newWorkouts(since: model.lastHealthSync)
-            guard !Task.isCancelled else {
-                model.healthSyncStatus = .idle
-                return
-            }
-            let inserted: Int
-            if let cadenceModelContainer {
-                inserted = await Task.detached(priority: .utility) {
-                    let backgroundContext = ModelContext(cadenceModelContainer)
-                    return (try? WorkoutRepository.ingest(new, in: backgroundContext)) ?? 0
-                }.value
-            } else {
-                inserted = try WorkoutRepository.ingest(new, in: context)
+            let container = cadenceModelContainer
+            let mainContext = context
+            let report = try await CardioImportRunner.run(provider: model.health) { delta in
+                if let container {
+                    return try await Task.detached(priority: .utility) {
+                        let backgroundContext = ModelContext(container)
+                        return try WorkoutRepository.applyCardioImport(
+                            upserts: delta.upserts, deletedIDs: delta.deletedHealthKitUUIDs,
+                            in: backgroundContext)
+                    }.value
+                }
+                return try WorkoutRepository.applyCardioImport(
+                    upserts: delta.upserts, deletedIDs: delta.deletedHealthKitUUIDs,
+                    in: mainContext)
             }
             let completedAt = Date()
-            model.lastHealthSync = completedAt
-            model.healthSyncStatus = .completed(completedAt, insertedCount: inserted)
-            if inserted > 0 { markWorkoutHistoryChanged() }
+            model.lastHealthCheckedAt = completedAt
+            model.healthSyncStatus = .completed(completedAt, insertedCount: report.inserted)
+            if report.changedHistory { markWorkoutHistoryChanged() }
+        } catch is CancellationError {
+            model.healthSyncStatus = .idle
         } catch {
             model.healthSyncStatus = .failed(error.localizedDescription)
         }

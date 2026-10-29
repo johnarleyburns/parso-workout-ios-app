@@ -239,6 +239,8 @@ public struct ExportCardio: Codable, Equatable, Sendable {
     public var isLogged: Bool?
     public var customTitle: String?
     public var importedWorkoutKindRaw: String?
+    public var recordOriginRaw: String?
+    public var healthKitProvenanceData: String?
     public var intervalDetailData: String?
     public var cardioAlgorithmVersionRaw: String?
     public var effectiveRestingHR: Double?
@@ -258,6 +260,7 @@ public struct ExportCardio: Codable, Equatable, Sendable {
                 maxHeartRate: Double? = nil, laps: Int? = nil, targetLaps: Int? = nil,
                 targetDistance: Double? = nil, notes: String? = nil, isLogged: Bool? = nil,
                 customTitle: String? = nil, importedWorkoutKindRaw: String? = nil,
+                recordOriginRaw: String? = nil, healthKitProvenanceData: String? = nil,
                 intervalDetailData: String? = nil,
                 cardioAlgorithmVersionRaw: String? = nil, effectiveRestingHR: Double? = nil,
                 effectiveMaximumHR: Double? = nil, heartRateMaximumSourceRaw: String? = nil,
@@ -272,6 +275,8 @@ public struct ExportCardio: Codable, Equatable, Sendable {
         self.maxHeartRate = maxHeartRate; self.laps = laps; self.targetLaps = targetLaps
         self.targetDistance = targetDistance; self.notes = notes; self.isLogged = isLogged
         self.customTitle = customTitle; self.importedWorkoutKindRaw = importedWorkoutKindRaw
+        self.recordOriginRaw = recordOriginRaw
+        self.healthKitProvenanceData = healthKitProvenanceData
         self.intervalDetailData = intervalDetailData
         self.cardioAlgorithmVersionRaw = cardioAlgorithmVersionRaw
         self.effectiveRestingHR = effectiveRestingHR

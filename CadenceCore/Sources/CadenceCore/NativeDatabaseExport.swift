@@ -182,6 +182,8 @@ private struct NativeCardio: Codable, Equatable, Sendable {
     var deletedAt: Date?
     var customTitle: String?
     var importedWorkoutKindRaw: String?
+    var recordOriginRaw: String?
+    var healthKitProvenanceData: String?
     var intervalDetailData: String
     var cardioAlgorithmVersionRaw: String?
     var effectiveRestingHR: Double?
@@ -489,6 +491,8 @@ public enum NativeDatabaseExport {
                                     isLogged: row.isLogged, deletedAt: row.deletedAt,
                                     customTitle: row.customTitle,
                                     importedWorkoutKindRaw: row.importedWorkoutKindRaw,
+                                    recordOriginRaw: row.recordOriginRaw,
+                                    healthKitProvenanceData: row.healthKitProvenanceData.isEmpty ? nil : row.healthKitProvenanceData,
                                     intervalDetailData: row.intervalDetailData,
                                     cardioAlgorithmVersionRaw: row.cardioAlgorithmVersionRaw,
                                     effectiveRestingHR: row.effectiveRestingHR,
@@ -836,6 +840,8 @@ public enum NativeDatabaseExport {
             cardio.source = value.source; cardio.healthKitWorkoutUUID = value.healthKitWorkoutUUID
             cardio.notes = value.notes; cardio.isLogged = value.isLogged; cardio.deletedAt = value.deletedAt
             cardio.customTitle = value.customTitle; cardio.importedWorkoutKindRaw = value.importedWorkoutKindRaw
+            cardio.recordOriginRaw = value.recordOriginRaw
+            cardio.healthKitProvenanceData = value.healthKitProvenanceData ?? ""
             cardio.intervalDetailData = value.intervalDetailData; cardio.cardioAlgorithmVersionRaw = value.cardioAlgorithmVersionRaw
             cardio.effectiveRestingHR = value.effectiveRestingHR; cardio.effectiveMaximumHR = value.effectiveMaximumHR
             cardio.heartRateMaximumSourceRaw = value.heartRateMaximumSourceRaw

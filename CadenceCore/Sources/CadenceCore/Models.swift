@@ -1127,6 +1127,10 @@ public final class CardioWorkout {
     /// distinguish imported strength from unknown cardio. nil for app-authored
     /// workouts. Additive/defaulted for CloudKit + back-compat.
     public var importedWorkoutKindRaw: String?
+    /// Raw `CardioRecordOrigin`; nil for legacy rows (see `originValue`). Local-only.
+    public var recordOriginRaw: String?
+    /// Versioned JSON `HealthKitWorkoutProvenance`; "" when absent.
+    public var healthKitProvenanceData: String = ""
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
     /// Interval (HIIT/boxing) structure as JSON (`IntervalSummary`), so history can

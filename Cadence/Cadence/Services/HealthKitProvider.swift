@@ -273,7 +273,8 @@ final class HealthKitProvider: HealthDataProviding {
                 source: source,
                 hrSamples: hr,
                 routeSamples: route,
-                importedKind: importedKind))
+                importedKind: importedKind,
+                provenance: Self.provenance(for: w)))
         }
         return result
     }
@@ -869,5 +870,27 @@ final class HealthKitProvider: HealthDataProviding {
             sourceRevision.productType ?? ""
         ]
         return fields.contains { $0.localizedCaseInsensitiveContains("watch") }
+    }
+}
+
+extension HealthKitProvider {
+    /// Source/device facts for an imported workout; absent metadata is tolerated.
+    static func provenance(for workout: HKWorkout) -> HealthKitWorkoutProvenance {
+        let revision = workout.sourceRevision
+        let source = revision.source
+        let device = workout.device
+        let metadata = workout.metadata ?? [:]
+        return HealthKitWorkoutProvenance(
+            sourceName: source.name,
+            sourceBundleIdentifier: source.bundleIdentifier,
+            sourceVersion: revision.version,
+            productType: revision.productType,
+            deviceName: device?.name,
+            deviceManufacturer: device?.manufacturer,
+            deviceModel: device?.model,
+            deviceHardwareVersion: device?.hardwareVersion,
+            deviceSoftwareVersion: device?.softwareVersion,
+            workoutBrandName: metadata[HKMetadataKeyWorkoutBrandName] as? String,
+            isAppleFitnessPlus: (metadata[HKMetadataKeyAppleFitnessPlusSession] as? NSNumber)?.boolValue == true)
     }
 }

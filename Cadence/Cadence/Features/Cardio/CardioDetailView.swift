@@ -30,7 +30,18 @@ struct CardioDetailView: View {
                 }
                 if let hr = workout.avgHeartRate { LabeledContent("Avg HR", value: Format.heartRate(hr)) }
                 if let hr = workout.maxHeartRate { LabeledContent("Max HR", value: Format.heartRate(hr)) }
-                LabeledContent("Source", value: workout.sourceValue.rawValue.capitalized)
+                if workout.originValue == .healthKitImported {
+                    let origin = HealthKitWorkoutOriginPresenter.label(for: workout.healthKitProvenance)
+                    LabeledContent("Source", value: origin.primary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityLabel(origin.accessibilityLabel)
+                    if let detail = origin.detail {
+                        LabeledContent("Recorded by", value: detail)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                } else {
+                    LabeledContent("Source", value: workout.sourceValue.rawValue.capitalized)
+                }
             }
 
             let hr = workout.orderedHRSamples

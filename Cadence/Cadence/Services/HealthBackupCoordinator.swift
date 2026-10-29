@@ -33,6 +33,14 @@ final class HealthBackupCoordinator {
         self.outbox = HealthOutboxStore(fileURL: url)
     }
 
+    /// Guarded entry for cardio rows: non-Cladiron-owned rows return an empty report.
+    func enqueueAndDrain(cardio workout: CardioWorkout) async -> HealthBackupDrainReport {
+        guard let summary = HealthBackupEncoder.cardioBackupSummary(for: workout) else {
+            return HealthBackupDrainReport()
+        }
+        return await enqueueAndDrain(.cardio(summary))
+    }
+
     func enqueueAndDrain(_ job: HealthBackupJob) async -> HealthBackupDrainReport {
         do {
             try await outbox.enqueue(HealthOutboxItem(job: job))
@@ -59,8 +67,9 @@ final class HealthBackupCoordinator {
             queued += 1
         }
         for workout in cardio {
-            try await outbox.enqueue(HealthOutboxItem(
-                job: .cardio(HealthBackupEncoder.cardioSummary(for: workout))))
+            // Imported/logged rows are not Cladiron-owned; never back them up.
+            guard let summary = HealthBackupEncoder.cardioBackupSummary(for: workout) else { continue }
+            try await outbox.enqueue(HealthOutboxItem(job: .cardio(summary)))
             queued += 1
         }
         for assessment in assessments {

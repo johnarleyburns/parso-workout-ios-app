@@ -391,9 +391,12 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// builds do not populate it from the Home coach pipeline.
     private var cachedTodayPlan: WatchSync.TodayPlan?
     private var cachedWeekSummary: WatchSync.WeekSummary?
+    /// The exact shared Coach snapshot envelope last published by Home; separate from `cachedTodayPlan`.
+    private(set) var cachedCoachSuggestionSnapshot: WatchCoachSuggestionEnvelope?
     /// Workouts the user chose to send to the Watch; mirrored in the application context.
     private var cachedSentWorkouts: [WatchSync.TodayPlan.Session] = []
     private var watchPayloadTask: Task<Void, Never>?
+    private var historyInvalidationObserver: NSObjectProtocol?
 
     private struct WatchPayloadSnapshot: Sendable {
         let customExercises: [WatchSync.CustomExercise]
@@ -418,6 +421,13 @@ final class AppModel: NSObject, @unchecked Sendable {
         _settings = settings
         _modelContainer = container
         _active = active
+        if historyInvalidationObserver == nil {
+            // Any phone-side history change makes the published Coach snapshot stale.
+            historyInvalidationObserver = NotificationCenter.default.addObserver(
+                forName: .workoutHistoryChanged, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor [weak self] in self?.invalidateWatchCoachSuggestion() }
+                }
+        }
         drainPendingWatchImportsIfNeeded()
     }
 
@@ -593,6 +603,12 @@ final class AppModel: NSObject, @unchecked Sendable {
             context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
             context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
         }
+        // Built fresh, so an expired or invalidated envelope is omitted (= delivered removal),
+        // never resent as current.
+        if let envelope = cachedCoachSuggestionSnapshot, envelope.isStartable(now: date),
+           let coach = try? WatchSync.contextDict(envelope) {
+            context.merge(coach) { _, new in new }
+        }
         // The context is built fresh, so carry workouts sent to the Watch along with it.
         if !cachedSentWorkouts.isEmpty {
             context.merge(WatchSentWorkouts.contextDict(cachedSentWorkouts)) { _, new in new }
@@ -647,6 +663,31 @@ final class AppModel: NSObject, @unchecked Sendable {
         var context = session.applicationContext
         context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
         enqueueWatchContextWrite(context, on: session, at: plan.updatedAt)
+    }
+
+    /// Publishes the exact same-day Coach snapshot envelope Home built (never rebuilt during sync).
+    func updateWatchCoachSuggestion(_ envelope: WatchCoachSuggestionEnvelope) {
+        cachedCoachSuggestionSnapshot = envelope
+        writeWatchCoachSuggestionContext(trigger: .contentChanged)
+    }
+
+    /// History/settings changed: drop the envelope and deliver the removal before any new one exists.
+    func invalidateWatchCoachSuggestion() {
+        guard cachedCoachSuggestionSnapshot != nil
+                || (wcSession?.applicationContext[WatchSync.Key.coachSuggestionSnapshot] != nil) else { return }
+        cachedCoachSuggestionSnapshot = nil
+        writeWatchCoachSuggestionContext(trigger: .contentChanged)
+    }
+
+    private func writeWatchCoachSuggestionContext(trigger: WatchSyncTrigger) {
+        guard let session = wcSession, session.isWatchAppInstalled else { return }
+        var context = session.applicationContext
+        context.removeValue(forKey: WatchSync.Key.coachSuggestionSnapshot)
+        context.removeValue(forKey: WatchSync.Key.coachSuggestionSnapshotUpdatedAt)
+        if let envelope = cachedCoachSuggestionSnapshot, let coach = try? WatchSync.contextDict(envelope) {
+            context.merge(coach) { _, new in new }
+        }
+        enqueueWatchContextWrite(context, on: session, at: Date(), trigger: trigger)
     }
 
     /// "Send Workout to Watch": queues a designed workout on the Watch as "Sent from your phone".
@@ -1282,6 +1323,8 @@ extension AppModel {
             protocolVersion: message[WatchSyncHandshake.Key.protocolVersion] as? Int)
         Self.watchSyncLog.info("watch request outcome=\(String(describing: outcome), privacy: .public)")
         refreshWatchSyncState()
+        // Rebuild the Coach snapshot through Home's normal builder path (no fabricated workout).
+        NotificationCenter.default.post(name: .watchCoachSuggestionRefreshRequested, object: nil)
         // An incompatible Watch keeps its current state; still offer the latest snapshot.
         pushSettingsContext(reason: .watchRequest)
     }
@@ -1679,4 +1722,9 @@ private struct UncheckedWatchReplyHandler: @unchecked Sendable {
 extension Notification.Name {
     static let watchSetLogged = Notification.Name("watch.setLogged")
     static let watchSessionEnded = Notification.Name("watch.sessionEnded")
+}
+
+extension Notification.Name {
+    /// The Watch asked for a fresh snapshot: Home rebuilds the Coach snapshot via its normal builder.
+    static let watchCoachSuggestionRefreshRequested = Notification.Name("cadence.watchCoachSuggestionRefreshRequested")
 }

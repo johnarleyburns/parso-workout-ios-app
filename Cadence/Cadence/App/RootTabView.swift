@@ -13,6 +13,7 @@ struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .home
     @State private var watchSyncToast: WatchSyncToast?
+    @State private var draftSheetPresented = false
     /// UI-test seam backing the `-uiTestWatchStop` counter: `AppModel` writes
     /// each `stopWatchWorkout()` call to this UserDefaults key, and the hidden
     /// element below surfaces the running total to the iPhone smoke test.
@@ -25,6 +26,11 @@ struct RootTabView: View {
         @Bindable var active = active
         return ZStack {
             nativeTabs
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    if selection != .search {
+                        PlanningDraftEntryStrip { draftSheetPresented = true }
+                    }
+                }
 
             // Explicit Watch action results use one non-layout-affecting host.
             // Automatic CloudKit restore state stays in Settings/diagnostics so
@@ -53,6 +59,18 @@ struct RootTabView: View {
                     .opacity(0)
                     .allowsHitTesting(false)
             }
+        }
+        .environment(\.rootTabSelection, $selection)
+        .sheet(isPresented: $draftSheetPresented) {
+            NavigationStack {
+                WorkoutDraftView()
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { draftSheetPresented = false }
+                        }
+                    }
+            }
+            .environment(\.rootTabSelection, $selection)
         }
         // The live workout + its finish summary share ONE root-level cover
         // (launch-blockers Phase 1b). A cover — not a NavigationStack push — so
@@ -329,5 +347,38 @@ private struct WatchSyncToastView: View {
             }
             .padding(.horizontal, 16)
             .accessibilityIdentifier("watchSync.toast")
+    }
+}
+
+/// Reachable-from-anywhere entry to a non-empty Workout Draft. A top inset so
+/// it never competes with the tab bar or the live-workout bottom accessory.
+private struct PlanningDraftEntryStrip: View {
+    @Query(filter: #Predicate<PlanningDraft> { $0.deletedAt == nil },
+           sort: \PlanningDraft.updatedAt, order: .reverse) private var drafts: [PlanningDraft]
+    let open: () -> Void
+
+    private var count: Int? {
+        guard let draft = drafts.first,
+              let n = try? PlanningDraftCodec.decode(draft).exercises.count, n > 0 else { return nil }
+        return n
+    }
+
+    var body: some View {
+        if let count {
+            Button(action: open) {
+                HStack {
+                    Image(systemName: "list.bullet.clipboard")
+                    Text("Workout draft · \(PlanningDraftSummary.countText(count))").lineLimit(2)
+                    Spacer()
+                    Text("Continue").fontWeight(.semibold)
+                }
+                .font(.subheadline)
+                .padding(.horizontal, 16).frame(minHeight: 44)
+                .background(.bar)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Continue workout draft, \(PlanningDraftSummary.countText(count))")
+            .accessibilityIdentifier("planningDraft.entryStrip")
+        }
     }
 }

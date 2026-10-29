@@ -10,6 +10,7 @@ import CadenceFeatures
 final class WatchIntervalHaptics {
     private let device = WKInterfaceDevice.current()
     private let audio = WatchIntervalCuePlayer()
+    private var owner: UUID { audio.owner }
     private let voice = WatchWorkoutVoiceCoach.shared
     private var decider = IntervalCueDecider()
     private var didPlayCompletion = false
@@ -43,12 +44,12 @@ final class WatchIntervalHaptics {
                 device.play(.directionUp)
                 audio.warning(soundsEnabled: soundsEnabled, isBoxing: isBoxing)
                 voice.speak(.warning(seconds: max(1, Int(runner.phaseRemaining.rounded()))),
-                            enabled: spokenEnabled)
+                            owner: owner, enabled: spokenEnabled)
             case .countdownTick:
                 device.play(.click)
             case .getReady(let second):
                 device.play(.click)
-                if second == 3 { voice.speak(.warning(seconds: nil), enabled: spokenEnabled) }
+                if second == 3 { voice.speak(.warning(seconds: nil), owner: owner, enabled: spokenEnabled) }
             case .phaseTransition(let kind):
                 switch kind {
                 case .work:
@@ -72,7 +73,7 @@ final class WatchIntervalHaptics {
                 }
                 voice.speak(.phase(kind: voiceKind,
                                    round: isBoxing && kind == .work ? currentRound : nil),
-                            enabled: spokenEnabled)
+                            owner: owner, enabled: spokenEnabled)
                 decider.reset()
             }
         }
@@ -82,7 +83,7 @@ final class WatchIntervalHaptics {
         decider = IntervalCueDecider()
         didPlayCompletion = false
         audio.stop()
-        voice.stop()
+        voice.stop(owner: owner)
     }
 
     private func playHapticSequence(_ type: WKHapticType, count: Int) {

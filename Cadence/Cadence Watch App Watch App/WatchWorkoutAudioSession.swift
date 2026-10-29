@@ -1,4 +1,5 @@
 import AVFoundation
+import CadenceFeatures
 
 protocol WatchAudioSessioning: AnyObject {
     func setCategory(_ category: AVAudioSession.Category,
@@ -9,33 +10,41 @@ protocol WatchAudioSessioning: AnyObject {
 
 extension AVAudioSession: WatchAudioSessioning {}
 
-/// The only place watch workout sounds may configure the system audio session.
-/// `.mixWithOthers` is mandatory: bells sit on top of music and podcasts and
-/// never pause or duck them.
+/// AV adapter for `WatchCueAudioCoordinator`, the only owner of the cue session.
+/// `.mixWithOthers` is mandatory: speech and bells sit on top of music and podcasts and
+/// never pause or duck them. Only deactivation carries `.notifyOthersOnDeactivation`.
 @MainActor
-final class WatchWorkoutAudioSession {
-    static let shared = WatchWorkoutAudioSession()
-
+final class WatchWorkoutAudioSession: WatchCueSessionDriving {
     private let session: any WatchAudioSessioning
-    private(set) var isActive = false
 
     init(session: any WatchAudioSessioning = AVAudioSession.sharedInstance()) {
         self.session = session
     }
 
-    func activateForCues() {
+    func activateMixingPlayback() throws {
         do {
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try session.setActive(true, options: [])
-            isActive = true
         } catch {
-            isActive = false
+            throw Self.classify(error)
         }
     }
 
-    func deactivate() {
-        guard isActive else { return }
-        try? session.setActive(false, options: .notifyOthersOnDeactivation)
-        isActive = false
+    func deactivateNotifyingOthers() throws {
+        do {
+            try session.setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            throw Self.classify(error)
+        }
+    }
+
+    /// `isBusy` is reported while the session is still deactivating.
+    static func classify(_ error: Error) -> WatchCueSessionError {
+        let ns = error as NSError
+        if ns.domain == NSOSStatusErrorDomain,
+           ns.code == AVAudioSession.ErrorCode.isBusy.rawValue {
+            return .busy
+        }
+        return .failed(domain: ns.domain, code: ns.code)
     }
 }

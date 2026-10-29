@@ -36,6 +36,7 @@ struct CadenceWatchApp: App {
                         }
                         .environment(watchManager)
                         .environment(watchAppSettings)
+                        .onAppear { WatchCueAudioHub.shared.observeSettings(watchAppSettings) }
                         .task {
                             // HealthKit decides whether the Heart Rate Access
                             // boundary shows (it has never been asked for the

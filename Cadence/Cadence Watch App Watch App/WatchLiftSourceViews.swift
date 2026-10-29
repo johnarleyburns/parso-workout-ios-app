@@ -3,27 +3,29 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-/// Suggest: reviews the phone-synced strength suggestion; starting is an explicit action.
+/// Suggest: evaluates only the exact shared Coach snapshot; starting is an explicit action.
 struct WatchSuggestReviewView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
-    @Environment(\.modelContext) private var context
     @State private var launch: WatchLiftLaunch?
-    @Query(sort: \WorkoutSession.date, order: .reverse) private var localSessions: [WorkoutSession]
+    @State private var cache = WatchSuggestResolutionCache()
 
     var body: some View {
-        let review: WatchSuggestReview? = WatchSuggestReview.make(plan: watchManager.todayPlan)
-            ?? WatchSuggestReview.makeLocal(sessions: localSessions)
+        let availability = cache.resolve(envelope: watchManager.coachSuggestionEnvelope,
+                                         now: watchManager.coachClock(),
+                                         historyState: watchManager.coachHistoryState)
         List {
-            if let review {
+            switch availability {
+            case .ready(let ready, let heading, let syncedAt):
+                let review = WatchSuggestReview(launch: ready)
                 Section {
-                    Text(review.heading).font(.caption).foregroundStyle(.secondary)
+                    Text(heading).font(.caption).foregroundStyle(.secondary)
                     Text(review.title).font(.headline)
-                    if review.isStale {
-                        Text("Last synced \(review.syncedAt.formatted(date: .abbreviated, time: .shortened)). This suggestion may be out of date.")
-                            .font(.caption2).foregroundStyle(.secondary)
-                            .accessibilityIdentifier("watchStrength.suggest.stale")
-                    }
+                    Text("Synced \(syncedAt.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(WatchSuggestResolver.readyAccessibilityLabel)
+                .accessibilityIdentifier("watchStrength.suggest.ready")
                 Section("Exercises") {
                     ForEach(Array(review.exerciseLines.enumerated()), id: \.offset) { _, line in
                         Text(line).font(.caption)
@@ -32,7 +34,6 @@ struct WatchSuggestReviewView: View {
                         Text(review.prescriptionDetail).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
-                if review.canStart {
                 Section {
                     if watchManager.isActive {
                         Text("Finish or resume your current workout first.")
@@ -40,27 +41,49 @@ struct WatchSuggestReviewView: View {
                     }
                     Button {
                         WatchHaptics.success()
-                        launch = review.launch
+                        launch = ready
                     } label: {
                         Label("Start suggested workout", systemImage: "play.fill")
+                            .frame(minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(watchManager.isActive)
                     .accessibilityIdentifier("watchStrength.suggest.start")
                     .accessibilityHint("Creates a new workout from the suggestion")
                 }
+            case .needsSync(let reason, let lastSyncedAt):
+                Section {
+                    Label("Needs refresh", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                        .font(.headline)
+                    Text(reason.message).font(.footnote)
+                    if let lastSyncedAt {
+                        Text("Last synced \(lastSyncedAt.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
-            } else {
-                Text(WatchSuggestReview.emptyMessage)
-                    .font(.footnote)
-                    .accessibilityIdentifier("watchStrength.suggest.empty")
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(reason.accessibilityLabel)
+                .accessibilityIdentifier("watchStrength.suggest.needsSync")
+                Section {
+                    Button {
+                        watchManager.requestSettingsSync()
+                    } label: {
+                        Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
+                            .frame(minHeight: 44)
+                    }
+                    .accessibilityIdentifier("watchStrength.suggest.syncNow")
+                    .accessibilityHint("Asks iPhone for a fresh suggestion")
+                }
             }
         }
         .navigationTitle("Suggest")
+        .onChange(of: availability) { _, new in
+            if new.launch == nil { launch = nil }
+        }
         .navigationDestination(isPresented: Binding(get: { launch != nil }, set: { if !$0 { launch = nil } })) {
             if let config = launch {
-            WatchStrengthView(title: config.title, plannedExerciseNames: config.exerciseNames,
-                              repLadder: config.repLadder, planPayload: config.planPayload)
+                WatchStrengthView(title: config.title, plannedExerciseNames: config.exerciseNames,
+                                  repLadder: config.repLadder, planPayload: config.planPayload)
             }
         }
     }

@@ -153,6 +153,8 @@ public final class WatchCoachSuggestionCoordinator {
         return envelope
     }
 
+    public var invalidatedAt: Date? { store.loadInvalidatedAt() }
+
     /// The envelope only if it may launch a suggestion right now.
     public func startable(now: Date) -> WatchCoachSuggestionEnvelope? {
         guard let current, current.isStartable(now: now) else { return nil }

@@ -3,7 +3,7 @@ import SwiftData
 import CadenceCore
 
 /// Watch Lift → Strength source menu, Suggest review, and Previous templates.
-/// Pure presenters: the Watch never runs Coach logic; Suggest only presents the phone-synced plan.
+/// Pure presenters; Suggest evaluates only the shared Coach snapshot (see `WatchSuggestResolver`).
 public enum WatchLiftSources {
     public enum Source: String, CaseIterable, Sendable {
         case suggest, previous, custom
@@ -51,68 +51,6 @@ public struct WatchLiftLaunch: Equatable, Sendable {
     public var exerciseNames: [String]
     public var repLadder: [Int]
     public var planPayload: WatchPlanPayload?
-}
-
-public struct WatchSuggestReview: Equatable, Sendable {
-    public static let emptyMessage = "No strength suggestion is synced yet. Open Cladiron on iPhone to refresh suggestions."
-
-    public var heading = "Synced from iPhone"
-    public var title: String
-    public var exerciseLines: [String]
-    public var prescriptionDetail: String
-    public var isStale: Bool
-    public var syncedAt: Date
-    public var launch: WatchLiftLaunch
-    /// false → review only (e.g. already trained today); no Start button.
-    public var canStart = true
-
-    /// nil → show `emptyMessage`; nothing may be launched.
-    public static func make(plan: WatchSync.TodayPlan?, now: Date = Date(),
-                            calendar: Calendar = .current) -> WatchSuggestReview? {
-        guard let plan, let session = plan.sessions.first(where: \.isStrength) else { return nil }
-        let strength = session.planPayload?.strength
-        let names = !session.exerciseNames.isEmpty ? session.exerciseNames : (strength?.exerciseNames ?? [])
-        let ladder = !session.repLadder.isEmpty ? session.repLadder : (strength?.repLadder ?? [])
-        guard !names.isEmpty || !(strength?.prescriptions.isEmpty ?? true) else { return nil }
-        let title = session.label.isEmpty ? "Strength" : session.label
-        var lines = names
-        var detail = ladder.isEmpty ? "" : "Reps " + ladder.map(String.init).joined(separator: "-")
-        if let prescriptions = strength?.prescriptions, !prescriptions.isEmpty {
-            lines = prescriptions.map { p in
-                let working = p.sets.filter { !$0.isWarmup }
-                return "\(p.exerciseName) · \(working.count)×\(repsText(working.map(\.targetReps)))"
-            }
-            detail = "\(prescriptions.reduce(0) { total, p in total + p.sets.filter { !$0.isWarmup }.count }) working sets"
-        }
-        return WatchSuggestReview(
-            title: title, exerciseLines: lines, prescriptionDetail: detail,
-            isStale: !calendar.isDate(plan.updatedAt, inSameDayAs: now),
-            syncedAt: plan.updatedAt,
-            launch: WatchLiftLaunch(title: title, exerciseNames: session.exerciseNames,
-                                    repLadder: session.repLadder, planPayload: session.planPayload))
-    }
-
-    /// Offline recommendation from Watch-local history. This is a newly materialized
-    /// plan, not a template launch of the previous workout.
-    public static func makeLocal(sessions: [WorkoutSession], now: Date = Date(),
-                                 calendar: Calendar = .current) -> WatchSuggestReview {
-        let result = WatchLocalSuggestionGenerator.generate(sessions: sessions, now: now, calendar: calendar)
-        let heading: String
-        switch result.source {
-        case .starter: heading = "Starter workout"
-        case .watchHistory: heading = "Suggested on Apple Watch"
-        case .alreadyTrainedToday: heading = "Suggested on Apple Watch"
-        }
-        return WatchSuggestReview(
-            heading: heading, title: result.launch.title, exerciseLines: result.exerciseLines,
-            prescriptionDetail: result.prescriptionDetail, isStale: false, syncedAt: now,
-            launch: result.launch, canStart: result.source != .alreadyTrainedToday)
-    }
-
-    static func repsText(_ reps: [Int]) -> String {
-        guard let first = reps.first else { return "0" }
-        return reps.allSatisfy({ $0 == first }) ? "\(first)" : reps.map(String.init).joined(separator: "/")
-    }
 }
 
 public struct WatchPreviousWorkout: Equatable, Sendable, Identifiable {

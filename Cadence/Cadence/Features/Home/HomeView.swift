@@ -102,14 +102,14 @@ struct HomeView: View {
     /// HIIT protocols skipped with "Suggest another" during this Cardio for You session.
     @State var lastSuggestedCardioInput: CardioSuggestionInput?
     @State var skippedHIITProtocolIDs: Set<String> = []
-    /// A generated strength plan is presented directly after the chooser sheet
-    /// dismisses. Keeping it as a sheet item avoids racing a value navigation
-    /// push against the nested Start Workout navigation stack.
+    /// Generated strength plan, shown as a sheet item after the chooser dismisses
+    /// (avoids racing a value push against the nested Start Workout stack).
     @State var suggestedWorkoutPlan: EditablePlan?
     @State var todaySuggestedPlan: EditablePlan?
-    /// All other Home entry points use the same direct sheet presentation: a
-    /// value push can lose its destination while the originating sheet
-    /// dismisses, which surfaced as the generic warning page.
+    /// Early key the rendered Today suggestion was produced under (nil = unproven).
+    @State var todaySuggestionRenderedKey: String?
+    /// Other Home entry points present directly too: a value push can lose its
+    /// destination while the originating sheet dismisses (generic warning page).
     @State var workoutEditorPlan: EditablePlan?
     /// Holds a request until the start sheet that launched it has finished
     /// dismissing, then opens the generated Personalized plan directly.

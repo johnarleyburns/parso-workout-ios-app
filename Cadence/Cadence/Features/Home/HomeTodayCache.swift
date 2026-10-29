@@ -24,8 +24,15 @@ enum HomeTodayCache {
                 fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL()))
         // Outcome names only; never workout content.
         c.outcomeObserver = { log.info("today cache outcome: \($0.rawValue, privacy: .public)") }
+        c.invalidationObserver = { reason in
+            log.info("today cache invalidation: \(reason.rawValue, privacy: .public)")
+            signposter.emitEvent("cacheInvalidation", "\(reason.rawValue, privacy: .public)")
+        }
         return c
     }()
+
+    /// Launch-phase signposts (names only, never workout data).
+    static let signposter = OSSignposter(subsystem: "guru.parso.cadence", category: "TodayLaunch")
 
     static var suggestionStore: TodaySuggestedWorkoutCacheStore { coordinator.suggestionStore }
 }
@@ -101,6 +108,9 @@ extension HomeView {
     /// Coach task body: a valid cached recommendation (in-process or durable,
     /// even after relaunch) is shown before any loading state is set.
     func runCoachTask() async {
+        await restoreTodayDisplayCacheImmediately()
+        // Let the cached hero render before any SwiftData traversal below.
+        await Task.yield()
         if await restoreTodayRecommendation() { return }
         if restoredRecommendation == nil {
             coachSnapshotReady = false
@@ -117,6 +127,7 @@ extension HomeView {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             let key = todayFingerprint
+            HomeTodayCache.signposter.emitEvent("stableInputsReady")
             guard key == before else { return await runCoachTask() }
             // Matching or not, the full snapshot still hydrates for the other
             // coach surfaces; a mismatch replaces the record via `store`.
@@ -124,8 +135,32 @@ extension HomeView {
                 stableFingerprint: key.fingerprint, stablePassiveStamp: key.passiveStamp,
                 surface: surface.cacheSurface)
         }
+        let signpost = HomeTodayCache.signposter
+        let interval = signpost.beginInterval("fullSnapshot")
         await refreshCoachSnapshot()
+        signpost.endInterval("fullSnapshot", interval)
         restoredRecommendation = nil
+    }
+
+    /// First-frame restore: reads only the small Application Support envelopes,
+    /// validates schema/day and publishes DTO state. It never computes
+    /// `todayFingerprint`, touches SwiftData, waits for HealthKit or builds a
+    /// snapshot; freshness is reconciled afterwards by `runCoachTask` and
+    /// `prepareTodaySuggestion`.
+    func restoreTodayDisplayCacheImmediately() async {
+        guard surface == .today else { return }
+        if !coachSnapshotReady, restoredRecommendation == nil,
+           let hit = await HomeTodayCache.coordinator.restoreProvisional(surface: .today) {
+            restoredRecommendation = hit.payload
+            HomeTodayCache.signposter.emitEvent("heroRestored")
+        }
+        if todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
+           let hit = await HomeTodayCache.suggestionStore.peekDisplayable() {
+            guard todaySuggestedPlan == nil, suggestedWorkoutPlan == nil else { return }
+            todaySuggestedPlan = hit.plan.makePlan()
+            todaySuggestionRenderedKey = hit.earlyKey
+            HomeTodayCache.signposter.emitEvent("suggestionRestored")
+        }
     }
 
     /// Unchanged HealthKit readiness keeps the cached result; the relaunch

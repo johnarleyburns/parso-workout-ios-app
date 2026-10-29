@@ -143,9 +143,15 @@ extension HomeView {
             }
             .modifier(WatchCoachRefreshModifier(action: refreshWatchCoachSuggestion))
             .onChange(of: historyRefreshToken) { _, _ in
+                // The token is only a wake-up. Invalidate solely when the
+                // semantic suggestion key proves the inputs changed; the hero
+                // record is replaced atomically by the fingerprint-driven
+                // recompute, never deleted here.
+                // A stale plan stays visible until the replacement is published.
+                guard todaySuggestedPlan != nil || suggestedWorkoutTask != nil,
+                      todaySuggestionRenderedKey != todaySuggestionEarlyKey() else { return }
                 model.invalidateWatchCoachSuggestion()
-                todaySuggestedPlan = nil
-                HomeTodayCache.coordinator.invalidate(surface: surface.cacheSurface)
+                HomeTodayCache.coordinator.invalidateSuggestion(surface: surface.cacheSurface)
                 // A completion invalidates the request snapshot as well as
                 // the rendered plan. The detached solver may still be running;
                 // cancel it and invalidate its generation so its pre-completion

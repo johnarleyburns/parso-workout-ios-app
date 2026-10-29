@@ -13,30 +13,36 @@ extension HomeView {
     /// Prepares a value-only Today preview from the existing personalized
     /// generator. Starting or editing still goes through the normal editor.
     func prepareTodaySuggestion() async {
-        guard surface == .today,
-              todaySuggestedPlan == nil,
-              suggestedWorkoutPlan == nil,
-              suggestedWorkoutTask == nil,
-              sessions.filter({ $0.countsAsStrengthHistory }).count >= 2
+        guard surface == .today, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
+        // Defer all history/catalog work until the cached hero is on screen
+        // (bounded, so a missing cache cannot stall the suggestion).
+        for _ in 0..<20 where !(coachSnapshotReady || restoredRecommendation != nil) && !Task.isCancelled {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+        await Task.yield()
+        guard !Task.isCancelled,
+              sessions.lazy.filter({ $0.countsAsStrengthHistory }).prefix(2).count >= 2
         else { return }
+        let earlyKey = todaySuggestionEarlyKey()
+        // A rendered plan whose key is proven current needs no further work.
+        if todaySuggestedPlan != nil, todaySuggestionRenderedKey == earlyKey { return }
         // A valid same-day durable plan is restored before any catalog loading
         // or generation, so the prior personalized plan renders immediately.
-        let earlyKey = todaySuggestionEarlyKey()
         if let restored = await HomeTodayCache.suggestionStore.restoreEarly(earlyKey: earlyKey) {
-            guard !Task.isCancelled, todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
-                  suggestedWorkoutTask == nil else { return }
-            todaySuggestedPlan = restored.makePlan()
+            guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
+            if todaySuggestedPlan == nil { todaySuggestedPlan = restored.makePlan() }
+            todaySuggestionRenderedKey = earlyKey
             return
         }
         // Cold generation is deferred past launch; heavy catalog mapping runs
-        // off the main actor.
+        // off the main actor. Any provisional plan stays visible until the
+        // replacement is published.
         if !(await HomeTodayCache.suggestionStore.hasSameDayEntry()) {
             try? await Task.sleep(for: .seconds(1.5))
         }
         guard !Task.isCancelled else { return }
         let candidates = await loadSuggestionCandidates()
-        guard !Task.isCancelled, todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
-              suggestedWorkoutTask == nil else { return }
+        guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
         requestSuggestedStrength(present: false, preloadedCandidates: candidates)
     }
 
@@ -101,6 +107,7 @@ extension HomeView {
                       suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
                 todaySuggestedPlan = payload.makePlan()
+                todaySuggestionRenderedKey = earlyKey
             }
         }
         suggestedWorkoutTask = task

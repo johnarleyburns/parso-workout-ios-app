@@ -15,7 +15,7 @@ struct WatchAddExerciseView: View {
     @State private var selectedGroup: MuscleGroup?
     @State private var showingRecent = false
     @State private var filter = WatchExerciseFilter()
-    @State private var selectedExercise: Exercise?
+    @State private var selectedEntry: ExerciseCatalogEntry?
     @State private var showingDetail = false
     @State private var query = ""
     @State private var searchResults: [ExerciseCatalogEntry] = []
@@ -25,10 +25,10 @@ struct WatchAddExerciseView: View {
     @State private var customName = ""
     @State private var customGroups: Set<MuscleGroup> = []
     @State private var showingAllGroups = false
-    /// When the visible list last swapped (category opened, Recent, search).
-    /// A tap that was aimed at the previous list can land on the new list's
-    /// first row; rows ignore taps for a short moment after a swap.
-    @State private var listChangedAt = Date.distantPast
+    /// Newest search; older searches may not install results.
+    @State private var searchGeneration = 0
+    /// Duplicate / failure feedback shown while the user stays in Add Exercise.
+    @State private var feedback: String?
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -37,9 +37,15 @@ struct WatchAddExerciseView: View {
     var body: some View {
         Group {
             if showingCustomExercise {
-                customExerciseForm
-            } else if let selectedExercise {
-                preview(selectedExercise)
+                WatchCustomExerciseForm(name: $customName, groups: $customGroups,
+                                        feedback: feedback,
+                                        onCreate: { report(model.createAndAddExercise(named: customName, muscleGroups: customGroups)) },
+                                        onBack: { showingCustomExercise = false })
+            } else if let selectedEntry {
+                WatchAddExercisePreview(entry: selectedEntry, feedback: feedback,
+                                        showingDetail: $showingDetail,
+                                        onBack: { self.selectedEntry = nil },
+                                        onAdd: { add(selectedEntry) })
             } else {
                 picker
             }
@@ -62,6 +68,12 @@ struct WatchAddExerciseView: View {
 
     private var picker: some View {
         List {
+            if let feedback {
+                Text(feedback)
+                    .font(.caption.bold())
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("watchAddExercise.feedback")
+            }
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Section {
                     Button {
@@ -151,7 +163,6 @@ struct WatchAddExerciseView: View {
                     if !catalog.recent.isEmpty {
                         Button {
                             WatchHaptics.tap()
-                            listChangedAt = Date()
                             showingRecent = true
                         } label: { Label("My Last Exercises", systemImage: "clock.arrow.circlepath") }
                         .buttonStyle(.plain)
@@ -161,7 +172,6 @@ struct WatchAddExerciseView: View {
                     ForEach(watchCategoryOrder) { group in
                         Button {
                             WatchHaptics.tap()
-                            listChangedAt = Date()
                             selectedGroup = group
                         } label: {
                             Text(group.displayName)
@@ -235,138 +245,62 @@ struct WatchAddExerciseView: View {
         return trimmed.isEmpty ? String(localized: "Add Custom Exercise") : String(localized: "Add Custom “\(trimmed)”")
     }
 
-    private var customExerciseForm: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                TextField("Exercise name", text: $customName)
-                    .accessibilityIdentifier("watchCustom.name")
-
-                Text("Muscle groups")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                    ForEach(MuscleGroup.canonicalOrder) { group in
-                        Button {
-                            WatchHaptics.tap()
-                            if customGroups.contains(group) {
-                                customGroups.remove(group)
-                            } else {
-                                customGroups.insert(group)
-                            }
-                        } label: {
-                            Text(group.displayName)
-                                .font(.caption2.bold())
-                                .frame(maxWidth: .infinity, minHeight: 28)
-                                .background(customGroups.contains(group) ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(group.displayName) \(customGroups.contains(group) ? "selected" : "not selected")")
-                        .accessibilityIdentifier("watchCustom.muscleGroup.\(group.rawValue)")
-                    }
-                }
-
-                Button {
-                    WatchHaptics.success()
-                    _ = model.addCustomExercise(named: customName, muscleGroups: customGroups)
-                } label: {
-                    Label("Create & Add", systemImage: "plus.circle.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .disabled(customName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || customGroups.isEmpty)
-                .accessibilityIdentifier("watchCustom.create")
-
-                Button("Back") {
-                    WatchHaptics.tap()
-                    showingCustomExercise = false
-                }
-                .buttonStyle(.bordered)
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("watchCustom.back")
-            }
-            .padding()
-        }
-    }
-
-    @ViewBuilder
-    private func preview(_ exercise: Exercise) -> some View {
-        if showingDetail {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    WatchExerciseDetailContent(exercise: exercise)
-                    quickActions(exercise)
-                }
-                .padding()
-            }
-        } else {
-            ScrollView {
-                VStack(spacing: 10) {
-                    WatchMarqueeText(text: exercise.name)
-                        .padding(.top, 12)
-                    quickActions(exercise)
-                }
-                .padding(.horizontal)
-                .padding(.bottom, 28)
-            }
-        }
-    }
-
-    private func quickActions(_ exercise: Exercise) -> some View {
-        VStack(spacing: 8) {
-            Button {
-                WatchHaptics.tap()
-                selectedExercise = nil
-                showingDetail = false
-            } label: {
-                Label("Back", systemImage: "chevron.left")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("watchAddExercise.previewBack")
-
-            Button {
-                WatchHaptics.success()
-                model.addExercise(named: exercise.name)
-            } label: {
-                Label("Add", systemImage: "plus.circle.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
-            .accessibilityIdentifier("watchAddExercise.previewAdd")
-
-            Button {
-                WatchHaptics.tap()
-                showingDetail = true
-            } label: {
-                Text("Show Detail")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("watchAddExercise.showDetail")
-        }
-    }
-
-    /// Rows are plain values; the stored exercise is read only when tapped.
+    /// The row is a primary "add" action; Details is a separate target. Rows
+    /// are plain values, so the stored exercise is only read when added.
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
-        Button {
-            guard Date().timeIntervalSince(listChangedAt) > 0.8 else { return }
-            WatchHaptics.tap()
-            selectedExercise = ExerciseCatalogSnapshot.exercise(id: exercise.id, in: context)
-        } label: {
-            Text(exercise.name)
-                .lineLimit(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
+        HStack(spacing: 6) {
+            Button {
+                add(exercise)
+            } label: {
+                Label(exercise.name, systemImage: "plus.circle.fill")
+                    .labelStyle(.titleAndIcon)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add \(exercise.name)")
+            .accessibilityIdentifier("watchAddExercise.add.\(exercise.id.uuidString)")
+
+            Button {
+                WatchHaptics.tap()
+                feedback = nil
+                selectedEntry = exercise
+            } label: {
+                Image(systemName: "info.circle")
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Details for \(exercise.name)")
+            .accessibilityIdentifier("watchAddExercise.details.\(exercise.id.uuidString)")
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("watchAddExercise.row.\(exercise.name)")
+    }
+
+    private func add(_ entry: ExerciseCatalogEntry) {
+        report(model.addExercise(id: entry.id, named: entry.name))
+    }
+
+    /// Success hands off to the Plan page (the model's stage change), which
+    /// shows the confirmation; everything else keeps the picker, query and
+    /// results in place with a visible message.
+    private func report(_ result: WatchExerciseAddResult) {
+        let outcome = WatchExerciseAddPresenter.outcome(for: result)
+        switch outcome.feedback {
+        case .success: WatchHaptics.success()
+        case .failure: WatchHaptics.failure()
+        }
+        if outcome.returnsToPlan {
+            feedback = nil
+        } else {
+            feedback = outcome.message
+            AccessibilityNotification.Announcement(outcome.message).post()
+        }
     }
 
     private func scheduleSearch(immediate: Bool = false) {
-        listChangedAt = Date()
+        searchGeneration &+= 1
+        let generation = searchGeneration
         searchTask?.cancel()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -389,10 +323,11 @@ struct WatchAddExerciseView: View {
                 snapshot.search(trimmed, limit: WatchExerciseSearchPresenter.resultLimit)
             }.value
             guard !Task.isCancelled,
-                  query.trimmingCharacters(in: .whitespacesAndNewlines) == trimmed else { return }
+                  WatchExerciseAddPresenter.acceptsSearchResults(
+                    generation: generation, current: searchGeneration,
+                    searchedQuery: trimmed, currentQuery: query) else { return }
             searchResults = matches
             isSearching = false
-            listChangedAt = Date() // swapped-in rows must not catch a scrolling finger
         }
     }
 }

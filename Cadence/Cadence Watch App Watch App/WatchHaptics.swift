@@ -9,6 +9,10 @@ enum WatchHaptics {
         WKInterfaceDevice.current().play(.success)
     }
 
+    static func failure() {
+        WKInterfaceDevice.current().play(.failure)
+    }
+
     static func delete() {
         WKInterfaceDevice.current().play(.failure)
     }

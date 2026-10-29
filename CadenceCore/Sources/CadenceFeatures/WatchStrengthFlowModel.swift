@@ -37,6 +37,47 @@ public struct WatchPerformerOption: Equatable, Sendable, Identifiable {
     }
 }
 
+/// Truthful outcome of an Add Exercise attempt on the Watch.
+public enum WatchExerciseAddResult: Equatable, Sendable {
+    case added(name: String)
+    case alreadyPresent(name: String)
+    case unavailable(name: String)
+    case saveFailed(name: String)
+}
+
+/// Pure presentation rules for Add Exercise, with no clock involved: a tap on a
+/// visible row is always acted on, and only stale *search data* is rejected.
+public enum WatchExerciseAddPresenter {
+    public enum Feedback: Equatable, Sendable { case success, failure }
+
+    public struct Outcome: Equatable, Sendable {
+        public let message: String
+        public let feedback: Feedback
+        /// True when the picker should hand off to the Plan page.
+        public let returnsToPlan: Bool
+    }
+
+    public static func outcome(for result: WatchExerciseAddResult) -> Outcome {
+        switch result {
+        case .added(let name):
+            return Outcome(message: "Added \(name)", feedback: .success, returnsToPlan: true)
+        case .alreadyPresent(let name):
+            return Outcome(message: "\(name) is already in this workout", feedback: .failure, returnsToPlan: false)
+        case .unavailable(let name):
+            return Outcome(message: "Couldn't add \(name). Try again or pick another.", feedback: .failure, returnsToPlan: false)
+        case .saveFailed(let name):
+            return Outcome(message: "Couldn't save \(name). Try again.", feedback: .failure, returnsToPlan: false)
+        }
+    }
+
+    /// Search results apply only if they belong to the newest search and query.
+    public static func acceptsSearchResults(generation: Int, current: Int,
+                                            searchedQuery: String, currentQuery: String) -> Bool {
+        generation == current
+            && currentQuery.trimmingCharacters(in: .whitespacesAndNewlines) == searchedQuery
+    }
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -82,6 +123,12 @@ public final class WatchStrengthFlowModel {
     /// The user's PR rule and 1RM formula (Settings), so the watch's PR moment agrees with Progress.
     public var prRule: PRRule = SettingsDefault.prRule
     public var prFormula: OneRepMaxFormula = SettingsDefault.oneRepMaxFormula
+
+    /// The exercise most recently added from Add Exercise; the Plan page shows
+    /// it as an accessible confirmation until the user dismisses it.
+    public var lastAddedExerciseName: String?
+    /// Persistence seam (tests inject a failing save).
+    var saveHandler: (ModelContext) throws -> Void = { try $0.save() }
 
     public var discardPayload: [String: Any]?
     public var lastSyncPayload: [String: Any]?
@@ -227,51 +274,88 @@ public final class WatchStrengthFlowModel {
             .map { $0.sorted { $0.order < $1.order }.map(\.reps) }
     }
 
-    public func goToAddExercise() { stage = .addExercise }
+    public func goToAddExercise() {
+        lastAddedExerciseName = nil
+        stage = .addExercise
+    }
 
-    public func addExercise(named name: String) {
+    /// Resolves a free-form name (Quick Talk, aliases) and adds it. A name that
+    /// resolves to nothing is `.unavailable` and leaves the workout untouched.
+    @discardableResult
+    public func addExercise(named name: String) -> WatchExerciseAddResult {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-
-        if let exercise = exercise(named: trimmed) {
-            addResolvedExercise(exercise)
-            return
+        guard !trimmed.isEmpty, let exercise = exercise(named: trimmed) else {
+            return .unavailable(name: trimmed)
         }
-        stage = .home
-        refreshExerciseList()
+        return addResolvedExercise(exercise)
+    }
+
+    /// Adds a picker row by catalog id. A stale id (catalog refreshed since the
+    /// row was drawn) is `.unavailable`; no exercise is ever created here.
+    @discardableResult
+    public func addExercise(id: UUID, named name: String) -> WatchExerciseAddResult {
+        guard let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) else {
+            return .unavailable(name: name)
+        }
+        exerciseCache[exercise.name] = exercise
+        return addResolvedExercise(exercise)
     }
 
     /// Creates a named exercise from the watch's compact muscle-group pills, then
     /// adds it to the current workout exactly like a built-in search result.
     @discardableResult
-    public func addCustomExercise(named name: String, muscleGroups: Set<MuscleGroup>) -> Exercise? {
+    public func createAndAddExercise(named name: String, muscleGroups: Set<MuscleGroup>) -> WatchExerciseAddResult {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !muscleGroups.isEmpty else { return nil }
-        guard let exercise = try? WorkoutRepository.findOrCreateExercise(
-            named: trimmed,
-            category: WatchCustomExerciseDefinition.category(for: muscleGroups),
-            primaryMuscles: WatchCustomExerciseDefinition.primaryMuscles(for: muscleGroups),
-            in: context
-        ) else { return nil }
+        guard !trimmed.isEmpty, !muscleGroups.isEmpty,
+              let exercise = try? WorkoutRepository.findOrCreateExercise(
+                named: trimmed,
+                category: WatchCustomExerciseDefinition.category(for: muscleGroups),
+                primaryMuscles: WatchCustomExerciseDefinition.primaryMuscles(for: muscleGroups),
+                in: context
+              ) else { return .unavailable(name: trimmed) }
         exerciseCache[exercise.name] = exercise
-        addResolvedExercise(exercise)
-        return exercise
+        return addResolvedExercise(exercise)
     }
 
-    private func addResolvedExercise(_ exercise: Exercise) {
+    @discardableResult
+    public func addCustomExercise(named name: String, muscleGroups: Set<MuscleGroup>) -> Exercise? {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard case .added = createAndAddExercise(named: trimmed, muscleGroups: muscleGroups) else { return nil }
+        return exerciseCache[trimmed] ?? exercise(named: trimmed)
+    }
+
+    @discardableResult
+    private func addResolvedExercise(_ exercise: Exercise) -> WatchExerciseAddResult {
         let resolved = exercise.name
+        func matches(_ other: String) -> Bool { other.compare(resolved, options: .caseInsensitive) == .orderedSame }
+        let present = session.map { $0.plannedExerciseNames.contains(where: matches) }
+            ?? pendingExercises.contains(where: matches)
+        guard !present else { return .alreadyPresent(name: resolved) }
+
         if let session {
-            if !session.plannedExerciseNames.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
-                session.plannedExerciseNames.append(resolved)
-            }
-        } else if !pendingExercises.contains(where: { $0.compare(resolved, options: .caseInsensitive) == .orderedSame }) {
+            session.plannedExerciseNames.append(resolved)
+        } else {
             pendingExercises.append(resolved)
         }
-        // Update the visible workout before SwiftData persistence. Saving can
-        // take multiple watch run-loop turns when the catalog is large.
+        do {
+            try saveHandler(context)
+        } catch {
+            // Undo only what this call appended; unrelated context changes stay.
+            if let session {
+                if let i = session.plannedExerciseNames.lastIndex(where: matches) {
+                    session.plannedExerciseNames.remove(at: i)
+                }
+            } else if let i = pendingExercises.lastIndex(where: matches) {
+                pendingExercises.remove(at: i)
+            }
+            stage = .addExercise
+            refreshExerciseList()
+            return .saveFailed(name: resolved)
+        }
+        lastAddedExerciseName = resolved
         stage = .home
         refreshExerciseList()
-        try? context.save()
+        return .added(name: resolved)
     }
 
     public func startLogSet(for exercise: Exercise) {

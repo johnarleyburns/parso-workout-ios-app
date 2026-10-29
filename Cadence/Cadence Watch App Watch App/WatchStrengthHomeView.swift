@@ -15,6 +15,20 @@ struct WatchStrengthHomeView: View {
 
     var body: some View {
         List {
+            if let added = model.lastAddedExerciseName {
+                Button {
+                    model.lastAddedExerciseName = nil
+                } label: {
+                    Label("Added \(added)", systemImage: "checkmark.circle.fill")
+                        .font(.caption.bold())
+                        .foregroundStyle(.green)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("watchStrength.exerciseAdded")
+                .accessibilityHint("Double tap to dismiss")
+                .id(added)
+                .onAppear { AccessibilityNotification.Announcement("Added \(added)").post() }
+            }
             ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
                 Button {
                     if longPressHandled { longPressHandled = false; return }

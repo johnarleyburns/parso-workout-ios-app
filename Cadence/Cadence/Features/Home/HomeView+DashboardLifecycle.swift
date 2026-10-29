@@ -83,6 +83,13 @@ extension HomeView {
                 guard active.liveWorkout.active == nil else { return }
                 selectWorkoutPresented = true
             }
+            .modifier(PlanningDraftStartReceiver { plan in
+                guard active.liveWorkout.active == nil else {
+                    showWorkoutConflict = true
+                    return
+                }
+                handleEditorStart(plan)
+            })
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowTodaysPlan)) { _ in
                 path.append(HomeRoute.plannedWorkouts)
             }
@@ -163,5 +170,17 @@ extension HomeView {
             weeklyDetailSelection.select(destination.detailMode)
         }
         weekScrollTarget = destination.detailMode
+    }
+}
+
+/// Receives the Workout Draft's "Start now" hand-off; a separate modifier keeps
+/// `HomeView.body` type-checkable.
+private struct PlanningDraftStartReceiver: ViewModifier {
+    let onStart: (EditablePlan) -> Void
+
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: .cadenceStartPlanningDraft)) { note in
+            if let plan = note.object as? EditablePlan { onStart(plan) }
+        }
     }
 }

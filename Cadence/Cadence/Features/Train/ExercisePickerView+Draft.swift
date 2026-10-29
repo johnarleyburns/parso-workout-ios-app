@@ -58,7 +58,7 @@ extension ExercisePickerView {
                     description: Text("This exercise is no longer available in the local catalog. Return and try again."))
             }
         case .draft:
-            PlanningDraftReviewView()
+            WorkoutDraftView()
         }
     }
 
@@ -81,31 +81,5 @@ extension ExercisePickerView {
         }
         .padding(.horizontal, 16).padding(.vertical, 8)
         .background(.bar)
-    }
-}
-
-/// Read-only list of the draft's exercises; the full editor is a separate issue.
-struct PlanningDraftReviewView: View {
-    @Environment(\.modelContext) private var context
-    @State private var names: [String] = []
-
-    var body: some View {
-        List {
-            if names.isEmpty {
-                ContentUnavailableView("No exercises yet", systemImage: "list.bullet",
-                                       description: Text(PlanningDraftSummary.emptyMessage))
-            } else {
-                ForEach(names, id: \.self) { Text($0) }
-            }
-        }
-        .navigationTitle("Workout Draft")
-        .navigationBarTitleDisplayMode(.inline)
-        .accessibilityIdentifier("find.draftReview")
-        .onAppear {
-            let store = PlanningDraftCoordinator.makeStore()
-            if let draft = try? store.currentDraft(in: context) {
-                names = (try? store.exerciseNames(for: draft)) ?? []
-            }
-        }
     }
 }

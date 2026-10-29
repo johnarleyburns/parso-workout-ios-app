@@ -257,4 +257,76 @@ final class TodayRecommendationCoordinatorTests: XCTestCase {
                                               stablePassiveStamp: key.passiveStamp, surface: .thisWeek))
         XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
     }
+
+    // MARK: Launch restore, invalidation and write-failure contract (#421)
+
+    private func samplePlan() -> TodaySuggestedPlanPayload {
+        TodaySuggestedPlanPayload(EditablePlan(
+            title: "Push", warmupMinutes: 5, cooldownMinutes: 3,
+            exercises: [EditableExercise(name: "Bench Press",
+                                         sets: [EditableSet(targetReps: 8, targetWeight: 60)], notes: "")],
+            enginePlanId: nil, engineRevisionId: nil, enginePlanJSON: nil,
+            suggestedWorkoutStyle: nil, recommendationRationale: nil))
+    }
+
+    func testFreshProcessDisplaysBothPersistedLayersWithoutFingerprintsOrRegeneration() async {
+        let rec = url(), plan = url()
+        let key = fp()
+        let first = make(rec: rec, plan: plan)
+        await seed(first, key: key)
+        await first.suggestionStore.save(samplePlan(), fingerprint: "f", earlyKey: "e")
+        // Relaunch twice: display restore needs no inputs and deletes nothing.
+        for _ in 0..<2 {
+            let c = make(rec: rec, plan: plan)
+            let hero = await c.restoreProvisional(surface: .today)
+            let suggestion = await c.suggestionStore.peekDisplayable()
+            XCTAssertEqual(hero?.payload.title, "A")
+            XCTAssertEqual(suggestion?.plan.title, "Push")
+            XCTAssertEqual(suggestion?.earlyKey, "e")
+            XCTAssertNil(c.cachedSnapshot(fingerprint: key.fingerprint, passiveStamp: nil))
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: plan.path))
+    }
+
+    func testStableInputsDoNotInvalidateAndSuggestionInvalidationKeepsHero() async {
+        let rec = url(), plan = url()
+        let key = fp()
+        let c = make(rec: rec, plan: plan)
+        await seed(c, key: key)
+        await c.suggestionStore.save(samplePlan(), fingerprint: "f", earlyKey: "e")
+        _ = await c.restoreProvisional(surface: .today)
+        XCTAssertTrue(c.reconcileProvisional(stableFingerprint: key.fingerprint,
+                                             stablePassiveStamp: key.passiveStamp, surface: .today))
+        await c.settle()
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
+        var reasons: [TodayCacheInvalidationReason] = []
+        c.invalidationObserver = { reasons.append($0) }
+        c.invalidateSuggestion(surface: .thisWeek)
+        XCTAssertTrue(reasons.isEmpty)
+        c.invalidateSuggestion(surface: .today, reason: .settingsChanged)
+        await c.settle()
+        XCTAssertEqual(reasons, [.settingsChanged])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: rec.path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: plan.path))
+    }
+
+    func testWriteFailureKeepsPreviousValidFileAndIsDiagnosable() async {
+        let rec = url()
+        let store = TodayRecommendationCacheStore(fileURL: rec, calendar: cal)
+        let ok = await store.save(payload("Old"), fingerprint: "f", passiveStamp: "p")
+        XCTAssertEqual(ok, .saved)
+        // Same directory path is not writable as a file: point at a directory.
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("d-\(UUID().uuidString)")
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        urls.append(dir)
+        let bad = TodayRecommendationCacheStore(fileURL: dir, calendar: cal)
+        let failed = await bad.save(payload("New"), fingerprint: "f", passiveStamp: "p")
+        XCTAssertFalse(failed.isSaved)
+        let none = await bad.peekDisplayable()
+        XCTAssertNil(none.record)
+        let reread = TodayRecommendationCacheStore(fileURL: rec, calendar: cal)
+        let kept = await reread.peekDisplayable()
+        XCTAssertEqual(kept.record?.payload.title, "Old")
+    }
 }

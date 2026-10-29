@@ -257,6 +257,15 @@ public actor TodaySuggestedWorkoutCacheStore {
             && !env.plan.exercises.isEmpty
     }
 
+    /// Display-only restore for launch: any same-day, current-schema record,
+    /// with no key judgement and no deletion. The caller reconciles the stored
+    /// early key against the stable one after the first frame.
+    public func peekDisplayable() -> (plan: TodaySuggestedPlanPayload, earlyKey: String?)? {
+        guard let env = loadEnvelope(), env.schemaVersion == Self.schemaVersion,
+              env.dayKey == dayKey(), !env.plan.exercises.isEmpty else { return nil }
+        return (env.plan, env.earlyKey)
+    }
+
     /// Restores the persisted plan using only the lightweight early key, so Today
     /// can show it before the exercise catalog is loaded. A same-day record with
     /// a different early key is genuinely stale and is discarded; a record that
@@ -314,16 +323,17 @@ public actor TodaySuggestedWorkoutCacheStore {
         return plan
     }
 
+    @discardableResult
     public func save(_ plan: TodaySuggestedPlanPayload, fingerprint: String,
-                     earlyKey: String? = nil) {
-        guard !plan.exercises.isEmpty else { return }
+                     earlyKey: String? = nil) -> TodayCacheWriteResult {
+        guard !plan.exercises.isEmpty else { return .failed("emptyPlan") }
         let env = Envelope(schemaVersion: Self.schemaVersion, dayKey: dayKey(),
                            fingerprint: fingerprint, earlyKey: earlyKey, updatedAt: now(),
                            plan: plan)
+        let result = TodayCacheFile.write(env, to: fileURL)
+        guard result.isSaved else { return result }
         memory = env; memoryLoaded = true
-        if let fileURL, let data = try? JSONEncoder().encode(env) {
-            try? data.write(to: fileURL, options: .atomic)
-        }
+        return result
     }
 
     /// Removes the entry (memory + disk) and supersedes any in-flight work.

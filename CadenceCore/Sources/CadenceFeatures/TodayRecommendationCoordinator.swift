@@ -28,6 +28,10 @@ public final class TodayRecommendationCoordinator<Snapshot> {
     public private(set) var lastOutcome: TodayCacheOutcome?
     /// Observability hook (e.g. os.Logger); receives outcomes only, no content.
     public var outcomeObserver: (@MainActor (TodayCacheOutcome) -> Void)?
+    /// Receives the semantic reason for each deliberate invalidation.
+    public var invalidationObserver: (@MainActor (TodayCacheInvalidationReason) -> Void)?
+    /// Last durable write failure (nil after a successful write); diagnosable.
+    public private(set) var lastWriteFailure: String?
 
     public let recommendationStore: TodayRecommendationCacheStore
     public let suggestionStore: TodaySuggestedWorkoutCacheStore
@@ -56,14 +60,18 @@ public final class TodayRecommendationCoordinator<Snapshot> {
         let store = recommendationStore
         enqueue { [weak self] in
             guard let self, self.epoch == issuedEpoch else { return }
-            await store.save(payload, fingerprint: fingerprint, passiveStamp: passiveStamp)
+            let result = await store.save(payload, fingerprint: fingerprint, passiveStamp: passiveStamp)
+            self.noteWrite(result)
         }
         return true
     }
 
     /// Invalidation for history / preference / readiness changes. Today only.
-    public func invalidate(surface: TodayCacheSurface) {
+    public func invalidate(surface: TodayCacheSurface,
+                           reason: TodayCacheInvalidationReason = .historyChanged) {
         guard surface == .today else { return }
+        invalidationObserver?(reason)
+        record(.invalidated)
         entry = nil
         provisional = nil
         epoch += 1
@@ -71,6 +79,24 @@ public final class TodayRecommendationCoordinator<Snapshot> {
         enqueue {
             await plans.invalidate()
             await recs.invalidate()
+        }
+    }
+
+    /// Drops only the suggested-plan record (Today only). The hero record is
+    /// left for `store` to replace atomically once the recompute finishes.
+    public func invalidateSuggestion(surface: TodayCacheSurface,
+                                     reason: TodayCacheInvalidationReason = .historyChanged) {
+        guard surface == .today else { return }
+        invalidationObserver?(reason)
+        record(.invalidated)
+        let plans = suggestionStore
+        enqueue { await plans.invalidate() }
+    }
+
+    private func noteWrite(_ result: TodayCacheWriteResult) {
+        switch result {
+        case .saved: lastWriteFailure = nil
+        case .failed(let why): lastWriteFailure = why; record(.writeFailed)
         }
     }
 

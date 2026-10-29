@@ -120,6 +120,35 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
 public enum TodayCacheOutcome: String, Equatable, Sendable {
     case noFile, corrupt, schemaRejected, dayRejected
     case provisionalRestore, stableMatch, stableInvalidation
+    case writeFailed, invalidated
+}
+
+/// Semantic trigger for a deliberate cache invalidation (no workout content).
+public enum TodayCacheInvalidationReason: String, Equatable, Sendable {
+    case historyChanged, settingsChanged, readinessChanged
+}
+
+/// Result of a durable cache write. A failure leaves any previous valid file
+/// and in-memory record untouched, so a generated value is never mistaken for
+/// a persisted one.
+public enum TodayCacheWriteResult: Equatable, Sendable {
+    case saved
+    case failed(String)
+
+    public var isSaved: Bool { self == .saved }
+}
+
+enum TodayCacheFile {
+    /// Atomic write; `nil` URL is memory-only and always succeeds.
+    static func write<T: Encodable>(_ value: T, to url: URL?) -> TodayCacheWriteResult {
+        guard let url else { return .saved }
+        do {
+            try JSONEncoder().encode(value).write(to: url, options: .atomic)
+            return .saved
+        } catch {
+            return .failed(String(describing: type(of: error)))
+        }
+    }
 }
 
 /// A display-eligible (same day, supported schema, decodable) durable record
@@ -196,14 +225,16 @@ public actor TodayRecommendationCacheStore {
                                        passiveStamp: env.passiveStamp), .provisionalRestore)
     }
 
-    public func save(_ payload: TodayRecommendationPayload, fingerprint: String, passiveStamp: String) {
+    @discardableResult
+    public func save(_ payload: TodayRecommendationPayload, fingerprint: String,
+                     passiveStamp: String) -> TodayCacheWriteResult {
         let env = Envelope(schemaVersion: Self.schemaVersion, dayKey: dayKey(),
                            fingerprint: fingerprint, passiveStamp: passiveStamp,
                            updatedAt: now(), payload: payload)
+        let result = TodayCacheFile.write(env, to: fileURL)
+        guard result.isSaved else { return result }
         memory = env; memoryLoaded = true; loadFailure = nil
-        if let fileURL, let data = try? JSONEncoder().encode(env) {
-            try? data.write(to: fileURL, options: .atomic)
-        }
+        return result
     }
 
     public func invalidate() { discard() }

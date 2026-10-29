@@ -267,10 +267,13 @@ final class WatchQuickTalkController {
             model.currentWeight += deltaKg
             return true
         case .addExercise(let name):
-            model.addExercise(named: name)
+            if case .unavailable = model.addExercise(named: name) { return false }
             return true
         case .switchExercise(let name):
-            guard let target = model.plannedExercise(named: name) else { model.addExercise(named: name); return true }
+            guard let target = model.plannedExercise(named: name) else {
+                if case .unavailable = model.addExercise(named: name) { return false }
+                return true
+            }
             model.startLogSet(for: target)
             return true
         case .setPerformer(let performer):

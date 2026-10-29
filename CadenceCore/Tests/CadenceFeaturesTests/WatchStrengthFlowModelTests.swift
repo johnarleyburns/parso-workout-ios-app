@@ -70,6 +70,100 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.stage, .home)
     }
 
+    // MARK: - Add result contract (issue #408)
+
+    private struct SaveBoom: Error {}
+
+    func testAddExerciseResult_addsOnceToActiveSessionAndPersists() {
+        let m = makeModel()
+        m.start(createSession: true)
+        m.goToAddExercise()
+        XCTAssertEqual(m.addExercise(named: "Bench Press"), .added(name: "Bench Press"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
+        XCTAssertEqual(m.stage, .home)
+        XCTAssertEqual(m.lastAddedExerciseName, "Bench Press")
+        XCTAssertFalse(context.hasChanges)
+    }
+
+    func testAddExerciseResult_duplicateAndCaseVariantAreRejected() {
+        let m = makeModel()
+        m.start(createSession: true)
+        m.addExercise(named: "Bench Press")
+        m.goToAddExercise()
+        XCTAssertEqual(m.addExercise(named: "Bench Press"), .alreadyPresent(name: "Bench Press"))
+        XCTAssertEqual(m.addExercise(named: "bench press"), .alreadyPresent(name: "Bench Press"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
+        XCTAssertEqual(m.stage, .addExercise)
+    }
+
+    func testAddExerciseResult_unavailableLeavesWorkoutUnchanged() {
+        let m = makeModel()
+        m.start(createSession: true)
+        m.goToAddExercise()
+        XCTAssertEqual(m.addExercise(named: "   "), .unavailable(name: ""))
+        XCTAssertEqual(m.addExercise(id: UUID(), named: "Gone Lift"), .unavailable(name: "Gone Lift"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, [])
+        XCTAssertEqual(m.stage, .addExercise)
+        XCTAssertNil(m.lastAddedExerciseName)
+    }
+
+    func testAddExerciseResult_byIdAddsCatalogExerciseWithoutCreatingOne() throws {
+        let bench = simpleExercise(named: "Bench Press")
+        let before = try context.fetchCount(FetchDescriptor<Exercise>())
+        let m = makeModel()
+        m.start(createSession: true)
+        XCTAssertEqual(m.addExercise(id: bench.id, named: "Bench Press"), .added(name: "Bench Press"))
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Exercise>()), before)
+    }
+
+    func testAddExerciseResult_saveFailureRestoresAndStaysInAddExercise() {
+        let m = makeModel()
+        m.start(createSession: true)
+        m.goToAddExercise()
+        m.saveHandler = { _ in throw SaveBoom() }
+        XCTAssertEqual(m.addExercise(named: "Bench Press"), .saveFailed(name: "Bench Press"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, [])
+        XCTAssertEqual(m.stage, .addExercise)
+        XCTAssertNil(m.lastAddedExerciseName)
+
+        let pending = makeModel()
+        pending.start()
+        pending.saveHandler = { _ in throw SaveBoom() }
+        XCTAssertEqual(pending.addExercise(named: "Squat"), .saveFailed(name: "Squat"))
+        XCTAssertTrue(pending.pendingExercises.isEmpty)
+    }
+
+    func testCreateAndAddExerciseFollowsSameContract() {
+        let m = makeModel()
+        m.start(createSession: true)
+        XCTAssertEqual(m.createAndAddExercise(named: "Cable Twist", muscleGroups: [.abdominals]),
+                       .added(name: "Cable Twist"))
+        XCTAssertEqual(m.createAndAddExercise(named: "cable twist", muscleGroups: [.abdominals]),
+                       .alreadyPresent(name: "Cable Twist"))
+        XCTAssertEqual(m.createAndAddExercise(named: "", muscleGroups: [.abdominals]), .unavailable(name: ""))
+        m.saveHandler = { _ in throw SaveBoom() }
+        XCTAssertEqual(m.createAndAddExercise(named: "Other Twist", muscleGroups: [.abdominals]),
+                       .saveFailed(name: "Other Twist"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Cable Twist"])
+    }
+
+    func testAddPresenter_outcomesNeedNoClockAndSearchGenerationRejectsStale() {
+        let added = WatchExerciseAddPresenter.outcome(for: .added(name: "Squat"))
+        XCTAssertEqual(added.message, "Added Squat")
+        XCTAssertTrue(added.returnsToPlan)
+        for result in [WatchExerciseAddResult.alreadyPresent(name: "A"), .unavailable(name: "A"), .saveFailed(name: "A")] {
+            let o = WatchExerciseAddPresenter.outcome(for: result)
+            XCTAssertFalse(o.returnsToPlan)
+            XCTAssertEqual(o.feedback, .failure)
+        }
+        XCTAssertTrue(WatchExerciseAddPresenter.acceptsSearchResults(
+            generation: 3, current: 3, searchedQuery: "ben", currentQuery: " ben "))
+        XCTAssertFalse(WatchExerciseAddPresenter.acceptsSearchResults(
+            generation: 2, current: 3, searchedQuery: "ben", currentQuery: "ben"))
+        XCTAssertFalse(WatchExerciseAddPresenter.acceptsSearchResults(
+            generation: 3, current: 3, searchedQuery: "ben", currentQuery: "bench"))
+    }
+
     func testAddCustomExerciseCreatesFacetedExerciseAndAddsItToWorkout() {
         let m = makeModel()
         m.start(createSession: true)

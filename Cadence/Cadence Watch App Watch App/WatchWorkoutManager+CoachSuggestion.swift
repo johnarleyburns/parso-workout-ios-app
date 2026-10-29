@@ -4,12 +4,13 @@ import CadenceFeatures
 extension WatchWorkoutManager {
     /// The envelope only if unexpired and well-formed right now; expired data is diagnostic only.
     var startableCoachSuggestion: WatchCoachSuggestionEnvelope? {
-        coachSuggestionCoordinator.startable(now: Date())
+        coachSuggestionCoordinator.startable(now: coachClock())
     }
 
     /// Restores the durable envelope (offline relaunch) and watches for Watch-local history changes.
     func startCoachSuggestionLifecycle() {
         coachSuggestionEnvelope = coachSuggestionCoordinator.current
+        coachHistoryState.invalidatedAt = coachSuggestionCoordinator.invalidatedAt
         localHistoryObserver = NotificationCenter.default.addObserver(
             forName: WatchLocalHistoryMutation.name, object: nil, queue: .main) { [weak self] _ in
                 Task { @MainActor [weak self] in self?.invalidateCoachSuggestionForLocalHistory() }
@@ -32,7 +33,9 @@ extension WatchWorkoutManager {
     /// then ask the phone for a fresh one opportunistically.
     func invalidateCoachSuggestionForLocalHistory() {
         let hadSnapshot = coachSuggestionEnvelope != nil
-        coachSuggestionCoordinator.invalidate(now: Date())
+        let now = coachClock()
+        coachSuggestionCoordinator.invalidate(now: now)
+        coachHistoryState = WatchCoachHistoryState(invalidatedAt: now, generation: coachHistoryState.generation + 1)
         coachSuggestionEnvelope = nil
         // Per-set logging fires this too; only the first call after a snapshot needs a refresh.
         if hadSnapshot { requestSettingsSync() }

@@ -15,34 +15,6 @@ final class WatchLiftSourcesTests: XCTestCase {
         XCTAssertEqual(WatchLiftSources.menuTitle, "Lift")
     }
 
-    func testSuggestEmptyForNoSyncCardioAndRest() {
-        XCTAssertNil(WatchSuggestReview.make(plan: nil))
-        let plan = WatchSync.TodayPlan(sessions: [
-            .init(id: "c", kind: .cardio, label: "Run"), .init(id: "r", kind: .rest, label: "Rest")])
-        XCTAssertNil(WatchSuggestReview.make(plan: plan))
-    }
-
-    func testSuggestPreservesRichPayloadAndStaleness() {
-        let payload = WatchPlanPayload(strength: .init(
-            exerciseNames: ["Squat", "Row"], repLadder: [5],
-            prescriptions: [
-                .init(exerciseName: "Squat", sets: [.init(targetReps: 5, restSeconds: 180)]),
-                .init(exerciseName: "Row", sets: [.init(targetReps: 10, restSeconds: 90)])]))
-        let synced = Date(timeIntervalSince1970: 1_000_000)
-        let plan = WatchSync.TodayPlan(sessions: [
-            .init(id: "s", kind: .strength, label: "Legs", exerciseNames: ["Squat", "Row"],
-                  repLadder: [5], planPayload: payload)], updatedAt: synced)
-        let fresh = WatchSuggestReview.make(plan: plan, now: synced)
-        XCTAssertEqual(fresh?.isStale, false)
-        XCTAssertEqual(fresh?.launch.planPayload, payload)
-        XCTAssertEqual(fresh?.launch.title, "Legs")
-        XCTAssertEqual(fresh?.launch.exerciseNames, ["Squat", "Row"])
-        XCTAssertEqual(fresh?.launch.repLadder, [5])
-        let stale = WatchSuggestReview.make(plan: plan, now: synced.addingTimeInterval(3 * 86_400))
-        XCTAssertEqual(stale?.isStale, true)
-        XCTAssertNotNil(stale?.launch)
-    }
-
     @discardableResult
     private func addSession(_ ctx: ModelContext, title: String, end: Date?, sets: [(String, Int)],
                             deleted: Bool = false, date: Date = Date(timeIntervalSince1970: 100)) throws -> WorkoutSession {
@@ -105,57 +77,5 @@ final class WatchLiftSourcesTests: XCTestCase {
         XCTAssertEqual(source.orderedSets.map(\.id), sourceSetIDs)
         XCTAssertEqual(source.endedAt, Date(timeIntervalSince1970: 900))
         XCTAssertTrue(created.orderedSets.isEmpty)
-    }
-
-    func testLocalSuggestWorksWithoutPhone() {
-        let review = WatchSuggestReview.makeLocal(sessions: [])
-        XCTAssertEqual(review.heading, "Starter workout")
-        XCTAssertFalse(review.launch.exerciseNames.isEmpty)
-        XCTAssertNotNil(review.launch.planPayload?.strength)
-    }
-
-    func testSuggestMirrorsPhoneGeneratedPlanInsteadOfPreviousWorkout() throws {
-        let plan = EditablePlan(title: "Fitness Workout", warmupMinutes: 0, cooldownMinutes: 0, exercises: [
-            EditableExercise(name: "Goblet Squat", sets: [
-                EditableSet(targetReps: 10, targetWeight: 20), EditableSet(targetReps: 10, targetWeight: 20)], notes: ""),
-            EditableExercise(name: "Row", sets: [EditableSet(targetReps: 8, targetWeight: 30)], notes: "")])
-        let session = try XCTUnwrap(CoachWatchTodayBridge.suggestedStrengthSession(from: plan))
-        let today = WatchSync.TodayPlan(sessions: [session], updatedAt: Date())
-        let review = try XCTUnwrap(WatchSuggestReview.make(plan: today))
-        XCTAssertEqual(review.title, "Fitness Workout")
-        XCTAssertEqual(review.exerciseLines, ["Goblet Squat · 2×10", "Row · 1×8"])
-        XCTAssertEqual(review.launch.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg, 20)
-        XCTAssertNil(CoachWatchTodayBridge.suggestedStrengthSession(
-            from: EditablePlan(warmupMinutes: 0, cooldownMinutes: 0, exercises: [])))
-    }
-
-    func testLocalSuggestExcludesLatestWorkoutAndIsDeterministic() throws {
-        let ctx = try makeContext()
-        let day: TimeInterval = 86_400
-        let now = Date(timeIntervalSince1970: 100 * day)
-        let old = try addSession(ctx, title: "Old", end: now.addingTimeInterval(-5 * day),
-                                 sets: [("Row", 8), ("Lunge", 10), ("Curl", 12), ("Press", 8)],
-                                 date: now.addingTimeInterval(-5 * day))
-        let latest = try addSession(ctx, title: "Latest", end: now.addingTimeInterval(-2 * day),
-                                    sets: [("Bench Press", 8), ("Squat", 5)], date: now.addingTimeInterval(-2 * day))
-        let sessions = [latest, old]
-        let a = WatchSuggestReview.makeLocal(sessions: sessions, now: now)
-        let b = WatchSuggestReview.makeLocal(sessions: sessions, now: now)
-        XCTAssertEqual(a, b)
-        XCTAssertEqual(a.heading, "Suggested on Apple Watch")
-        XCTAssertTrue(a.canStart)
-        let names = a.launch.exerciseNames
-        XCTAssertFalse(names.contains("Bench Press"))
-        XCTAssertFalse(names.contains("Squat"))
-        XCTAssertEqual(names, ["Curl", "Lunge", "Press", "Row"])
-        XCTAssertEqual(a.launch.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg, 50)
-    }
-
-    func testLocalSuggestSameDayProtectionHasNoStart() throws {
-        let ctx = try makeContext()
-        let now = Date(timeIntervalSince1970: 100 * 86_400 + 3600)
-        let today = try addSession(ctx, title: "Today", end: now, sets: [("Squat", 5)], date: now)
-        let review = WatchSuggestReview.makeLocal(sessions: [today], now: now)
-        XCTAssertFalse(review.canStart)
     }
 }

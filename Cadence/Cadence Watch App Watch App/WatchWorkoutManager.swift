@@ -166,7 +166,8 @@ final class WatchWorkoutManager: NSObject {
     let uiTestMode: Bool
 
     @ObservationIgnored let coachSuggestionCoordinator = WatchCoachSuggestionCoordinator(store: UserDefaultsWatchCoachSuggestionStore())
-    var coachSuggestionEnvelope: WatchCoachSuggestionEnvelope?
+    var coachSuggestionEnvelope: WatchCoachSuggestionEnvelope?; var coachHistoryState = WatchCoachHistoryState()
+    @ObservationIgnored var coachClock: @Sendable () -> Date = { Date() } // injectable Suggest clock
     @ObservationIgnored var localHistoryObserver: NSObjectProtocol?
 
     init(uiTestMode: Bool = false) {

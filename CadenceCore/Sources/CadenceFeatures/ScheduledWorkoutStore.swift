@@ -254,6 +254,27 @@ public enum ScheduledWorkoutStore {
         return record
     }
 
+    /// Builds (without inserting or saving) a schedule row whose `id` is the
+    /// promotion operation ID, so a retry can find the original row.
+    public static func make(plan: EditablePlan, for date: Date, promotionID: UUID,
+                            calendar: Calendar = .current,
+                            originDevice: String = "iphone",
+                            now: Date = Date()) throws -> ScheduledWorkout {
+        let normalized = ScheduledWorkoutDate.normalize(date, calendar: calendar)
+        guard normalized >= ScheduledWorkoutDate.normalize(now, calendar: calendar) else {
+            throw ScheduledWorkoutStoreError.dateMustBeTodayOrFuture
+        }
+        return ScheduledWorkout(
+            id: promotionID,
+            scheduledDate: normalized,
+            scheduledDayKey: ScheduledWorkoutDate.dayKey(normalized, calendar: calendar),
+            timeZoneIdentifier: calendar.timeZone.identifier,
+            title: plan.title.isEmpty ? "Workout" : plan.title,
+            payloadData: try encode(plan),
+            payloadVersion: currentPayloadVersion,
+            originDevice: originDevice)
+    }
+
     /// Moves an existing visible schedule to a new date. Rescheduling a
     /// started item deliberately returns it to `scheduled` and clears the
     /// previous session link; the user must explicitly start the moved copy.

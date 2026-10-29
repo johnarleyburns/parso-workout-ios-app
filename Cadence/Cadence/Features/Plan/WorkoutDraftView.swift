@@ -33,6 +33,8 @@ struct WorkoutDraftView: View {
     @State private var loadError: String?
     @State private var confirmDiscard = false
     @State private var schedulePresented = false
+    /// Stable per sheet presentation so a retried or double-tapped save is idempotent.
+    @State private var scheduleOperationID = UUID()
     @State private var titleText = ""
 
     var body: some View {
@@ -104,9 +106,10 @@ struct WorkoutDraftView: View {
         }
         .sheet(isPresented: $schedulePresented) {
             ScheduleWorkoutSheet(title: model.plan.title) { date in
-                _ = try ScheduledWorkoutStore.schedule(plan: model.plan, for: date, in: context)
+                _ = try PlanningDraftCoordinator.makeStore().schedule(
+                    draftID: model.draft.id, for: date, operationID: scheduleOperationID, in: context)
                 NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
-                discard(model)
+                dismiss()
             }
         }
     }
@@ -222,7 +225,7 @@ struct WorkoutDraftView: View {
 
     private func actions(_ model: PlanningDraftEditorModel) -> some View {
         HStack(spacing: 12) {
-            Button { model.flush(); schedulePresented = true } label: {
+            Button { model.flush(); scheduleOperationID = UUID(); schedulePresented = true } label: {
                 Text("Schedule workout").frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.bordered).disabled(!model.canStartOrSchedule)

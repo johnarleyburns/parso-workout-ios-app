@@ -294,16 +294,17 @@ extension HomeView {
             return
         }
         suggestedWorkoutCalculating = true
+        let snapshot = request.snapshot
         let task = Task {
             let option = await Task.detached(priority: .userInitiated) {
-                SuggestedWorkoutGenerator.generatePersonalized(input: request.input)
+                CoachSuggestionService.generate(from: snapshot)
             }.value
             guard !Task.isCancelled else { return }
             await MainActor.run {
                 guard suggestedWorkoutTask != nil else { return }
                 suggestedWorkoutCalculating = false
                 suggestedWorkoutTask = nil
-                guard option.isLaunchable else {
+                guard let option else {
                     suggestedWorkoutFailure = "No usable exercise data is available yet. Try again to refresh the exercise catalog."
                     return
                 }

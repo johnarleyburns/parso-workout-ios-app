@@ -10,7 +10,7 @@ public let suggestedWorkoutCitationIDs = [
     "pellandDoseResponse2026",
 ]
 
-public struct SuggestedExerciseCandidate: Equatable, Sendable {
+public struct SuggestedExerciseCandidate: Codable, Equatable, Sendable {
     public let id: String
     public let name: String
     public let mechanics: Mechanics
@@ -111,7 +111,7 @@ public struct SuggestedExerciseCandidate: Equatable, Sendable {
 /// choosing between three lengths of the same workout. Every style now uses the
 /// same minimum target, and what varies is the movements, which is what actually
 /// differs between training populations.
-public enum SuggestedWorkoutStyle: String, CaseIterable, Equatable, Sendable {
+public enum SuggestedWorkoutStyle: String, CaseIterable, Codable, Equatable, Sendable {
     case personalized, fitness, bodyweight, powerlifting, olympic, strongman
 
     public var displayName: String {
@@ -389,7 +389,7 @@ public struct SuggestedWorkoutBundle: Equatable, Sendable {
 /// App state needed to ask DB++ for a suggested workout. Keeping this as a
 /// value snapshot makes the generator safe to run off the main actor and keeps
 /// SwiftData/UI types outside the engine boundary.
-public struct SuggestedWorkoutEngineContext: Equatable, Sendable {
+public struct SuggestedWorkoutEngineContext: Codable, Equatable, Sendable {
     public let experience: ExperienceLevel
     public let schedule: CoachSchedulePreferences
     public let availableEquipment: [Equipment]
@@ -409,7 +409,7 @@ public struct SuggestedWorkoutEngineContext: Equatable, Sendable {
     }
 }
 
-public struct SuggestedWorkoutInput: Equatable, Sendable {
+public struct SuggestedWorkoutInput: Codable, Equatable, Sendable {
     public let completedSetsByMuscle: [String: Double]
     public let candidates: [SuggestedExerciseCandidate]
     /// Candidate IDs used by the user's most recently completed same-day

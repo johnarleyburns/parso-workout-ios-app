@@ -77,7 +77,7 @@ extension HomeView {
             })
         let store = HomeTodayCache.suggestionStore
         let earlyKey = todaySuggestionEarlyKey()
-        let input = request.input
+        let snapshot = request.snapshot
         let unit = request.unit
         let warmup = request.warmupMinutes
         let cooldown = request.cooldownMinutes
@@ -86,9 +86,9 @@ extension HomeView {
             // callers for the same day + fingerprint share one generation.
             let payload = await store.resolve(fingerprint: fingerprint, earlyKey: earlyKey) {
                 let option = await Task.detached(priority: .userInitiated) {
-                    SuggestedWorkoutGenerator.generatePersonalized(input: input)
+                    CoachSuggestionService.generate(from: snapshot)
                 }.value
-                guard option.isLaunchable else { return nil }
+                guard let option else { return nil }
                 return TodaySuggestedPlanPayload(SuggestedWorkoutPresenter.editablePlan(
                     for: option, unit: unit, warmupMinutes: warmup, cooldownMinutes: cooldown))
             }

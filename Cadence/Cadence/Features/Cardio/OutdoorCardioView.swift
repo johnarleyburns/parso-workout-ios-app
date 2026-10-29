@@ -217,8 +217,7 @@ struct OutdoorCardioView: View {
         let saved = try? WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                                healthKitWorkoutUUID: nil, in: context)
         if let saved {
-            let report = await model.healthBackup.enqueueAndDrain(
-                .cardio(HealthBackupEncoder.cardioSummary(for: saved)))
+            let report = await model.healthBackup.enqueueAndDrain(cardio: saved)
             if let hkID = report.savedObjectIDs[saved.id] {
                 saved.healthKitWorkoutUUID = hkID
                 try? context.save()

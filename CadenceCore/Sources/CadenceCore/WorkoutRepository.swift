@@ -1244,6 +1244,8 @@ public enum WorkoutRepository {
             c.standardMETValue = met.standardMET
             c.metBasisRaw = met.basis.rawValue
             c.metMethodRaw = met.method.rawValue
+            c.originValue = .healthKitImported
+            c.healthKitProvenance = w.provenance
             context.insert(c)
             for p in w.hrSamples {
                 context.insert(HRSample(t: p.t, bpm: p.bpm, cardio: c))
@@ -1494,6 +1496,8 @@ public enum WorkoutRepository {
                 maxHeartRate: c.maxHeartRate, laps: c.laps, targetLaps: c.targetLaps,
                 targetDistance: c.targetDistance, notes: c.notes, isLogged: c.isLogged,
                 customTitle: c.customTitle, importedWorkoutKindRaw: c.importedWorkoutKindRaw,
+                recordOriginRaw: c.recordOriginRaw,
+                healthKitProvenanceData: c.healthKitProvenanceData.isEmpty ? nil : c.healthKitProvenanceData,
                 intervalDetailData: c.intervalDetailData.isEmpty ? nil : c.intervalDetailData,
                 cardioAlgorithmVersionRaw: c.cardioAlgorithmVersionRaw,
                 effectiveRestingHR: c.effectiveRestingHR,
@@ -1769,6 +1773,8 @@ public enum WorkoutRepository {
                                        targetDistance: ec.targetDistance, source: source,
                                        notes: ec.notes, isLogged: ec.isLogged ?? false,
                                        customTitle: ec.customTitle, importedWorkoutKind: kind)
+            cardio.recordOriginRaw = ec.recordOriginRaw
+            cardio.healthKitProvenanceData = ec.healthKitProvenanceData ?? ""
             cardio.intervalDetailData = ec.intervalDetailData ?? ""
             cardio.cardioAlgorithmVersionRaw = ec.cardioAlgorithmVersionRaw
             cardio.effectiveRestingHR = ec.effectiveRestingHR

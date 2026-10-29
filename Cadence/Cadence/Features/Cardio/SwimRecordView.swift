@@ -196,8 +196,7 @@ struct SwimRecordView: View {
                 intensitySummary: summary.intensitySummary,
                 metEstimate: summary.metEstimate,
                 in: context) {
-                let report = await model.healthBackup.enqueueAndDrain(
-                    .cardio(HealthBackupEncoder.cardioSummary(for: saved)))
+                let report = await model.healthBackup.enqueueAndDrain(cardio: saved)
                 if let hkID = report.savedObjectIDs[saved.id] {
                     saved.healthKitWorkoutUUID = hkID
                     try? context.save()

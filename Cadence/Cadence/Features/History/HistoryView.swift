@@ -151,6 +151,13 @@ struct HistoryView: View {
                         }
                         Text(c.start.formatted(date: .abbreviated, time: .shortened))
                             .font(.caption).foregroundStyle(.secondary)
+                        if c.originValue == .healthKitImported {
+                            let origin = HealthKitWorkoutOriginPresenter.label(for: c.healthKitProvenance)
+                            Text(origin.primary)
+                                .font(.caption2).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityLabel(origin.accessibilityLabel)
+                        }
                         Text("\(Format.duration(c.duration))\(c.distance.map { " · " + Format.distance($0) } ?? "")")
                             .font(.caption2).foregroundStyle(.tertiary)
                     }

@@ -103,13 +103,16 @@ public struct IngestedWorkout: Equatable, Sendable, Identifiable {
     public var hrSamples: [HRSamplePoint]
     public var routeSamples: [LocationFix]
     public var importedKind: ImportedWorkoutKind?
+    public var provenance: HealthKitWorkoutProvenance?
 
     public init(id: UUID, type: CardioType, start: Date, end: Date,
                 distanceMeters: Double? = nil, activeEnergyKcal: Double? = nil,
                 avgHeartRate: Double? = nil, maxHeartRate: Double? = nil,
                 source: CardioSource = .watch, hrSamples: [HRSamplePoint] = [],
                 routeSamples: [LocationFix] = [],
-                importedKind: ImportedWorkoutKind? = nil) {
+                importedKind: ImportedWorkoutKind? = nil,
+                provenance: HealthKitWorkoutProvenance? = nil) {
+        self.provenance = provenance
         self.id = id; self.type = type; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.activeEnergyKcal = activeEnergyKcal
         self.avgHeartRate = avgHeartRate; self.maxHeartRate = maxHeartRate

@@ -275,6 +275,14 @@ extension WatchWorkoutManager: WCSessionDelegate {
             recordPhoneSyncFailure(String(localized: "Couldn't save workout defaults from iPhone"))
             return
         }
+        if let suggestion = incoming.singleExerciseSuggestionContext,
+           WatchSingleExerciseSuggestionContextStore().replace(suggestion) == .failed, envelope != nil {
+            // Persist before ACK; a valid newer stored context is retained (not a failure).
+            let applied = Self.loadAppliedSyncRecord()
+            sendSyncAck(.init(revision: applied?.revision ?? 0, snapshotID: nil, components: nil))
+            recordPhoneSyncFailure(String(localized: "Couldn't save suggestion data from iPhone"))
+            return
+        }
         if let envelope {
             // A stale late completion must neither overwrite nor acknowledge newer state.
             outcome = syncCommitCoordinator.accept(envelope, applied: Self.loadAppliedSyncRecord(),

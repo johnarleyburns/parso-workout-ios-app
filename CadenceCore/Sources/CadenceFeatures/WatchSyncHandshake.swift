@@ -69,10 +69,18 @@ public enum WatchSyncHandshake {
             }
             // The set-default snapshot rides with preferences so a snapshot-only change is never
             // coalesced away as "unchanged settings".
-            preferences = part {
+            // The suggestion context is hashed by its bytes (Data's own hash is weak) and rides here too.
+            let suggestion = context[WatchSync.Key.singleExerciseSuggestionContext]
+                .map { value -> Any in
+                    (value as? Data).map { WatchSyncFingerprint.canonicalHash($0.base64EncodedString()) } ?? value
+                }
+            let baseSettings = part {
                 $0.hasPrefix("settings.") || $0 == WatchSync.Key.recentPartners
                     || $0 == WatchSync.Key.setDefaultSnapshot
             }
+            preferences = suggestion.map {
+                WatchSyncFingerprint.canonicalHash([baseSettings, WatchSyncFingerprint.canonicalHash($0)])
+            } ?? baseSettings
             customExercises = part { $0 == WatchSync.Key.customExercises }
             todayPlan = part { $0.hasPrefix("todayPlan.") || $0 == WatchSync.Key.sentWorkouts }
             weekSummary = part { $0.hasPrefix("week.") }

@@ -75,6 +75,7 @@ final class WatchWorkoutManager: NSObject {
     var weekSummary: WatchSync.WeekSummary?  // This Week page, from the phone
     var recentPartnerNames: [String] = []
     var pendingCustomExercises: [WatchSync.CustomExercise] = []
+    var cardioHistoryRevision = 0 // bumped only after durable persistence
     var customExercisesUpdatedAt = Date.distantPast
     /// Background custom-exercise writes run one at a time, so two quick
     /// replays of a new list can't both insert the same exercise.
@@ -154,11 +155,6 @@ final class WatchWorkoutManager: NSObject {
     /// Orders snapshot commits; the envelope always travels with its decoded snapshot.
     var syncCommitCoordinator = WatchSyncCommitCoordinator(
         appliedRevision: WatchWorkoutManager.loadAppliedSyncRecord()?.revision ?? 0)
-    struct AwaitingSyncCommit {
-        let envelope: WatchSyncHandshake.Envelope
-        let customExercises: [WatchSync.CustomExercise]
-        let updatedAt: Date
-    }
     var awaitingSyncCommit: AwaitingSyncCommit?
     @ObservationIgnored var durableCommitEnvelopeID: UUID?
     @ObservationIgnored var syncModelContainer: ModelContainer?

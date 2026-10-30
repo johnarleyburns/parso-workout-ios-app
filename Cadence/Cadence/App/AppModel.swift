@@ -397,11 +397,17 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Workouts the user chose to send to the Watch; mirrored in the application context.
     private var cachedSentWorkouts: [WatchSync.TodayPlan.Session] = []
     private var watchPayloadTask: Task<Void, Never>?
+    /// Last cardio history snapshot published to the Watch (tombstones included until the next
+    /// content change); nil until built. Drives fingerprint-based no-resend.
+    private var cachedCardioHistory: WatchSync.CardioHistorySnapshot?
+    private var cardioHistoryPublishTask: Task<Void, Never>?
+    private var cardioHistorySaveObserver: NSObjectProtocol?
     private var historyInvalidationObserver: NSObjectProtocol?
 
     private struct WatchPayloadSnapshot: Sendable {
         let customExercises: [WatchSync.CustomExercise]
         let recentPartnerNames: [String]
+        let cardioHistory: WatchSync.CardioHistorySnapshot?
     }
 
     /// WCSession and its property-list dictionary are Foundation reference
@@ -426,7 +432,18 @@ final class AppModel: NSObject, @unchecked Sendable {
             // Any phone-side history change makes the published Coach snapshot stale.
             historyInvalidationObserver = NotificationCenter.default.addObserver(
                 forName: .workoutHistoryChanged, object: nil, queue: .main) { [weak self] _ in
-                    Task { @MainActor [weak self] in self?.invalidateWatchCoachSuggestion() }
+                    Task { @MainActor [weak self] in
+                        self?.invalidateWatchCoachSuggestion()
+                        self?.scheduleWatchCardioHistoryPublish()
+                    }
+                }
+        }
+        if cardioHistorySaveObserver == nil {
+            // Cardio imports, upserts, deletes, restores and normal saves all commit through a
+            // ModelContext save; the debounce and the fingerprint keep this cheap.
+            cardioHistorySaveObserver = NotificationCenter.default.addObserver(
+                forName: ModelContext.didSave, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor [weak self] in self?.scheduleWatchCardioHistoryPublish() }
                 }
         }
         drainPendingWatchImportsIfNeeded()
@@ -520,6 +537,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             guard !Task.isCancelled, let self else { return }
             self.isRestoringCloudKitHistory = false
             self.cloudKitImportStatus = succeeded ? .completed(Date()) : .failed(Date())
+            if succeeded { self.scheduleWatchCardioHistoryPublish() }
         }
     }
 
@@ -554,13 +572,14 @@ final class AppModel: NSObject, @unchecked Sendable {
             recentPartnerNames: []
         )
         let container = _modelContainer
+        let previousCardioIDs = Set(cachedCardioHistory?.liveItems.map(\.id) ?? [])
         watchPayloadTask?.cancel()
         watchPayloadTask = Task { [weak self] in
             let signpostID = OSSignpostID(log: Self.performanceLog)
             os_signpost(.begin, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             let payload = await Task.detached(priority: .utility) {
                 guard let container else {
-                    return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [])
+                    return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [], cardioHistory: nil)
                 }
                 let context = ModelContext(container)
                 let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
@@ -574,7 +593,8 @@ final class AppModel: NSObject, @unchecked Sendable {
                     .prefix(3))
                 return WatchPayloadSnapshot(
                     customExercises: exercises.filter(\.isCustom).map(WatchSync.CustomExercise.init),
-                    recentPartnerNames: names)
+                    recentPartnerNames: names,
+                    cardioHistory: Self.buildCardioHistory(container: container, previous: previousCardioIDs, now: now))
             }.value
             os_signpost(.end, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             guard !Task.isCancelled else { return }
@@ -618,7 +638,52 @@ final class AppModel: NSObject, @unchecked Sendable {
         if let week = cachedWeekSummary {
             context.merge(WatchSync.WeekSummary.contextDict(week)) { _, new in new }
         }
+        // Likewise the cardio history: omitting it would read as "older phone, keep cache" on the
+        // Watch, so the freshly built (or still-cached) snapshot always rides along once known.
+        if let fresh = payload.cardioHistory { adoptCardioHistory(fresh) }
+        if let history = cachedCardioHistory {
+            context.merge(history.contextDict) { _, new in new }
+        }
         enqueueWatchContextWrite(context, on: session, at: date, trigger: trigger)
+    }
+
+    nonisolated private static func buildCardioHistory(container: ModelContainer, previous: Set<UUID>,
+                                                       now: Date) -> WatchSync.CardioHistorySnapshot {
+        let context = ModelContext(container)
+        let cutoff = now.addingTimeInterval(-Double(WatchSync.CardioHistorySnapshot.maxAgeDays + 1) * 86_400)
+        let descriptor = FetchDescriptor<CardioWorkout>(predicate: #Predicate { $0.start >= cutoff })
+        let rows = (try? context.fetch(descriptor)) ?? []
+        return WatchCardioHistoryProjection.snapshot(from: rows, previousLiveIDs: previous, now: now)
+    }
+
+    /// Keeps the cached snapshot (and its tombstones) when the live rows are unchanged so an
+    /// unchanged history keeps an identical fingerprint and is never resent. Returns whether it changed.
+    @discardableResult
+    private func adoptCardioHistory(_ fresh: WatchSync.CardioHistorySnapshot) -> Bool {
+        if let cached = cachedCardioHistory, cached.liveItems == fresh.liveItems { return false }
+        cachedCardioHistory = fresh
+        return true
+    }
+
+    /// Debounced publisher for import/upsert/delete/restore and normal cardio save/delete commits.
+    func scheduleWatchCardioHistoryPublish() {
+        guard let container = _modelContainer, let session = wcSession, session.isWatchAppInstalled else { return }
+        cardioHistoryPublishTask?.cancel()
+        let previous = Set(cachedCardioHistory?.liveItems.map(\.id) ?? [])
+        cardioHistoryPublishTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.5))
+            guard !Task.isCancelled else { return }
+            let now = Date()
+            let fresh = await Task.detached(priority: .utility) {
+                Self.buildCardioHistory(container: container, previous: previous, now: now)
+            }.value
+            guard !Task.isCancelled, let self else { return }
+            guard self.adoptCardioHistory(fresh), let cached = self.cachedCardioHistory,
+                  let session = self.wcSession, session.isWatchAppInstalled else { return }
+            var context = session.applicationContext
+            context.merge(cached.contextDict) { _, new in new }
+            self.enqueueWatchContextWrite(context, on: session, at: now)
+        }
     }
 
     /// The single choke point for phone→Watch context writes. It stamps a versioned envelope

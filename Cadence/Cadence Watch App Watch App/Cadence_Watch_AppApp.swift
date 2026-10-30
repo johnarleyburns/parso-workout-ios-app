@@ -108,7 +108,7 @@ final class WatchStoreBootstrap: ObservableObject {
     init(arguments: [String]) {
         let inMemory = arguments.contains("-uiTest")
         do {
-            let fresh = try CadenceStore.makeModelContainer(inMemory: inMemory, cloudKitEnabled: false)
+            let fresh = try CadenceStore.makeModelContainer(inMemory: inMemory, cloudKitEnabled: false, includesWatchCardioHistory: true)
             container = fresh
             if inMemory { seed(fresh, arguments: arguments) }
         } catch {
@@ -120,13 +120,13 @@ final class WatchStoreBootstrap: ObservableObject {
                 quarantine = nil
             }
             do {
-                let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false)
+                let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
                 container = fresh
                 state = .recovered(quarantine ?? FileManager.default.temporaryDirectory)
                 if inMemory { seed(fresh, arguments: arguments) }
             } catch let retryError {
                 do {
-                    container = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false)
+                    container = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
                     state = .degraded(retryError)
                 } catch {
                     // Keep the recovery surface alive even if the platform cannot
@@ -142,7 +142,7 @@ final class WatchStoreBootstrap: ObservableObject {
         retryInProgress = true
         defer { retryInProgress = false }
         do {
-            let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false)
+            let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
             container = fresh
             catalogPreparationStarted = false
             state = .ready

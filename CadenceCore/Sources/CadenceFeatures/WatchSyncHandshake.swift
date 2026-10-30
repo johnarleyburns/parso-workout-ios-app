@@ -30,6 +30,7 @@ public enum WatchSyncHandshake {
         public static let todayPlanRevision = "watchSync.component.todayPlan"
         public static let weekSummaryRevision = "watchSync.component.weekSummary"
         public static let coachSuggestionRevision = "watchSync.component.coachSuggestion"
+        public static let cardioHistoryRevision = "watchSync.component.cardioHistory"
         /// Command value of an acknowledgement / status report sent Watch→phone.
         public static let ackCommand = "watch_sync_ack"
         public static let appliedRevision = "watchSync.appliedRevision"
@@ -45,10 +46,14 @@ public enum WatchSyncHandshake {
         public var weekSummary: String
         /// Identity of the shared Coach snapshot envelope; "" when none is published (removal).
         public var coachSuggestion: String
+        /// Fingerprint of the phone's cardio history snapshot; "" when no snapshot is published.
+        /// A history-only change alters this, so the handshake never coalesces it away.
+        public var cardioHistory: String
 
         public init(preferences: String, customExercises: String, todayPlan: String, weekSummary: String,
-                    coachSuggestion: String = "") {
+                    coachSuggestion: String = "", cardioHistory: String = "") {
             self.coachSuggestion = coachSuggestion
+            self.cardioHistory = cardioHistory
             self.preferences = preferences
             self.customExercises = customExercises
             self.todayPlan = todayPlan
@@ -73,10 +78,14 @@ public enum WatchSyncHandshake {
                 (value as? Data).map { WatchSyncFingerprint.canonicalHash($0.base64EncodedString()) } ?? value
             }
             coachSuggestion = coach.isEmpty ? "" : WatchSyncFingerprint.canonicalHash(coach)
+            // The updatedAt stamp is excluded; an absent key (older phone / not yet built) is "".
+            cardioHistory = context[WatchSync.Key.cardioHistoryItems].map {
+                WatchSyncFingerprint.canonicalHash($0)
+            } ?? ""
         }
 
         private enum CodingKeys: String, CodingKey {
-            case preferences, customExercises, todayPlan, weekSummary, coachSuggestion
+            case preferences, customExercises, todayPlan, weekSummary, coachSuggestion, cardioHistory
         }
 
         /// Ledgers persisted before the Coach component existed decode with "".
@@ -87,6 +96,7 @@ public enum WatchSyncHandshake {
             todayPlan = try c.decode(String.self, forKey: .todayPlan)
             weekSummary = try c.decode(String.self, forKey: .weekSummary)
             coachSuggestion = try c.decodeIfPresent(String.self, forKey: .coachSuggestion) ?? ""
+            cardioHistory = try c.decodeIfPresent(String.self, forKey: .cardioHistory) ?? ""
         }
     }
 
@@ -115,7 +125,8 @@ public enum WatchSyncHandshake {
              Key.customExercisesRevision: components.customExercises,
              Key.todayPlanRevision: components.todayPlan,
              Key.weekSummaryRevision: components.weekSummary,
-             Key.coachSuggestionRevision: components.coachSuggestion]
+             Key.coachSuggestionRevision: components.coachSuggestion,
+             Key.cardioHistoryRevision: components.cardioHistory]
         }
 
         /// Returns nil for legacy (pre-handshake) contexts.
@@ -131,14 +142,16 @@ public enum WatchSyncHandshake {
                         customExercises: context[Key.customExercisesRevision] as? String ?? "",
                         todayPlan: context[Key.todayPlanRevision] as? String ?? "",
                         weekSummary: context[Key.weekSummaryRevision] as? String ?? "",
-                        coachSuggestion: context[Key.coachSuggestionRevision] as? String ?? ""))
+                        coachSuggestion: context[Key.coachSuggestionRevision] as? String ?? "",
+                        cardioHistory: context[Key.cardioHistoryRevision] as? String ?? ""))
         }
 
         public static func stripping(_ context: [String: Any]) -> [String: Any] {
             var copy = context
             for key in [Key.protocolVersion, Key.revision, Key.snapshotID, Key.createdAt,
                         Key.preferencesRevision, Key.customExercisesRevision,
-                        Key.todayPlanRevision, Key.weekSummaryRevision, Key.coachSuggestionRevision] {
+                        Key.todayPlanRevision, Key.weekSummaryRevision, Key.coachSuggestionRevision,
+                        Key.cardioHistoryRevision] {
                 copy.removeValue(forKey: key)
             }
             return copy
@@ -171,6 +184,7 @@ public enum WatchSyncHandshake {
                 m[Key.todayPlanRevision] = components.todayPlan
                 m[Key.weekSummaryRevision] = components.weekSummary
                 m[Key.coachSuggestionRevision] = components.coachSuggestion
+                m[Key.cardioHistoryRevision] = components.cardioHistory
             }
             return m
         }
@@ -184,7 +198,8 @@ public enum WatchSyncHandshake {
                            customExercises: message[Key.customExercisesRevision] as? String ?? "",
                            todayPlan: message[Key.todayPlanRevision] as? String ?? "",
                            weekSummary: message[Key.weekSummaryRevision] as? String ?? "",
-                           coachSuggestion: message[Key.coachSuggestionRevision] as? String ?? "")
+                           coachSuggestion: message[Key.coachSuggestionRevision] as? String ?? "",
+                           cardioHistory: message[Key.cardioHistoryRevision] as? String ?? "")
             }
             self.init(protocolVersion: version, revision: revision,
                       snapshotID: (message[Key.appliedSnapshotID] as? String).flatMap(UUID.init(uuidString:)),

@@ -11,7 +11,7 @@ public struct WatchSyncCommitCoordinator: Equatable, Sendable {
     public enum Outcome: Equatable, Sendable {
         /// Everything is durable: persist this record, then acknowledge it.
         case commit(WatchSyncAppliedRecord)
-        /// Wait for the custom-exercise store before committing.
+        /// Wait for the custom-exercise and cardio-history stores before committing.
         case awaitDurable
         /// Superseded by a newer snapshot or already confirmed; do nothing.
         case discard
@@ -29,12 +29,13 @@ public struct WatchSyncCommitCoordinator: Equatable, Sendable {
     }
 
     public mutating func accept(_ envelope: WatchSyncHandshake.Envelope, applied: WatchSyncAppliedRecord?,
-                                needsDurableExercises: Bool) -> Outcome {
+                                needsDurableExercises: Bool,
+                                needsDurableCardioHistory: Bool = false) -> Outcome {
         guard envelope.protocolVersion == WatchSyncHandshake.protocolVersion,
               envelope.revision > (applied?.revision ?? 0),
               envelope.revision >= highestAccepted else { return .discard }
         highestAccepted = envelope.revision
-        if needsDurableExercises {
+        if needsDurableExercises || needsDurableCardioHistory {
             awaiting = envelope
             return .awaitDurable
         }
@@ -42,7 +43,7 @@ public struct WatchSyncCommitCoordinator: Equatable, Sendable {
         return .commit(Self.record(envelope))
     }
 
-    /// Reports the custom-exercise store result for `envelope`.
+    /// Reports the combined custom-exercise / cardio-history store result for `envelope`.
     public mutating func durableStoreFinished(for envelope: WatchSyncHandshake.Envelope, succeeded: Bool,
                                               applied: WatchSyncAppliedRecord?) -> Outcome {
         guard awaiting == envelope, envelope.revision > (applied?.revision ?? 0) else { return .discard }

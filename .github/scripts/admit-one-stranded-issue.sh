@@ -23,11 +23,18 @@ if [[ -n "$open_generated_pr" ]]; then
   exit 0
 fi
 main_sha=$(gh api "${api}/git/ref/heads/main" --jq '.object.sha')
-release=$(gh api "${api}/actions/runs?head_sha=${main_sha}&per_page=100" | jq '[.workflow_runs[] | select(.name == "iOS Build & TestFlight" or .name == "iOS")] | sort_by(.created_at) | last')
-release_status=$(jq -r '.status // empty' <<<"$release")
-release_conclusion=$(jq -r '.conclusion // empty' <<<"$release")
-if [[ "$release_status" != completed || "$release_conclusion" != success ]]; then
-  echo "main ${main_sha} release is not successfully settled (${release_status:-missing}/${release_conclusion:-missing}); admission waits."
+# A manual retry can be cancelled before it starts. That does not invalidate a
+# prior successful release for the identical immutable main SHA. Still wait
+# while any release for this SHA is active, then require at least one success.
+releases=$(gh api "${api}/actions/runs?head_sha=${main_sha}&per_page=100" | jq '[.workflow_runs[] | select(.name == "iOS Build & TestFlight" or .name == "iOS")]')
+active_release=$(jq '[.[] | select(.status != "completed")] | length' <<<"$releases")
+successful_release=$(jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length' <<<"$releases")
+if (( active_release > 0 )); then
+  echo "main ${main_sha} has an active release; admission waits."
+  exit 0
+fi
+if (( successful_release == 0 )); then
+  echo "main ${main_sha} has no successful settled release; admission waits."
   exit 0
 fi
 ensure_label() { gh label create "$1" --repo "$repo" --color "$2" --description "$3" --force >/dev/null; }

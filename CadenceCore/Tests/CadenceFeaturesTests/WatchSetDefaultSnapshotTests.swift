@@ -47,7 +47,12 @@ final class WatchSetDefaultSnapshotTests: XCTestCase {
 
     func testMissingKeysYieldEmpty() {
         let s = snapshot()
-        XCTAssertEqual(s.history(exerciseKey: "deadlift", performerID: "owner"), .empty)
+        // A missing movement keeps only that performer's general rep habit (#432).
+        let missing = s.history(exerciseKey: "deadlift", performerID: "owner")
+        XCTAssertEqual(missing.generalRepLadders, [[5, 5, 5]])
+        XCTAssertTrue(missing.repLadders.isEmpty)
+        XCTAssertTrue(missing.weightSamples.isEmpty)
+        XCTAssertNil(missing.firstWorkingWeightKg)
         XCTAssertEqual(s.history(exerciseKey: "squat", performerID: UUID().uuidString), .empty)
     }
 

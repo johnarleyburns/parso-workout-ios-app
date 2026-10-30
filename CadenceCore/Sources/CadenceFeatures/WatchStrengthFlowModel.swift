@@ -409,15 +409,17 @@ public final class WatchStrengthFlowModel {
             lastWeightThisSessionKg: logged.last?.weight,
             weightSamples: prior.filter { !$0.isWarmup }.map { SetSample.from($0) }
         )
-        // Owner only: the phone's synced snapshot is the authoritative historical
-        // source when it has data for this exercise; Watch-local history is the
-        // fallback. Current-session values are layered on separately.
-        if performerID == nil, let provider = setDefaultHistory {
+        // The phone's synced snapshot for the selected performer (stable remote
+        // identity only, never a name or local id) is the authoritative historical
+        // source when it has data; Watch-local history of that same person is the
+        // fallback. A partner never reads owner rows. Current-session values are
+        // layered on separately.
+        if let provider = setDefaultHistory {
             let synced = provider.history(
                 exerciseKey: WatchSetDefaultSnapshot.canonicalKey(exercise.name),
-                performerID: WatchSync.PerformerReference.ownerID)
+                performerID: currentPerformerRemoteID)
             if !synced.repLadders.isEmpty || !synced.weightSamples.isEmpty
-                || synced.firstWorkingWeightKg != nil {
+                || synced.firstWorkingWeightKg != nil || !synced.generalRepLadders.isEmpty {
                 history = synced
                 history.repsLoggedThisSession = logged.map(\.reps)
                 history.lastWeightThisSessionKg = logged.last?.weight

@@ -104,9 +104,12 @@ public struct WatchSetDefaultSnapshot: Codable, Equatable, Sendable {
     }
 
     public func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-        guard let performer = performers.first(where: { $0.id == performerID }),
-              let exercise = performer.exercises.first(where: { $0.id == Self.canonicalKey(exerciseKey) })
-        else { return .empty }
+        guard let performer = performers.first(where: { $0.id == performerID }) else { return .empty }
+        guard let exercise = performer.exercises.first(where: { $0.id == Self.canonicalKey(exerciseKey) })
+        else {
+            // No row for this movement: keep only the performer's own general rep habit.
+            return PerformerSetPlanner.History(generalRepLadders: performer.generalRepLadders)
+        }
         return PerformerSetPlanner.History(
             repLadders: exercise.repLadders,
             generalRepLadders: performer.generalRepLadders,

@@ -1222,6 +1222,36 @@ public enum WorkoutRepository {
     /// number newly inserted.
     @discardableResult
     public static func ingest(_ workouts: [IngestedWorkout], in context: ModelContext) throws -> Int {
+        let (inserted, changed) = try ingestUnsaved(workouts, in: context)
+        if inserted > 0 || changed { try context.save() }
+        return inserted
+    }
+
+    /// Applies one anchored HealthKit delta in a single save: upserts first,
+    /// then soft-deletes only rows imported from HealthKit whose UUID was
+    /// deleted there. Cladiron-recorded rows are never removed by HealthKit.
+    public static func applyCardioImport(upserts: [IngestedWorkout],
+                                         deletedIDs: [UUID],
+                                         in context: ModelContext) throws -> CardioImportReport {
+        let (inserted, changed) = try ingestUnsaved(upserts, in: context)
+        var removed = 0
+        if !deletedIDs.isEmpty {
+            let ids = Set(deletedIDs)
+            let rows = try context.fetch(FetchDescriptor<CardioWorkout>())
+            let now = Date()
+            for row in rows where row.deletedAt == nil && row.originValue == .healthKitImported {
+                if let id = row.healthKitWorkoutUUID, ids.contains(id) {
+                    row.deletedAt = now
+                    removed += 1
+                }
+            }
+        }
+        if inserted > 0 || changed || removed > 0 { try context.save() }
+        return CardioImportReport(inserted: inserted, removed: removed, changed: changed)
+    }
+
+    private static func ingestUnsaved(_ workouts: [IngestedWorkout],
+                                      in context: ModelContext) throws -> (inserted: Int, changed: Bool) {
         var existing = try context.fetch(FetchDescriptor<CardioWorkout>())
         var inserted = 0
         var changed = false
@@ -1265,8 +1295,7 @@ public enum WorkoutRepository {
             existing.append(c)
             inserted += 1
         }
-        if inserted > 0 || changed { try context.save() }
-        return inserted
+        return (inserted, changed)
     }
 
     /// Fills only missing fields on the row that already owns this UUID.

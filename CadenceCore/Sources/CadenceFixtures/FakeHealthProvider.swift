@@ -49,7 +49,23 @@ public final class FakeHealthProvider: HealthDataProviding {
         )
     ]
 
-    public func newWorkouts(since: Date?) async -> [IngestedWorkout] { pendingWorkouts }
+    /// Deterministic anchored cursor: the delta is everything not yet committed.
+    public var committedImportAnchor: Data?
+    public var pendingDeletedUUIDs: [UUID] = []
+    public var importFetchError: (any Error)?
+    public private(set) var committedAnchors: [Data] = []
+
+    public func fetchImportedCardioDelta() async throws -> CardioImportDelta {
+        if let importFetchError { throw importFetchError }
+        return CardioImportDelta(upserts: pendingWorkouts,
+                                 deletedHealthKitUUIDs: pendingDeletedUUIDs,
+                                 nextAnchor: Data("anchor-\(pendingWorkouts.count)-\(pendingDeletedUUIDs.count)".utf8))
+    }
+
+    public func commitImportedCardioAnchor(_ anchor: Data) {
+        committedImportAnchor = anchor
+        committedAnchors.append(anchor)
+    }
 
     public var savedSummaries: [StrengthWorkoutSummary] = []
     public func saveStrengthWorkout(_ summary: StrengthWorkoutSummary) async -> UUID? {

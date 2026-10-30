@@ -200,7 +200,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// inserting transient content into the Home layout.
     var coachRefreshInProgress = false
 
-    var lastHealthSync: Date? {
+    /// UI-only "last checked" time; never filters HealthKit reads.
+    var lastHealthCheckedAt: Date? {
         get { (UserDefaults.standard.object(forKey: SettingsKey.lastHealthSync) as? Double).map { Date(timeIntervalSince1970: $0) } }
         set { UserDefaults.standard.set(newValue?.timeIntervalSince1970, forKey: SettingsKey.lastHealthSync) }
     }

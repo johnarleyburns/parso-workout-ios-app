@@ -23,16 +23,20 @@ enum WatchTone {
     static let ringGradient = AngularGradient(colors: [accent.opacity(0.55), accent, accentBright], center: .center)
 }
 
-/// §3 `MetricField`: one big number with its unit; outlined while it owns the Crown.
+/// §3 `MetricField`: one big number with its unit; outlined while it owns the Crown. Tapping it opens
+/// the system text-input UI directly (dictation first on watchOS 11) via `TextFieldLink`.
 struct WatchMetricField: View {
     let value: String
     let unit: String
     let isFocused: Bool
     let accessibilityName: Text
-    let action: () -> Void
+    let prompt: Text
+    let hint: Text
+    let onFocus: () -> Void
+    let onSubmit: (String) -> Void
 
     var body: some View {
-        Button(action: action) {
+        WatchNativeSetEntryLink(prompt: prompt, onSubmit: onSubmit) {
             HStack(alignment: .center, spacing: 2) {
                 Text(value)
                     .font(.system(.title2, design: .rounded).weight(.bold))
@@ -51,10 +55,11 @@ struct WatchMetricField: View {
                 .stroke(isFocused ? WatchTone.accent : Color.clear, lineWidth: 1.5))
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .simultaneousGesture(TapGesture().onEnded(onFocus))
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityName)
         .accessibilityValue(Text("\(value) \(unit)"))
-        .accessibilityHint(isFocused ? Text("Turn the Digital Crown to adjust") : Text("Double-tap to adjust with the Digital Crown"))
+        .accessibilityHint(hint)
     }
 }
 

@@ -17,8 +17,7 @@ struct WatchSetKeypadView: View {
     @State private var focus: WatchSetCardField = .weight
     @State private var showingMore = false
     @State private var showingLifters = false
-    @State private var showingWeightEntry = false
-    @State private var showingRepsEntry = false
+    @State private var entryError: String?
     @State private var holdStartedTalk = false
     @State private var isLogging = false
     @State private var toastLastTime: String?
@@ -101,11 +100,10 @@ struct WatchSetKeypadView: View {
             .sheet(isPresented: $showingLifters) {
                 NavigationStack { WatchPartnersView(model: model) }
             }
-            .sheet(isPresented: $showingWeightEntry) {
-                WatchWeightEntryView(value: $bindableModel.currentWeightDisplay, unit: model.unit)
-            }
-            .sheet(isPresented: $showingRepsEntry) {
-                WatchRepsEntryView(value: $bindableModel.currentReps)
+            .alert("Try again", isPresented: Binding(get: { entryError != nil }, set: { if !$0 { entryError = nil } })) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(verbatim: entryError ?? "")
             }
             .accessibilityAction(named: Text("Log set")) { log() }
             .accessibilityAction(named: Text("More")) { showingMore = true }
@@ -117,16 +115,18 @@ struct WatchSetKeypadView: View {
     @ViewBuilder
     private func fields(_ card: WatchSetCardState) -> some View {
         let weight = WatchMetricField(value: card.weightText, unit: card.unitText, isFocused: focus == .weight,
-                                      accessibilityName: Text("Weight")) {
-            focus = .weight
-            showingWeightEntry = true
-        }
+                                      accessibilityName: Text("Weight"),
+                                      prompt: Text("Say or enter weight in \(card.unitText)"),
+                                      hint: Text("Double-tap to say or enter weight"),
+                                      onFocus: { focus = .weight },
+                                      onSubmit: submitWeight)
             .accessibilityIdentifier("watchWeight.current")
         let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps,
-                                    accessibilityName: Text("Reps")) {
-            focus = .reps
-            showingRepsEntry = true
-        }
+                                    accessibilityName: Text("Reps"),
+                                    prompt: Text("Say or enter reps"),
+                                    hint: Text("Double-tap to say or enter reps"),
+                                    onFocus: { focus = .reps },
+                                    onSubmit: submitReps)
             .accessibilityIdentifier("watchReps.current")
         if card.isNonWeighted {
             VStack(spacing: 4) {
@@ -141,6 +141,29 @@ struct WatchSetKeypadView: View {
             VStack(spacing: 4) { weight; reps }
         } else {
             HStack(spacing: 4) { weight; reps }
+        }
+    }
+
+    /// Direct entry: the binding changes only on a fully valid value; failures leave it untouched.
+    private func submitWeight(_ raw: String) {
+        focus = .weight
+        switch WatchSetEntryParser.weight(raw, unit: model.unit, range: increment.range) {
+        case .success(let entered):
+            bindableModel.currentWeightDisplay = entered
+            WatchHaptics.success()
+        case .failure(let failure):
+            entryError = WatchSetEntryParser.weightMessage(for: failure, unit: model.unit, range: increment.range)
+        }
+    }
+
+    private func submitReps(_ raw: String) {
+        focus = .reps
+        switch WatchSetEntryParser.reps(raw) {
+        case .success(let entered):
+            bindableModel.currentReps = Double(entered)
+            WatchHaptics.success()
+        case .failure(let failure):
+            entryError = WatchSetEntryParser.repsMessage(for: failure)
         }
     }
 
@@ -244,6 +267,11 @@ struct WatchSetMoreView: View {
             }
             .accessibilityIdentifier("watchSet.warmup")
 
+            if !isCurrentExerciseNonWeighted {
+                WatchWeightAdjustSection(value: $model.currentWeightDisplay, unit: model.unit)
+            }
+            WatchRepsAdjustSection(value: $model.currentReps)
+
             if !model.currentWorkoutHistoryLines.isEmpty {
                 Section("This workout") {
                     ForEach(model.currentWorkoutHistoryLines) { line in
@@ -308,6 +336,11 @@ struct WatchSetMoreView: View {
         } message: { _ in
             Text("Its sets in this workout are removed too.")
         }
+    }
+
+    private var isCurrentExerciseNonWeighted: Bool {
+        guard case .keypad(let exercise) = model.stage else { return false }
+        return SessionViewModel.isNonWeighted(exercise)
     }
 
     private var removableExercise: Exercise? {

@@ -16,6 +16,11 @@ struct TransparencyCenterView: View {
             Section("Right now") {
                 statusRow(String(localized: "Apple Health"), systemImage: "heart.text.square",
                           value: model.healthSyncStatus.detailText)
+                if case .failed = model.healthSyncStatus {
+                    Button(String(localized: "Retry Apple Health check")) {
+                        Task { await model.requestCardioImport(.retry) }
+                    }
+                }
                 statusRow(String(localized: "Health restore"), systemImage: "arrow.down.heart",
                           value: model.healthRestoreStatus.detailText)
                 statusRow(String(localized: "Watch"), systemImage: "applewatch",

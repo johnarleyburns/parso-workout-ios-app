@@ -33,6 +33,10 @@ struct HealthPrimingView: View {
                         requesting = true
                         let status = await model.health.requestAuthorization()
                         requesting = false
+                        if status == .authorized {
+                            model.startHealthWorkoutObservation()
+                            Task { await model.requestCardioImport(.authorization) }
+                        }
                         onResult(status)
                         dismiss()
                     }

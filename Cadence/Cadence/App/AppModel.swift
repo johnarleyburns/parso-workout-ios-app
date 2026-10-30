@@ -428,6 +428,11 @@ final class AppModel: NSObject, @unchecked Sendable {
         _settings = settings
         _modelContainer = container
         _active = active
+        if applicationIsActive {
+            // The first activation can precede container setup; catch up now.
+            startHealthWorkoutObservation()
+            Task { @MainActor in await requestCardioImport(.foreground) }
+        }
         if historyInvalidationObserver == nil {
             // Any phone-side history change makes the published Coach snapshot stale.
             historyInvalidationObserver = NotificationCenter.default.addObserver(
@@ -449,9 +454,70 @@ final class AppModel: NSObject, @unchecked Sendable {
         drainPendingWatchImportsIfNeeded()
     }
 
+    // MARK: HealthKit cardio import (FR-2.1)
+
+    /// The one serial owner of the Health cardio import. Foreground, authorization,
+    /// observer, Home and retry triggers all route through it, so only a single
+    /// ordered fetch → persist → commit-anchor operation is ever in flight.
+    @ObservationIgnored private var cardioImporter: CardioImportCoordinator?
+
+    private func cardioImportCoordinator() -> CardioImportCoordinator? {
+        if let cardioImporter { return cardioImporter }
+        guard let container = _modelContainer else { return nil }
+        let coordinator = CardioImportCoordinator(
+            provider: health,
+            persist: { delta in
+                try await Task.detached(priority: .utility) {
+                    try WorkoutRepository.applyCardioImport(
+                        upserts: delta.upserts, deletedIDs: delta.deletedHealthKitUUIDs,
+                        in: ModelContext(container))
+                }.value
+            },
+            onState: { [weak self] state in self?.applyCardioImportState(state) },
+            onCommittedChange: { _ in
+                // Post-commit only: Home/coach refresh and the Watch history publish.
+                NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
+            })
+        cardioImporter = coordinator
+        return coordinator
+    }
+
+    private func applyCardioImportState(_ state: CardioImportState) {
+        switch state {
+        case .idle: healthSyncStatus = .idle
+        case .syncing: healthSyncStatus = .syncing
+        case .completed(let at, let report):
+            lastHealthCheckedAt = at
+            healthSyncStatus = .completed(at, insertedCount: report.inserted)
+        case .failed(let message): healthSyncStatus = .failed(message)
+        case .unavailable:
+            healthSyncStatus = .failed(String(localized: "Apple Health isn’t available on this device."))
+        }
+    }
+
+    /// Requests an import from any trigger. Never prompts for authorization.
+    func requestCardioImport(_ trigger: CardioImportTrigger) async {
+        guard let coordinator = cardioImportCoordinator() else { return }
+        await coordinator.request(trigger)
+    }
+
+    /// Installs the workout observer once; deliveries run the import without Home.
+    func startHealthWorkoutObservation() {
+        guard !isUITestMode else { return }
+        health.startWorkoutObservation { [weak self] completion in
+            guard let self, let coordinator = self.cardioImportCoordinator() else {
+                completion.finish()
+                return
+            }
+            Task { @MainActor in await coordinator.handleObserverDelivery(completion) }
+        }
+    }
+
     func setApplicationActive(_ active: Bool) {
         applicationIsActive = active
         if active {
+            startHealthWorkoutObservation()
+            Task { @MainActor in await requestCardioImport(.foreground) }
             drainPendingWatchImportsIfNeeded()
             startWatchReconcileLoop()
         } else {

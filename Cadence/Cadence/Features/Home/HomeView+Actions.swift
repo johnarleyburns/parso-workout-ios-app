@@ -97,37 +97,11 @@ extension HomeView {
     /// This runs after Home loads and on pull-to-refresh. The status is published
     /// so the user can see what is happening instead of experiencing a silent
     /// background import.
-    func syncCardioFromHealth() async {
-        guard !model.healthSyncStatus.isInProgress else { return }
+    func syncCardioFromHealth(_ trigger: CardioImportTrigger = .homeDisplay) async {
         let signpostID = OSSignpostID(log: Self.healthIngestLog)
         os_signpost(.begin, log: Self.healthIngestLog, name: "healthIngest", signpostID: signpostID)
         defer { os_signpost(.end, log: Self.healthIngestLog, name: "healthIngest", signpostID: signpostID) }
-        model.healthSyncStatus = .syncing
-        do {
-            let container = cadenceModelContainer
-            let mainContext = context
-            let report = try await CardioImportRunner.run(provider: model.health) { delta in
-                if let container {
-                    return try await Task.detached(priority: .utility) {
-                        let backgroundContext = ModelContext(container)
-                        return try WorkoutRepository.applyCardioImport(
-                            upserts: delta.upserts, deletedIDs: delta.deletedHealthKitUUIDs,
-                            in: backgroundContext)
-                    }.value
-                }
-                return try WorkoutRepository.applyCardioImport(
-                    upserts: delta.upserts, deletedIDs: delta.deletedHealthKitUUIDs,
-                    in: mainContext)
-            }
-            let completedAt = Date()
-            model.lastHealthCheckedAt = completedAt
-            model.healthSyncStatus = .completed(completedAt, insertedCount: report.inserted)
-            if report.changedHistory { markWorkoutHistoryChanged() }
-        } catch is CancellationError {
-            model.healthSyncStatus = .idle
-        } catch {
-            model.healthSyncStatus = .failed(error.localizedDescription)
-        }
+        await model.requestCardioImport(trigger)
     }
     /// Workouts completed today; coach recommendations stay in the coach and
     /// Start Workout surfaces rather than appearing as historical activity.

@@ -42,7 +42,7 @@ extension HomeView {
                 today = await model.health.todayActivity()
                 activityTrend = await model.health.activityTrend(days: 7)
                 passiveSamples = await model.health.passiveReadinessSamples(days: 60); passiveSamplesLoaded = true
-                await syncCardioFromHealth()
+                await syncCardioFromHealth(.manualRefresh)
             }
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)

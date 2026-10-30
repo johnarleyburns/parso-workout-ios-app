@@ -258,6 +258,9 @@ public protocol HealthDataProviding: AnyObject {
     func fetchImportedCardioDelta() async throws -> CardioImportDelta
     /// Advances the import cursor. Call only after the delta was saved.
     func commitImportedCardioAnchor(_ anchor: Data)
+    /// Installs one observer for workout changes. `onDelivery` receives
+    /// HealthKit's completion handler wrapped for exactly-once use. Idempotent.
+    func startWorkoutObservation(onDelivery: @escaping @MainActor @Sendable (HealthObserverCompletion) -> Void)
     /// Cladiron-authored HealthKit objects for restore. This is separate from
     /// third-party cardio ingest: only objects carrying Cladiron metadata are
     /// returned, including legacy summary workouts without that metadata.
@@ -282,7 +285,24 @@ public protocol HealthDataProviding: AnyObject {
     func latestVO2Max() async -> Double?
 }
 
+/// Exactly-once wrapper for a HealthKit observer completion handler.
+public final class HealthObserverCompletion: @unchecked Sendable {
+    // @unchecked: the non-Sendable handler is only touched under `lock`.
+    private let lock = NSLock()
+    private var handler: (() -> Void)?
+    public init(_ handler: @escaping () -> Void) { self.handler = handler }
+    /// Idempotent: only the first call invokes the handler.
+    public func finish() {
+        lock.lock()
+        let h = handler
+        handler = nil
+        lock.unlock()
+        h?()
+    }
+}
+
 public extension HealthDataProviding {
+    func startWorkoutObservation(onDelivery: @escaping @MainActor @Sendable (HealthObserverCompletion) -> Void) {}
     func readHealthBackups(since: Date?) async -> [HealthBackupReadObject] { [] }
     /// Default: no passive data (keeps fakes/mocks and older conformers compiling).
     func passiveReadinessSamples(days: Int) async -> [PassiveReadinessSample] { [] }

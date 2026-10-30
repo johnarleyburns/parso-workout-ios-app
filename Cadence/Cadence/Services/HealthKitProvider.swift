@@ -255,6 +255,24 @@ final class HealthKitProvider: HealthDataProviding {
         anchorDefaults.set(anchor, forKey: AnchorKey.importedCardioV1)
     }
 
+    private var workoutObserver: HKObserverQuery?
+
+    /// One long-lived observer. HealthKit's completion handler is wrapped so it
+    /// fires exactly once even when the delivery hop fails or errors.
+    func startWorkoutObservation(onDelivery: @escaping @MainActor @Sendable (HealthObserverCompletion) -> Void) {
+        guard workoutObserver == nil, isHealthDataAvailable else { return }
+        let query = HKObserverQuery(sampleType: .workoutType(), predicate: nil) { _, completionHandler, error in
+            let completion = HealthObserverCompletion(completionHandler)
+            guard error == nil else {
+                completion.finish()
+                return
+            }
+            Task { @MainActor in onDelivery(completion) }
+        }
+        workoutObserver = query
+        store.execute(query)
+    }
+
     private enum HealthImportError: LocalizedError {
         case anchorEncodingFailed
         var errorDescription: String? { "Could not encode the Health import cursor." }

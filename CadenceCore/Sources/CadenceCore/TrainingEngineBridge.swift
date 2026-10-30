@@ -892,7 +892,9 @@ extension TrainingEngineBridge {
         from sessions: [WorkoutSession],
         subjectId: String
     ) -> Data? {
-        try? JSONEncoder().encode(trainingHistory(from: sessions, subjectId: subjectId))
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]  // deterministic bytes for identical history
+        return try? encoder.encode(trainingHistory(from: sessions, subjectId: subjectId))
     }
 
     /// Background-safe counterpart to the model-based observation entry point.

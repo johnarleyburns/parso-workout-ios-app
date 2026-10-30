@@ -29,6 +29,8 @@ struct WatchAddExerciseView: View {
     @State private var searchGeneration = 0
     /// Duplicate / failure feedback shown while the user stays in Add Exercise.
     @State private var feedback: String?
+    /// Pending confirmation + failure outcome; the workout changes only on Add.
+    @State private var confirmation = WatchAddConfirmation()
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -45,7 +47,7 @@ struct WatchAddExerciseView: View {
                 WatchAddExercisePreview(entry: selectedEntry, feedback: feedback,
                                         showingDetail: $showingDetail,
                                         onBack: { self.selectedEntry = nil },
-                                        onAdd: { add(selectedEntry) })
+                                        onAdd: { requestAdd(selectedEntry) })
             } else {
                 picker
             }
@@ -61,6 +63,11 @@ struct WatchAddExerciseView: View {
         .onChange(of: query) { _, _ in
             scheduleSearch()
         }
+        .modifier(WatchAddConfirmationModifier(
+            confirmation: $confirmation,
+            onAdd: performConfirmedAdd,
+            onViewWorkout: { model.goBackToHome() },
+            onRefresh: refreshResults))
         .onDisappear {
             searchTask?.cancel()
         }
@@ -250,7 +257,7 @@ struct WatchAddExerciseView: View {
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
         HStack(spacing: 6) {
             Button {
-                add(exercise)
+                requestAdd(exercise)
             } label: {
                 Label(exercise.name, systemImage: "plus.circle.fill")
                     .labelStyle(.titleAndIcon)
@@ -277,8 +284,34 @@ struct WatchAddExerciseView: View {
         }
     }
 
-    private func add(_ entry: ExerciseCatalogEntry) {
-        report(model.addExercise(id: entry.id, named: entry.name))
+    private func requestAdd(_ entry: ExerciseCatalogEntry) {
+        feedback = nil
+        confirmation.request(.init(id: entry.id, name: entry.name))
+        WatchHaptics.tap()
+    }
+
+    /// The only caller of `model.addExercise`; reached from the dialog's Add.
+    private func performConfirmedAdd() {
+        guard let result = confirmation.confirm(add: { model.addExercise(id: $0, named: $1) }) else { return }
+        let outcome = WatchExerciseAddPresenter.outcome(for: result)
+        switch outcome.feedback {
+        case .success: WatchHaptics.success()
+        case .failure:
+            WatchHaptics.failure()
+            AccessibilityNotification.Announcement(outcome.message).post()
+        }
+        feedback = nil
+    }
+
+    /// Reloads the catalog, then reruns the current query.
+    private func refreshResults() {
+        confirmation.dismissOutcome()
+        Task { @MainActor in
+            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
+            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                scheduleSearch(immediate: true)
+            }
+        }
     }
 
     /// Success hands off to the Plan page (the model's stage change), which

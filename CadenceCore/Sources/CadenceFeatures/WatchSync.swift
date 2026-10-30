@@ -36,6 +36,9 @@ public struct WeightIncrement {
 }
 
 public enum WatchSync {
+    /// Phone-side performer identity carried in rich Watch strength starts.
+    public typealias PerformerReference = WatchPlanPayload.PerformerReference
+
     public enum Key {
         public static let command = "command"
         public static let requestSettingsSync = "request_settings_sync"

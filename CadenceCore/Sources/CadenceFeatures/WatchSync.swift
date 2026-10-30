@@ -66,6 +66,10 @@ public enum WatchSync {
         public static let coachSuggestionSnapshot = "coachSuggestion.snapshot"
         public static let coachSuggestionSnapshotUpdatedAt = "coachSuggestion.updatedAt"
 
+        /// Reserved for the offline Watch single-exercise suggestion contract
+        /// (`WatchSingleExerciseSuggestionContext`); not yet sent or consumed.
+        public static let singleExerciseSuggestionContext = "suggestion.singleExerciseContext"
+
         public static let weekSets = "week.sets"
         public static let weekSetsMinimum = "week.setsMinimum"
         public static let weekSetsTarget = "week.setsTarget"

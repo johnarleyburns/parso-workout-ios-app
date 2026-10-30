@@ -14,7 +14,7 @@ public enum CadenceStore {
     /// on the iOS target.
     public static let cloudKitContainerID = "iCloud.guru.parso.ios-workout-app"
 
-    public static let schema = Schema([
+    private static let sharedModelTypes: [any PersistentModel.Type] = [
         PlanningDraft.self,
         WorkoutSession.self,
         Exercise.self,
@@ -38,7 +38,13 @@ public enum CadenceStore {
         PersistedClientRelationship.self,
         ExerciseSuggestionExclusion.self,
         ScheduledWorkout.self
-    ])
+    ]
+
+    public static let schema = Schema(sharedModelTypes)
+
+    /// The Watch's local-only store: the shared schema plus the phone-mirrored cardio
+    /// history projection. Never used for the phone or its CloudKit configurations.
+    public static let watchSchema = Schema(sharedModelTypes + [WatchCardioHistoryRecord.self])
 
     /// The H5 boundary. Health-bearing rows remain in an on-device
     /// configuration; library, roster, plans, and schedule rows are the only
@@ -175,23 +181,26 @@ public enum CadenceStore {
     ///     sole CloudKit writer and watch data moves over WatchConnectivity.
     public static func makeModelContainer(inMemory: Bool = false,
                                           cloudKitEnabled: Bool = true,
-                                          storeURL: URL? = nil) throws -> ModelContainer {
+                                          storeURL: URL? = nil,
+                                          includesWatchCardioHistory: Bool = false) throws -> ModelContainer {
+        // Only the Watch asks for the phone-mirrored cardio projection, and it is local-only.
+        let activeSchema = includesWatchCardioHistory && !cloudKitEnabled ? watchSchema : schema
         let configuration: ModelConfiguration
         if inMemory {
-            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: inMemory)
+            configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: inMemory)
         } else if let storeURL {
             // Explicit URLs are used by persistence regression tests and by the
             // isolated UI-test store. They are always local-only: a test must
             // never touch the user's CloudKit database.
-            configuration = ModelConfiguration(schema: schema, url: storeURL,
+            configuration = ModelConfiguration(schema: activeSchema, url: storeURL,
                                                cloudKitDatabase: .none)
         } else if !cloudKitEnabled {
-            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+            configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: false)
         } else {
-            configuration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false,
+            configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: false,
                                                cloudKitDatabase: .private(cloudKitContainerID))
         }
-        return try ModelContainer(for: schema, configurations: [configuration])
+        return try ModelContainer(for: activeSchema, configurations: [configuration])
     }
 
 }

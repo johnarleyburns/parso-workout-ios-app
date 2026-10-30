@@ -482,12 +482,16 @@ public enum WatchSync {
         public let sentWorkouts: [TodayPlan.Session]?
         /// Decoded off the main actor. `.absent` in a handshake snapshot means the phone removed it.
         public let coachSuggestion: WatchCoachSuggestionPayload
+        /// Phone cardio history; `.absent` (older phone) means keep the Watch's cache.
+        public let cardioHistory: CardioHistoryPayload
 
         public init(preferences: Preferences, todayPlan: TodayPlan?,
                     customExercises: [CustomExercise]?, updatedAt: Date,
                     weekSummary: WeekSummary? = nil,
                     sentWorkouts: [TodayPlan.Session]? = nil,
-                    coachSuggestion: WatchCoachSuggestionPayload = .absent) {
+                    coachSuggestion: WatchCoachSuggestionPayload = .absent,
+                    cardioHistory: CardioHistoryPayload = .absent) {
+            self.cardioHistory = cardioHistory
             self.sentWorkouts = sentWorkouts
             self.coachSuggestion = coachSuggestion
             self.preferences = preferences
@@ -512,7 +516,8 @@ public enum WatchSync {
                 updatedAt: (context[Key.contextUpdatedAt] as? Date) ?? Date(),
                 weekSummary: WeekSummary.from(context: context),
                 sentWorkouts: context[Key.sentWorkouts] == nil ? nil : WatchSentWorkouts.sessions(from: context),
-                coachSuggestion: WatchCoachSuggestionPayload(context: context))
+                coachSuggestion: WatchCoachSuggestionPayload(context: context),
+                cardioHistory: CardioHistoryPayload(context: context))
         }
     }
 

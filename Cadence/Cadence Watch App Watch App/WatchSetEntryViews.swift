@@ -3,65 +3,58 @@ import WatchKit
 import CadenceCore
 import CadenceFeatures
 
-/// Dedicated weight entry. Plate math lives here, while the exact-value keypad
-/// is one more tap away from the large current value.
-struct WatchWeightEntryView: View {
-    @Binding var value: Double
-    let unit: MeasurementUnitPreference
-    @Environment(\.dismiss) private var dismiss
-    @State private var plate: Double = 2.5
-    @State private var directEntry = false
-    @State private var plateStepPicker = false
-
-    private var increment: WeightIncrement { WeightIncrement(unit: unit) }
-    private var range: ClosedRange<Double> { increment.range }
-
-    /// `value` is already in display units (lb/kg), so it is formatted directly.
-    private var valueText: String { plateText(value, decimals: 1) }
+/// Reusable native entry control for set weight / reps. `TextFieldLink` opens the system text-input
+/// UI (Dictation, Scribble, keyboard, Continuity) on the Watch itself — no iPhone, Speech
+/// permission or WatchConnectivity involved.
+struct WatchNativeSetEntryLink<Label: View>: View {
+    let prompt: Text
+    let onSubmit: (String) -> Void
+    @ViewBuilder let label: () -> Label
 
     var body: some View {
-        // Vertical stack in a ScrollView: at accessibility sizes it grows and scrolls
-        // (Digital Crown) instead of shrinking the value to fit.
-        ScrollView {
-            VStack(spacing: 4) {
-                Button { directEntry = true } label: {
-                    Text(verbatim: valueText)
-                        .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                        .monospacedDigit()
-                        .frame(maxWidth: .infinity, minHeight: 56)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Weight \(valueText) \(unit.abbreviation)")
-                .accessibilityHint("Opens keypad")
-                .accessibilityIdentifier("watchWeight.entry.value")
+        TextFieldLink(prompt: prompt, label: label, onSubmit: onSubmit)
+            .buttonStyle(.plain)
+    }
+}
 
-                Button { plateStepPicker = true } label: {
-                    Text("±\(plateText(plate)) \(unit.abbreviation)").frame(maxWidth: .infinity, minHeight: 40)
-                }
-                .accessibilityLabel("Plate step \(plateText(plate)) \(unit.abbreviation)")
-                .accessibilityIdentifier("watchWeight.plateStep")
+/// Weight adjustment without a keypad: one selected plate step with large − / + buttons.
+/// Lives in More; exact entry is the Set Card's native weight link.
+struct WatchWeightAdjustSection: View {
+    @Binding var value: Double
+    let unit: MeasurementUnitPreference
+    @State private var plate: Double
+    @State private var plateStepPicker = false
 
-                HStack(spacing: 6) {
-                    Button { adjust(-plate) } label: {
-                        Text("-").font(.title2.weight(.bold)).frame(maxWidth: .infinity, minHeight: 40)
-                    }
-                    .accessibilityLabel("Subtract \(plateText(plate)) \(unit.abbreviation)")
-                    .accessibilityIdentifier("watchWeight.minusPlate")
-                    Button { adjust(plate) } label: {
-                        Text("+").font(.title2.weight(.bold)).frame(maxWidth: .infinity, minHeight: 40)
-                    }
-                    .accessibilityLabel("Add \(plateText(plate)) \(unit.abbreviation)")
-                    .accessibilityIdentifier("watchWeight.plusPlate")
-                }
+    init(value: Binding<Double>, unit: MeasurementUnitPreference) {
+        self._value = value
+        self.unit = unit
+        let increment = WeightIncrement(unit: unit)
+        self._plate = State(initialValue: increment.plateOptions.filter { $0 >= (unit == .pounds ? 5 : 2.5) }.min()
+            ?? increment.plateOptions.min() ?? 2.5)
+    }
+
+    private var increment: WeightIncrement { WeightIncrement(unit: unit) }
+
+    var body: some View {
+        Section("Adjust weight") {
+            Button { plateStepPicker = true } label: {
+                Text("±\(plateText(plate)) \(unit.abbreviation)").frame(maxWidth: .infinity, minHeight: 40)
             }
-        }
-        .padding(.horizontal, 4)
-        .navigationTitle("Weight")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        .onAppear {
-            plate = increment.plateOptions.filter { $0 >= (unit == .pounds ? 5 : 2.5) }.min()
-                ?? increment.plateOptions.min() ?? 2.5
+            .accessibilityLabel("Plate step \(plateText(plate)) \(unit.abbreviation)")
+            .accessibilityIdentifier("watchWeight.platePicker")
+            HStack(spacing: 6) {
+                Button { adjust(-plate) } label: {
+                    Text("−\(plateText(plate))").font(.headline.weight(.bold)).frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .accessibilityLabel("Subtract \(plateText(plate)) \(unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.minusPlate")
+                Button { adjust(plate) } label: {
+                    Text("+\(plateText(plate))").font(.headline.weight(.bold)).frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .accessibilityLabel("Add \(plateText(plate)) \(unit.abbreviation)")
+                .accessibilityIdentifier("watchWeight.plusPlate")
+            }
+            .buttonStyle(.bordered)
         }
         .sheet(isPresented: $plateStepPicker) {
             List(increment.plateOptions, id: \.self) { option in
@@ -78,121 +71,37 @@ struct WatchWeightEntryView: View {
             }
             .navigationTitle("Plate step")
         }
-        .sheet(isPresented: $directEntry) {
-            WatchNumericEntryView(title: "Enter weight", initialValue: valueText, allowsDecimal: true) { text in
-                if let number = Double(text), number.isFinite {
-                    value = min(range.upperBound, max(range.lowerBound, number))
-                }
-            }
-        }
     }
 
     private func adjust(_ amount: Double) {
         WatchHaptics.tap()
-        value = min(range.upperBound, max(range.lowerBound, value + amount))
+        value = min(increment.range.upperBound, max(increment.range.lowerBound, value + amount))
     }
 
-    private func plateText(_ value: Double, decimals: Int = 1) -> String {
-        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.\(decimals)f", value)
+    private func plateText(_ value: Double) -> String {
+        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
     }
 }
 
-/// Dedicated reps entry. The number is editable through the same second-tap
-/// interaction as weight, while the common +/- path remains one touch away.
-struct WatchRepsEntryView: View {
+/// Reps adjustment: −1 / +1 within the same 1…100 range direct entry accepts.
+struct WatchRepsAdjustSection: View {
     @Binding var value: Double
-    @Environment(\.dismiss) private var dismiss
-    @State private var directEntry = false
 
     var body: some View {
-        List {
-            Section {
-                Button { directEntry = true } label: {
-                    VStack(spacing: 2) {
-                        Text("\(Int(value.rounded()))")
-                            .font(.system(.largeTitle, design: .rounded).weight(.bold))
-                            .monospacedDigit()
-                        Text("Tap again to type reps")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, minHeight: 62)
+        Section("Adjust reps") {
+            HStack(spacing: 8) {
+                Button { value = max(1, value - 1); WatchHaptics.tap() } label: {
+                    Label("−1", systemImage: "minus").frame(maxWidth: .infinity, minHeight: 40)
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("watchReps.entry.value")
-            }
-            Section("Adjust reps") {
-                HStack(spacing: 8) {
-                    Button { value = max(1, value - 1); WatchHaptics.tap() } label: { Label("Minus", systemImage: "minus") }
-                        .accessibilityIdentifier("watchReps.minus")
-                    Button { value = min(100, value + 1); WatchHaptics.tap() } label: { Label("Plus", systemImage: "plus") }
-                        .accessibilityIdentifier("watchReps.plus")
+                .accessibilityLabel("Subtract 1 rep")
+                .accessibilityIdentifier("watchReps.minus")
+                Button { value = min(100, value + 1); WatchHaptics.tap() } label: {
+                    Label("+1", systemImage: "plus").frame(maxWidth: .infinity, minHeight: 40)
                 }
-                .buttonStyle(.bordered)
+                .accessibilityLabel("Add 1 rep")
+                .accessibilityIdentifier("watchReps.plus")
             }
-        }
-        .navigationTitle("Reps")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
-        .sheet(isPresented: $directEntry) {
-            WatchNumericEntryView(title: "Enter reps", initialValue: "\(Int(value.rounded()))", allowsDecimal: false) { text in
-                if let number = Int(text) { value = Double(min(100, max(1, number))) }
-            }
-        }
-    }
-}
-
-/// A tiny numeric keypad that works consistently on the watch simulator and
-/// device instead of relying on the system keyboard appearing over a compact
-/// sheet.
-struct WatchNumericEntryView: View {
-    let title: String
-    let initialValue: String
-    let allowsDecimal: Bool
-    let onCommit: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var text = ""
-
-    private var rows: [[String]] {
-        allowsDecimal ? [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], [".", "0", "⌫"]]
-            : [["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["", "0", "⌫"]]
-    }
-
-    var body: some View {
-        // Scrolls so the value, keys and Done stay reachable on the smallest watch.
-        ScrollView {
-        VStack(spacing: 4) {
-            Text(text.isEmpty ? initialValue : text)
-                .font(.system(.title, design: .rounded).weight(.bold))
-                .monospacedDigit()
-                .frame(maxWidth: .infinity, minHeight: 28)
-                .accessibilityIdentifier("watchNumeric.value")
-            ForEach(rows, id: \.self) { row in
-                HStack(spacing: 5) {
-                    ForEach(row, id: \.self) { key in
-                        Button { tap(key) } label: {
-                            Text(key).font(.headline).frame(maxWidth: .infinity, minHeight: 30)
-                        }
-                        .buttonStyle(.bordered)
-                        .disabled(key.isEmpty)
-                    }
-                }
-            }
-            Button("Done") { onCommit(text.isEmpty ? initialValue : text); dismiss() }
-                .buttonStyle(WatchPillStyle(kind: .primary, small: true))
-                .accessibilityIdentifier("watchNumeric.done")
-        }
-        .padding(.horizontal, 6)
-        }
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { text = initialValue }
-    }
-
-    private func tap(_ key: String) {
-        switch key {
-        case "⌫": if !text.isEmpty { text.removeLast() }
-        case ".": if allowsDecimal && !text.contains(".") { text += text.isEmpty ? "0." : "." }
-        default: if text == "0" { text = key } else if text.count < 7 { text += key }
+            .buttonStyle(.bordered)
         }
     }
 }

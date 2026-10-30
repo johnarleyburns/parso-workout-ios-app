@@ -912,4 +912,82 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(durable["hr_final_sequence"] as? Int, 2)
         XCTAssertNotEqual(durable["hr_sample_count"] as? Int, 2)
     }
+
+    // MARK: - Synced owner history defaults
+
+    private struct StubHistory: WatchSetDefaultHistoryProviding {
+        var snapshot: WatchSetDefaultSnapshot
+        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        }
+    }
+
+    private func benchSnapshot() -> WatchSetDefaultSnapshot {
+        WatchSetDefaultSnapshot(generatedAt: Date(timeIntervalSince1970: 1_000), performers: [
+            .init(id: WatchSync.PerformerReference.ownerID, displayName: "Me", exercises: [
+                .init(id: "Bench Press", displayName: "Bench Press", repLadders: [[8, 8, 8]],
+                      samples: [.init(weightKg: 125, reps: 8)], firstWorkingWeightKg: 125)
+            ], generalRepLadders: [])
+        ])
+    }
+
+    private func syncedModel(plan: WatchPlanPayload? = nil, snapshot: WatchSetDefaultSnapshot? = nil)
+        -> WatchStrengthFlowModel {
+        let m = WatchStrengthFlowModel(
+            context: context, unit: .kilograms, cooldownDefault: 5, restDefault: 90,
+            setDefaultHistory: snapshot.map { StubHistory(snapshot: $0) })
+        m.start(title: "Push", plannedExerciseNames: ["Bench Press"], planPayload: plan, createSession: true)
+        return m
+    }
+
+    func testSyncedOwnerSnapshotPrefillsFirstSetAndMatchesDirectResolver() {
+        let snap = benchSnapshot()
+        let m = syncedModel(snapshot: snap)
+        let ex = m.exerciseList[0].exercise
+        m.startLogSet(for: ex)
+        let direct = PerformerSetPlanner.resolve(
+            setIndex: 0, performerPlan: nil, ownerPlan: [], ownerLadder: nil, isOwner: true,
+            history: snap.history(exerciseKey: "Bench Press", performerID: "owner"))
+        XCTAssertEqual(m.currentWeight, 125)
+        XCTAssertEqual(m.currentReps, 8)
+        XCTAssertEqual(m.currentWeight, direct.weightKg)
+        XCTAssertEqual(m.currentReps, Double(direct.reps))
+    }
+
+    func testJustLoggedWatchSetOverridesSnapshot() {
+        var snap = benchSnapshot()
+        snap.performers[0].exercises[0].repLadders = []
+        let m = syncedModel(snapshot: snap)
+        let ex = m.exerciseList[0].exercise
+        m.startLogSet(for: ex)
+        m.currentWeight = 130
+        m.currentReps = 6
+        _ = m.logSet()
+        m.finishRest()
+        m.startLogSet(for: ex)
+        XCTAssertEqual(m.currentWeight, 130)
+        XCTAssertEqual(m.currentReps, 6)
+    }
+
+    func testExplicitPlanOverridesSnapshot() {
+        let plan = WatchPlanPayload(strength: .init(
+            exerciseNames: ["Bench Press"],
+            prescriptions: [PlannedExercisePrescription(
+                exerciseName: "Bench Press",
+                sets: [PlannedSetPrescription(targetReps: 6, targetWeightKg: 135)])]))
+        let m = syncedModel(plan: plan, snapshot: benchSnapshot())
+        m.startLogSet(for: m.exerciseList[0].exercise)
+        XCTAssertEqual(m.currentWeight, 135)
+        XCTAssertEqual(m.currentReps, 6)
+    }
+
+    func testNoSnapshotOrNoHistoryKeepsFallbacks() {
+        let m = syncedModel()
+        m.startLogSet(for: m.exerciseList[0].exercise)
+        XCTAssertEqual(m.currentWeight, 20)
+        let empty = syncedModel(snapshot: WatchSetDefaultSnapshot(generatedAt: Date(), performers: []))
+        empty.startLogSet(for: empty.exerciseList[0].exercise)
+        XCTAssertEqual(empty.currentWeight, m.currentWeight)
+        XCTAssertEqual(empty.currentReps, m.currentReps)
+    }
 }

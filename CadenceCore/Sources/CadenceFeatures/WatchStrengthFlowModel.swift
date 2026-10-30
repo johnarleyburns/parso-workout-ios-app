@@ -84,6 +84,23 @@ struct WatchActivePerformer: Equatable {
     let localPerson: Person? // nil for owner
 }
 
+/// Read-only source of phone-synced set-default history (owner only for now).
+public protocol WatchSetDefaultHistoryProviding {
+    func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History
+}
+
+/// Adapter over the Watch's durable snapshot persistence; loads on each call so a
+/// newly synced snapshot is seen immediately and phone absence changes nothing.
+public struct PersistedWatchSetDefaultHistory: WatchSetDefaultHistoryProviding {
+    private let persistence: WatchSetDefaultSnapshotPersistence
+    public init(persistence: WatchSetDefaultSnapshotPersistence = WatchSetDefaultSnapshotPersistence()) {
+        self.persistence = persistence
+    }
+    public func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
+        persistence.load()?.history(exerciseKey: exerciseKey, performerID: performerID) ?? .empty
+    }
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -165,9 +182,14 @@ public final class WatchStrengthFlowModel {
     /// reuse the owner's cache entry or all lifters appear lumped together.
     private var priorSetsByExerciseAndPerformer: [String: [SetEntry]] = [:]
 
+    /// Read-only phone-synced owner history; nil means local Watch history only.
+    private let setDefaultHistory: WatchSetDefaultHistoryProviding?
+
     public init(context: ModelContext, unit: MeasurementUnitPreference = .kilograms,
-                cooldownDefault: Int = 5, restDefault: Int = 90, warmupDefault: Int = 0) {
+                cooldownDefault: Int = 5, restDefault: Int = 90, warmupDefault: Int = 0,
+                setDefaultHistory: WatchSetDefaultHistoryProviding? = nil) {
         self.context = context
+        self.setDefaultHistory = setDefaultHistory
         self.unit = unit
         self.cooldownDefault = cooldownDefault
         self.warmupDefault = warmupDefault
@@ -379,7 +401,7 @@ public final class WatchStrengthFlowModel {
             .filter { $0.exercise?.id == exercise.id && !$0.isWarmup && belongsToCurrentPerformer($0) }
             .sorted { $0.order < $1.order }
         let prior = priorSets(for: exercise).filter(belongsToCurrentPerformer)
-        let ladders = repLadders(from: prior)
+        var ladders = repLadders(from: prior)
         var history = PerformerSetPlanner.History(
             repsLoggedThisSession: logged.map(\.reps),
             repLadders: ladders,
@@ -387,6 +409,21 @@ public final class WatchStrengthFlowModel {
             lastWeightThisSessionKg: logged.last?.weight,
             weightSamples: prior.filter { !$0.isWarmup }.map { SetSample.from($0) }
         )
+        // Owner only: the phone's synced snapshot is the authoritative historical
+        // source when it has data for this exercise; Watch-local history is the
+        // fallback. Current-session values are layered on separately.
+        if performerID == nil, let provider = setDefaultHistory {
+            let synced = provider.history(
+                exerciseKey: WatchSetDefaultSnapshot.canonicalKey(exercise.name),
+                performerID: WatchSync.PerformerReference.ownerID)
+            if !synced.repLadders.isEmpty || !synced.weightSamples.isEmpty
+                || synced.firstWorkingWeightKg != nil {
+                history = synced
+                history.repsLoggedThisSession = logged.map(\.reps)
+                history.lastWeightThisSessionKg = logged.last?.weight
+                ladders = synced.repLadders
+            }
+        }
         if history.lastWeightThisSessionKg == nil, let session,
            let last = SessionViewModel.lastSessionWeight(session: session, exercise: exercise,
                                                          performerID: performerID) {

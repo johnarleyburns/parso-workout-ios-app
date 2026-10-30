@@ -259,7 +259,8 @@ struct WatchStrengthView: View {
             unit: watchSettings.unit,
             cooldownDefault: watchSettings.cooldownMinutes,
             restDefault: restSecondsOverride ?? storedRest ?? watchSettings.restSeconds,
-            warmupDefault: watchSettings.warmupMinutes
+            warmupDefault: watchSettings.warmupMinutes,
+            setDefaultHistory: PersistedWatchSetDefaultHistory()
         )
         m.prRule = watchSettings.prRule
         m.prFormula = watchSettings.formula

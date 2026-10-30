@@ -13,7 +13,8 @@ public enum ManualPlanWatchBridge {
         date: Date,
         calendar: Calendar = .current,
         exerciseNameByKey: [String: String] = [:],
-        athlete: AthleteExecutionSnapshot = .init()
+        athlete: AthleteExecutionSnapshot = .init(),
+        performers: [WatchSync.PerformerReference]? = nil
     ) -> WatchSync.TodayPlan {
         guard let weekday = Weekday(from: date, calendar: calendar),
               let day = plan.weeks.first?.days.first(where: { $0.weekday == weekday }) else {
@@ -35,7 +36,7 @@ public enum ManualPlanWatchBridge {
                 return nil
             }
 
-            let payload = try? WatchPlanPayload.make(from: snapshot, athlete: athlete)
+            let payload = try? WatchPlanPayload.make(from: snapshot, athlete: athlete, performers: performers)
             let names = strength.map(\.exerciseName)
             let ladder = strength.first?.sets.map(\.targetReps) ?? []
             let firstCardio = cardio.first

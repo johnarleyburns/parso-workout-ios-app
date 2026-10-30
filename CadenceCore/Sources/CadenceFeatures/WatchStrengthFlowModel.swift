@@ -78,6 +78,12 @@ public enum WatchExerciseAddPresenter {
     }
 }
 
+struct WatchActivePerformer: Equatable {
+    let remoteID: String
+    let displayName: String
+    let localPerson: Person? // nil for owner
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -103,6 +109,9 @@ public final class WatchStrengthFlowModel {
     public var effortValue: Double?
     public var isWarmupSet: Bool = false
     public private(set) var partners: [Person] = []
+    /// Watch-local `Person.id` → phone identity (`owner` or phone UUID string).
+    /// Partners absent here came from name-only starts and get a legacy identity.
+    private var remoteIDsByLocalPersonID: [UUID: String] = [:]
     public private(set) var currentPerformerIndex: Int = 0
     public private(set) var restTimer: RestTimerModel
     public private(set) var cooldownTimerModel: RestTimerModel
@@ -190,10 +199,10 @@ public final class WatchStrengthFlowModel {
             session = existingSession
             hydratePartners(from: existingSession)
         } else if createSession, session == nil {
-            loadInitialPartners(initialPartnerNames)
+            loadInitialPartners(initialPartnerNames, performers: payloadStrength?.performers)
             beginSession(title: title)
         } else if partners.isEmpty {
-            loadInitialPartners(initialPartnerNames)
+            loadInitialPartners(initialPartnerNames, performers: payloadStrength?.performers)
         }
         if let session {
             if !effectiveNames.isEmpty {
@@ -698,7 +707,31 @@ public final class WatchStrengthFlowModel {
         } catch {}
     }
 
-    private func loadInitialPartners(_ names: [String]) {
+    private func loadInitialPartners(_ names: [String],
+                                     performers: [WatchSync.PerformerReference]? = nil) {
+        remoteIDsByLocalPersonID.removeAll()
+        if let partnerRefs = performers?.filter({ !$0.isOwner && $0.id != WatchSync.PerformerReference.ownerID }),
+           !partnerRefs.isEmpty {
+            var seenRemote = Set<String>()
+            for ref in partnerRefs {
+                let trimmed = ref.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !trimmed.isEmpty, seenRemote.insert(ref.id).inserted else { continue }
+                // Same display name, different phone identity: keep distinct lifters.
+                let reusable = (try? WorkoutRepository.allPeople(context))?.first { candidate in
+                    !candidate.isMe
+                        && candidate.name.compare(trimmed, options: .caseInsensitive) == .orderedSame
+                        && !partners.contains(where: { $0.id == candidate.id })
+                }
+                let person = reusable ?? Person(name: trimmed, isMe: false)
+                if reusable == nil {
+                    context.insert(person)
+                    try? context.save()
+                }
+                partners.append(person)
+                remoteIDsByLocalPersonID[person.id] = ref.id
+            }
+            return
+        }
         var seen = Set<String>()
         for name in names {
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -796,6 +829,26 @@ public final class WatchStrengthFlowModel {
         let partnerIndex = currentPerformerIndex - 1
         guard partnerIndex < partners.count else { return nil }
         return partners[partnerIndex]
+    }
+
+    /// Phone identity of the lifter currently logging: `owner` or the phone
+    /// `Person` UUID. Never derived from a Watch-local `Person.id`.
+    public var currentPerformerRemoteID: String { activePerformer.remoteID }
+
+    var activePerformer: WatchActivePerformer {
+        guard let person = currentPerformer, !person.isMe else {
+            return WatchActivePerformer(remoteID: WatchSync.PerformerReference.ownerID,
+                                        displayName: "Me", localPerson: nil)
+        }
+        let remote = remoteIDsByLocalPersonID[person.id]
+            ?? Self.legacyRemoteID(forName: person.name)
+        return WatchActivePerformer(remoteID: remote, displayName: person.name, localPerson: person)
+    }
+
+    /// Deliberately nonmatching identity for name-only starts; never a phone UUID.
+    static func legacyRemoteID(forName name: String) -> String {
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return "legacy-name:" + normalized
     }
 
     public var performerLabel: String? {

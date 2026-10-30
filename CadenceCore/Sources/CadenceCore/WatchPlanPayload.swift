@@ -28,16 +28,39 @@ public struct WatchPlanPayload: Codable, Equatable, Sendable {
         self.cardio = cardio
     }
 
+    /// Stable phone-side identity of a lifter. `id` is `ownerID` or the phone
+    /// `Person` UUID string; display names are never identity.
+    public struct PerformerReference: Codable, Equatable, Sendable, Identifiable {
+        public static let ownerID = "owner"
+        public var id: String
+        public var displayName: String
+        public var isOwner: Bool
+
+        public init(id: String, displayName: String, isOwner: Bool) {
+            self.id = id
+            self.displayName = displayName
+            self.isOwner = isOwner
+        }
+
+        public static func owner(displayName: String = "Me") -> PerformerReference {
+            PerformerReference(id: ownerID, displayName: displayName, isOwner: true)
+        }
+    }
+
     public struct Strength: Codable, Equatable, Sendable {
         public var exerciseNames: [String]
         public var repLadder: [Int]
         public var prescriptions: [PlannedExercisePrescription]
+        /// Optional so name-only starts from older phones still decode.
+        public var performers: [PerformerReference]?
 
         public init(exerciseNames: [String] = [], repLadder: [Int] = [],
-                    prescriptions: [PlannedExercisePrescription] = []) {
+                    prescriptions: [PlannedExercisePrescription] = [],
+                    performers: [PerformerReference]? = nil) {
             self.exerciseNames = exerciseNames
             self.repLadder = repLadder
             self.prescriptions = prescriptions
+            self.performers = performers
         }
     }
 
@@ -67,7 +90,8 @@ public struct WatchPlanPayload: Codable, Equatable, Sendable {
     /// are already resolved by `RuntimePrescriptionAdapter` at this point.
     public static func make(
         from planSession: PlanSessionSnapshot,
-        athlete: AthleteExecutionSnapshot
+        athlete: AthleteExecutionSnapshot,
+        performers: [PerformerReference]? = nil
     ) throws -> WatchPlanPayload {
         let draft = try RuntimePrescriptionAdapter().materialize(
             planSession: planSession,
@@ -75,7 +99,8 @@ public struct WatchPlanPayload: Codable, Equatable, Sendable {
         let strength = draft.plannedPrescriptions.isEmpty ? nil : Strength(
             exerciseNames: draft.plannedExerciseNames,
             repLadder: draft.plannedRepLadder,
-            prescriptions: draft.plannedPrescriptions)
+            prescriptions: draft.plannedPrescriptions,
+            performers: performers)
         let cardio = planSession.items.compactMap { item -> Cardio? in
             guard case let .cardio(value) = item else { return nil }
             return Cardio(

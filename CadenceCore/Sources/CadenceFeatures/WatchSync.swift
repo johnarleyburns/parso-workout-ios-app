@@ -39,6 +39,8 @@ public enum WatchSync {
     public enum Key {
         public static let command = "command"
         public static let requestSettingsSync = "request_settings_sync"
+        /// Reserved for the Watch set-default snapshot contract; not yet sent or consumed.
+        public static let setDefaultSnapshot = "set_default_snapshot"
         public static let contextUpdatedAt = "watchSync.contextUpdatedAt"
 
         public static let unit = "settings.unit"

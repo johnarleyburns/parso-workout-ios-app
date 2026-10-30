@@ -409,7 +409,12 @@ final class AppModel: NSObject, @unchecked Sendable {
         let recentPartnerNames: [String]
         let cardioHistory: WatchSync.CardioHistorySnapshot?
         let setDefaultSnapshot: WatchSetDefaultSnapshot?
+        let singleExerciseSuggestionContext: WatchSingleExerciseSuggestionContext?
     }
+
+    /// Last suggestion context published; reused when only its timestamps differ so the
+    /// handshake revision does not churn.
+    private var cachedSuggestionContext: WatchSingleExerciseSuggestionContext?
 
     /// Last default snapshot published; reused when a rebuild has identical content so the
     /// `generatedAt` stamp alone never churns the handshake revision.
@@ -653,9 +658,11 @@ final class AppModel: NSObject, @unchecked Sendable {
             let payload = await Task.detached(priority: .utility) {
                 guard let container else {
                     return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [], cardioHistory: nil,
-                                               setDefaultSnapshot: nil)
+                                               setDefaultSnapshot: nil, singleExerciseSuggestionContext: nil)
                 }
                 let context = ModelContext(container)
+                // AppSettings is main-actor-owned and not Sendable; a fresh instance reads the
+                // same persisted UserDefaults, so the detached build never shares the live object.
                 let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
                 var peopleDescriptor = FetchDescriptor<Person>(
                     sortBy: [SortDescriptor(\Person.updatedAt, order: .reverse)])
@@ -669,7 +676,9 @@ final class AppModel: NSObject, @unchecked Sendable {
                     customExercises: exercises.filter(\.isCustom).map(WatchSync.CustomExercise.init),
                     recentPartnerNames: names,
                     cardioHistory: Self.buildCardioHistory(container: container, previous: previousCardioIDs, now: now),
-                    setDefaultSnapshot: try? WatchSetDefaultSnapshotBuilder.make(context: context, now: now))
+                    setDefaultSnapshot: try? WatchSetDefaultSnapshotBuilder.make(context: context, now: now),
+                    singleExerciseSuggestionContext: try? WatchSingleExerciseSuggestionContextBuilder.make(
+                        context: context, settings: AppSettings(), now: now))
             }.value
             os_signpost(.end, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             guard !Task.isCancelled else { return }
@@ -702,6 +711,17 @@ final class AppModel: NSObject, @unchecked Sendable {
         if let snapshot = cachedSetDefaultSnapshot {
             context[WatchSync.Key.setDefaultSnapshot] = snapshot.propertyList
         }
+        if let fresh = payload.singleExerciseSuggestionContext {
+            if let cached = cachedSuggestionContext, cached.version == fresh.version,
+               Self.suggestionContent(cached) == Self.suggestionContent(fresh) {
+                // Identical content: keep the old stamp so the fingerprint is unchanged.
+            } else {
+                cachedSuggestionContext = fresh
+            }
+        }
+        if let data = cachedSuggestionContext?.propertyListValue {
+            context[WatchSync.Key.singleExerciseSuggestionContext] = data
+        }
         if let plan = cachedTodayPlan {
             context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
         } else {
@@ -731,6 +751,15 @@ final class AppModel: NSObject, @unchecked Sendable {
             context.merge(history.contextDict) { _, new in new }
         }
         enqueueWatchContextWrite(context, on: session, at: date, trigger: trigger)
+    }
+
+    /// The context with its time stamps neutralized, for change detection.
+    nonisolated private static func suggestionContent(
+        _ value: WatchSingleExerciseSuggestionContext) -> WatchSingleExerciseSuggestionContext {
+        var copy = value
+        copy.generatedAt = .distantPast
+        copy.baseInput.engineContext.asOf = .distantPast
+        return copy
     }
 
     nonisolated private static func buildCardioHistory(container: ModelContainer, previous: Set<UUID>,

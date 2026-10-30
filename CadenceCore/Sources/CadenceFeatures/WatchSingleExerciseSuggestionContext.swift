@@ -7,7 +7,7 @@ import CadenceCore
 /// enums travel as raw strings and are decoded defensively, and a malformed or
 /// future payload yields `nil` rather than an invented fallback policy.
 ///
-/// Contract only — nothing emits or consumes `WatchSync.Key.singleExerciseSuggestionContext` yet.
+/// Travels as JSON `Data` under `WatchSync.Key.singleExerciseSuggestionContext`.
 public struct WatchSingleExerciseSuggestionContext: Codable, Equatable, Sendable {
     public static let currentVersion = 1
     /// Upper bounds that keep a corrupt payload from becoming unbounded work.
@@ -219,6 +219,33 @@ public struct WatchSingleExerciseSuggestionContext: Codable, Equatable, Sendable
                                             desiredSetsPerExercise: desiredSetsPerExercise,
                                             trackedMuscleGroups: Set(tracked))
         }
+    }
+
+    // MARK: - Transport
+
+    public static func encoder() -> JSONEncoder {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .secondsSince1970
+        e.outputFormatting = [.sortedKeys]
+        return e
+    }
+
+    public static func decoder() -> JSONDecoder {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .secondsSince1970
+        return d
+    }
+
+    /// Property-list-safe (`Data`) form for the application context; nil if encoding fails.
+    public var propertyListValue: Data? { try? Self.encoder().encode(self) }
+
+    /// Decodes a transported payload; malformed, oversized, or unsupported-version data is nil.
+    public static func decodePayload(_ data: Data) -> WatchSingleExerciseSuggestionContext? {
+        guard let value = try? decoder().decode(Self.self, from: data),
+              value.version == currentVersion,
+              value.generatedAt.timeIntervalSinceReferenceDate.isFinite,
+              value.baseInput.candidates.count <= maxCandidates else { return nil }
+        return value
     }
 
     // MARK: - Adapter

@@ -66,8 +66,7 @@ public enum WatchSync {
         public static let coachSuggestionSnapshot = "coachSuggestion.snapshot"
         public static let coachSuggestionSnapshotUpdatedAt = "coachSuggestion.updatedAt"
 
-        /// Reserved for the offline Watch single-exercise suggestion contract
-        /// (`WatchSingleExerciseSuggestionContext`); not yet sent or consumed.
+        /// JSON `Data` of `WatchSingleExerciseSuggestionContext`; persisted on the Watch, not yet used by any UI.
         public static let singleExerciseSuggestionContext = "suggestion.singleExerciseContext"
 
         public static let weekSets = "week.sets"
@@ -495,6 +494,8 @@ public enum WatchSync {
         public let cardioHistory: CardioHistoryPayload
         /// Phone set-default history; nil when absent, malformed, or an unsupported version.
         public let setDefaultSnapshot: WatchSetDefaultSnapshot?
+        /// Phone suggestion context; nil when absent, malformed, or an unsupported version.
+        public let singleExerciseSuggestionContext: WatchSingleExerciseSuggestionContext?
 
         public init(preferences: Preferences, todayPlan: TodayPlan?,
                     customExercises: [CustomExercise]?, updatedAt: Date,
@@ -502,7 +503,9 @@ public enum WatchSync {
                     sentWorkouts: [TodayPlan.Session]? = nil,
                     coachSuggestion: WatchCoachSuggestionPayload = .absent,
                     cardioHistory: CardioHistoryPayload = .absent,
-                    setDefaultSnapshot: WatchSetDefaultSnapshot? = nil) {
+                    setDefaultSnapshot: WatchSetDefaultSnapshot? = nil,
+                    singleExerciseSuggestionContext: WatchSingleExerciseSuggestionContext? = nil) {
+            self.singleExerciseSuggestionContext = singleExerciseSuggestionContext
             self.cardioHistory = cardioHistory
             self.setDefaultSnapshot = setDefaultSnapshot
             self.sentWorkouts = sentWorkouts
@@ -532,7 +535,9 @@ public enum WatchSync {
                 coachSuggestion: WatchCoachSuggestionPayload(context: context),
                 cardioHistory: CardioHistoryPayload(context: context),
                 setDefaultSnapshot: (context[Key.setDefaultSnapshot] as? [String: Any])
-                    .flatMap(WatchSetDefaultSnapshot.init(propertyList:)))
+                    .flatMap(WatchSetDefaultSnapshot.init(propertyList:)),
+                singleExerciseSuggestionContext: (context[Key.singleExerciseSuggestionContext] as? Data)
+                    .flatMap(WatchSingleExerciseSuggestionContext.decodePayload))
         }
     }
 

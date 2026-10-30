@@ -266,6 +266,15 @@ extension WatchWorkoutManager: WCSessionDelegate {
                 return
             }
         }
+        if let snapshot = incoming.setDefaultSnapshot,
+           WatchSetDefaultSnapshotStore.shared.persist(snapshot) == .failed, envelope != nil {
+            // Durable snapshot persistence must precede the ACK: keep the old confirmation so
+            // the phone retries. Nothing else has been mutated yet.
+            let applied = Self.loadAppliedSyncRecord()
+            sendSyncAck(.init(revision: applied?.revision ?? 0, snapshotID: nil, components: nil))
+            recordPhoneSyncFailure(String(localized: "Couldn't save workout defaults from iPhone"))
+            return
+        }
         if let envelope {
             // A stale late completion must neither overwrite nor acknowledge newer state.
             outcome = syncCommitCoordinator.accept(envelope, applied: Self.loadAppliedSyncRecord(),

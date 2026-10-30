@@ -67,7 +67,12 @@ public enum WatchSyncHandshake {
                 let sub = context.filter { include($0.key) && !$0.key.hasSuffix("updatedAt") }
                 return WatchSyncFingerprint.canonicalHash(sub)
             }
-            preferences = part { $0.hasPrefix("settings.") || $0 == WatchSync.Key.recentPartners }
+            // The set-default snapshot rides with preferences so a snapshot-only change is never
+            // coalesced away as "unchanged settings".
+            preferences = part {
+                $0.hasPrefix("settings.") || $0 == WatchSync.Key.recentPartners
+                    || $0 == WatchSync.Key.setDefaultSnapshot
+            }
             customExercises = part { $0 == WatchSync.Key.customExercises }
             todayPlan = part { $0.hasPrefix("todayPlan.") || $0 == WatchSync.Key.sentWorkouts }
             weekSummary = part { $0.hasPrefix("week.") }

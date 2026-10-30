@@ -408,7 +408,12 @@ final class AppModel: NSObject, @unchecked Sendable {
         let customExercises: [WatchSync.CustomExercise]
         let recentPartnerNames: [String]
         let cardioHistory: WatchSync.CardioHistorySnapshot?
+        let setDefaultSnapshot: WatchSetDefaultSnapshot?
     }
+
+    /// Last default snapshot published; reused when a rebuild has identical content so the
+    /// `generatedAt` stamp alone never churns the handshake revision.
+    private var cachedSetDefaultSnapshot: WatchSetDefaultSnapshot?
 
     /// WCSession and its property-list dictionary are Foundation reference
     /// values, but the serialized queue is the sole owner of this handoff.
@@ -440,6 +445,8 @@ final class AppModel: NSObject, @unchecked Sendable {
                     Task { @MainActor [weak self] in
                         self?.invalidateWatchCoachSuggestion()
                         self?.scheduleWatchCardioHistoryPublish()
+                        // Coalesced by the tracker; fingerprints keep unchanged history a no-op.
+                        self?.pushSettingsContext(reason: .contentChanged)
                     }
                 }
         }
@@ -645,7 +652,8 @@ final class AppModel: NSObject, @unchecked Sendable {
             os_signpost(.begin, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             let payload = await Task.detached(priority: .utility) {
                 guard let container else {
-                    return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [], cardioHistory: nil)
+                    return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [], cardioHistory: nil,
+                                               setDefaultSnapshot: nil)
                 }
                 let context = ModelContext(container)
                 let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
@@ -660,7 +668,8 @@ final class AppModel: NSObject, @unchecked Sendable {
                 return WatchPayloadSnapshot(
                     customExercises: exercises.filter(\.isCustom).map(WatchSync.CustomExercise.init),
                     recentPartnerNames: names,
-                    cardioHistory: Self.buildCardioHistory(container: container, previous: previousCardioIDs, now: now))
+                    cardioHistory: Self.buildCardioHistory(container: container, previous: previousCardioIDs, now: now),
+                    setDefaultSnapshot: try? WatchSetDefaultSnapshotBuilder.make(context: context, now: now))
             }.value
             os_signpost(.end, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             guard !Task.isCancelled else { return }
@@ -682,6 +691,17 @@ final class AppModel: NSObject, @unchecked Sendable {
         prefs.recentPartnerNames = payload.recentPartnerNames
         var context = WatchSync.Preferences.contextDict(prefs, updatedAt: date)
         context[WatchSync.Key.customExercises] = payload.customExercises.map(\.propertyList)
+        if let fresh = payload.setDefaultSnapshot {
+            if let cached = cachedSetDefaultSnapshot,
+               cached.version == fresh.version, cached.performers == fresh.performers {
+                // Identical content: keep the old stamp so the fingerprint is unchanged.
+            } else {
+                cachedSetDefaultSnapshot = fresh
+            }
+        }
+        if let snapshot = cachedSetDefaultSnapshot {
+            context[WatchSync.Key.setDefaultSnapshot] = snapshot.propertyList
+        }
         if let plan = cachedTodayPlan {
             context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
         } else {

@@ -991,3 +991,59 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(empty.currentReps, m.currentReps)
     }
 }
+
+final class WatchAddConfirmationTests: XCTestCase {
+    private let target = WatchAddConfirmation.Target(id: UUID(), name: "Bench Press")
+
+    func testRequestAndCancelNeverCallAdd() {
+        var state = WatchAddConfirmation()
+        state.request(target)
+        XCTAssertEqual(state.pending, target)
+        state.cancel()
+        var calls = 0
+        XCTAssertNil(state.confirm { _, _ in calls += 1; return .added(name: "x") })
+        XCTAssertEqual(calls, 0)
+        XCTAssertNil(state.pending)
+        XCTAssertNil(state.outcome)
+    }
+
+    func testConfirmCallsAddOnceAndRecordsOutcomes() {
+        var state = WatchAddConfirmation()
+        var calls = 0
+        state.request(target)
+        XCTAssertEqual(state.confirm { id, name in calls += 1; XCTAssertEqual(id, self.target.id); return .added(name: name) },
+                       .added(name: "Bench Press"))
+        XCTAssertEqual(calls, 1)
+        XCTAssertNil(state.outcome)
+
+        state.request(target)
+        state.confirm { _, name in .alreadyPresent(name: name) }
+        XCTAssertEqual(state.outcome, .alreadyPresent(name: "Bench Press"))
+        state.request(target)
+        state.confirm { _, name in .unavailable(name: name) }
+        XCTAssertEqual(state.outcome, .unavailable(target))
+    }
+
+    func testRetryReopensConfirmationWithoutMutating() {
+        var state = WatchAddConfirmation()
+        var calls = 0
+        state.request(target)
+        state.confirm { _, name in calls += 1; return .saveFailed(name: name) }
+        XCTAssertEqual(state.outcome, .saveFailed(target))
+        state.retry()
+        XCTAssertEqual(calls, 1)
+        XCTAssertEqual(state.pending, target)
+        XCTAssertNil(state.outcome)
+        state.cancel()
+        XCTAssertNil(state.confirm { _, name in calls += 1; return .added(name: name) })
+        XCTAssertEqual(calls, 1)
+    }
+
+    func testRetryIgnoredForUnavailable() {
+        var state = WatchAddConfirmation()
+        state.request(target)
+        state.confirm { _, name in .unavailable(name: name) }
+        state.retry()
+        XCTAssertNil(state.pending)
+    }
+}

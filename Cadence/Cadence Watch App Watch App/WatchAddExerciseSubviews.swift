@@ -133,3 +133,66 @@ struct WatchAddExercisePreview: View {
         }
     }
 }
+
+/// Native Add/Cancel dialog plus the prominent outcome alert for Add Exercise.
+struct WatchAddConfirmationModifier: ViewModifier {
+    @Binding var confirmation: WatchAddConfirmation
+    let onAdd: () -> Void
+    let onViewWorkout: () -> Void
+    let onRefresh: () -> Void
+
+    private var outcomeTitle: String {
+        switch confirmation.outcome {
+        case .alreadyPresent: return String(localized: "Already in this workout")
+        case .unavailable: return String(localized: "Exercise unavailable")
+        case .saveFailed: return String(localized: "Couldn't save")
+        case nil: return ""
+        }
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .confirmationDialog(
+                "Add \(confirmation.pending?.name ?? "exercise")?",
+                isPresented: Binding(
+                    get: { confirmation.pending != nil },
+                    set: { if !$0 { confirmation.cancel() } }
+                ),
+                titleVisibility: .visible,
+                presenting: confirmation.pending
+            ) { _ in
+                Button("Add") { onAdd() }
+                    .accessibilityIdentifier("watchAddExercise.confirm.add")
+                Button("Cancel", role: .cancel) { confirmation.cancel() }
+                    .accessibilityIdentifier("watchAddExercise.confirm.cancel")
+            } message: { target in
+                Text("Add \(target.name) to this workout?")
+            }
+            .accessibilityIdentifier("watchAddExercise.confirm")
+            .alert(
+                outcomeTitle,
+                isPresented: Binding(
+                    get: { confirmation.outcome != nil },
+                    set: { if !$0 { confirmation.dismissOutcome() } }
+                ),
+                presenting: confirmation.outcome
+            ) { outcome in
+                switch outcome {
+                case .alreadyPresent:
+                    Button("View workout") { confirmation.dismissOutcome(); onViewWorkout() }
+                        .accessibilityIdentifier("watchAddExercise.viewWorkout")
+                    Button("Choose another", role: .cancel) { confirmation.dismissOutcome() }
+                case .unavailable:
+                    Button("Refresh results") { onRefresh() }
+                        .accessibilityIdentifier("watchAddExercise.refresh")
+                    Button("Choose another", role: .cancel) { confirmation.dismissOutcome() }
+                case .saveFailed:
+                    Button("Try again") { confirmation.retry() }
+                        .accessibilityIdentifier("watchAddExercise.retry")
+                    Button("Cancel", role: .cancel) { confirmation.dismissOutcome() }
+                }
+            } message: { outcome in
+                Text(outcome.message)
+            }
+    }
+}

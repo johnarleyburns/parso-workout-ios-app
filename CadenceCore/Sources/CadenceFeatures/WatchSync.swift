@@ -489,14 +489,18 @@ public enum WatchSync {
         public let coachSuggestion: WatchCoachSuggestionPayload
         /// Phone cardio history; `.absent` (older phone) means keep the Watch's cache.
         public let cardioHistory: CardioHistoryPayload
+        /// Phone set-default history; nil when absent, malformed, or an unsupported version.
+        public let setDefaultSnapshot: WatchSetDefaultSnapshot?
 
         public init(preferences: Preferences, todayPlan: TodayPlan?,
                     customExercises: [CustomExercise]?, updatedAt: Date,
                     weekSummary: WeekSummary? = nil,
                     sentWorkouts: [TodayPlan.Session]? = nil,
                     coachSuggestion: WatchCoachSuggestionPayload = .absent,
-                    cardioHistory: CardioHistoryPayload = .absent) {
+                    cardioHistory: CardioHistoryPayload = .absent,
+                    setDefaultSnapshot: WatchSetDefaultSnapshot? = nil) {
             self.cardioHistory = cardioHistory
+            self.setDefaultSnapshot = setDefaultSnapshot
             self.sentWorkouts = sentWorkouts
             self.coachSuggestion = coachSuggestion
             self.preferences = preferences
@@ -522,7 +526,9 @@ public enum WatchSync {
                 weekSummary: WeekSummary.from(context: context),
                 sentWorkouts: context[Key.sentWorkouts] == nil ? nil : WatchSentWorkouts.sessions(from: context),
                 coachSuggestion: WatchCoachSuggestionPayload(context: context),
-                cardioHistory: CardioHistoryPayload(context: context))
+                cardioHistory: CardioHistoryPayload(context: context),
+                setDefaultSnapshot: (context[Key.setDefaultSnapshot] as? [String: Any])
+                    .flatMap(WatchSetDefaultSnapshot.init(propertyList:)))
         }
     }
 

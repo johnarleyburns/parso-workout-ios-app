@@ -44,6 +44,8 @@ public struct WatchSingleExerciseSuggestionContext: Codable, Equatable, Sendable
         public var trainingGoalRawValue: String
         public var preferredStyleRawValue: String
         public var engineContext: EngineContext
+        /// Candidate IDs hidden by permanent "don't suggest" settings (nil on older payloads).
+        public var permanentlyExcludedCandidateIDs: Set<String>?
 
         public init(completedSetsByMuscle: [String: Double],
                     candidates: [Candidate],
@@ -56,7 +58,8 @@ public struct WatchSingleExerciseSuggestionContext: Codable, Equatable, Sendable
                     mostRecentExerciseWorkingSets: Int? = nil,
                     trainingGoalRawValue: String,
                     preferredStyleRawValue: String,
-                    engineContext: EngineContext) {
+                    engineContext: EngineContext,
+                    permanentlyExcludedCandidateIDs: Set<String>? = nil) {
             self.completedSetsByMuscle = completedSetsByMuscle
             self.candidates = candidates
             self.historyData = historyData
@@ -69,6 +72,7 @@ public struct WatchSingleExerciseSuggestionContext: Codable, Equatable, Sendable
             self.trainingGoalRawValue = trainingGoalRawValue
             self.preferredStyleRawValue = preferredStyleRawValue
             self.engineContext = engineContext
+            self.permanentlyExcludedCandidateIDs = permanentlyExcludedCandidateIDs
         }
     }
 
@@ -295,7 +299,7 @@ public struct WatchSingleExerciseSuggestionContext: Codable, Equatable, Sendable
                 availableEquipment: equipment,
                 environment: base.engineContext.environment,
                 asOf: base.engineContext.asOf))
-        return input.excluding(candidateIDs: excluding)
+        return input.excluding(candidateIDs: excluding.union(base.permanentlyExcludedCandidateIDs ?? []))
     }
 
     // MARK: - Helpers

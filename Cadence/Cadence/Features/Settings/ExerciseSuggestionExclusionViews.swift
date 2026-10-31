@@ -15,6 +15,7 @@ struct ExerciseSuggestionExclusionSheet: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
+    @Environment(AppModel.self) private var appModel
     @State private var reason: ExerciseSuggestionExclusionReason = .personalPreference
     @State private var errorMessage: String?
 
@@ -66,6 +67,7 @@ struct ExerciseSuggestionExclusionSheet: View {
             try ExerciseSuggestionExclusionStore.setExcluded(exercise: exercise,
                                                               reason: reason,
                                                               in: context)
+            appModel.pushSettingsContext()
             onExcluded?()
             dismiss()
         } catch {
@@ -76,6 +78,7 @@ struct ExerciseSuggestionExclusionSheet: View {
 
 struct ExcludedExercisesView: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppModel.self) private var appModel
     @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive },
            sort: [SortDescriptor(\ExerciseSuggestionExclusion.exerciseNameSnapshot)])
     private var exclusions: [ExerciseSuggestionExclusion]
@@ -178,6 +181,7 @@ struct ExcludedExercisesView: View {
             Spacer()
             Button("Allow") {
                 try? ExerciseSuggestionExclusionStore.allow(exclusion, in: context)
+                appModel.pushSettingsContext()
             }
             .buttonStyle(.borderless)
             .foregroundStyle(.tint)

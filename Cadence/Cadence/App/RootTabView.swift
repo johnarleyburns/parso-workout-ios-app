@@ -323,6 +323,11 @@ private struct WatchSettingsContextSync: ViewModifier {
             .onChange(of: settings.cooldownMinutes) { _, _ in model.pushSettingsContext() }
             .onChange(of: settings.workoutSounds) { _, _ in model.pushSettingsContext() }
             .onChange(of: settings.spokenCues) { _, _ in model.pushSettingsContext() }
+            // Inputs of the Watch single-exercise Suggest context.
+            .onChange(of: settings.trainingGoal) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.experienceLevel) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.preferredWorkoutStyle) { _, _ in model.pushSettingsContext() }
+            .onChange(of: settings.coachSchedulePreferences) { _, _ in model.pushSettingsContext() }
     }
 }
 

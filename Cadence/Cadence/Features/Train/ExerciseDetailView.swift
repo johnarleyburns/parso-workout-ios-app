@@ -12,6 +12,7 @@ struct ExerciseDetailView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppModel.self) private var appModel
 
     @State private var showEditSheet = false
     @State private var showExclusionSheet = false
@@ -127,6 +128,7 @@ struct ExerciseDetailView: View {
                     .foregroundStyle(.secondary)
                 Button("Allow This Exercise in Suggestions") {
                     try? ExerciseSuggestionExclusionStore.allow(record, in: context)
+                    appModel.pushSettingsContext()
                 }
                 .buttonStyle(.bordered)
             } else {

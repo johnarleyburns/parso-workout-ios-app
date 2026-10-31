@@ -15,7 +15,7 @@ import CadenceCore
 ///   signals use only the newest `maxHistorySessions`.
 /// - Candidates: personalized first, then id ascending, truncated to
 ///   `maxCandidates`. Candidates are NOT filtered by permanent exclusions, so the
-///   Watch can exclude them at runtime; use `permanentlyExcludedCandidateIDs`.
+///   Watch adapter removes them via `baseInput.permanentlyExcludedCandidateIDs`.
 /// - The active workout's exercises/allocation are Watch-local and not included.
 public enum WatchSingleExerciseSuggestionContextBuilder {
     public static let maxHistorySessions = 21
@@ -93,6 +93,10 @@ public enum WatchSingleExerciseSuggestionContextBuilder {
                 exerciseNames: session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }
                     .compactMap { $0.exercise?.name })
         }
+        let exclusionKeys = try ExerciseSuggestionExclusionStore.activeKeys(in: context)
+        let excludedIDs = Set(candidates.map(\.id).filter { id in
+            exclusionKeys.contains { ExerciseSuggestionExclusionKey.matches($0, candidateID: id) }
+        })
         let engine = SuggestedWorkoutEngineContext(
             experience: settings.experienceLevel, schedule: schedule,
             availableEquipment: Equipment.allCases, environment: "commercial_gym", asOf: now)
@@ -112,7 +116,8 @@ public enum WatchSingleExerciseSuggestionContextBuilder {
                     from: snapshots),
                 trainingGoalRawValue: settings.trainingGoal.rawValue,
                 preferredStyleRawValue: settings.preferredWorkoutStyle.rawValue,
-                engineContext: .init(engine)))
+                engineContext: .init(engine),
+                permanentlyExcludedCandidateIDs: excludedIDs))
     }
 
     /// Candidate IDs hidden by active permanent exclusions, using the same

@@ -7,6 +7,9 @@ require 'base64'
 require 'digest'
 require 'time'
 require 'uri'
+require 'open3'
+require 'tmpdir'
+require 'fileutils'
 
 module CrashIntake
   class APIError < StandardError; end
@@ -74,6 +77,169 @@ module CrashIntake
       new(category: category, frames: frames, ready: category!='UNKNOWN' && !frames.empty?)
     rescue TypeError, NoMethodError, IndexError
       new(category: 'UNKNOWN', frames: [], ready: false)
+    end
+  end
+
+  # Image list ({name, uuid}) from a structured .ips or legacy text report.
+  module UsedImages
+    def self.norm(uuid)
+      uuid.to_s.delete('-').upcase
+    end
+
+    def self.parse(raw)
+      raw = raw.to_s
+      data = begin
+        JSON.parse(raw)
+      rescue JSON::ParserError
+        begin
+          JSON.parse(raw.lines.drop(1).join)
+        rescue JSON::ParserError
+          nil
+        end
+      end
+      if data.is_a?(Hash) && data['usedImages'].is_a?(Array)
+        data['usedImages'].grep(Hash).map { |i| {name: i['name'].to_s, uuid: norm(i['uuid'])} }.reject { |i| i[:uuid].empty? }
+      else
+        raw.scan(/^\s*0x[0-9a-f]+\s+-\s+0x[0-9a-f]+\s+\+?(\S+)\s+\S+\s+<([0-9a-f-]+)>/i).map { |n, u| {name: n, uuid: norm(u)} }
+      end
+    rescue TypeError, NoMethodError
+      []
+    end
+  end
+
+  Resolution = Struct.new(:status, :symbolicated_text, keyword_init: true)
+
+  # Downloads the private dSYM artifact for one App Store build into a temp dir.
+  class GithubDsymStore
+    HOSTS = [/\Apipelines\.actions\.githubusercontent\.com\z/, /\A[a-z0-9-]+\.actions\.githubusercontent\.com\z/,
+             /\A[a-z0-9-]+\.blob\.core\.windows\.net\z/].freeze
+
+    def initialize(client:, repo:, tmp: ENV.fetch('RUNNER_TEMP', Dir.tmpdir), token: ENV['ACTIONS_TOKEN'] || ENV['GH_TOKEN'])
+      @client, @repo, @tmp, @token = client, repo, tmp, token
+    end
+
+    def self.safe_entry?(name)
+      !name.empty? && !name.start_with?('/') && !name.include?("\0") && !name.include?('\\') && name.split('/').none? { |p| p == '..' }
+    end
+
+    # Yields the extracted dSYM root, or nil when the build's artifact is absent/expired.
+    def with_dsyms(build)
+      return yield(nil) unless build.to_s.match?(/\A[0-9.]+\z/)
+      name = "testflight-dsyms-#{build}"
+      listing = @client.call('github', "/repos/#{@repo}/actions/artifacts?name=#{URI.encode_www_form_component(name)}&per_page=100")
+      art = listing.fetch('artifacts', []).select { |a| a['name'] == name && !a['expired'] }.max_by { |a| a['id'].to_i }
+      return yield(nil) unless art
+      Dir.mktmpdir('cladiron-dsyms-', @tmp) do |dir|
+        zip = File.join(dir, 'a.zip')
+        File.binwrite(zip, download(art.fetch('archive_download_url')))
+        out = File.join(dir, 'x')
+        FileUtils.mkdir_p(out)
+        names, _e, st = Open3.capture3('unzip', '-Z1', zip)
+        raise APIError, 'dSYM artifact is unreadable' unless st.success? && names.lines.all? { |l| self.class.safe_entry?(l.chomp) }
+        _o, _e, st = Open3.capture3('unzip', '-qq', '-o', zip, '-d', out)
+        raise APIError, 'dSYM artifact could not be extracted' unless st.success?
+        raise APIError, 'dSYM artifact contains links' if Dir.glob(File.join(out, '**', '*'), File::FNM_DOTMATCH).any? { |f| File.symlink?(f) }
+        yield out
+      end
+    end
+
+    def download(url)
+      uri = Client.validate_url(url, 'github')
+      req = Net::HTTP::Get.new(uri)
+      req['Authorization'] = "Bearer #{@token}"
+      req['User-Agent'] = 'parso-testflight-crash-intake'
+      res = Net::HTTP.start(uri.host, uri.port, use_ssl: true, open_timeout: 20, read_timeout: 120) { |h| h.request(req) }
+      if res.code.to_i.between?(300, 399)
+        target = URI(res['Location'].to_s)
+        raise APIError, 'Untrusted dSYM download host' unless target.scheme == 'https' && target.port == 443 && !target.userinfo && HOSTS.any? { |h| h.match?(target.host.to_s) }
+        res = Net::HTTP.start(target.host, target.port, use_ssl: true, open_timeout: 20, read_timeout: 120) do |h|
+          h.request(Net::HTTP::Get.new(target)) # pre-signed URL: never forward the token
+        end
+      end
+      raise APIError, "github dSYM download HTTP #{res.code}" unless res.code.to_i == 200
+      res.body
+    end
+  end
+
+  # Runs Xcode's symbolicatecrash with only dSYMs whose UUIDs appear in the report.
+  class XcodeCrashSymbolicator
+    def initialize(store:, tool: nil, exec: Open3.method(:capture3), tmp: ENV.fetch('RUNNER_TEMP', Dir.tmpdir))
+      @store, @tool, @exec, @tmp = store, tool, exec, tmp
+    end
+
+    def tool_path
+      return @tool if @tool
+      dev = ENV['DEVELOPER_DIR'] || @exec.call('xcode-select', '-p').first.strip
+      [File.join(dev, '..', 'SharedFrameworks/DVTFoundation.framework/Versions/A/Resources/symbolicatecrash'),
+       File.join(dev, 'Platforms/iPhoneOS.platform/Developer/Library/PrivateFrameworks/DVTFoundation.framework/Versions/A/Resources/symbolicatecrash')]
+        .map { |p| File.expand_path(p) }.find { |p| File.executable?(p) }
+    rescue SystemCallError
+      nil
+    end
+
+    def resolve(raw:, build:, used_images:)
+      failed = Resolution.new(status: 'symbolication-failed', symbolicated_text: '')
+      unresolved = Resolution.new(status: 'api-log-unresolved', symbolicated_text: '')
+      wanted = used_images.map { |i| i[:uuid] }
+      @store.with_dsyms(build) do |root|
+        next unresolved unless root
+        matched = nil
+        Dir.mktmpdir('cladiron-match-', @tmp) do |keep|
+          Dir.glob(File.join(root, '**', '*.dSYM')).each do |bundle|
+            uuids = Dir.glob(File.join(bundle, 'Contents/Resources/DWARF/*')).flat_map do |f|
+              out, _e, st = @exec.call('dwarfdump', '--uuid', f)
+              st.success? ? out.scan(/^UUID: ([0-9A-Fa-f-]+)/).flatten.map { |u| UsedImages.norm(u) } : []
+            end
+            next unless (uuids & wanted).any?
+            FileUtils.cp_r(bundle, keep)
+            matched = true
+          end
+          next unresolved unless matched
+          path = tool_path
+          next failed unless path
+          report = File.join(keep, 'report.crash')
+          File.write(report, self.class.legacy_text(raw), perm: 0o600)
+          dsyms = File.join(keep, 'dsyms')
+          FileUtils.mkdir_p(dsyms)
+          Dir.glob(File.join(keep, '*.dSYM')).each { |b| FileUtils.mv(b, dsyms) }
+          out, _err, st = @exec.call(path, report, dsyms)
+          # Diagnostics (stderr) can echo report data: keep them private, never surface them.
+          next failed unless st.success? && !out.to_s.strip.empty?
+          Resolution.new(status: 'symbolicated', symbolicated_text: out)
+        end
+      end
+    rescue StandardError
+      failed
+    end
+
+    # symbolicatecrash reads the legacy text format; convert structured .ips reports.
+    def self.legacy_text(raw)
+      data = begin
+        JSON.parse(raw)
+      rescue JSON::ParserError
+        begin
+          JSON.parse(raw.to_s.lines.drop(1).join)
+        rescue JSON::ParserError
+          nil
+        end
+      end
+      return raw.to_s unless data.is_a?(Hash)
+      images = data['usedImages'] || []
+      threads = data['threads'] || []
+      idx = threads.index { |t| t['triggered'] } || data['faultingThread'].to_i
+      lines = ["Exception Type:  #{data.dig('exception', 'type')}", '', "Thread #{idx} Crashed:"]
+      ((threads[idx] || {})['frames'] || []).each_with_index do |f, n|
+        img = images[f['imageIndex'].to_i] || {}
+        base = img['base'].to_i
+        off = f['imageOffset'].to_i
+        lines << format('%-3d %-30s 0x%016x 0x%x + %d', n, img['name'], base + off, base, off)
+      end
+      lines += ['', 'Binary Images:']
+      images.each do |i|
+        base = i['base'].to_i
+        lines << format('0x%x - 0x%x %s %s <%s> %s', base, base + i['size'].to_i - 1, i['name'], i['arch'] || 'arm64', i['uuid'].to_s.downcase.delete('-'), '/unknown')
+      end
+      lines.join("\n")
     end
   end
 
@@ -161,8 +327,9 @@ module CrashIntake
   end
 
   class Runner
-    def initialize(client:,config:,repo:,since:,dry_run:,autofix:,cap:20,output:$stdout)
+    def initialize(client:,config:,repo:,since:,dry_run:,autofix:,cap:20,output:$stdout,symbolicator:nil,targets:[])
       @client,@config,@repo,@since,@dry,@autofix,@cap,@out=client,config,repo,since,dry_run,autofix,cap,output
+      @symbolicator,@targets=symbolicator,targets.map(&:to_s)
       @counts=Hash.new(0)
       @issue_path="/repos/#{repo}/issues"
     end
@@ -187,6 +354,7 @@ module CrashIntake
         id=URI.encode_www_form_component(submission.fetch('id'))
         attrs=submission.fetch('attributes',{})
         next unless CrashIntake.in_range?(attrs['createdDate'],@since)
+        next unless targeted?(app,submission.fetch('id'))
         @counts[:in_window]+=1
         process(app,id,submission)
       end
@@ -194,9 +362,48 @@ module CrashIntake
       @counts
     end
 
+    # One-shot re-resolution: issue numbers or opaque submission IDs; blank means every submission.
+    def targeted?(app,raw_id)
+      return true if @targets.empty?
+      return true if @targets.include?(raw_id)
+      mark=marker(app,URI.encode_www_form_component(raw_id))
+      @issues.any? { |i| @targets.include?(i['number'].to_s) && i.fetch('body','').to_s.lines.map(&:strip).include?(mark) }
+    end
+
+    def read_log(id)
+      query='?fields%5BbetaCrashLogs%5D=logText'
+      reply=@client.call('apple',"/v1/betaFeedbackCrashSubmissions/#{id}/crashLog#{query}",missing:true)
+      text=reply&.dig('data','attributes','logText')
+      return text unless text.to_s.empty?
+      link=@client.call('apple',"/v1/betaFeedbackCrashSubmissions/#{id}/relationships/crashLog",missing:true)
+      log_id=link&.dig('data','id')
+      return nil unless log_id
+      reply=@client.call('apple',"/v1/betaCrashLogs/#{URI.encode_www_form_component(log_id)}#{query}",missing:true)
+      reply&.dig('data','attributes','logText')
+    end
+
+    # Returns [status, evidence]; raw text never leaves this method.
+    def resolve_evidence(id,number)
+      modules=@config.fetch('modules')
+      raw=begin
+        read_log(id)
+      rescue APIError
+        nil
+      end
+      return ['api-log-pending',Evidence.parse(nil,modules)] if raw.to_s.empty?
+      evidence=Evidence.parse(raw,modules)
+      return ['symbolicated',evidence] if evidence.ready
+      return ['api-log-unresolved',evidence] unless @symbolicator && number
+      resolution=@symbolicator.resolve(raw:raw,build:number,used_images:UsedImages.parse(raw))
+      resolved=Evidence.parse(resolution.symbolicated_text,modules)
+      return ['symbolicated',resolved] if resolved.ready
+      status=resolution.status=='symbolicated' ? 'symbolication-failed' : resolution.status
+      [status,evidence]
+    end
+
     def labels
       {'testflight-crash'=>'Automatic Apple TestFlight crash feedback', 'crash-evidence-pending'=>'Crash log or usable app symbols pending',
-       'tracking'=>'Held from automatic implementation', 'ai-ready'=>'Ready for controlled implementation'}.each do |name,desc|
+       'tracking'=>'Held from automatic implementation', 'ai-ready'=>'Ready for controlled implementation','priority-high'=>'Handle ahead of ordinary work'}.each do |name,desc|
         existing=api("/repos/#{@repo}/labels/#{URI.encode_www_form_component(name)}",missing:true)
         api("/repos/#{@repo}/labels",method:'POST',body:{name:name,description:desc,color:'D93F0B'}) unless existing
       end
@@ -221,15 +428,15 @@ module CrashIntake
         @counts[:duplicates]+=1
         return
       end
-      log=@client.call('apple',"/v1/betaFeedbackCrashSubmissions/#{id}/crashLog",missing:true)
-      evidence=Evidence.parse(log && log.dig('data','attributes','logText'),@config.fetch('modules'))
       build_id=submission.dig('relationships','build','data','id')
       build=build_id && @client.call('apple',"/v1/builds/#{build_id}",missing:true)
       number=build && build.dig('data','attributes','version')
+      status,evidence=resolve_evidence(id,number)
       attrs=submission.fetch('attributes',{})
       platform=attrs['appPlatform'].to_s
       platform='UNKNOWN' unless %w[IOS MAC_OS TV_OS VISION_OS].include?(platform)
       ready=evidence.ready && number && build_id && platform!='UNKNOWN'
+      status='api-log-pending' if status=='symbolicated' && !ready
       signature=evidence.ready ? evidence.signature : id
       group="<!-- tf-crash-group:v1:#{app}:#{platform}:#{build_id || 'unknown'}:#{signature} -->"
       issue=known || find_marker(group)
@@ -249,11 +456,11 @@ module CrashIntake
         @counts[:deferred]+=1
         return
       end
-      body=render(app,id,group,attrs,number,evidence,ready)
+      body=render(app,id,group,attrs,number,evidence,ready,status)
       title="[TestFlight crash] #{@config.fetch('name')} #{evidence.category} — build #{number || 'unknown'}"
       if @dry
         @counts[issue ? :would_update : :would_create]+=1
-        @out.puts "#{title}; evidence #{ready ? 'ready' : 'pending'}"
+        @out.puts "#{title}; evidence #{ready ? 'ready' : 'pending'} (#{status})"
         return
       end
       if issue
@@ -271,7 +478,7 @@ module CrashIntake
         @counts[:updated]+=1
       else
         # tracking is part of the create transaction: missing ai-ready is NOT a queue brake.
-        issue=api(@issue_path,method:'POST',body:{title:title,body:body,labels:['testflight-crash','tracking','crash-evidence-pending']})
+        issue=api(@issue_path,method:'POST',body:{title:title,body:body,labels:['testflight-crash','tracking','crash-evidence-pending','priority-high']})
         @counts[:created]+=1
       end
       replace_issue(issue)
@@ -302,7 +509,14 @@ module CrashIntake
       @counts[:released]+=1 if names.include?('crash-evidence-pending')
     end
 
-    def render(app,id,group,attrs,number,evidence,ready)
+    STATUS_TEXT={
+      'symbolicated'=>'Application-owned frames were resolved from the report.',
+      'api-log-pending'=>'App Store Connect has not made the crash log available yet; collection retries automatically on every scan.',
+      'api-log-unresolved'=>'The raw report exists but no retained dSYM matching its image UUIDs is available for this build; it is retried on every scan. An owner-provided matching archive is needed only if the release artifact expired.',
+      'symbolication-failed'=>'A matching dSYM was found but Xcode resolved no application-owned frame; diagnostics are kept private. Retry by dispatching the workflow with this issue as a target.'
+    }.freeze
+
+    def render(app,id,group,attrs,number,evidence,ready,status)
       device=attrs['deviceModel'].to_s.match?(/\A[a-zA-Z0-9, -]{1,60}\z/) ? attrs['deviceModel'] : 'unknown'
       os=attrs['osVersion'].to_s.match?(/\A[a-zA-Z0-9. ()-]{1,60}\z/) ? attrs['osVersion'] : 'unknown'
       submitted=begin; Time.iso8601(attrs['createdDate'].to_s).utc.iso8601; rescue ArgumentError; 'unknown'; end
@@ -319,7 +533,8 @@ module CrashIntake
         Device: #{device}; OS: #{os}
         Feedback submitted: #{submitted}
         Evidence status: #{ready ? 'ready' : 'pending'}
-        #{ready ? 'Apple supplied application-owned symbols.' : 'Crash log, exact build, platform, or application-owned symbols are missing; retry collection automatically.'}
+        Resolution: #{status}
+        #{STATUS_TEXT.fetch(ready ? 'symbolicated' : (status=='symbolicated' ? 'api-log-pending' : status))}
 
         Diagnostic excerpt (untrusted data):
         ```text
@@ -350,7 +565,11 @@ module CrashIntake
     since=Time.iso8601(ENV['CRASH_INTAKE_SINCE'].to_s.empty? ? floor : ENV['CRASH_INTAKE_SINCE'])
     cap=Integer(ENV.fetch('CRASH_INTAKE_MAX_ISSUES','20'))
     raise 'Issue cap must be 1..100' unless cap.between?(1,100)
-    Runner.new(client:Client.new,config:config,repo:ENV.fetch('GITHUB_REPOSITORY'),since:since,
+    client=Client.new
+    repo=ENV.fetch('GITHUB_REPOSITORY')
+    targets=ENV['CRASH_INTAKE_TARGETS'].to_s.split(',').map(&:strip).reject(&:empty?)
+    symbolicator=XcodeCrashSymbolicator.new(store:GithubDsymStore.new(client:client,repo:repo))
+    Runner.new(client:client,config:config,repo:repo,since:since,symbolicator:symbolicator,targets:targets,
                dry_run:mode=='dry-run',autofix:ENV['TESTFLIGHT_CRASH_AUTOFIX_ENABLED']=='true',cap:cap).run
   end
 end

@@ -18,21 +18,32 @@ on:
         description: Maximum new issues in this run (1-100)
         type: string
         default: '20'
+      targets:
+        description: Optional comma-separated issue numbers or Apple submission IDs for one-shot re-resolution
+        type: string
+        default: ''
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: testflight-crash-intake
   cancel-in-progress: false
 jobs:
   collect:
     if: github.event_name == 'workflow_dispatch' || vars.TESTFLIGHT_CRASH_INTAKE_ENABLED == 'true'
-    runs-on: ubuntu-latest
+    runs-on: xcode-27
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           persist-credentials: false
+      - name: Select supported release Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' \
+            ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
       - name: Collect crash feedback and reconcile repair issues
         env:
           GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
@@ -41,6 +52,8 @@ jobs:
           ASC_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
           CRASH_INTAKE_MODE: ${{ inputs.mode || 'ingest' }}
           CRASH_INTAKE_SINCE: ${{ inputs.since || '' }}
+          ACTIONS_TOKEN: ${{ github.token }}
+          CRASH_INTAKE_TARGETS: ${{ inputs.targets || '' }}
           CRASH_INTAKE_MAX_ISSUES: ${{ inputs.max_new_issues || '20' }}
           TESTFLIGHT_CRASH_BACKFILL_START: ${{ vars.TESTFLIGHT_CRASH_BACKFILL_START }}
           TESTFLIGHT_CRASH_AUTOFIX_ENABLED: ${{ vars.TESTFLIGHT_CRASH_AUTOFIX_ENABLED }}

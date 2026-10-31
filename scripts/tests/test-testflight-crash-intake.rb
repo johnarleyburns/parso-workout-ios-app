@@ -1,4 +1,8 @@
 require 'minitest/autorun'
+require 'yaml'
+require 'stringio'
+require 'tmpdir'
+require 'fileutils'
 require_relative '../../.github/scripts/testflight-crash-intake'
 
 class CrashIntakeTest < Minitest::Test
@@ -44,9 +48,9 @@ end
 
 class FakeCrashAPI
   attr_reader :issues, :writes
-  attr_accessor :log, :submissions, :login
+  attr_accessor :log, :submissions, :login, :linkage_only, :api_error, :reads
   def initialize
-    @issues=[]; @writes=[]; @login='johnarleyburns'
+    @reads=[]; @issues=[]; @writes=[]; @login='johnarleyburns'
     @log=JSON.generate({'exception'=>{'type'=>'EXC_BAD_ACCESS'},'faultingThread'=>0,
       'usedImages'=>[{'name'=>'Cadence'}],'threads'=>[{'frames'=>[{'imageIndex'=>0,'symbol'=>'Store.save()'}]}]})
     @submissions=[{'id'=>'submission-1','attributes'=>{'createdDate'=>'2026-10-24T00:00:00Z','appPlatform'=>'IOS'},'relationships'=>{'build'=>{'data'=>{'id'=>'build-1'}}}}]
@@ -58,7 +62,16 @@ class FakeCrashAPI
   end
   def call(service,path,method:'GET',body:nil,missing:false)
     return {'login'=>@login} if path=='/user'
-    return {'data'=>{'attributes'=>{'logText'=>@log}}} if path.end_with?('/crashLog')
+    @reads << path if service=='apple'
+    if path.include?('/relationships/crashLog')
+      return @linkage_only ? {'data'=>{'type'=>'betaCrashLogs','id'=>'log-1'}} : nil
+    end
+    return {'data'=>{'id'=>'log-1','attributes'=>{'logText'=>@log}}} if path.start_with?('/v1/betaCrashLogs/')
+    if path.include?('/crashLog')
+      raise CrashIntake::APIError,'apple GET HTTP 500' if @api_error
+      return {'data'=>{'attributes'=>{}}} if @linkage_only
+      return {'data'=>{'attributes'=>{'logText'=>@log}}}
+    end
     return {'data'=>{'attributes'=>{'version'=>'123'}}} if path.start_with?('/v1/builds/')
     return {'name'=>'exists'} if method=='GET' && path.include?('/labels/')
     @writes << [path,method,body] unless method=='GET'
@@ -220,5 +233,160 @@ class CrashRunnerTest
     run_collector
     assert_equal 1,@api.issues.length
     assert_includes @api.issues[0]['body'],'opaque_id%2Fwith%2Bcharacters%3D'
+  end
+end
+
+class FakeSymbolicator
+  attr_reader :calls
+  def initialize(status:'symbolicated',text:nil)
+    @status,@text,@calls=status,text,[]
+  end
+  def resolve(raw:,build:,used_images:)
+    @calls << [build,used_images]
+    CrashIntake::Resolution.new(status:@status,symbolicated_text:@text.nil? ? "Exception Type: EXC_BAD_ACCESS\nThread 0 Crashed:\n0 Cadence 0x1 Feature.method() (Source.swift:123)" : @text)
+  end
+end
+
+class CrashSymbolicationTest < Minitest::Test
+  def setup
+    @api=FakeCrashAPI.new
+    @api.log=JSON.generate({'exception'=>{'type'=>'EXC_BAD_ACCESS'},'faultingThread'=>0,
+      'usedImages'=>[{'name'=>'Cadence','uuid'=>'AAAA-BBBB','base'=>4096,'size'=>4096}],
+      'threads'=>[{'frames'=>[{'imageIndex'=>0,'imageOffset'=>16}]}],'email'=>'private@example.org'})
+  end
+  def run_collector(symbolicator:nil,targets:[])
+    CrashIntake::Runner.new(client:@api,config:{'bundle_id'=>'test.app','name'=>'Test','modules'=>['Cadence']},repo:'test/repo',
+      since:Time.iso8601('2026-10-18T20:53:31Z'),dry_run:false,autofix:true,symbolicator:symbolicator,targets:targets,output:StringIO.new).run
+  end
+  def names; @api.issues[0]['labels'].map { |l| l['name'] }; end
+
+  def test_direct_and_linkage_fallback_read_same_raw_text
+    runner=CrashIntake::Runner.new(client:@api,config:{'modules'=>[]},repo:'r',since:Time.now,dry_run:true,autofix:false,output:StringIO.new)
+    direct=runner.read_log('s')
+    @api.linkage_only=true
+    assert_equal direct,runner.read_log('s')
+    assert(@api.reads.any? { |p| p.start_with?('/v1/betaCrashLogs/log-1') })
+  end
+  def test_address_only_frame_is_symbolicated_and_released
+    sym=FakeSymbolicator.new
+    run_collector(symbolicator:sym)
+    assert_equal [['123',[{name:'Cadence',uuid:'AAAABBBB'}]]],sym.calls
+    body=@api.issues[0]['body']
+    assert_includes body,'Cadence Feature.method() (Source.swift:123)'
+    assert_includes body,'Resolution: symbolicated'
+    refute_match(/example.org|AAAA/,body)
+    assert_includes names,'ai-ready'
+    assert_includes names,'priority-high'
+    refute_includes names,'tracking'
+  end
+  def test_missing_log_is_pending_and_api_error_is_not_unknown_collapse
+    @api.log=nil
+    run_collector(symbolicator:FakeSymbolicator.new)
+    assert_includes @api.issues[0]['body'],'Resolution: api-log-pending'
+    @api.api_error=true
+    run_collector(symbolicator:FakeSymbolicator.new)
+    assert_includes @api.issues[0]['body'],'Resolution: api-log-pending'
+    assert_includes names,'tracking'
+  end
+  def test_unresolved_and_failed_statuses_hold_without_leaks
+    run_collector(symbolicator:FakeSymbolicator.new(status:'api-log-unresolved',text:''))
+    assert_includes @api.issues[0]['body'],'Resolution: api-log-unresolved'
+    assert_includes names,'priority-high'
+    refute_includes names,'ai-ready'
+    system_only="Exception Type: EXC_CRASH\nThread 0 Crashed:\n0 libsystem 0x1 abort + 4 private@example.org"
+    run_collector(symbolicator:FakeSymbolicator.new(status:'symbolication-failed',text:system_only))
+    assert_includes @api.issues[0]['body'],'Resolution: symbolication-failed'
+    refute_match(/example.org|libsystem/,@api.issues[0]['body'])
+  end
+  def test_targets_limit_scan_and_update_existing_issue
+    run_collector(symbolicator:FakeSymbolicator.new(status:'api-log-unresolved',text:''))
+    sym=FakeSymbolicator.new
+    run_collector(symbolicator:sym,targets:['999'])
+    assert_empty sym.calls
+    run_collector(symbolicator:sym,targets:['1'])
+    assert_equal 1,@api.issues.length
+    assert_includes names,'ai-ready'
+    assert_includes names,'priority-high'
+  end
+
+  # Real symbolicator with injected exec/store.
+  class Store
+    def initialize(root); @root=root; end
+    def with_dsyms(_build); yield @root; end
+  end
+  def fixture_root(uuid)
+    root=Dir.mktmpdir
+    FileUtils.mkdir_p(File.join(root,'Cadence.app.dSYM/Contents/Resources/DWARF'))
+    File.write(File.join(root,'Cadence.app.dSYM/Contents/Resources/DWARF/Cadence'),'x')
+    [root,uuid]
+  end
+  def exec_for(uuid,calls)
+    lambda do |*cmd|
+      calls << cmd
+      ok=Struct.new(:success?).new(true)
+      cmd[0]=='dwarfdump' ? ["UUID: #{uuid} (arm64) /x/Cadence\n",'',ok] :
+        ["Exception Type: EXC_BAD_ACCESS\nThread 0 Crashed:\n0 Cadence 0x1 Feature.method() (Source.swift:123)\n",'',ok]
+    end
+  end
+  def test_xcode_symbolicator_uses_only_matching_dsym
+    tool=File.join(Dir.mktmpdir,'symbolicatecrash'); File.write(tool,'')
+    images=CrashIntake::UsedImages.parse(@api.log)
+    root,= fixture_root('AAAA-BBBB-0000')
+    calls=[]
+    res=CrashIntake::XcodeCrashSymbolicator.new(store:Store.new(root),tool:tool,exec:exec_for('AAAABBBB',calls)).resolve(raw:@api.log,build:'1',used_images:images)
+    assert_equal 'symbolicated',res.status
+    assert(calls.any? { |c| c[0]==tool && c.length==3 })
+  ensure
+    FileUtils.rm_rf(root) if root
+  end
+  def test_uuid_mismatch_refuses_symbolication
+    tool=File.join(Dir.mktmpdir,'symbolicatecrash'); File.write(tool,'')
+    root,= fixture_root('x')
+    calls=[]
+    res=CrashIntake::XcodeCrashSymbolicator.new(store:Store.new(root),tool:tool,exec:exec_for('FFFF-0000',calls)).resolve(raw:@api.log,build:'1',used_images:CrashIntake::UsedImages.parse(@api.log))
+    assert_equal 'api-log-unresolved',res.status
+    refute(calls.any? { |c| c[0]==tool })
+  ensure
+    FileUtils.rm_rf(root) if root
+  end
+  def test_missing_artifact_never_invokes_tools
+    store=Object.new; def store.with_dsyms(_b); yield nil; end
+    calls=[]
+    res=CrashIntake::XcodeCrashSymbolicator.new(store:store,tool:'/none',exec:exec_for('A',calls)).resolve(raw:@api.log,build:'1',used_images:[{name:'Cadence',uuid:'AAAABBBB'}])
+    assert_equal 'api-log-unresolved',res.status
+    assert_empty calls
+  end
+  def test_tool_failure_is_symbolication_failed
+    tool=File.join(Dir.mktmpdir,'symbolicatecrash'); File.write(tool,'')
+    root,= fixture_root('x')
+    bad=Struct.new(:success?).new(false)
+    good=Struct.new(:success?).new(true)
+    exec=lambda { |*c| c[0]=='dwarfdump' ? ["UUID: AAAA-BBBB (arm64) p\n",'',good] : ['secret','private@example.org',bad] }
+    res=CrashIntake::XcodeCrashSymbolicator.new(store:Store.new(root),tool:tool,exec:exec).resolve(raw:@api.log,build:'1',used_images:CrashIntake::UsedImages.parse(@api.log))
+    assert_equal 'symbolication-failed',res.status
+    assert_empty res.symbolicated_text
+  ensure
+    FileUtils.rm_rf(root) if root
+  end
+  def test_zip_entry_validation
+    assert CrashIntake::GithubDsymStore.safe_entry?('A.dSYM/Contents/x')
+    refute CrashIntake::GithubDsymStore.safe_entry?('/abs')
+    refute CrashIntake::GithubDsymStore.safe_entry?('a/../b')
+  end
+end
+
+class ReleaseWorkflowTest < Minitest::Test
+  def test_dsyms_retained_and_nothing_else_uploaded
+    wf=YAML.safe_load(File.read(File.join(__dir__,'../../.github/workflows/ios.yml')),aliases:true)
+    uploads=wf['jobs'].values.flat_map { |j| j['steps'] || [] }.select { |st| st['uses'].to_s.start_with?('actions/upload-artifact') }
+    step=uploads.find { |st| st['with']['name']=='testflight-dsyms-${{ env.BUILD_NUMBER }}' }
+    refute_nil step
+    assert_equal 'build/Cadence.xcarchive/dSYMs',step['with']['path']
+    assert_equal 90,step['with']['retention-days']
+    assert_equal 'error',step['with']['if-no-files-found']
+    uploads.each { |st| refute_match(/xcarchive(?!\/dSYMs)|\.ipa|output|mobileprovision/i,st['with']['path'].to_s) unless st.equal?(step) }
+    intake=YAML.safe_load(File.read(File.join(__dir__,'../../.github/workflows/testflight-crash-intake.yml')),aliases:true)
+    assert_equal 'xcode-27',intake['jobs']['collect']['runs-on']
+    assert_equal 'read',intake['permissions']['actions']
   end
 end

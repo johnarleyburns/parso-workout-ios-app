@@ -281,6 +281,19 @@ jobs:
             echo "Kept WKBackgroundModes workout-processing in $WATCH_PLIST"
           fi
 
+      - name: Verify release dSYMs cover every app binary
+        run: bash scripts/verify-archive-dsyms.sh ./build/Cadence.xcarchive
+
+      - name: Retain release dSYMs for crash resolution
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          # BUILD_NUMBER is the same monotonic CFBundleVersion sent to TestFlight.
+          name: testflight-dsyms-${{ env.BUILD_NUMBER }}
+          path: build/Cadence.xcarchive/dSYMs
+          if-no-files-found: error
+          retention-days: 90
+
       - name: Export IPA
         id: export
         run: |

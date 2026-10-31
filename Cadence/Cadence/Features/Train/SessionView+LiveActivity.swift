@@ -9,6 +9,7 @@ extension SessionView {
         guard isActiveSession,
               let context = cache.state.contexts.first(where: { !$0.pendingSets.isEmpty }),
               let pending = context.pendingSets.first else {
+            active.nextExercise = nil
             active.nextSetSummary = nil
             active.nextSetToken = nil
             return
@@ -17,6 +18,8 @@ extension SessionView {
         let load = pending.targetWeightKg.map {
             "\(Format.weightValue($0, unit: settings.unit)) \(settings.unit.abbreviation)"
         } ?? String(localized: "Bodyweight")
+        // Compatibility fallback; describes the same pending row as the summary.
+        active.nextExercise = context.name
         active.nextSetSummary = "\(context.name) · \(load) × \(pending.targetReps)"
         active.nextSetToken = pending.id
     }

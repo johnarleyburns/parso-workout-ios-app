@@ -40,7 +40,9 @@ struct WatchAddExerciseView: View {
     var body: some View {
         Group {
             if showingSuggestion {
-                WatchSuggestedExerciseView(model: model, onBack: { model.goBackToHome() })
+                WatchSuggestedExerciseView(model: model, catalog: catalog,
+                                           onRefreshCatalog: refreshResults,
+                                           onBack: { model.goBackToHome() })
             } else if showingCustomExercise {
                 WatchCustomExerciseForm(name: $customName, groups: $customGroups,
                                         feedback: feedback,

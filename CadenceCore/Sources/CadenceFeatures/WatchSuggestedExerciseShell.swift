@@ -53,6 +53,20 @@ public final class WatchSuggestedExerciseShell {
         calculate(activeNames: activeNames, activeWorkingSets: activeWorkingSets)
     }
 
+    /// Excludes the shown candidate and visibly returns to `.calculating`.
+    public func suggestAnother(activeNames: [String], activeWorkingSets: [WatchSuggestionSet]) {
+        guard let context = loadContext(),
+              let input = WatchSingleExerciseSuggestionAssembler.make(
+                context: context, activeExerciseNames: activeNames,
+                activeWorkingSets: activeWorkingSets, transientExcludedCandidateIDs: []) else {
+            contextMissing = true
+            session.cancel()
+            return
+        }
+        contextMissing = false
+        session.suggestAnother(input: input)
+    }
+
     public func cancel() {
         session.cancel()
         started = false

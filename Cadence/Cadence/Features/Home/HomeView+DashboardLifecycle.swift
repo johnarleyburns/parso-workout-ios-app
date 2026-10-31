@@ -117,6 +117,9 @@ extension HomeView {
                 historyRefreshToken: historyRefreshToken,
                 sessionCount: sessions.count,
                 cardioCount: cardio.count,
+                passiveSamples: passiveSamples,
+                userAge: settings.userAge,
+                maximumHROverride: settings.cardioMaximumHROverride,
                 scheduledWorkouts: scheduledWorkouts.map {
                     ScheduledWorkoutTaskSignature(id: $0.id,
                                                   scheduledDate: $0.scheduledDate,

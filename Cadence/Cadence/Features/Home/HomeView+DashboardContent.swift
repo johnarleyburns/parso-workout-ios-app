@@ -201,7 +201,7 @@ extension HomeView {
             weeklyVolumeKgByPerformer: cachedWeeklyVolumeKgByPerformer,
             weeklyVolumePerformers: cachedWeeklyVolumePerformers,
             totalVolumeKg: weeklyVolumeKg,
-            isVolumeLoading: !(coachSnapshotReady && homeActivityReady),
+            isVolumeLoading: !dashboardActivityReady,
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,
             onOpenPlanned: { path.append(HomeRoute.plannedWorkoutDetail($0)) },

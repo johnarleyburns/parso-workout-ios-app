@@ -859,6 +859,150 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertTrue(m.allExercisesCompletePrompt)
     }
 
+    // MARK: - Exercise-wide partner completion (#444)
+
+    /// Starts a session with partners and explicit working-set counts per lifter
+    /// (index 0 = Me). Returns the model and the planned exercises.
+    private func plannedPartnerModel(counts: [Int], exercises names: [String] = ["Shared Press"])
+        -> (WatchStrengthFlowModel, [Exercise]) {
+        let m = makeModel()
+        m.start(createSession: true)
+        for i in 1..<counts.count { m.addPartner(named: "Partner \(i)") }
+        let exs = names.map { simpleExercise(named: $0) }
+        let sets = { (n: Int) in (0..<n).map { _ in PlannedSetPrescription(targetReps: 5, targetWeightKg: 60) } }
+        let ids = [nil] + m.partners.map { Optional($0.id.uuidString) }
+        m.session?.plannedPerformerPrescriptions = counts.enumerated().map { index, n in
+            PlannedPerformerPrescription(
+                performerID: ids[index],
+                exercises: names.map { PlannedExercisePrescription(exerciseName: $0, sets: sets(n)) })
+        }
+        m.session?.plannedExerciseNames = names
+        m.refreshExerciseList()
+        return (m, exs)
+    }
+
+    /// Logs one set via the normal button and returns the performer index who logged it.
+    @discardableResult
+    private func logNormal(_ m: WatchStrengthFlowModel, _ ex: Exercise) -> Int {
+        m.startLogSet(for: ex)
+        let who = m.currentPerformerIndex
+        XCTAssertNotNil(m.logSet())
+        XCTAssertEqual(m.stage, .rest)
+        return who
+    }
+
+    func testTwoLiftersThreeSets_allSixTurnsInOrder_thenCompletes() {
+        let (m, exs) = plannedPartnerModel(counts: [3, 3])
+        let ex = exs[0]
+        var order: [Int] = []
+        for _ in 0..<6 {
+            if case .keypad = m.stage {} else { m.startLogSet(for: ex) }
+            order.append(logNormal(m, ex))
+            if order.count < 6 {
+                XCTAssertEqual(m.exercisePendingAfterRest?.id, ex.id)
+                XCTAssertEqual(m.currentPerformerIndex, order.count % 2)
+                m.finishRest()
+                XCTAssertEqual(m.stage, .keypad(ex))
+            }
+        }
+        XCTAssertEqual(order, [0, 1, 0, 1, 0, 1])
+        XCTAssertNil(m.exercisePendingAfterRest)
+        m.finishRest()
+        XCTAssertEqual(m.stage, .home)
+    }
+
+    func testMeFinalSetDoesNotLeaveWhilePartnerOutstanding() {
+        let (m, exs) = plannedPartnerModel(counts: [3, 3])
+        for _ in 0..<5 { logNormal(m, exs[0]); m.finishRest() }
+        // Me3 was the fifth turn.
+        XCTAssertEqual(m.currentPerformerIndex, 1)
+        XCTAssertEqual(m.stage, .keypad(exs[0]))
+        XCTAssertEqual(m.setCardState?.lifterText, "Partner 1")
+    }
+
+    func testCompletedExerciseRoutesToNextPlannedExercise() {
+        let (m, exs) = plannedPartnerModel(counts: [1, 1], exercises: ["Shared Press", "Shared Row"])
+        logNormal(m, exs[0]); m.finishRest()
+        logNormal(m, exs[0])
+        XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[1].id)
+        m.finishRest()
+        XCTAssertEqual(m.stage, .keypad(exs[1]))
+        XCTAssertEqual(m.currentPerformerIndex, 0)
+    }
+
+    func testUnequalPlans_meThreePartnerTwo() {
+        let (m, exs) = plannedPartnerModel(counts: [3, 2])
+        var order: [Int] = []
+        for _ in 0..<5 {
+            if case .keypad = m.stage {} else { m.startLogSet(for: exs[0]) }
+            order.append(logNormal(m, exs[0]))
+            if order.count < 5 { XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[0].id); m.finishRest() }
+        }
+        XCTAssertEqual(order, [0, 1, 0, 1, 0])
+        XCTAssertNil(m.exercisePendingAfterRest)
+    }
+
+    func testThreeLifters_unequalCounts_noOneRepeatsWhileOthersPending() {
+        let (m, exs) = plannedPartnerModel(counts: [3, 2, 1])
+        var order: [Int] = []
+        for _ in 0..<6 {
+            if case .keypad = m.stage {} else { m.startLogSet(for: exs[0]) }
+            order.append(logNormal(m, exs[0]))
+            if order.count < 6 { XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[0].id); m.finishRest() }
+        }
+        XCTAssertEqual(order, [0, 1, 2, 0, 1, 0])
+        XCTAssertNil(m.exercisePendingAfterRest)
+    }
+
+    func testSingleLifterFinalPlannedSetMovesOn() {
+        let (m, exs) = plannedPartnerModel(counts: [1], exercises: ["Solo Press", "Solo Row"])
+        logNormal(m, exs[0])
+        XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[1].id)
+    }
+
+    func testAdHocExerciseKeepsRoundRobinWithoutManufacturingObligations() {
+        let m = makeModel()
+        m.start(createSession: true)
+        m.addPartner(named: "Pat")
+        let ex = simpleExercise(named: "Ad Hoc Curl")
+        logNormal(m, ex)
+        XCTAssertEqual(m.exercisePendingAfterRest?.id, ex.id)
+        XCTAssertEqual(m.currentPerformerIndex, 1)
+        m.finishRest()
+        XCTAssertFalse(m.hasOutstandingWorkingSet(for: ex, performerIndex: 1))
+    }
+
+    func testSetCardNextLifterSkipsCompletedAndSaysLastSetForYou() {
+        let (m, exs) = plannedPartnerModel(counts: [2, 1, 2])
+        for _ in 0..<3 { logNormal(m, exs[0]); m.finishRest() }   // Me1, P1, P2(1)
+        // Selected: Me (2nd set, last for Me); Partner 1 is complete, Partner 2 remains.
+        XCTAssertEqual(m.currentPerformerIndex, 0)
+        let card = m.setCardState
+        XCTAssertEqual(card?.lifterText, "Me · then Partner 2")
+        XCTAssertEqual(card?.logTitle, "Last set for you")
+    }
+
+    func testManualSelectionDoesNotOrphanPlannedPerformer() {
+        let (m, exs) = plannedPartnerModel(counts: [2, 2])
+        m.selectPerformer(at: 1)
+        logNormal(m, exs[0]); m.finishRest()      // Partner 1 set 1 → Me
+        XCTAssertEqual(m.currentPerformerIndex, 0)
+        logNormal(m, exs[0]); m.finishRest()      // Me 1 → Partner 1
+        logNormal(m, exs[0]); m.finishRest()      // Partner 1 set 2 (done) → Me
+        XCTAssertEqual(m.currentPerformerIndex, 0)
+        logNormal(m, exs[0])                      // Me 2
+        XCTAssertNil(m.exercisePendingAfterRest)  // every planned turn is done
+        XCTAssertFalse(m.performerIndices.contains { m.hasOutstandingWorkingSet(for: exs[0], performerIndex: $0) })
+    }
+
+    func testLogAsLastSetDoesNotAbandonOutstandingPartner() {
+        let (m, exs) = plannedPartnerModel(counts: [2, 2])
+        m.startLogSet(for: exs[0])
+        XCTAssertNotNil(m.logLastSet())
+        XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[0].id)
+        XCTAssertEqual(m.currentPerformerIndex, 1)
+    }
+
     func testDeleteSetRemovesLocalSetAndEmitsPayload() {
         let m = makeModel()
         m.start()

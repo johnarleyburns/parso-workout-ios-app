@@ -75,7 +75,8 @@ public enum WatchSetCardBuilder {
                             effortText: String?,
                             isWarmup: Bool,
                             isNonWeighted: Bool = false,
-                            isLastSet: Bool = false) -> WatchSetCardState {
+                            isLastSet: Bool = false,
+                            othersRemain: Bool = false) -> WatchSetCardState {
         let dots = makeDots(planned: plannedWorkingSets.count, completed: completedWorkingSets)
         let weightText = isNonWeighted ? "—" : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
         let changed = isNonWeighted
@@ -85,7 +86,8 @@ public enum WatchSetCardBuilder {
             ? (isNonWeighted
                 ? String(localized: "Log \(currentReps) reps", bundle: .module)
                 : String(localized: "Log \(weightText) × \(currentReps)", bundle: .module))
-            : (isLastSet ? String(localized: "Last set", bundle: .module)
+            : (isLastSet ? (othersRemain ? String(localized: "Last set for you", bundle: .module)
+                                         : String(localized: "Last set", bundle: .module))
                          : String(localized: "Log set", bundle: .module))
         let last = lastTime.map { last -> String in
             let base = Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
@@ -160,9 +162,16 @@ public enum WatchSetCardBuilder {
 extension WatchStrengthFlowModel {
     /// The working (non-warm-up) sets the plan asks of the current lifter for this exercise.
     public func plannedWorkingSets(for exercise: Exercise) -> [PlannedSetPrescription] {
+        plannedWorkingSets(for: exercise, performerIndex: currentPerformerIndex)
+    }
+
+    /// Planned working sets for a specific roster member (0 = Me) without changing the selection.
+    public func plannedWorkingSets(for exercise: Exercise, performerIndex: Int) -> [PlannedSetPrescription] {
         guard let session else { return [] }
-        let sets = session.explicitPlannedSets(forPerformerID: currentPerformer?.id, exerciseName: exercise.name)
-            ?? session.plannedPrescriptions(forPerformerID: currentPerformer?.id)
+        let performerID = performerIndex > 0 && performerIndex <= partners.count
+            ? partners[performerIndex - 1].id : nil
+        let sets = session.explicitPlannedSets(forPerformerID: performerID, exerciseName: exercise.name)
+            ?? session.plannedPrescriptions(forPerformerID: performerID)
                 .first { $0.exerciseName.caseInsensitiveCompare(exercise.name) == .orderedSame }?.sets
             ?? []
         return sets.filter { $0.kind != .warmup && !$0.isWarmup }
@@ -170,9 +179,17 @@ extension WatchStrengthFlowModel {
 
     /// Working sets the current lifter has logged for this exercise in this workout.
     public func completedWorkingSets(for exercise: Exercise) -> Int {
+        completedWorkingSets(for: exercise, performerIndex: currentPerformerIndex)
+    }
+
+    /// Working sets a specific roster member (0 = Me) has logged for this exercise.
+    public func completedWorkingSets(for exercise: Exercise, performerIndex: Int) -> Int {
         guard let session else { return 0 }
-        return session.orderedSets.filter {
-            $0.exercise?.id == exercise.id && !$0.isWarmup && belongsToCurrentPerformer($0)
+        let performer = performerIndex > 0 && performerIndex <= partners.count
+            ? partners[performerIndex - 1] : nil
+        return session.orderedSets.filter { set in
+            guard set.exercise?.id == exercise.id && !set.isWarmup else { return false }
+            return performer.map { p in set.performedBy?.id == p.id } ?? set.isOwnerSet
         }.count
     }
 
@@ -185,8 +202,15 @@ extension WatchStrengthFlowModel {
         }
         let options = performerOptions
         let lifter = options.isEmpty ? nil : options.first { $0.index == currentPerformerIndex }?.name
-        let nextLifter = options.isEmpty ? nil
-            : options.first { $0.index == (currentPerformerIndex + 1) % options.count }?.name
+        let isLast = isLastPlannedSet(of: exercise)
+        // The next lifter is the next one who still owes planned work (SetAlternation
+        // order); ad-hoc exercises keep plain round-robin.
+        let pendingNext = isLast || !plannedWorkingSets(for: exercise).isEmpty
+            ? nextPendingTurn(afterLoggedBy: currentPerformerIndex, on: exercise) : nil
+        let othersRemain = isLast && pendingNext.map { $0.performerIndex != currentPerformerIndex } == true
+        let nextIndex = pendingNext?.performerIndex ?? (currentPerformerIndex + 1) % max(options.count, 1)
+        let nextLifter = options.isEmpty || nextIndex == currentPerformerIndex ? nil
+            : options.first { $0.index == nextIndex }?.name
         let effort = effortValue.map { "\(effortMode.displayName) \(Int($0.rounded()))" }
         return WatchSetCardBuilder.make(
             exerciseName: exercise.name,
@@ -203,7 +227,7 @@ extension WatchStrengthFlowModel {
             effortText: effort,
             isWarmup: isWarmupSet,
             isNonWeighted: SessionViewModel.isNonWeighted(exercise),
-            isLastSet: isLastPlannedSet(of: exercise))
+            isLastSet: isLast, othersRemain: othersRemain)
     }
 
     /// Cycles the effort chip: none → 6 → 7 → 8 → 9 → 10 → none (S2).

@@ -101,6 +101,12 @@ public struct PersistedWatchSetDefaultHistory: WatchSetDefaultHistoryProviding {
     }
 }
 
+/// The next outstanding planned turn: which exercise and which roster member (0 = Me).
+public struct WatchPendingTurn: Equatable {
+    public let exercise: Exercise
+    public let performerIndex: Int
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -167,7 +173,7 @@ public final class WatchStrengthFlowModel {
     let warmupDefault: Int
     let restDefault: Int
     private let context: ModelContext
-    private var exercisePendingAfterRest: Exercise?
+    private(set) var exercisePendingAfterRest: Exercise?
 
     /// Set when "Last Set" logs the final set of the whole plan; the watch asks Done / Keep going.
     public var allExercisesCompletePrompt = false
@@ -494,13 +500,13 @@ public final class WatchStrengthFlowModel {
     public func goBackToHome() { stage = .home }
 
     public func logSet() -> SetEntry? {
-        guard case .keypad(let exercise) = stage else { return nil }
-        return logCurrentSet(finishingExercise: isLastPlannedSet(of: exercise))
+        guard case .keypad = stage else { return nil }
+        return logCurrentSet(forceFinish: false)
     }
 
     /// Logs the set, rests, then moves on to the next exercise instead of returning here.
     public func logLastSet() -> SetEntry? {
-        let set = logCurrentSet(finishingExercise: true)
+        let set = logCurrentSet(forceFinish: true)
         allExercisesCompletePrompt = set != nil && exercisePendingAfterRest == nil
         return set
     }
@@ -511,17 +517,50 @@ public final class WatchStrengthFlowModel {
         return planned > 0 && !isWarmupSet && completedWorkingSets(for: exercise) + 1 >= planned
     }
 
-    /// The first exercise (other than `excluding`) that still has planned sets to do.
+    /// The first exercise (other than `excluding`) that still has planned sets
+    /// to do for ANY active performer.
     public func nextExercise(excluding current: Exercise? = nil) -> Exercise? {
         exerciseList.map(\.exercise).first { exercise in
             if exercise.id == current?.id { return false }
-            let planned = plannedWorkingSets(for: exercise).count
-            return planned == 0 ? (exerciseList.first { $0.exercise.id == exercise.id }?.setCount ?? 0) == 0
-                                : completedWorkingSets(for: exercise) < planned
+            if performerIndices.contains(where: { hasOutstandingWorkingSet(for: exercise, performerIndex: $0) }) {
+                return true
+            }
+            let noPlan = performerIndices.allSatisfy { plannedWorkingSets(for: exercise, performerIndex: $0).isEmpty }
+            return noPlan && (exerciseList.first { $0.exercise.id == exercise.id }?.setCount ?? 0) == 0
         }
     }
 
-    private func logCurrentSet(finishingExercise: Bool) -> SetEntry? {
+    /// Roster indices: 0 = Me, 1... = partners.
+    var performerIndices: [Int] { Array(0...partners.count) }
+
+    private func person(atPerformerIndex index: Int) -> Person? {
+        index > 0 && index <= partners.count ? partners[index - 1] : nil
+    }
+
+    /// True when the performer still owes a planned working set on the exercise.
+    public func hasOutstandingWorkingSet(for exercise: Exercise, performerIndex: Int) -> Bool {
+        let planned = plannedWorkingSets(for: exercise, performerIndex: performerIndex).count
+        return planned > 0 && completedWorkingSets(for: exercise, performerIndex: performerIndex) < planned
+    }
+
+    /// The next performer with planned work outstanding on `exercise`, following
+    /// `SetAlternation`'s roster-order rotation from the performer who just logged.
+    public func nextPendingTurn(afterLoggedBy performerIndex: Int, on exercise: Exercise) -> WatchPendingTurn? {
+        let order: [UUID?] = performerIndices.map { person(atPerformerIndex: $0)?.id }
+        var last = order.indices.contains(performerIndex) ? order[performerIndex] : nil
+        for _ in order {
+            let candidate = SetAlternation.nextPerformerID(
+                pendingSets: [], rosterOrder: order, lastLoggedPerformerID: last, hasLoggedWorkingSet: true)
+            guard let index = order.firstIndex(of: candidate) else { return nil }
+            if hasOutstandingWorkingSet(for: exercise, performerIndex: index) {
+                return WatchPendingTurn(exercise: exercise, performerIndex: index)
+            }
+            last = candidate
+        }
+        return nil
+    }
+
+    private func logCurrentSet(forceFinish: Bool) -> SetEntry? {
         guard case .keypad(let exercise) = stage else { return nil }
 
         ensureSession()
@@ -554,14 +593,32 @@ public final class WatchStrengthFlowModel {
             lastLoggedSetWasPR = isPRBeforeSave
             if lastLoggedSetWasPR { personalRecordCount += 1 }
             syncLogSet(session: session, exercise: exercise, set: set)
-            if !partners.isEmpty { advancePerformer() }
+            let loggedPerformerIndex = currentPerformerIndex
             if isOwner, !isWarmupSet {
                 volume += WorkoutMath.volume(weight: set.effectiveLoadKg, reps: set.reps)
                 setCount += 1
             }
             updateExerciseListAfterLogging(exercise)
             do {
-                exercisePendingAfterRest = finishingExercise ? nextExercise(excluding: exercise) : exercise
+                let hasPlan = performerIndices.contains {
+                    !plannedWorkingSets(for: exercise, performerIndex: $0).isEmpty
+                }
+                if let turn = nextPendingTurn(afterLoggedBy: loggedPerformerIndex, on: exercise) {
+                    // Another lifter (or this one) still owes planned work here.
+                    currentPerformerIndex = turn.performerIndex
+                    exercisePendingAfterRest = turn.exercise
+                } else if forceFinish || hasPlan {
+                    if !partners.isEmpty { advancePerformer() }
+                    let next = nextExercise(excluding: exercise)
+                    exercisePendingAfterRest = next
+                    if let next, !hasOutstandingWorkingSet(for: next, performerIndex: currentPerformerIndex),
+                       let owner = performerIndices.first(where: { hasOutstandingWorkingSet(for: next, performerIndex: $0) }) {
+                        currentPerformerIndex = owner
+                    }
+                } else {
+                    if !partners.isEmpty { advancePerformer() }
+                    exercisePendingAfterRest = exercise
+                }
                 // Issue #49: the user's chosen default rest always wins over a
                 // coach-generated per-set rest, matching the phone's rest timer.
                 plannedRestApplied = false
@@ -831,7 +888,7 @@ public final class WatchStrengthFlowModel {
         }
     }
 
-    private func refreshExerciseList() {
+    func refreshExerciseList() {
         guard let session else {
             let pending = pendingExercises.compactMap { name -> (exercise: Exercise, setCount: Int)? in
                 guard let exercise = exercise(named: name) else {

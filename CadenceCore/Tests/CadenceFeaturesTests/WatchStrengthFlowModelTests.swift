@@ -116,6 +116,57 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(try context.fetchCount(FetchDescriptor<Exercise>()), before)
     }
 
+    func testAddSuggestedExercise_attachesPrescriptionAndAddsOnce() {
+        let bench = simpleExercise(named: "Bench Press")
+        let m = makeModel()
+        m.start(createSession: true)
+        XCTAssertEqual(m.addSuggestedExercise(id: bench.id, name: "Bench Press", sets: 3, repRange: 8...12),
+                       .added(name: "Bench Press"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
+        let rx = m.session?.plannedPrescriptions.first
+        XCTAssertEqual(m.session?.plannedPrescriptions.count, 1)
+        XCTAssertEqual(rx?.exerciseName, "Bench Press")
+        XCTAssertEqual(rx?.sets.count, 3)
+        XCTAssertEqual(rx?.sets.first?.targetReps, 8)
+        XCTAssertEqual(m.stage, .home)
+    }
+
+    func testAddSuggestedExercise_unavailableNeverCreatesByName() throws {
+        let before = try context.fetchCount(FetchDescriptor<Exercise>())
+        let m = makeModel()
+        m.start(createSession: true)
+        XCTAssertEqual(m.addSuggestedExercise(id: UUID(), name: "Ghost Lift", sets: 3, repRange: 8...12),
+                       .unavailable(name: "Ghost Lift"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, [])
+        XCTAssertEqual(m.session?.plannedPrescriptions.count, 0)
+        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Exercise>()), before)
+    }
+
+    func testAddSuggestedExercise_saveFailureRestoresPrescriptions() {
+        let bench = simpleExercise(named: "Bench Press")
+        let m = makeModel()
+        m.start(createSession: true)
+        m.saveHandler = { _ in throw SaveBoom() }
+        XCTAssertEqual(m.addSuggestedExercise(id: bench.id, name: "Bench Press", sets: 3, repRange: 8...12),
+                       .saveFailed(name: "Bench Press"))
+        XCTAssertEqual(m.session?.plannedExerciseNames, [])
+        XCTAssertEqual(m.session?.plannedPrescriptions.count, 0)
+    }
+
+    func testSuggestedCard_resolvesByNameAndFormatsPrescription() {
+        let entry = ExerciseCatalogEntry(id: UUID(), name: "Bench Press",
+                                         summaryMuscleGroups: [.chest])
+        let catalog = ExerciseCatalogSnapshot(entries: [entry], recent: [])
+        let hit = SuggestedWorkoutExercise(candidateID: "x", name: "bench press", mechanics: .compound,
+                                           plannedSets: 3, repRange: 8...12, contributions: [], selectionScore: 1)
+        let miss = SuggestedWorkoutExercise(candidateID: "y", name: "Ghost", mechanics: .compound,
+                                            plannedSets: 2, repRange: 5...5, contributions: [], selectionScore: 1)
+        XCTAssertEqual(WatchSuggestedExerciseCard.resolve(hit, in: catalog)?.id, entry.id)
+        XCTAssertNil(WatchSuggestedExerciseCard.resolve(miss, in: catalog))
+        XCTAssertEqual(WatchSuggestedExerciseCard.prescriptionText(hit), "3 sets · 8–12 reps")
+        XCTAssertEqual(WatchSuggestedExerciseCard.prescriptionText(miss), "2 sets · 5 reps")
+    }
+
     func testAddExerciseResult_saveFailureRestoresAndStaysInAddExercise() {
         let m = makeModel()
         m.start(createSession: true)

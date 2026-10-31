@@ -120,6 +120,8 @@ public final class WatchStrengthFlowModel {
     public private(set) var session: WorkoutSession?
     public private(set) var exerciseList: [(exercise: Exercise, setCount: Int)] = []
     public private(set) var pendingExercises: [String] = []
+    /// Suggested-exercise prescriptions waiting for the session to be created.
+    private var pendingPrescriptions: [PlannedExercisePrescription] = []
     public var currentWeight: Double = 20
     public var currentReps: Double = 8
     public var effortMode: WatchEffortMode = .rpe
@@ -332,6 +334,24 @@ public final class WatchStrengthFlowModel {
         return addResolvedExercise(exercise)
     }
 
+    /// Adds a verified catalog exercise from a suggestion and attaches the
+    /// suggested set/rep prescription (matching the phone's
+    /// `addSuggestedExercise`). Never creates or adds by an unverified name.
+    @discardableResult
+    public func addSuggestedExercise(id: UUID, name: String, sets: Int,
+                                     repRange: ClosedRange<Int>) -> WatchExerciseAddResult {
+        guard let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) else {
+            return .unavailable(name: name)
+        }
+        exerciseCache[exercise.name] = exercise
+        let prescription = PlannedExercisePrescription(
+            exerciseName: exercise.name,
+            sets: (0..<max(1, sets)).map { _ in
+                PlannedSetPrescription(targetReps: repRange.lowerBound, targetWeightKg: nil)
+            })
+        return addResolvedExercise(exercise, prescription: prescription)
+    }
+
     /// Creates a named exercise from the watch's compact muscle-group pills, then
     /// adds it to the current workout exactly like a built-in search result.
     @discardableResult
@@ -356,17 +376,24 @@ public final class WatchStrengthFlowModel {
     }
 
     @discardableResult
-    private func addResolvedExercise(_ exercise: Exercise) -> WatchExerciseAddResult {
+    private func addResolvedExercise(_ exercise: Exercise,
+                                     prescription: PlannedExercisePrescription? = nil) -> WatchExerciseAddResult {
         let resolved = exercise.name
         func matches(_ other: String) -> Bool { other.compare(resolved, options: .caseInsensitive) == .orderedSame }
         let present = session.map { $0.plannedExerciseNames.contains(where: matches) }
             ?? pendingExercises.contains(where: matches)
         guard !present else { return .alreadyPresent(name: resolved) }
 
+        let priorPrescriptions = session?.plannedPrescriptions ?? []
         if let session {
             session.plannedExerciseNames.append(resolved)
+            if let prescription,
+               !priorPrescriptions.contains(where: { matches($0.exerciseName) }) {
+                session.plannedPrescriptions = priorPrescriptions + [prescription]
+            }
         } else {
             pendingExercises.append(resolved)
+            if let prescription { pendingPrescriptions.append(prescription) }
         }
         do {
             try saveHandler(context)
@@ -376,8 +403,10 @@ public final class WatchStrengthFlowModel {
                 if let i = session.plannedExerciseNames.lastIndex(where: matches) {
                     session.plannedExerciseNames.remove(at: i)
                 }
+                session.plannedPrescriptions = priorPrescriptions
             } else if let i = pendingExercises.lastIndex(where: matches) {
                 pendingExercises.remove(at: i)
+                pendingPrescriptions.removeAll { matches($0.exerciseName) }
             }
             stage = .addExercise
             refreshExerciseList()
@@ -741,7 +770,11 @@ public final class WatchStrengthFlowModel {
                 resolvedPending.append(resolved)
             }
             session?.plannedExerciseNames = resolvedPending
+            if !pendingPrescriptions.isEmpty {
+                session?.plannedPrescriptions = pendingPrescriptions
+            }
             pendingExercises = []
+            pendingPrescriptions = []
             try? context.save()
         } catch {}
     }

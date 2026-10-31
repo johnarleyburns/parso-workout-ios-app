@@ -31,6 +31,7 @@ struct WatchAddExerciseView: View {
     @State private var feedback: String?
     /// Pending confirmation + failure outcome; the workout changes only on Add.
     @State private var confirmation = WatchAddConfirmation()
+    @State private var showingSuggestion = false
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -38,7 +39,9 @@ struct WatchAddExerciseView: View {
 
     var body: some View {
         Group {
-            if showingCustomExercise {
+            if showingSuggestion {
+                WatchSuggestedExerciseView(model: model, onBack: { model.goBackToHome() })
+            } else if showingCustomExercise {
                 WatchCustomExerciseForm(name: $customName, groups: $customGroups,
                                         feedback: feedback,
                                         onCreate: { report(model.createAndAddExercise(named: customName, muscleGroups: customGroups)) },
@@ -161,6 +164,17 @@ struct WatchAddExerciseView: View {
                 }
             } else {
                 Section {
+                    Button {
+                        WatchHaptics.tap()
+                        showingSuggestion = true
+                    } label: {
+                        Label("Suggest exercise", systemImage: "wand.and.stars")
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("watchAddExercise.suggest")
+                    .accessibilityHint("Finds an exercise suited to this workout")
                     HStack(spacing: 6) {
                         TextField("Search", text: $query)
                             .frame(maxWidth: .infinity, minHeight: 44)

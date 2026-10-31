@@ -65,21 +65,19 @@ extension SessionView {
             UIAccessibility.post(notification: .announcement,
                                  argument: String(localized: "Set logged, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)\(performerText)"))
         }
-        if active.strengthSession?.id == session.id {
-            let exercises = session.exercisesInOrder
-            if let currentIndex = exercises.firstIndex(where: { $0.id == exercise.id }),
-               exercises.indices.contains(currentIndex + 1) {
-                active.nextExercise = exercises[currentIndex + 1].name
-            } else { active.nextExercise = nil }
-        }
         if settings.autoStartRest && !isWarmup && !isManualLog && active.strengthSession?.id == session.id {
             // Rest policy resolves through the single pure resolver so the
             // set-rest vs exercise-transition distinction reaches the timer.
-            let completed = (session.orderedSets).filter {
-                $0.exercise?.id == exercise.id && !$0.isWarmup
+            // A plan's set ordinal is local to its performer; counting the
+            // group would make the third combined set look like Me's final set.
+            let performerID = person?.id // nil remains the owner identity
+            let completed = session.orderedSets.filter {
+                $0.exercise?.id == exercise.id &&
+                !$0.isWarmup &&
+                setPerformedBy($0, performerID: performerID)
             }.count
             if let seconds = TransitionRestResolver.restAfterSet(
-                prescriptions: session.plannedPrescriptions,
+                prescriptions: session.plannedPrescriptions(forPerformerID: performerID),
                 exerciseName: exercise.name,
                 completedSetCount: completed,
                 isWarmup: isWarmup,

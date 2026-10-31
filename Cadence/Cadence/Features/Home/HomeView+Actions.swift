@@ -124,7 +124,12 @@ extension HomeView {
         defer { os_signpost(.end, log: Self.healthIngestLog, name: "homeActivityProjection", signpostID: signpostID) }
         let now = Date()
         if let container = cadenceModelContainer {
-            let projection = await Task.detached(priority: .utility) { [container, now] in
+            // Immutable values only; no SwiftData model crosses the boundary.
+            let passiveSamples = self.passiveSamples
+            let userAge = settings.userAge
+            let maximumHROverride = settings.cardioMaximumHROverride
+            dashboardActivityReady = false
+            let projection = await Task.detached(priority: .utility) { [container, now, passiveSamples, userAge, maximumHROverride] in
                 let backgroundContext = ModelContext(container)
                 let sessions = (try? WorkoutRepository.allSessions(backgroundContext)) ?? []
                 let cardio = (try? WorkoutRepository.allCardio(backgroundContext)) ?? []
@@ -155,7 +160,19 @@ extension HomeView {
                 let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio, now: now)
                 let weeklyVolume = HomeWeeklyVolumeProjection.make(
                     sessions: sessions, since: WeeklyStats.weekStart(now: now), now: now)
+                let weekStart = WeeklyStats.weekStart(now: now)
+                let profile = CardioIntensityProfile.forHome(
+                    passiveSamples: passiveSamples, userAge: userAge, maximumHROverride: maximumHROverride)
+                // Newest-first fetches: prefix stops at the week boundary.
+                let weekCardioRows = Array(cardio.prefix { $0.start >= weekStart })
+                let weekSessionRows = Array(sessions.prefix { $0.date >= weekStart })
+                let weeklyCardio = WeeklyCardioAggregator.summarize(
+                    weekCardioRows, since: weekStart, profile: profile, sessions: weekSessionRows)
+                let activityDose = WeeklyActivityDoseAggregator.summarize(
+                    cardio: weekCardioRows, sessions: weekSessionRows, since: weekStart, profile: profile)
                 return HomeActivityProjection(
+                    weeklyCardio: weeklyCardio,
+                    activityDose: activityDose,
                     today: WorkoutsTodayPresenter.historicalRows(
                         sessions: sessions, cardio: cardio, now: now),
                     weekStrength: week.strength,
@@ -187,6 +204,10 @@ extension HomeView {
             cachedMuscleHistoryByPerformer = projection.muscleHistoryByPerformer
             cachedScheduledItems = projection.scheduledItems
             cachedRecentCardioTypes = projection.recentCardioTypes
+            cachedWeeklyCardio = projection.weeklyCardio
+            cachedWeeklyActivityDose = projection.activityDose
+            dashboardActivityReady = true
+            cachedDashboard = makeDashboard()
             homeActivityReady = true
         } else {
             cachedWorkoutsTodayRows = WorkoutsTodayPresenter.historicalRows(
@@ -209,6 +230,8 @@ extension HomeView {
             cachedMuscleHistoryByPerformer = weeklyVolume.histories
             cachedScheduledItems = scheduledWorkouts.map(HomePlannedWorkoutsSection.item)
             cachedRecentCardioTypes = recentCardioTypesFromCurrentCardio
+            // No store (previews/tests): weekly cardio stays the injected value fixture.
+            dashboardActivityReady = true
             homeActivityReady = true
         }
     }
@@ -237,6 +260,8 @@ extension HomeView {
     }
 
     private struct HomeActivityProjection: @unchecked Sendable {
+        let weeklyCardio: WeeklyCardioSummary
+        let activityDose: WeeklyActivitySummary
         let today: [WorkoutsTodayPresenter.Row]
         let weekStrength: [TodayActivityPresenter.Entry]
         let weekCardio: [TodayActivityPresenter.Entry]

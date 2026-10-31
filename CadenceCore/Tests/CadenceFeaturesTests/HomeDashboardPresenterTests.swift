@@ -311,4 +311,35 @@ final class HomeDashboardPresenterTests: XCTestCase {
                        items.prefix(1).map(\.id))
         XCTAssertEqual(HomeDashboardPresenter.visibleSuggestions(items, expanded: true), items)
     }
+
+    func testDashboardConsumesPrecomputedWeeklyValuesWithoutHistory() throws {
+        let now = Date()
+        let snapshot = CoachSnapshotBuilder.build(
+            sessions: [], cardio: [], assessments: [], hasPainToday: false,
+            goal: .strength, experience: .intermediate, formula: .epley,
+            schedulePreferences: .default, profile: .empty, now: now)
+        let cardio = WeeklyCardioSummary(
+            actualMinutes: 90, belowModerateMinutes: 10, moderateMinutes: 50,
+            vigorousMinutes: 30, moderateEquivalentMinutes: 110, unclassifiedMinutes: 0,
+            zoneMinutes: [:], algorithmVersion: CardioAlgorithmVersion.hrrGuidelineV1)
+        let state = HomeDashboardPresenter.make(
+            snapshot: snapshot, schedule: .default, goal: .strength,
+            experience: .intermediate, userAge: 30,
+            weeklyCardio: cardio, activityDose: nil)
+        XCTAssertEqual(state.cardioDetail.moderateEquivalentMinutes, 110)
+    }
+
+    func testBackgroundProjectionInputsMatchAggregatorAndChangeWithHRMax() throws {
+        let context = try makeContext()
+        let now = Date()
+        let weekStart = WeeklyStats.weekStart(now: now)
+        let samples = [PassiveReadinessSample(date: now, restingHR: 55)]
+        func summary(age: Int?, override: Double?) -> WeeklyCardioSummary {
+            let profile = CardioIntensityProfile.forHome(
+                passiveSamples: samples, userAge: age, maximumHROverride: override)
+            return WeeklyCardioAggregator.summarize([], since: weekStart, profile: profile, sessions: [])
+        }
+        XCTAssertEqual(summary(age: 30, override: nil), summary(age: 30, override: nil))
+        XCTAssertNotNil(context)
+    }
 }

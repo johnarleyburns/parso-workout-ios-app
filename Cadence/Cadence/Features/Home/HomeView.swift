@@ -143,6 +143,10 @@ struct HomeView: View {
     @State var cachedScheduledItems: [PlannedWorkoutsPresenter.Item] = []
     @State var cachedRecentCardioTypes: [WorkoutType] = []
     @State var cachedDashboard: HomeDashboardState?
+    // Value-only weekly cardio/dose, published by the background projection.
+    @State var cachedWeeklyCardio: WeeklyCardioSummary = .empty
+    @State var cachedWeeklyActivityDose: WeeklyActivitySummary?
+    @State var dashboardActivityReady = false
     var dashboard: HomeDashboardState {
         if let cachedDashboard { return cachedDashboard }
         return makeDashboard()
@@ -154,24 +158,14 @@ struct HomeView: View {
                                      behindPlan: coachSnapshot.behindPlan, addOn: coachSnapshot.addOn,
                                      readiness: coachSnapshot.readiness, optimizedPlan: coachSnapshot.optimizedPlan,
                                      engineObservation: coachSnapshot.engineObservation)
-        let weekStart = WeeklyStats.weekStart(now: Date())
-        let intensityProfile = CardioIntensityProfile.forHome(
-            passiveSamples: passiveSamples, userAge: settings.userAge, maximumHROverride: settings.cardioMaximumHROverride)
-        // Newest-first queries: prefix avoids faulting all history on main.
-        let weekCardio = Array(cardio.prefix { $0.start >= weekStart })
-        let weekSessions = Array(sessions.prefix { $0.date >= weekStart })
-        let weeklyCardio = WeeklyCardioAggregator.summarize(
-            weekCardio, since: weekStart, profile: intensityProfile, sessions: weekSessions)
-        let activityDose = WeeklyActivityDoseAggregator.summarize(
-            cardio: weekCardio, sessions: weekSessions, since: weekStart, profile: intensityProfile)
         return HomeDashboardPresenter.make(snapshot: snapshot,
                                            schedule: settings.coachSchedulePreferences,
                                            goal: settings.trainingGoal,
                                            experience: settings.experienceLevel,
                                            userAge: settings.userAge,
                                            liveVolumeDelta: liveVolumeDelta,
-                                           weeklyCardio: weeklyCardio,
-                                           activityDose: activityDose)
+                                           weeklyCardio: cachedWeeklyCardio,
+                                           activityDose: cachedWeeklyActivityDose)
     }
 
     func savePlatformSnapshot(for dashboard: HomeDashboardState) {
@@ -388,6 +382,9 @@ struct HomeActivityTaskIdentity: Equatable {
     let historyRefreshToken: UUID
     let sessionCount: Int
     let cardioCount: Int
+    let passiveSamples: [PassiveReadinessSample]
+    let userAge: Int?
+    let maximumHROverride: Double?
     let scheduledWorkouts: [ScheduledWorkoutTaskSignature]
 }
 

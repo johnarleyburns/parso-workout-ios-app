@@ -108,9 +108,17 @@ extension HomeView {
             }
             // Recompute the coach pipeline off the render/tap path, only when history
             // or coach-relevant settings actually change.
+            .task(id: TodayDisplayRestoreID(dayKey: Self.dayString(), isToday: surface == .today)) {
+                guard surface == .today else { return }
+                todayDisplayRestoreState = .restoring
+                await restoreTodayDisplayCacheImmediately()
+                todayDisplayRestoreState = .finished
+            }
             .task(id: HomeCoachTaskIdentity(
-                signature: coachSignature,
+                signature: displayRestoreComplete ? coachSignature : nil,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
+                // Re-runs with a real identity once the restore gate finishes.
+                guard displayRestoreComplete else { return }
                 await runCoachTask()
             }
             .task(id: HomeActivityTaskIdentity(
@@ -134,8 +142,9 @@ extension HomeView {
             }
             .task(id: HomeTodaySuggestionTaskIdentity(
                 historyRefreshToken: historyRefreshToken,
-                sessionCount: sessions.count,
+                sessionCount: displayRestoreComplete ? sessions.count : -1,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
+                guard displayRestoreComplete else { return }
                 await prepareTodaySuggestion()
             }
             .onChange(of: todaySuggestedPlan?.id) { _, _ in
@@ -170,6 +179,13 @@ extension HomeView {
                 pending: $pendingAddGapsDeficits,
                 guardrails: { CoachOverrideGuardrails.describe(from: coachSnapshot.optimizedPlan.diagnostics) },
                 onConfirm: { confirmAddGaps() })
+    }
+
+    /// True once history-derived work may start: Today waits for its finite
+    /// display-restore phase (success, no file, corrupt file and read errors all
+    /// finish it); This Week never waits.
+    var displayRestoreComplete: Bool {
+        todayDisplayRestoreState.permitsHydration(isToday: surface == .today)
     }
 
     /// Applies a Today → This Week ring tap: expand the requested section and

@@ -108,9 +108,9 @@ extension HomeView {
     /// Coach task body: a valid cached recommendation (in-process or durable,
     /// even after relaunch) is shown before any loading state is set.
     func runCoachTask() async {
+        // Display restore already ran as its own first-frame phase; this is a
+        // cheap idempotent fallback (no-op when state is already published).
         await restoreTodayDisplayCacheImmediately()
-        // Let the cached hero render before any SwiftData traversal below.
-        await Task.yield()
         if await restoreTodayRecommendation() { return }
         if restoredRecommendation == nil {
             coachSnapshotReady = false
@@ -148,6 +148,9 @@ extension HomeView {
     /// snapshot; freshness is reconciled afterwards by `runCoachTask` and
     /// `prepareTodaySuggestion`.
     func restoreTodayDisplayCacheImmediately() async {
+        // INVARIANT (display-only): this function and its callees must never
+        // call todayFingerprint, coachSignature, makeDashboard,
+        // refreshCoachSnapshot, HealthKit, Watch sync, or any SwiftData API.
         guard surface == .today else { return }
         if !coachSnapshotReady, restoredRecommendation == nil,
            let hit = await HomeTodayCache.coordinator.restoreProvisional(surface: .today) {

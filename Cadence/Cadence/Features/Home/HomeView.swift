@@ -38,7 +38,8 @@ struct HomeView: View {
                   SortDescriptor(\ScheduledWorkout.title)])
     var scheduledWorkouts: [ScheduledWorkout]
     @Query(filter: #Predicate<Exercise> { $0.isFavorite }, sort: \Exercise.name) var favoriteExercises: [Exercise]
-
+    /// First-frame durable display restore phase; gates all history-derived Today work.
+    @State var todayDisplayRestoreState: TodayDisplayRestoreState = .notStarted
     @State var logPickerPresented = false
     @State var selectWorkoutPresented = false
     @State var recoveryOptionsPresented = false
@@ -374,7 +375,9 @@ struct HomeView: View {
 }
 
 struct HomeCoachTaskIdentity: Equatable {
-    let signature: HomeCoachModel.Signature
+    /// nil until Today's display restore finishes, so no history-derived
+    /// signature is evaluated during the first-frame phase.
+    let signature: HomeCoachModel.Signature?
     let isRestoringCloudKitHistory: Bool
 }
 

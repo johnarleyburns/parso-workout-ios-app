@@ -33,11 +33,20 @@ public enum WorkoutDurationEstimator {
     public static let defaultRestSeconds = 90.0
 
     public static func estimate(plan: EditablePlan?, history: [WorkoutSession]) -> DurationEstimate? {
+        estimate(plan: plan, workSecondsSamples: workSecondsSamples(from: history))
+    }
+
+    /// Minimal value statistics extracted from history so a render path never
+    /// has to traverse `WorkoutSession` relationships.
+    public static func workSecondsSamples(from history: [WorkoutSession]) -> [Double] {
+        history.compactMap(workSecondsPerSet).filter { $0 > 0 }
+    }
+
+    public static func estimate(plan: EditablePlan?, workSecondsSamples samples: [Double]) -> DurationEstimate? {
         guard let plan, !plan.exercises.isEmpty else { return nil }
         let setCount = plan.exercises.reduce(0) { $0 + $1.sets.count }
         guard setCount > 0 else { return nil }
 
-        let samples = history.compactMap(workSecondsPerSet).filter { $0 > 0 }
         let workSeconds: Double
         let basis: DurationEstimate.Basis
         if samples.count >= 3 {

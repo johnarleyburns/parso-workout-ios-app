@@ -45,17 +45,12 @@ extension HomeView {
     }
 
     private var todayHeroCard: some View {
-        let todayScheduled = scheduledWorkouts.first {
-            Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
-        }
+        // Value snapshot published by the background activity projection;
+        // this render path never touches historical SwiftData rows.
+        let activity = cachedTodayHeroActivity
         let activeSession = resumeSession
-        let scheduledPlan = todayScheduled.flatMap { try? ScheduledWorkoutStore.decode($0.payloadData,
-                                                                                         version: $0.payloadVersion) }
         func heroLines(_ plan: EditablePlan?) -> [TodayHero.Line] {
-            plan?.exercises.map {
-                TodayHero.Line(name: $0.name,
-                               detail: "\($0.sets.count) × \($0.sets.first?.targetReps ?? 0)")
-            } ?? []
+            TodayHeroActivityPresenter.heroLines(plan)
         }
         let deficits = dashboard.volume.filter { $0.isTracked && $0.sets < 12 }
             .sorted { $0.sets < $1.sets }
@@ -64,14 +59,18 @@ extension HomeView {
         let reason = deficits.isEmpty ? String(localized: "Why today: keep your weekly strength habit moving.") :
             String(localized: "Why today: \(deficits.formatted(.list(type: .and))) sets this week.")
         // A durable restore renders the hero before the snapshot hydrates.
-        let recommendationReady = coachSnapshotReady || restoredRecommendation != nil
+        // Until history has projected, only a restored recommendation may
+        // render; otherwise the hero stays "loading" (never a false recovery
+        // or onboarding state).
+        let recommendationReady = activity.isLoaded
+            ? (coachSnapshotReady || restoredRecommendation != nil)
+            : restoredRecommendation != nil
         let coachRecommendsStrength = coachSnapshotReady
             ? coachDecision.primary.kind == .strength
             : (restoredRecommendation?.primaryIsStrength ?? false)
         let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
             TodayHero(kind: .suggested, title: plan.title,
-                      estimatedMinutes: WorkoutDurationEstimator.estimate(
-                          plan: plan, history: sessions)?.minutes,
+                      estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
                       exercises: heroLines(plan), reason: reason,
                       citationIDs: SuggestedWorkoutPresenter.citationIDs)
         } : nil
@@ -85,12 +84,7 @@ extension HomeView {
         let coachFallback = coachSnapshotReady
             ? TodayHeroPresenter.recommendation(coachDecision)
             : restoredRecommendation?.makeHero()
-        let scheduled = todayScheduled.map {
-            TodayHero(kind: .scheduled, title: $0.title,
-                      estimatedMinutes: WorkoutDurationEstimator.estimate(
-                          plan: scheduledPlan, history: sessions)?.minutes,
-                      exercises: heroLines(scheduledPlan), reason: nil)
-        }
+        let scheduled = activity.todayScheduled?.makeHero()
         let inProgress = activeSession.map { session -> TodayHero in
             let progress = InProgressWorkoutPresenter.progress(session: session)
             return TodayHero(kind: .inProgress,
@@ -98,51 +92,13 @@ extension HomeView {
                              exercises: progress.lines,
                              reason: InProgressWorkoutPresenter.summary(progress))
         }
-        let today = Calendar.current.startOfDay(for: Date())
-        let completedToday = sessions
-            .filter { session in
-                session.deletedAt == nil && session.endedAt != nil && session.hasSets
-                    && Calendar.current.isDate(session.endedAt ?? session.date, inSameDayAs: today)
-            }
-            .sorted { ($0.endedAt ?? $0.date) > ($1.endedAt ?? $1.date) }
-            .first
-        let nextScheduled = scheduledWorkouts
-            .filter { $0.isVisible && $0.scheduledDate >= today && !Calendar.current.isDateInToday($0.scheduledDate) }
-            .sorted { $0.scheduledDate < $1.scheduledDate }
-            .first
-        let completedSummary = completedToday.map { session in
-            let lines: [TodayHero.Line] = session.exercisesInOrder.map { ex in
-                let working = session.orderedSets.filter {
-                    $0.exercise?.id == ex.id && !$0.isWarmup && $0.isOwnerSet
-                }
-                let sets = working.count
-                let detail: String
-                if sets == 0 {
-                    detail = String(localized: "No sets")
-                } else if let lastReps = working.last?.reps {
-                    detail = "\(sets) × \(lastReps)"
-                } else {
-                    detail = "\(sets) sets"
-                }
-                return TodayHero.Line(name: ex.name, detail: detail)
-            }
-            return DaySummary(title: session.title.isEmpty ? String(localized: "Workout complete") : session.title,
-                              setCount: session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
-                              volumeKg: session.totalVolume,
-                              durationMinutes: session.duration > 0 ? Int((session.duration / 60).rounded()) : nil,
-                              nextSessionTitle: nextScheduled?.title,
-                              nextSessionDate: nextScheduled?.scheduledDate,
-                              exercises: lines)
-        }
-        let remainingScheduledToday = scheduledWorkouts.filter {
-            Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
-        }.count
         let hero = TodayHeroPresenter.hero(inProgress: inProgress, scheduled: scheduled,
                                            suggested: suggested,
                                            fallbackRecommendation: coachFallback,
-                                           completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count,
-                                           completedToday: completedSummary,
-                                           remainingScheduledToday: remainingScheduledToday,
+                                           // Unloaded history must not read as "no history".
+                                           completedWorkoutCount: activity.isLoaded ? activity.completedWorkoutCount : max(2, activity.completedWorkoutCount),
+                                           completedToday: activity.daySummary(),
+                                           remainingScheduledToday: activity.remainingScheduledToday,
                                            recommendationReady: recommendationReady)
         let tag: String = switch hero.kind {
         case .inProgress: String(localized: "In progress")
@@ -168,8 +124,8 @@ extension HomeView {
                                              active.adopt(activeSession, heartbeat: WorkoutHeartbeatStore.read())
                                          }
                                          active.present()
-                                     } else if let todayScheduled {
-                                         startScheduledWorkout(todayScheduled)
+                                     } else if activity.todayScheduled != nil, startTodayScheduledWorkout() {
+                                         // Started the scheduled plan.
                                      } else if coachRecommendsStrength && todaySuggestedPlan != nil {
                                          openTodaySuggestion()
                                      } else {

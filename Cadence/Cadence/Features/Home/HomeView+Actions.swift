@@ -191,7 +191,9 @@ extension HomeView {
                     muscleHistoryByPerformer: weeklyVolume.histories,
                     scheduledItems: scheduled.map(HomePlannedWorkoutsSection.rowInput)
                         .map(HomePlannedWorkoutsSection.item),
-                    recentCardioTypes: recentCardioTypes)
+                    recentCardioTypes: recentCardioTypes,
+                    heroActivity: TodayHeroActivityPresenter.make(
+                        sessions: sessions, scheduled: scheduled, now: now))
             }.value
             guard !Task.isCancelled else { return }
             cachedWorkoutsTodayRows = projection.today
@@ -205,6 +207,7 @@ extension HomeView {
             cachedMuscleHistoryByPerformer = projection.muscleHistoryByPerformer
             cachedScheduledItems = projection.scheduledItems
             cachedRecentCardioTypes = projection.recentCardioTypes
+            cachedTodayHeroActivity = projection.heroActivity
             cachedWeeklyCardio = projection.weeklyCardio
             cachedWeeklyActivityDose = projection.activityDose
             dashboardActivityReady = true
@@ -231,6 +234,8 @@ extension HomeView {
             cachedMuscleHistoryByPerformer = weeklyVolume.histories
             cachedScheduledItems = scheduledWorkouts.map(HomePlannedWorkoutsSection.item)
             cachedRecentCardioTypes = recentCardioTypesFromCurrentCardio
+            cachedTodayHeroActivity = TodayHeroActivityPresenter.make(
+                sessions: sessions, scheduled: scheduledWorkouts, now: now)
             // No store (previews/tests): weekly cardio stays the injected value fixture.
             dashboardActivityReady = true
             homeActivityReady = true
@@ -274,6 +279,16 @@ extension HomeView {
         let muscleHistoryByPerformer: [String: [HomeMuscleHistory]]
         let scheduledItems: [PlannedWorkoutsPresenter.Item]
         let recentCardioTypes: [WorkoutType]
+        let heroActivity: TodayHeroActivitySnapshot
+    }
+    /// Tap-time lookup of today's scheduled row (never during render).
+    @discardableResult
+    func startTodayScheduledWorkout() -> Bool {
+        guard let row = scheduledWorkouts.first(where: {
+            Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
+        }) else { return false }
+        startScheduledWorkout(row)
+        return true
     }
     func openTodayWorkout(_ row: WorkoutsTodayPresenter.Row) {
         // Rows are produced by the background activity projection. Do not

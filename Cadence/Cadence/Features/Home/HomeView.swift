@@ -143,6 +143,7 @@ struct HomeView: View {
     @State var cachedWeeklyVolumePerformers: [VolumeSummaryPerformer] = []
     @State var cachedScheduledItems: [PlannedWorkoutsPresenter.Item] = []
     @State var cachedRecentCardioTypes: [WorkoutType] = []
+    @State var cachedTodayHeroActivity = TodayHeroActivitySnapshot.empty
     @State var cachedDashboard: HomeDashboardState?
     // Value-only weekly cardio/dose, published by the background projection.
     @State var cachedWeeklyCardio: WeeklyCardioSummary = .empty
@@ -367,7 +368,6 @@ struct HomeView: View {
     var resumeSession: WorkoutSession? {
         active.strengthSession ?? ActiveSessionRecovery.candidate(in: sessions)
     }
-
     var todayStrength: (hasStrength: Bool, exerciseNames: [String]) { TodayLogHelper.completedStrength(sessions: sessions) }
     var weeklyVolumeKg: Double {
         cachedWeeklyVolumeKg

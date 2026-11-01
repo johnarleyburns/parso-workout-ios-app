@@ -15,9 +15,8 @@ extension HomeView {
 
     /// Captures SwiftData values on the main actor, then lets the sheet run the
     /// pure, Sendable generator without carrying managed objects across actors.
-    func requestSuggestedStrength(present: Bool = true,
-                                  preloadedCandidates: [SuggestedExerciseCandidate]? = nil) {
-        if present { Haptics.selection() }
+    func requestSuggestedStrength() {
+        Haptics.selection()
         do {
             let activeSessionID = active.strengthSession?.id
             let completedHistorySessions = sessions.filter {
@@ -50,26 +49,10 @@ extension HomeView {
                 sessions: completedHistorySessions,
                 storageURL: model.isUITestMode ? nil : ExerciseHistoryIndexStore.defaultStorageURL())
 
-            let persistedCandidates: [SuggestedExerciseCandidate]
-            if let preloadedCandidates {
-                // Mapped off the main actor (see `loadSuggestionCandidates`);
-                // only the cheap history flag is applied here.
-                persistedCandidates = preloadedCandidates.map { candidate in
-                    SuggestedExerciseCandidate(
-                        id: candidate.id, name: candidate.name, mechanics: candidate.mechanics,
-                        primaryMuscles: candidate.primaryMuscles,
-                        secondaryMuscles: candidate.secondaryMuscles,
-                        equipment: candidate.equipment, volumeEligible: candidate.volumeEligible,
-                        trainingTypes: candidate.trainingTypes, modalities: candidate.modalities,
-                        sportContexts: candidate.sportContexts,
-                        isPersonalized: historyExerciseKeys.contains(candidate.id))
-                }
-            } else {
-                persistedCandidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
-                    try WorkoutRepository.allExercises(context).map { exercise in
-                        Self.suggestionCandidate(exercise, isPersonalized: historyExerciseKeys.contains(
-                            ExerciseSuggestionExclusionKey.forExercise(exercise)))
-                    }
+            let persistedCandidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
+                try WorkoutRepository.allExercises(context).map { exercise in
+                    Self.suggestionCandidate(exercise, isPersonalized: historyExerciseKeys.contains(
+                        ExerciseSuggestionExclusionKey.forExercise(exercise)))
                 }
             }
             // Production seeding is intentionally deferred so launch stays
@@ -146,11 +129,7 @@ extension HomeView {
                 unit: settings.unit,
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes)
-            if present {
-                presentSuggestedWorkout(request)
-            } else {
-                generateTodaySuggestion(request)
-            }
+            presentSuggestedWorkout(request)
         } catch {
             // Generation has no safe partial candidate snapshot to present when
             // the catalog fetch fails, so show a retryable error at Home.
@@ -171,39 +150,13 @@ extension HomeView {
                 warmupMinutes: settings.warmupMinutes,
                 cooldownMinutes: settings.cooldownMinutes,
                 failureMessage: "Exercise data could not be read. Try again to refresh the exercise catalog.")
-            if present {
-                presentSuggestedWorkout(request)
-            } else {
-                generateTodaySuggestion(request)
-            }
+            presentSuggestedWorkout(request)
         }
     }
 
     nonisolated static func suggestionCandidate(_ exercise: Exercise,
                                                 isPersonalized: Bool) -> SuggestedExerciseCandidate {
-        SuggestedExerciseCandidate(
-            id: ExerciseSuggestionExclusionKey.forExercise(exercise),
-            name: exercise.name,
-            mechanics: exercise.mechanicsValue ?? .compound,
-            primaryMuscles: exercise.primaryMuscles,
-            secondaryMuscles: exercise.secondaryMuscles,
-            equipment: exercise.equipmentValue,
-            volumeEligible: exercise.volumeEligible,
-            trainingTypes: exercise.trainingTypes,
-            modalities: exercise.modalities,
-            sportContexts: exercise.sportContexts,
-            isPersonalized: isPersonalized)
-    }
-
-    /// Fetches and maps the full exercise catalog on a background context so
-    /// the automatic Today suggestion never faults it on the main actor.
-    func loadSuggestionCandidates() async -> [SuggestedExerciseCandidate]? {
-        guard let container = cadenceModelContainer else { return nil }
-        return await Task.detached(priority: .utility) { [container] in
-            let background = ModelContext(container)
-            guard let exercises = try? WorkoutRepository.allExercises(background) else { return nil }
-            return exercises.map { Self.suggestionCandidate($0, isPersonalized: false) }
-        }.value
+        TodaySuggestionLaunchBuilder.candidate(exercise, isPersonalized: isPersonalized)
     }
 
     /// "Suggest another": re-runs the calculation excluding every protocol

@@ -160,15 +160,21 @@ extension HomeView {
                 // record is replaced atomically by the fingerprint-driven
                 // recompute, never deleted here.
                 // A stale plan stays visible until the replacement is published.
-                guard todaySuggestedPlan != nil || suggestedWorkoutTask != nil,
-                      todaySuggestionRenderedKey != todaySuggestionEarlyKey() else { return }
-                model.invalidateWatchCoachSuggestion()
-                HomeTodayCache.coordinator.invalidateSuggestion(surface: surface.cacheSurface)
-                // A completion invalidates the request snapshot as well as
-                // the rendered plan. The detached solver may still be running;
-                // cancel it and invalidate its generation so its pre-completion
-                // result cannot repopulate Today.
-                cancelSuggestedWorkoutGeneration()
+                guard todaySuggestedPlan != nil || suggestedWorkoutTask != nil else { return }
+                Task {
+                    // Key is rebuilt on a background context; a stale or
+                    // cancelled result never invalidates or publishes.
+                    guard let snapshot = await loadTodaySuggestionLaunchSnapshot(),
+                          !Task.isCancelled,
+                          todaySuggestionRenderedKey != snapshot.earlyKey else { return }
+                    model.invalidateWatchCoachSuggestion()
+                    HomeTodayCache.coordinator.invalidateSuggestion(surface: surface.cacheSurface)
+                    // A completion invalidates the request snapshot as well as
+                    // the rendered plan. The detached solver may still be running;
+                    // cancel it and invalidate its generation so its pre-completion
+                    // result cannot repopulate Today.
+                    cancelSuggestedWorkoutGeneration()
+                }
             }
             // Passive HealthKit samples arrive asynchronously after the initial
             // pipeline run; rebuild the snapshot whenever they change.

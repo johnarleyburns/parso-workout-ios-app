@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Versioned provenance for cardio intensity and guideline calculations.
 public enum CardioAlgorithmVersion: String, Codable, Sendable, Equatable {
@@ -491,10 +492,20 @@ public struct WeeklyCardioSummary: Codable, Equatable, Sendable {
 }
 
 public enum WeeklyCardioAggregator {
+    /// Test-only seam: counts `summarize` invocations made inside a
+    /// `$invocationProbe.withValue(...)` scope. Nil (and free) in production.
+    final class InvocationProbe: Sendable {
+        private let storage = OSAllocatedUnfairLock(initialState: 0)
+        var count: Int { storage.withLock { $0 } }
+        func record() { storage.withLock { $0 += 1 } }
+    }
+    @TaskLocal static var invocationProbe: InvocationProbe?
+
     public static func summarize(_ workouts: [CardioWorkout], since: Date,
                                  profile: CardioIntensityProfile? = nil,
                                  actualMinutesTarget: Double? = nil,
                                  sessions: [WorkoutSession] = []) -> WeeklyCardioSummary {
+        invocationProbe?.record()
         var actual = 0.0
         var below = 0.0
         var moderate = 0.0

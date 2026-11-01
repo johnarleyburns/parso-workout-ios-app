@@ -169,7 +169,8 @@ extension HomeView {
                 let weeklyCardio = WeeklyCardioAggregator.summarize(
                     weekCardioRows, since: weekStart, profile: profile, sessions: weekSessionRows)
                 let activityDose = WeeklyActivityDoseAggregator.summarize(
-                    cardio: weekCardioRows, sessions: weekSessionRows, since: weekStart, profile: profile)
+                    cardio: weekCardioRows, sessions: weekSessionRows, since: weekStart, profile: profile,
+                    aerobic: weeklyCardio)
                 return HomeActivityProjection(
                     weeklyCardio: weeklyCardio,
                     activityDose: activityDose,

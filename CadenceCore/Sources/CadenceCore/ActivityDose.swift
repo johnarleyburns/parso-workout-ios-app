@@ -125,13 +125,18 @@ public struct WeeklyActivitySummary: Codable, Equatable, Sendable {
 
 public enum WeeklyActivityDoseAggregator {
     public static func summarize(cardio: [CardioWorkout], sessions: [WorkoutSession],
-                                 since: Date, profile: CardioIntensityProfile? = nil)
+                                 since: Date, profile: CardioIntensityProfile? = nil,
+                                 aerobic suppliedAerobic: WeeklyCardioSummary? = nil)
         -> WeeklyActivitySummary {
-        let aerobic = WeeklyCardioAggregator.summarize(cardio, since: since, profile: profile,
-                                                       sessions: sessions)
+        let aerobic = suppliedAerobic ?? WeeklyCardioAggregator.summarize(
+            cardio, since: since, profile: profile, sessions: sessions)
         // Strength durations are added below, so exclude the strength minutes the
         // aerobic split already carries to avoid counting them twice.
-        var actual = WeeklyCardioAggregator.summarize(cardio, since: since, profile: profile).actualMinutes
+        // Duration-only arithmetic; must not touch HR samples.
+        var actual = cardio.reduce(into: 0.0) { total, workout in
+            guard workout.deletedAt == nil, workout.start >= since else { return }
+            total += max(0, workout.duration) / 60
+        }
         var total = 0.0
         var byCategory: [ActivityCategory: Double] = [:]
         for workout in cardio where workout.deletedAt == nil && workout.start >= since {

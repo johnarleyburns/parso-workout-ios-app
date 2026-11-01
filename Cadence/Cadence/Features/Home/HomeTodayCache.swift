@@ -17,11 +17,19 @@ enum HomeTodayCache {
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "TodayCache")
 
     static let coordinator: TodayRecommendationCoordinator<HomeCoachSnapshot> = {
+        // Local Sendable copies: the store invokes the observer off the main actor.
+        let suggestionLog = Logger(subsystem: "guru.parso.cadence", category: "TodayCache")
+        let suggestionSignposter = OSSignposter(subsystem: "guru.parso.cadence", category: "TodayLaunch")
         let c = TodayRecommendationCoordinator<HomeCoachSnapshot>(
             recommendationStore: TodayRecommendationCacheStore(
                 fileURL: TodayRecommendationCacheStore.defaultFileURL()),
             suggestionStore: TodaySuggestedWorkoutCacheStore(
-                fileURL: TodaySuggestedWorkoutCacheStore.defaultFileURL()))
+                storage: TodaySuggestionCacheStorage.default(),
+                outcomeObserver: { outcome in
+                    // Outcome names only; never plan content, ids, paths or keys.
+                    suggestionLog.info("today suggestion cache outcome: \(outcome.rawValue, privacy: .public)")
+                    suggestionSignposter.emitEvent("suggestionCache", "\(outcome.rawValue, privacy: .public)")
+                }))
         // Outcome names only; never workout content.
         c.outcomeObserver = { log.info("today cache outcome: \($0.rawValue, privacy: .public)") }
         c.invalidationObserver = { reason in

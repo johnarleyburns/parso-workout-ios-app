@@ -204,6 +204,37 @@ public struct TodaySuggestedPlanPayload: Codable, Equatable, Sendable {
     }
 }
 
+/// Privacy-safe diagnostic outcome of a suggested-plan cache operation.
+/// Raw values are the only thing ever logged: never plan content, ids or paths.
+public enum TodaySuggestionCacheOutcome: String, Sendable, Equatable {
+    case displayRestored, earlyKeyMatch, noFile, corrupt, schemaRejected
+    case dayRejected, earlyKeyRejected, fullKeyRejected
+    case writeSaved, writeFailed, storageUnavailable, invalidated
+}
+
+public struct TodaySuggestionCacheResolution: Sendable, Equatable {
+    public let payload: TodaySuggestedPlanPayload?
+    public let outcome: TodaySuggestionCacheOutcome
+    /// True only when the payload is backed by a valid file that survives a restart.
+    public let persisted: Bool
+
+    public init(payload: TodaySuggestedPlanPayload?, outcome: TodaySuggestionCacheOutcome,
+                persisted: Bool) {
+        self.payload = payload; self.outcome = outcome; self.persisted = persisted
+    }
+}
+
+/// Explicit storage state; a failed Application Support lookup is `.unavailable`,
+/// never a silently successful memory-only cache.
+public enum TodaySuggestionCacheStorage: Sendable {
+    case file(URL)
+    case unavailable
+
+    public static func `default`() -> TodaySuggestionCacheStorage {
+        TodaySuggestedWorkoutCacheStore.defaultFileURL().map { .file($0) } ?? .unavailable
+    }
+}
+
 /// Durable, versioned, same-local-calendar-day cache of the Today suggestion.
 /// Valid only while both the local day key and the semantic fingerprint match.
 /// An actor so concurrent loads for the same key coalesce onto one generation.
@@ -221,26 +252,49 @@ public actor TodaySuggestedWorkoutCacheStore {
         var plan: TodaySuggestedPlanPayload
     }
 
-    private let fileURL: URL?
+    private let storage: TodaySuggestionCacheStorage
     private let calendar: Calendar
     private let now: @Sendable () -> Date
+    private let outcomeObserver: (@Sendable (TodaySuggestionCacheOutcome) -> Void)?
     private var memory: Envelope?
     private var memoryLoaded = false
+    /// Why `memory` is nil (valid only when it is nil).
+    private var missOutcome: TodaySuggestionCacheOutcome = .noFile
     private var inFlight: [String: Task<TodaySuggestedPlanPayload?, Never>] = [:]
     private var epoch = 0
 
-    /// `fileURL == nil` keeps the cache in memory only (tests / UI-test mode).
-    public init(fileURL: URL?, calendar: Calendar = .current,
-                now: @escaping @Sendable () -> Date = { Date() }) {
-        self.fileURL = fileURL
+    public init(storage: TodaySuggestionCacheStorage, calendar: Calendar = .current,
+                now: @escaping @Sendable () -> Date = { Date() },
+                outcomeObserver: (@Sendable (TodaySuggestionCacheOutcome) -> Void)? = nil) {
+        self.storage = storage
         self.calendar = calendar
         self.now = now
+        self.outcomeObserver = outcomeObserver
+    }
+
+    /// `fileURL == nil` means unavailable storage (in-memory for this process only).
+    public init(fileURL: URL?, calendar: Calendar = .current,
+                now: @escaping @Sendable () -> Date = { Date() },
+                outcomeObserver: (@Sendable (TodaySuggestionCacheOutcome) -> Void)? = nil) {
+        self.init(storage: fileURL.map { .file($0) } ?? .unavailable, calendar: calendar,
+                  now: now, outcomeObserver: outcomeObserver)
     }
 
     public static func defaultFileURL() -> URL? {
         try? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask,
                                      appropriateFor: nil, create: true)
             .appendingPathComponent("TodaySuggestedWorkout.v1.json")
+    }
+
+    private var fileURL: URL? {
+        if case .file(let url) = storage { return url }
+        return nil
+    }
+
+    private var isDurable: Bool { fileURL != nil }
+
+    private func note(_ outcome: TodaySuggestionCacheOutcome) {
+        outcomeObserver?(outcome)
     }
 
     public func dayKey() -> String {
@@ -257,72 +311,131 @@ public actor TodaySuggestedWorkoutCacheStore {
             && !env.plan.exercises.isEmpty
     }
 
+    /// Why a loaded envelope is unusable for display, or nil when it is usable.
+    private func displayRejection(_ env: Envelope) -> TodaySuggestionCacheOutcome? {
+        if env.schemaVersion != Self.schemaVersion || env.plan.exercises.isEmpty {
+            return .schemaRejected
+        }
+        if env.dayKey != dayKey() { return .dayRejected }
+        return nil
+    }
+
+    private func miss(_ outcome: TodaySuggestionCacheOutcome) -> TodaySuggestionCacheResolution {
+        note(outcome)
+        return TodaySuggestionCacheResolution(payload: nil, outcome: outcome, persisted: false)
+    }
+
+    /// Display-only restore with a diagnostic outcome and no deletion.
+    public func inspectDisplayable() -> (resolution: TodaySuggestionCacheResolution, earlyKey: String?) {
+        guard let env = loadEnvelope() else { return (miss(missOutcome), nil) }
+        if let reason = displayRejection(env) { return (miss(reason), nil) }
+        note(.displayRestored)
+        return (TodaySuggestionCacheResolution(payload: env.plan, outcome: .displayRestored,
+                                               persisted: isDurable), env.earlyKey)
+    }
+
     /// Display-only restore for launch: any same-day, current-schema record,
     /// with no key judgement and no deletion. The caller reconciles the stored
     /// early key against the stable one after the first frame.
     public func peekDisplayable() -> (plan: TodaySuggestedPlanPayload, earlyKey: String?)? {
-        guard let env = loadEnvelope(), env.schemaVersion == Self.schemaVersion,
-              env.dayKey == dayKey(), !env.plan.exercises.isEmpty else { return nil }
-        return (env.plan, env.earlyKey)
+        let r = inspectDisplayable()
+        guard let plan = r.resolution.payload else { return nil }
+        return (plan, r.earlyKey)
     }
 
     /// Restores the persisted plan using only the lightweight early key, so Today
     /// can show it before the exercise catalog is loaded. A same-day record with
     /// a different early key is genuinely stale and is discarded; a record that
     /// predates early keys is left for the full-fingerprint path.
+    public func restoreEarlyResolution(earlyKey: String) -> TodaySuggestionCacheResolution {
+        guard let env = loadEnvelope() else { return miss(missOutcome) }
+        if let reason = displayRejection(env) { discard(); return miss(reason) }
+        guard let stored = env.earlyKey else { return miss(.earlyKeyRejected) }
+        guard stored == earlyKey else { discard(); return miss(.earlyKeyRejected) }
+        note(.earlyKeyMatch)
+        return TodaySuggestionCacheResolution(payload: env.plan, outcome: .earlyKeyMatch,
+                                              persisted: isDurable)
+    }
+
     public func restoreEarly(earlyKey: String) -> TodaySuggestedPlanPayload? {
-        guard let env = loadEnvelope() else { return nil }
-        guard env.schemaVersion == Self.schemaVersion, env.dayKey == dayKey(),
-              !env.plan.exercises.isEmpty else {
-            discard()
-            return nil
-        }
-        guard let stored = env.earlyKey else { return nil }
-        guard stored == earlyKey else { discard(); return nil }
-        return env.plan
+        restoreEarlyResolution(earlyKey: earlyKey).payload
     }
 
     /// Returns the cached plan for this day + fingerprint, deleting any stale,
-    /// corrupt or wrong-version record.
-    public func restore(fingerprint: String) -> TodaySuggestedPlanPayload? {
-        guard let env = loadEnvelope() else { return nil }
-        guard env.schemaVersion == Self.schemaVersion,
-              env.dayKey == dayKey(),
-              env.fingerprint == fingerprint,
-              !env.plan.exercises.isEmpty else {
-            if env.dayKey != dayKey() || env.fingerprint != fingerprint
-                || env.schemaVersion != Self.schemaVersion || env.plan.exercises.isEmpty {
-                discard()
-            }
-            return nil
-        }
-        return env.plan
+    /// corrupt or wrong-version record. Does not notify the observer.
+    private func restoreQuiet(fingerprint: String) -> (TodaySuggestedPlanPayload?, TodaySuggestionCacheOutcome) {
+        guard let env = loadEnvelope() else { return (nil, missOutcome) }
+        if let reason = displayRejection(env) { discard(); return (nil, reason) }
+        guard env.fingerprint == fingerprint else { discard(); return (nil, .fullKeyRejected) }
+        return (env.plan, .displayRestored)
     }
 
-    /// Restores a hit, or runs `generate` exactly once for concurrent callers of
-    /// the same day + fingerprint and persists a launchable result.
+    public func restore(fingerprint: String) -> TodaySuggestedPlanPayload? {
+        let r = restoreQuiet(fingerprint: fingerprint)
+        note(r.1)
+        return r.0
+    }
+
     public func resolve(fingerprint: String,
                         earlyKey: String? = nil,
                         generate: @escaping @Sendable () async -> TodaySuggestedPlanPayload?) async -> TodaySuggestedPlanPayload? {
-        if let hit = restore(fingerprint: fingerprint) {
+        await resolveWithOutcome(fingerprint: fingerprint, earlyKey: earlyKey, generate: generate).payload
+    }
+
+    /// Restores a hit, or runs `generate` exactly once for concurrent callers of
+    /// the same day + fingerprint and persists a launchable result. The outcome
+    /// says whether the returned plan will survive a restart.
+    public func resolveWithOutcome(fingerprint: String,
+                                   earlyKey: String? = nil,
+                                   generate: @escaping @Sendable () async -> TodaySuggestedPlanPayload?) async -> TodaySuggestionCacheResolution {
+        let (hit, missReason) = restoreQuiet(fingerprint: fingerprint)
+        if let hit {
             if let earlyKey, memory?.earlyKey != earlyKey {
-                save(hit, fingerprint: fingerprint, earlyKey: earlyKey)
+                // A failed upgrade keeps the previous valid record.
+                if case .failed = save(hit, fingerprint: fingerprint, earlyKey: earlyKey) {
+                    note(isDurable ? .writeFailed : .storageUnavailable)
+                    return TodaySuggestionCacheResolution(payload: hit, outcome: .displayRestored,
+                                                          persisted: isDurable)
+                }
             }
-            return hit
+            note(.displayRestored)
+            return TodaySuggestionCacheResolution(payload: hit, outcome: .displayRestored,
+                                                  persisted: isDurable)
         }
         let key = dayKey() + "|" + fingerprint
-        if let running = inFlight[key] { return await running.value }
+        if let running = inFlight[key] {
+            // Follower: the leader owns persistence; never claim it here.
+            let plan = await running.value
+            note(missReason)
+            return TodaySuggestionCacheResolution(payload: plan, outcome: missReason, persisted: false)
+        }
         let startEpoch = epoch
         let task = Task<TodaySuggestedPlanPayload?, Never> { await generate() }
         inFlight[key] = task
         let plan = await task.value
         inFlight[key] = nil
-        guard let plan, !Task.isCancelled,
-              startEpoch == epoch, key == dayKey() + "|" + fingerprint else { return plan }
-        save(plan, fingerprint: fingerprint, earlyKey: earlyKey)
-        return plan
+        guard let plan else {
+            note(missReason)
+            return TodaySuggestionCacheResolution(payload: nil, outcome: missReason, persisted: false)
+        }
+        guard !Task.isCancelled, startEpoch == epoch,
+              key == dayKey() + "|" + fingerprint else {
+            note(.invalidated)
+            return TodaySuggestionCacheResolution(payload: plan, outcome: .invalidated, persisted: false)
+        }
+        let outcome: TodaySuggestionCacheOutcome
+        switch save(plan, fingerprint: fingerprint, earlyKey: earlyKey) {
+        case .saved: outcome = isDurable ? .writeSaved : .storageUnavailable
+        case .failed: outcome = isDurable ? .writeFailed : .storageUnavailable
+        }
+        note(outcome)
+        return TodaySuggestionCacheResolution(payload: plan, outcome: outcome,
+                                              persisted: outcome == .writeSaved)
     }
 
+    /// Persists the plan. A failed replacement leaves the previous valid file and
+    /// in-memory record intact. Unavailable storage keeps the plan in memory for
+    /// this process only and reports failure.
     @discardableResult
     public func save(_ plan: TodaySuggestedPlanPayload, fingerprint: String,
                      earlyKey: String? = nil) -> TodayCacheWriteResult {
@@ -330,7 +443,11 @@ public actor TodaySuggestedWorkoutCacheStore {
         let env = Envelope(schemaVersion: Self.schemaVersion, dayKey: dayKey(),
                            fingerprint: fingerprint, earlyKey: earlyKey, updatedAt: now(),
                            plan: plan)
-        let result = TodayCacheFile.write(env, to: fileURL)
+        guard let url = fileURL else {
+            memory = env; memoryLoaded = true
+            return .failed("storageUnavailable")
+        }
+        let result = TodayCacheFile.write(env, to: url)
         guard result.isSaved else { return result }
         memory = env; memoryLoaded = true
         return result
@@ -342,19 +459,24 @@ public actor TodaySuggestedWorkoutCacheStore {
         for task in inFlight.values { task.cancel() }
         inFlight = [:]
         discard()
+        note(.invalidated)
     }
 
     private func discard() {
         memory = nil; memoryLoaded = true
+        missOutcome = isDurable ? .noFile : .storageUnavailable
         if let fileURL { try? FileManager.default.removeItem(at: fileURL) }
     }
 
     private func loadEnvelope() -> Envelope? {
         if memoryLoaded { return memory }
         memoryLoaded = true
-        guard let fileURL, let data = try? Data(contentsOf: fileURL) else { return nil }
+        guard let fileURL else { missOutcome = .storageUnavailable; return nil }
+        guard let data = try? Data(contentsOf: fileURL) else { missOutcome = .noFile; return nil }
         guard let env = try? JSONDecoder().decode(Envelope.self, from: data) else {
+            // Only the corrupt file itself is cleaned up.
             try? FileManager.default.removeItem(at: fileURL)
+            missOutcome = .corrupt
             return nil
         }
         memory = env

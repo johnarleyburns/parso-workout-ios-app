@@ -43,7 +43,6 @@ public enum RecentSuggestionExclusion {
         return Set(candidates.filter { identities.contains(ExerciseSuggestionExclusionKey.forName($0.name)) }.map(\.id))
     }
 
-    @MainActor
     public static func candidateIDs(sessions: [WorkoutSession], excludingSessionID: UUID? = nil,
                                     candidates: [SuggestedExerciseCandidate]) -> Set<String> {
         let workouts = sessions.filter {
@@ -66,7 +65,6 @@ public enum RecentSuggestionExclusion {
         return count > 0 ? count : nil
     }
 
-    @MainActor
     public static func mostRecentExerciseSetCount(sessions: [WorkoutSession],
                                                   excludingSessionID: UUID? = nil) -> Int? {
         let workouts = sessions.filter {

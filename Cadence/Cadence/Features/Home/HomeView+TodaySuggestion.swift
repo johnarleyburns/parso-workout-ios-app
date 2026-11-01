@@ -20,54 +20,49 @@ extension HomeView {
             try? await Task.sleep(for: .milliseconds(50))
         }
         await Task.yield()
-        guard !Task.isCancelled,
-              sessions.lazy.filter({ $0.countsAsStrengthHistory }).prefix(2).count >= 2
-        else { return }
-        let earlyKey = todaySuggestionEarlyKey()
+        guard !Task.isCancelled else { return }
+        // Key + request are built on a background ModelContext; this actor only
+        // publishes state and talks to the cache actor.
+        guard let snapshot = await loadTodaySuggestionLaunchSnapshot(),
+              !Task.isCancelled, snapshot.hasMinimumHistory else { return }
+        let earlyKey = snapshot.earlyKey
         // A rendered plan whose key is proven current needs no further work.
         if todaySuggestedPlan != nil, todaySuggestionRenderedKey == earlyKey { return }
-        // A valid same-day durable plan is restored before any catalog loading
-        // or generation, so the prior personalized plan renders immediately.
+        // A valid same-day durable plan is restored before any generation.
         if let restored = await HomeTodayCache.suggestionStore.restoreEarly(earlyKey: earlyKey) {
             guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
             if todaySuggestedPlan == nil { todaySuggestedPlan = restored.makePlan() }
             todaySuggestionRenderedKey = earlyKey
             return
         }
-        // Cold generation is deferred past launch; heavy catalog mapping runs
-        // off the main actor. Any provisional plan stays visible until the
-        // replacement is published.
+        // Cold generation is deferred past launch. Any provisional plan stays
+        // visible until the replacement is published.
         if !(await HomeTodayCache.suggestionStore.hasSameDayEntry()) {
             try? await Task.sleep(for: .seconds(1.5))
         }
-        guard !Task.isCancelled else { return }
-        let candidates = await loadSuggestionCandidates()
-        guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
-        requestSuggestedStrength(present: false, preloadedCandidates: candidates)
+        guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil,
+              let request = snapshot.request else { return }
+        generateTodaySuggestion(SuggestedWorkoutRequest(request), earlyKey: earlyKey,
+                                scheduledStamps: snapshot.scheduledStamps)
     }
 
-    /// Lightweight semantic key of everything that decides the Today plan,
-    /// built without loading the exercise catalog.
-    func todaySuggestionEarlyKey() -> String {
+    /// Builds the semantic key and generation request on a background
+    /// `ModelContext`; only value DTOs cross back to the UI actor.
+    func loadTodaySuggestionLaunchSnapshot() async -> TodaySuggestionLaunchSnapshot? {
+        guard let container = cadenceModelContainer else { return nil }
+        let settingsSnapshot = TodaySuggestionSettingsSnapshot(
+            settings,
+            historyIndexStorageURL: model.isUITestMode ? nil : ExerciseHistoryIndexStore.defaultStorageURL())
         let activeID = active.strengthSession?.id
-        let history = sessions.filter { $0.id != activeID && $0.countsAsStrengthHistory }
-            .map { "\($0.id)|\($0.date.timeIntervalSince1970)|\($0.endedAt?.timeIntervalSince1970 ?? 0)|\($0.completedOwnerWorkingSetCount)" }
-            .sorted()
-        let exclusions = ((try? ExerciseSuggestionExclusionStore.activeKeys(in: context)) ?? []).sorted()
-        let catalogCount = (try? context.fetchCount(FetchDescriptor<Exercise>())) ?? -1
-        let scheduled = scheduledWorkouts.map {
-            "\($0.id)|\($0.scheduledDate.timeIntervalSince1970)|\($0.updatedAt.timeIntervalSince1970)|\($0.statusRaw)|\($0.payloadVersion)"
-        }.sorted()
-        return TodaySuggestedWorkoutEarlyKey.make([
-            String(describing: settings.unit), "\(settings.warmupMinutes)", "\(settings.cooldownMinutes)",
-            String(describing: settings.trainingGoal), String(describing: settings.preferredWorkoutStyle),
-            String(describing: settings.experienceLevel),
-            String(describing: settings.coachSchedulePreferences),
-            "catalog:\(catalogCount)"
-        ] + history.map { "h:" + $0 } + exclusions.map { "e:" + $0 } + scheduled.map { "x:" + $0 })
+        return await Task.detached(priority: .utility) {
+            let context = ModelContext(container)
+            return try? TodaySuggestionLaunchBuilder.load(
+                in: context, activeSessionID: activeID, settings: settingsSnapshot)
+        }.value
     }
 
-    func generateTodaySuggestion(_ request: SuggestedWorkoutRequest) {
+    func generateTodaySuggestion(_ request: SuggestedWorkoutRequest, earlyKey: String,
+                                 scheduledStamps: [String]) {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
@@ -78,11 +73,8 @@ extension HomeView {
             unitRaw: String(describing: request.unit),
             warmupMinutes: request.warmupMinutes,
             cooldownMinutes: request.cooldownMinutes,
-            extras: scheduledWorkouts.map {
-                "\($0.id)|\($0.scheduledDate.timeIntervalSince1970)|\($0.updatedAt.timeIntervalSince1970)|\($0.statusRaw)|\($0.payloadVersion)"
-            })
+            extras: scheduledStamps)
         let store = HomeTodayCache.suggestionStore
-        let earlyKey = todaySuggestionEarlyKey()
         let snapshot = request.snapshot
         // Publish the exact snapshot the shared service consumes; never rebuilt during sync.
         model.updateWatchCoachSuggestion(WatchCoachSuggestionEnvelope.make(
@@ -136,6 +128,12 @@ struct WatchCoachRefreshModifier: ViewModifier {
 extension HomeView {
     func refreshWatchCoachSuggestion() {
         guard surface == .today, suggestedWorkoutTask == nil else { return }
-        requestSuggestedStrength(present: false, preloadedCandidates: nil)
+        Task {
+            guard let snapshot = await loadTodaySuggestionLaunchSnapshot(),
+                  snapshot.hasMinimumHistory, let request = snapshot.request,
+                  surface == .today, suggestedWorkoutTask == nil else { return }
+            generateTodaySuggestion(SuggestedWorkoutRequest(request), earlyKey: snapshot.earlyKey,
+                                    scheduledStamps: snapshot.scheduledStamps)
+        }
     }
 }

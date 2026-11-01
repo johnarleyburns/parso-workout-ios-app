@@ -15,6 +15,11 @@ struct SuggestedWorkoutRequest: Identifiable {
     /// Built exactly once at capture; the shared service consumes this value.
     let snapshot: CoachSuggestionSnapshot
 
+    init(_ request: CoachSuggestionRequest) {
+        self.init(input: request.input, unit: request.unit, warmupMinutes: request.warmupMinutes,
+                  cooldownMinutes: request.cooldownMinutes, failureMessage: request.failureMessage)
+    }
+
     init(input: SuggestedWorkoutInput, unit: MeasurementUnitPreference, warmupMinutes: Int,
          cooldownMinutes: Int, failureMessage: String? = nil) {
         self.input = input

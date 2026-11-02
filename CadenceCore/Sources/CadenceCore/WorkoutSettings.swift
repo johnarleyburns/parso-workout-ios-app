@@ -44,4 +44,8 @@ public struct WorkoutSettings: Codable, Equatable, Sendable {
     }
 
     public static let `default` = WorkoutSettings()
+
+    /// Defaults for new cardio/interval configurations: inactivity auto-pause is on
+    /// (opt-out). An explicitly stored `autoPause == false` still decodes as off.
+    public static let cardioDefault = WorkoutSettings(autoPause: true)
 }

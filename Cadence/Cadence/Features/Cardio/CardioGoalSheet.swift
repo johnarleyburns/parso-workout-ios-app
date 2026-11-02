@@ -138,10 +138,12 @@ struct CardioGoalSheet: View {
                     Section {
                         Toggle("High-accuracy GPS", isOn: $gpsHighAccuracy)
                             .accessibilityIdentifier("goal.gpsHighAccuracy")
-                        Toggle("Auto-pause when stopped", isOn: $autoPause)
+                        Toggle("Auto-pause inactive cardio", isOn: $autoPause)
                             .accessibilityIdentifier("goal.autoPause")
                     } header: {
                         Text("GPS")
+                    } footer: {
+                        Text("Pauses after 10 minutes without movement, heart-rate effort, or a tap. If you don't resume within 30 more minutes, the workout ends at that point, excluding the paused time. Manual pauses never end automatically; planned interval rests never pause.")
                     }
                 }
                 Section {

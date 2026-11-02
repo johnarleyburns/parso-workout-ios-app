@@ -43,6 +43,7 @@ public enum WatchStrengthSyncApplier {
     public static func apply(userInfo: [String: Any],
                              in context: ModelContext,
                              phoneActiveID: UUID? = nil,
+                             acceptedWatchRoute: WatchStrengthCompletionRoute? = nil,
                              intensityProfile: CardioIntensityProfile? = nil) throws -> AppliedAction {
         guard let action = userInfo["action"] as? String else { return .ignored }
         switch action {
@@ -50,6 +51,7 @@ public enum WatchStrengthSyncApplier {
             return try applyLogSet(userInfo, in: context)
         case "end_session":
             return try applyEndSession(userInfo, in: context, phoneActiveID: phoneActiveID,
+                                       acceptedWatchRoute: acceptedWatchRoute,
                                        intensityProfile: intensityProfile)
         case "discard_session":
             return try applyDiscardSession(userInfo, in: context)
@@ -109,11 +111,23 @@ public enum WatchStrengthSyncApplier {
     private static func applyEndSession(_ info: [String: Any],
                                         in context: ModelContext,
                                         phoneActiveID: UUID?,
+                                        acceptedWatchRoute: WatchStrengthCompletionRoute?,
                                         intensityProfile: CardioIntensityProfile?) throws -> AppliedAction {
         guard let sessionID = uuid(info["session_id"]) else { return .ignored }
-        guard WatchSessionEndPolicy.shouldApplyEnd(sessionID: sessionID, phoneActiveID: phoneActiveID) else {
-            return .ignored
+        let envelope = StrengthCompletionEnvelope(userInfo: info)
+        let persistedSession = try fetchSessions(id: sessionID, in: context).first
+        let persisted = persistedSession.flatMap { s -> StrengthCompletionRecord? in
+            guard let end = s.endedAt else { return nil }
+            return StrengthCompletionRecord(sessionID: s.id, completionID: s.completionID.flatMap(UUID.init(uuidString:)),
+                                            reason: s.endReasonRaw.flatMap(StrengthEndReason.init(rawValue:)),
+                                            endedAt: end)
         }
+        let completionDecision = WatchSessionEndPolicy.decide(incoming: envelope, persisted: persisted,
+                                                    activeSessionID: phoneActiveID,
+                                                    acceptedWatchRoute: acceptedWatchRoute)
+        // Outcome only; never log workout content.
+        Self.log.info("end_session completion decision=\(String(describing: completionDecision), privacy: .public)")
+        guard completionDecision == .apply else { return .ignored }
 
         let endedAt = date(info["ended_at"]) ?? Date()
         let planPayload = watchPlanPayload(from: info)
@@ -127,7 +141,17 @@ public enum WatchStrengthSyncApplier {
             planPayload: planPayload,
             in: context
         )
-        session.endedAt = endedAt
+        // Terminal state dominates: a late/duplicate end may merge HR but never move the end/reason.
+        let alreadyTerminal = persisted != nil
+        if !alreadyTerminal { session.endedAt = endedAt }
+        if alreadyTerminal {
+            // keep existing end timestamp, reason and completion identity
+        } else if envelope.isValidInactivity {
+            session.endReasonRaw = StrengthEndReason.inactivity.rawValue
+            session.completionID = envelope.completionID?.uuidString
+        } else if let id = envelope.completionID {
+            session.completionID = id.uuidString
+        }
         if let cooldown = info["cooldown_seconds"] as? Int {
             session.cooldownSeconds = Double(cooldown)
         }

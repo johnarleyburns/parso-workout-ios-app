@@ -1729,6 +1729,16 @@ extension AppModel {
         return ["ack": true, "action": "cardio_completion_ack", "id": completion.id.uuidString]
     }
 
+    /// A completion route is "known" only when it matches a transfer the phone itself issued
+    /// for the active session (never trusted from the payload alone).
+    private func acceptedWatchCompletionRoute(for info: [String: Any]) -> WatchStrengthCompletionRoute? {
+        guard let activeID = _active?.strengthSession?.id else { return nil }
+        let envelope = StrengthCompletionEnvelope(userInfo: info)
+        guard envelope.sessionID == activeID, let route = envelope.route,
+              WatchHeartRateRouteStore().route(for: activeID)?.captureEpoch == route.captureEpoch else { return nil }
+        return route
+    }
+
     @discardableResult
     private func handleWatchStrengthMutation(_ info: [String: Any]) -> Bool {
         guard let container = _modelContainer else { return false }
@@ -1738,6 +1748,7 @@ extension AppModel {
                 userInfo: info,
                 in: ctx,
                 phoneActiveID: _active?.strengthSession?.id,
+                acceptedWatchRoute: acceptedWatchCompletionRoute(for: info),
                 intensityProfile: _settings.map {
                     CardioIntensityProfile.resolved(userEnteredMaximumHR: $0.cardioMaximumHROverride,
                                                     age: $0.userAge, updatedAt: Date())

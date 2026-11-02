@@ -8,6 +8,8 @@ final class PhoneWorkoutMirror: NSObject {
     private(set) var generation = 0
     /// Test seam: invoked on every attach.
     var onAttach: ((HKWorkoutSession) -> Void)?
+    /// Raw packets received from the Watch's primary session (main actor).
+    var onData: (([Data]) -> Void)?
 
     func attach(_ session: HKWorkoutSession) {
         self.session = session
@@ -40,7 +42,7 @@ extension PhoneWorkoutMirror: HKWorkoutSessionDelegate {
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
                                     didReceiveDataFromRemoteWorkoutSession data: [Data]) {
-        // TODO: decode HR sample packets in the follow-up packet issue.
+        Task { @MainActor [weak self] in self?.onData?(data) }
     }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,

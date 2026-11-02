@@ -143,6 +143,19 @@ final class WatchSmokeTests: XCTestCase {
         XCTAssertTrue(app.buttons["watchSummary.done"].waitForExistence(timeout: 10),
                       "Watch summary Done button did not render")
         snapshot(app, "F2-receipts")
+
+        // Phone-owned workout: read-only status screen, no local workout controls.
+        app.terminate()
+        app.launchArguments = ["-uiTest", "-uiTestPhoneWorkout", "-ApplePersistenceIgnoreState", "YES"]
+        app.launch()
+        XCTAssertTrue(app.otherElements["watch.phoneWorkout.active"].waitForExistence(timeout: 15),
+                      "Phone-owned workout screen did not appear")
+        XCTAssertTrue(app.descendants(matching: .any)["watch.phoneWorkout.monitoring"].exists,
+                      "Monitoring state did not appear before a BPM sample")
+        XCTAssertTrue(app.descendants(matching: .any)["watch.phoneWorkout.bpm"].waitForExistence(timeout: 15),
+                      "BPM did not replace the monitoring state")
+        XCTAssertFalse(app.buttons["watch.startStrength"].exists,
+                       "Phone-owned workout screen offered a second workout")
     }
 
     @MainActor

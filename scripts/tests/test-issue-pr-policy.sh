@@ -29,8 +29,7 @@ gh() {
 number=$(make_pr example-branch)
 [[ "$number" == 123 ]]
 [[ $(wc -l < "$trace") -eq 3 ]]
-! grep -Eqi '(^|[^[:alpha:]])(close[sd]?|fix(e[sd])?|resolve[sd]?):? #[0-9]+' "$trace"
-grep -q 'human verification is required' "$trace"
+grep -q 'Closes #1 when this pull request merges into main' "$trace"
 ! grep -q -- '--draft' "$trace"
 grep -q 'enablePullRequestAutoMerge' "$trace"
 # A failed auto-merge request must retain the created PR for reconciliation.
@@ -49,11 +48,13 @@ grep -Fq 'Pre-publication validation failed; no branch or PR was created' "$scri
 
 # A human QA failure is an explicit repair request, even when an earlier PR
 # merged. It must start a new branch and not be overwritten by reconciliation.
-grep -Fq 'qa_failed=$(gh issue view "$ISSUE" --json labels' "$script"
+grep -Fq 'qa_failed=$(jq' "$script"
 grep -Fq 'Issue $ISSUE failed human QA: starting a repair cycle' "$script"
+grep -Fq 'Reopened issue #$ISSUE for its human-QA repair cycle.' "$script"
 grep -Fq 'if [[ "$qa_failed" != true ]]; then' "$script"
 grep -Fq 'github.event.label.name == '\''qa-failed'\''' "$root/.github/workflows/issue-backlog-reconcile.yml"
 grep -Fq 'or any(.labels[]?.name; . == "qa-failed")' "$root/.github/scripts/admit-one-stranded-issue.sh"
+grep -Fq 'Reopened #${qa_failed_issue} for human-QA repair.' "$root/.github/scripts/admit-one-stranded-issue.sh"
 grep -Fq -- '--remove-label qa-failed' "$root/.github/scripts/record-testflight-delivery.sh"
 grep -Fq 'human QA failure is awaiting repair' "$root/.github/scripts/reconcile-testflight-status.sh"
 echo 'QA failure policy: repair supersedes prior ready/merged state'

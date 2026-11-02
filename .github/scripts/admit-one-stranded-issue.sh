@@ -45,6 +45,17 @@ ensure_label intake-blocked D93F0B 'Pre-PR automation stopped; explicit owner re
 ensure_label retry-ai FBCA04 'Owner-authorized retry request; handled by the intake controller'
 ensure_label blocked-by-dependency 5319E7 'Waiting for an explicitly declared prerequisite PR to merge'
 
+# A human QA failure means the previously delivered implementation is no longer
+# accepted. Reopen the linked issue before admission so its repair cycle is
+# visible and can be prioritized above normal backlog work.
+while IFS= read -r qa_failed_issue; do
+  [[ -z "$qa_failed_issue" ]] && continue
+  gh issue reopen "$qa_failed_issue" --repo "$repo" >/dev/null
+  gh issue edit "$qa_failed_issue" --repo "$repo" --remove-label ready-for-qa >/dev/null
+  echo "Reopened #${qa_failed_issue} for human-QA repair."
+done < <(gh issue list --repo "$repo" --state closed --label qa-failed --limit 1000 --json number,author \
+  --jq '.[] | select(.author.login == "johnarleyburns") | .number')
+
 # The controller workflow is serialized, and any active reservation is a
 # repository-wide lock: a second sweep cannot race the delayed job listing.
 active=$(gh issue list --repo "$repo" --state open --limit 1000 --json number,labels --jq '.[] | select(any(.labels[]?.name; . == "intake-running")) | .number' | head -1)

@@ -224,10 +224,6 @@ extension SessionView {
         .onChange(of: scenePhase) { _, phase in
             handleScenePhaseChange(phase)
         }
-        .modifier(SessionIdlePromptModifier(isPresented: $idlePromptShown,
-                                             message: idlePromptMessage,
-                                             onKeepGoing: recordActivity,
-                                             onSave: endWorkout))
         .alert("Rename workout", isPresented: $renamePresented) {
             TextField("Title", text: $editedTitle).accessibilityIdentifier("rename.field")
             Button("Save") {

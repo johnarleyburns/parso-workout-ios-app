@@ -36,16 +36,16 @@ struct WorkoutSettingsSheet: View {
                         .accessibilityIdentifier("editor.plateRounding")
                 }
                 Section {
-                    Toggle("Check in when idle", isOn: $autoEndOnIdle)
+                    Toggle("Automatically end inactive strength workout", isOn: $autoEndOnIdle)
                         .accessibilityIdentifier("editor.autoEndOnIdle")
-                    Stepper("Ask after \(idleTimeoutMinutes) min idle",
+                    Stepper("End after \(idleTimeoutMinutes) min inactive",
                             value: $idleTimeoutMinutes, in: 2...30)
                         .disabled(!autoEndOnIdle)
                         .accessibilityIdentifier("editor.idleTimeout")
                 } header: {
-                    Text("Idle Check-In")
+                    Text("Inactivity")
                 } footer: {
-                    Text("If you don't respond, the workout pauses. It never ends on its own.")
+                    Text("A strength workout with no logged sets or edits ends at the inactivity deadline. Cardio, interval, swim, and monitoring sessions are not affected.")
                 }
                 Section {
                     Toggle("Use HR monitoring", isOn: $useHR)

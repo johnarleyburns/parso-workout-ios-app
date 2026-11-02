@@ -35,7 +35,6 @@ extension SessionView {
         model.startWatchStrength()
     }
     func handleIdleTimer(_ _: Date) {
-        handleIdleTick()
         guard isActiveSession else { return }
         sampleHR()
         active.writeHeartbeat()
@@ -155,10 +154,6 @@ extension SessionView {
             recordActivity()
         }
         exerciseToRemove = nil
-    }
-
-    var idlePromptMessage: String {
-        String(localized: "No activity for \(settings.idleTimeoutMinutes) min. Your workout will pause — it never ends on its own.")
     }
 
     func setSessionDate(_ date: Date) {
@@ -324,22 +319,6 @@ struct QuickTalkNotificationModifier: ViewModifier {
         content.onReceive(NotificationCenter.default.publisher(for: .cadenceQuickTalkRequested)) { _ in
             guard isActive, isEnabled else { return }
             isPresented = true
-        }
-    }
-}
-
-struct SessionIdlePromptModifier: ViewModifier {
-    @Binding var isPresented: Bool
-    let message: String
-    let onKeepGoing: () -> Void
-    let onSave: () -> Void
-
-    func body(content: Content) -> some View {
-        content.alert("Still training?", isPresented: $isPresented) {
-            Button("Keep going", action: onKeepGoing)
-            Button("Save now", role: .destructive, action: onSave)
-        } message: {
-            Text(message)
         }
     }
 }

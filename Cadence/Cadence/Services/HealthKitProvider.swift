@@ -15,6 +15,13 @@ private final class HealthKitLocationAccumulator: @unchecked Sendable {
 final class HealthKitProvider: HealthDataProviding {
     private let store = HKHealthStore()
 
+    /// Narrow installation point for the iPhone mirrored-session handler.
+    func installWorkoutMirroringStartHandler(
+        _ handler: @escaping @Sendable (HKWorkoutSession) -> Void
+    ) {
+        store.workoutSessionMirroringStartHandler = handler
+    }
+
     /// Why the last workout scan skipped rows (unknown type, zero duration, ...).
     private(set) var lastImportDiagnostics: [String] = []
 

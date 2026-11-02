@@ -80,16 +80,30 @@ extension WatchWorkoutManager {
             let b = s.associatedWorkoutBuilder()
             b.dataSource = HKLiveWorkoutDataSource(healthStore: store, workoutConfiguration: config)
             b.delegate = self; builder = b; s.delegate = self
-            s.startActivity(with: Date())
             let id = ObjectIdentifier(b)
-            b.beginCollection(withStart: Date()) { [weak self] success, error in
-                guard !success else { return }
-                let message = error?.localizedDescription ?? "Workout measurements could not start."
-                Task { @MainActor [weak self] in
-                    guard let self, self.builder.map(ObjectIdentifier.init) == id else { return }
-                    self.workoutStartError = message
-                    self.stopWorkout(save: false)
+            let gate = MirrorStartGate()
+            let startPrimary: @MainActor () -> Void = { [weak self, weak s, weak b] in
+                guard gate.claim() else { return }
+                guard let self, let s, let b,
+                      self.session === s, self.builder === b else { return }
+                let startedAt = Date()
+                s.startActivity(with: startedAt)
+                b.beginCollection(withStart: startedAt) { [weak self] success, error in
+                    guard !success else { return }
+                    let message = error?.localizedDescription ?? "Workout measurements could not start."
+                    Task { @MainActor [weak self] in
+                        guard let self, self.builder.map(ObjectIdentifier.init) == id else { return }
+                        self.workoutStartError = message
+                        self.stopWorkout(save: false)
+                    }
                 }
+            }
+            // Mirror setup is best-effort: failure never blocks the workout.
+            s.startMirroringToCompanionDevice { _, mirrorError in
+                if let mirrorError {
+                    NSLog("Workout mirroring failed (nonfatal): %@", mirrorError.localizedDescription)
+                }
+                Task { @MainActor in startPrimary() }
             }
             if hrSource == .bluetooth { startBLE() }
         } catch {
@@ -234,4 +248,14 @@ extension WatchWorkoutManager {
 
     func workoutScreenAppeared() { workoutScreensVisible += 1 }
     func workoutScreenDisappeared() { workoutScreensVisible = max(0, workoutScreensVisible - 1) }
+}
+
+/// Exactly-once gate so a mirroring completion cannot start collection twice.
+@MainActor
+private final class MirrorStartGate {
+    private var claimed = false
+    func claim() -> Bool {
+        defer { claimed = true }
+        return !claimed
+    }
 }

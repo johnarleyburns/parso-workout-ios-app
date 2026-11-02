@@ -110,6 +110,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     let health: HealthDataProviding
     let healthBackup: HealthBackupCoordinator
+    let phoneWorkoutMirror = PhoneWorkoutMirror()
     /// The single paused-and-minimized cardio session (reopened from Today).
     let parkedCardio = ParkedCardioStore()
     /// Durable owner of iPhone cardio inactivity (not a view): reconciles parked,
@@ -339,6 +340,9 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         super.init()
         self.watchSessionDelegate.owner = self
+        (health as? HealthKitProvider)?.installWorkoutMirroringStartHandler { [weak self] session in
+            Task { @MainActor [weak self] in self?.phoneWorkoutMirror.attach(session) }
+        }
     }
 
     // MARK: Watch HR relay (FR-8)

@@ -104,6 +104,7 @@ struct RootTabView: View {
         .onReceive(heartbeatTimer) { _ in
             // Bounded foreground backstop; reconciling is not activity.
             reconcileStrengthInactivity()
+            reconcilePhoneCardio()
             active.writeHeartbeat()
             if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {
                 NotificationCenter.default.post(name: .cadenceLiveActivityActionRequested,
@@ -170,7 +171,7 @@ struct RootTabView: View {
         .onChange(of: scenePhase) { _, phase in
             // Reconcile BEFORE anything else: foregrounding is never activity, and an
             // expired workout ends at its original deadline, not at wake-up time.
-            if phase == .active { reconcileStrengthInactivity() }
+            if phase == .active { reconcileStrengthInactivity(); reconcilePhoneCardio() }
             active.writeHeartbeat()
             // End any Live Activity that outlived its workout (e.g. a finish
             // while suspended could lose the async end) on every transition.
@@ -187,6 +188,13 @@ struct RootTabView: View {
             if CadencePlatformRequestStore.consumeQuickTalk() {
                 NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
             }
+        }
+        .alert("Workout ended automatically", isPresented: Binding(
+            get: { model.autoEndedCardio != nil && !model.phoneCardioHasLiveView },
+            set: { if !$0 { model.dismissAutoEndedNotice() } })) {
+            Button("OK", role: .cancel) { model.dismissAutoEndedNotice() }
+        } message: {
+            Text("Your cardio workout was paused for inactivity and not resumed, so it was saved at the automatic end time. Paused time is not counted. You can find it in History.")
         }
         .alert("Workout ended", isPresented: Binding(
             get: { active.inactivityNotice != nil },
@@ -267,6 +275,12 @@ struct RootTabView: View {
     private var inactivityNoticeMessage: String {
         guard let notice = active.inactivityNotice else { return "" }
         return String(localized: "\(notice.message). Your logged sets were saved in History; the workout was not resumed.")
+    }
+
+    /// Reconciles a parked/backgrounded phone cardio session at its original deadline.
+    private func reconcilePhoneCardio() {
+        model.phoneCardioSettings = settings
+        Task { await model.reconcilePhoneCardio() }
     }
 
     /// Ends an expired phone strength session without needing `SessionView`.

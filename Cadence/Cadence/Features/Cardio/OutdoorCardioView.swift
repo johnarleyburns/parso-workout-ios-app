@@ -35,6 +35,8 @@ struct OutdoorCardioView: View {
     @State private var finishedSummary: WorkoutSummaryData?
     /// Set by Cancel so a discard is never mistaken for a minimize.
     @State private var cancelled = false
+    /// Coordinator session id; inactivity is owned by `AppModel.phoneCardio`, not this view.
+    @State private var phoneSessionID: UUID?
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private var elapsed: TimeInterval { clock.elapsed(now: now) }
@@ -53,11 +55,12 @@ struct OutdoorCardioView: View {
         } else {
             liveView
                 .keepAwake()
-                .onAppear { if !adoptParked() { startIfNeeded() } }
+                .onAppear { model.phoneCardioHasLiveView = true; if !adoptParked() { startIfNeeded() } }
                 // Safety net: background GPS must never outlive this screen. The
                 // End/Cancel paths already stop the tracker; this guards any other
                 // dismissal so location is only ever active during a live workout.
                 .onDisappear {
+                    model.phoneCardioHasLiveView = false
                     if parkIfMinimized() { return } // minimized: GPS/route stay live
                     if recorder?.isRecording == true { model.location.stop() }
                 }
@@ -110,6 +113,7 @@ struct OutdoorCardioView: View {
                     onEnd: { Task { await end() } },
                     idPrefix: "outdoor"
                 )
+                if clock.isPaused && model.phoneCardioAutoPaused { AutoPausedBanner(idPrefix: "outdoor") }
                 if clock.isPaused {
                     ReturnToTodayButton(idPrefix: "outdoor") { dismiss() }
                 }
@@ -119,7 +123,7 @@ struct OutdoorCardioView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { cancelled = true; model.stopWatchWorkout(); _ = recorder?.end(); dismiss() }
+                    Button("Cancel") { cancelled = true; if let id = phoneSessionID { model.endPhoneCardio(id) }; model.stopWatchWorkout(); _ = recorder?.end(); dismiss() }
                         .accessibilityIdentifier("outdoor.cancel")
                 }
             }
@@ -129,6 +133,7 @@ struct OutdoorCardioView: View {
         .onReceive(tick) { _ in
             now = Date()
             recorder?.tick()
+            phoneTick()
         }
     }
 
@@ -160,6 +165,7 @@ struct OutdoorCardioView: View {
         recorder = r
         clock = parked.clock
         now = Date()
+        phoneSessionID = model.phoneCardio.session?.id
         return true
     }
 
@@ -180,7 +186,11 @@ struct OutdoorCardioView: View {
         let r = CardioRecorder(location: model.location, hrm: model.hrm)
         r.start(type: type)
         recorder = r
-        clock = WorkoutClock(startedAt: Date())
+        clock = WorkoutClock(startedAt: r.startDate)
+        phoneSessionID = model.beginPhoneCardio(
+            type: type, route: "outdoor", start: r.startDate, profile: .outdoor,
+            autoPauseEnabled: settings.lastCardioSettings.autoPause,
+            context: PhoneCardioContext(recorder: r, customTitle: customTitle, goalMeters: goalMeters))
         WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
     }
 
@@ -194,13 +204,36 @@ struct OutdoorCardioView: View {
 
     private func togglePause() {
         guard let r = recorder else { return }
-        if clock.isPaused { clock.resume(); r.resume() } else { clock.pause(); r.pause() }
+        if clock.isPaused {
+            guard model.phoneCardioMayResume(phoneSessionID) else { phoneTick(); return }
+            clock.resume(); r.resume()
+        } else {
+            if let id = phoneSessionID { model.phoneCardioManualPause(id) }
+            clock.pause(); r.pause()
+        }
+    }
+
+    /// Reconcile first (a tick or foreground is never activity), mirror an automatic
+    /// pause onto the wall clock at its original deadline, then feed real evidence.
+    private func phoneTick() {
+        guard let r = recorder, let id = phoneSessionID else { return }
+        Task {
+            await model.reconcilePhoneCardio()
+            if let w = model.claimAutoEnded(id) {
+                onSaved(w); finishedSummary = WorkoutSummaryData.from(cardio: w); return
+            }
+            if let pausedAt = model.phoneCardioAutoPausedAt(id), !clock.isPaused { clock.pause(now: pausedAt) }
+            if !clock.isPaused {
+                model.feedPhoneCardioEvidence(distanceMeters: r.distanceMeters, bpm: r.currentBPM)
+            }
+        }
     }
 
     private func end() async {
         guard let r = recorder else { dismiss(); return }
         // A watch session started at the HR gate outlives the recorder unless we
         // tear it down here (field-test batch 2026-08-20 issue 5).
+        if let id = phoneSessionID { model.endPhoneCardio(id) }
         model.stopWatchWorkout()
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         clock.end()

@@ -30,6 +30,8 @@ struct SwimRecordView: View {
     @State private var pausedAt: Date?
     @State private var pausedTotal: TimeInterval = 0
     @State private var cancelled = false
+    /// Coordinator session id; inactivity is owned by `AppModel.phoneCardio`, not this view.
+    @State private var phoneSessionID: UUID?
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -46,7 +48,7 @@ struct SwimRecordView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { cancelled = true; dismiss() }.accessibilityIdentifier("swim.cancel")
+                            Button("Cancel") { cancelled = true; if let id = phoneSessionID { model.endPhoneCardio(id) }; dismiss() }.accessibilityIdentifier("swim.cancel")
                         }
                     }
                 }
@@ -54,10 +56,15 @@ struct SwimRecordView: View {
         }
         .interactiveDismissDisabled(started && !CardioPresentation.live(isPaused: pausedAt != nil).allowsInteractiveMinimize)
         .onChange(of: pausedAt != nil) { _, paused in announceCardioPaused(paused) }
-        .onAppear { adoptParked() }
-        .onDisappear { parkIfMinimized() }
+        .onAppear { model.phoneCardioHasLiveView = true; adoptParked() }
+        .onDisappear { model.phoneCardioHasLiveView = false; parkIfMinimized() }
+        .onChange(of: laps) { _, new in
+            // Lap taps are explicit user actions (the only safe swim evidence).
+            if let id = phoneSessionID { model.phoneCardioContexts[id]?.laps = new }
+            model.phoneCardioUserAction()
+        }
         .keepAwake(started && finishedSummary == nil)
-        .onReceive(tick) { now = $0 }
+        .onReceive(tick) { now = $0; phoneTick() }
         .sheet(isPresented: $schedulePresented) {
             if let onSchedule {
                 ScheduleWorkoutSheet(title: "Swim", onSave: onSchedule)
@@ -80,6 +87,7 @@ struct SwimRecordView: View {
         pausedAt = parked.clock.pausedSince
         now = Date()
         started = true
+        phoneSessionID = model.phoneCardio.session?.id
     }
 
     private func parkIfMinimized() {
@@ -91,8 +99,26 @@ struct SwimRecordView: View {
     }
 
     private func togglePause() {
-        if let p = pausedAt { pausedTotal += Date().timeIntervalSince(p); pausedAt = nil }
-        else { pausedAt = Date() }
+        if let p = pausedAt {
+            guard model.phoneCardioMayResume(phoneSessionID) else { phoneTick(); return }
+            pausedTotal += Date().timeIntervalSince(p); pausedAt = nil
+        } else {
+            if let id = phoneSessionID { model.phoneCardioManualPause(id) }
+            pausedAt = Date()
+        }
+    }
+
+    /// Swim has no sensors the recorder can trust, so it uses the timer fallback: lap taps
+    /// and controls are the only evidence, and the automatic pause is visible.
+    private func phoneTick() {
+        guard let id = phoneSessionID else { return }
+        Task {
+            await model.reconcilePhoneCardio()
+            if let w = model.claimAutoEnded(id) {
+                onSaved(w); finishedSummary = WorkoutSummaryData.from(cardio: w); return
+            }
+            if let p = model.phoneCardioAutoPausedAt(id), pausedAt == nil { pausedAt = p }
+        }
     }
 
     private var setupScreen: some View {
@@ -111,6 +137,11 @@ struct SwimRecordView: View {
 
             Button {
                 startDate = Date(); now = Date(); started = true
+                let ctx = PhoneCardioContext(recorder: nil)
+                ctx.targetLaps = targetLaps
+                phoneSessionID = model.beginPhoneCardio(
+                    type: .swim, route: "swim", start: startDate, profile: .timerOnly,
+                    autoPauseEnabled: settings.lastCardioSettings.autoPause, context: ctx)
             } label: {
                 Label("Start", systemImage: "play.fill")
                     .font(.title3.bold()).frame(maxWidth: .infinity, minHeight: 56)
@@ -165,6 +196,7 @@ struct SwimRecordView: View {
 
             WorkoutControlBar(isPaused: pausedAt != nil, onPauseToggle: togglePause,
                               onEnd: endSwim, idPrefix: "swim")
+            if pausedAt != nil && model.phoneCardioAutoPaused { AutoPausedBanner(idPrefix: "swim") }
             if pausedAt != nil {
                 ReturnToTodayButton(idPrefix: "swim") { dismiss() }
             }
@@ -175,6 +207,7 @@ struct SwimRecordView: View {
     private func endSwim() {
         // A watch session started at the HR gate outlives the recorder unless we
         // tear it down here (field-test batch 2026-08-20 issue 5).
+        if let id = phoneSessionID { model.endPhoneCardio(id) }
         model.stopWatchWorkout()
         if let p = pausedAt { pausedTotal += Date().timeIntervalSince(p); pausedAt = nil }
         // Paused time is excluded from the saved span.

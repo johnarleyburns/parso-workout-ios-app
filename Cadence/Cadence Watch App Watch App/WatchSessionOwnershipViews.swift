@@ -52,6 +52,18 @@ struct WatchSessionOwnershipCard: View {
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("watch.strengthInactivity.notice")
+        } else if let notice = watchManager.cardioInactivityNotice {
+            Button { watchManager.dismissCardioInactivityNotice() } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label("Cardio ended automatically", systemImage: "timer")
+                        .font(.caption2.weight(.bold))
+                    Text("Your \(notice.type.displayName.lowercased()) was paused for inactivity and not resumed, so it ended at \(notice.endedAt, format: .dateTime.hour().minute()) and was saved without the paused time. Change this in Settings. Tap to dismiss.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("watch.cardioInactivity.notice")
         } else if let notice = watchManager.abandonedSessionNotice {
             Button { watchManager.abandonedSessionNotice = nil } label: {
                 VStack(alignment: .leading, spacing: 2) {

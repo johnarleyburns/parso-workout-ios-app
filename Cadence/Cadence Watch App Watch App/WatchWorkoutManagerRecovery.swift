@@ -41,6 +41,7 @@ extension WatchWorkoutManager {
                     // A workout started meanwhile owns the saved metadata.
                     guard !self.isActive, !self.isMonitoring else { return }
                     self.clearPersistedWorkoutMetadata()
+                    self.settleOrphanCardioRecord()
                 }
                 return
             }
@@ -71,7 +72,7 @@ extension WatchWorkoutManager {
                 isSwimSession = true; isOutdoorSession = true
             }
         }
-        sessionStart = Date(); autoPauseDetector.reset(); manualLapCount = 0; autoLapCount = 0
+        sessionStart = Date(); manualLapCount = 0; autoLapCount = 0
         guard !uiTestMode else { return }
         do {
             let s = try HKWorkoutSession(healthStore: store, configuration: config)
@@ -149,6 +150,8 @@ extension WatchWorkoutManager {
             }
         }
         sessionStart = recovered.startDate ?? Date()
+        // Restore Watch cardio ownership from its durable record, then finalize it if overdue.
+        if restoreCardioInactivity(), !isActive { return }
         // An overdue inactivity record finalizes at its STORED deadline before anything resumes.
         reconcileWatchStrengthInactivity()
         if case .endNow(let startedAt) = WatchSessionOwnership.backgroundVerdict(

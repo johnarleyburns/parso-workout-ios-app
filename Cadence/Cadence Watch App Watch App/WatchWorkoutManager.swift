@@ -141,11 +141,16 @@ final class WatchWorkoutManager: NSObject {
     /// Strength inactivity watchdog state (+StrengthInactivity); the durable record is the truth.
     @ObservationIgnored var inactivityTask: Task<Void, Never>?; @ObservationIgnored var inactivityFinishing = false; @ObservationIgnored var strengthModelContainer: ModelContainer?
     var strengthInactivityNotice: WatchStrengthInactivityNotice? = WatchStrengthInactivityStore().loadNotice(); var strengthInactivityEndedSessionID: UUID?
+    /// Cardio inactivity (+CardioInactivity): the durable record is the truth, the task is best-effort.
+    @ObservationIgnored var cardioInactivityTask: Task<Void, Never>?; @ObservationIgnored var cardioInactivityFinishing = false
+    /// True while the Watch cardio session is paused by the inactivity policy; drives the Resume banner.
+    var cardioAutoPaused = false
+    var cardioInactivityNotice: WatchCardioInactivityNotice? = UserDefaultsWatchCardioInactivityStore().loadNotice()
     var accumulatedHR: Double = 0
     var hrCount: Int = 0
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
     var hrRecorder = WatchHeartRateSampleRecorder()
-    private var elapsedTracker = ElapsedTimeTracker()
+    var elapsedTracker = ElapsedTimeTracker()
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -256,7 +261,7 @@ final class WatchWorkoutManager: NSObject {
         guard isMonitoring else { return }
         stopWorkout(save: false)
     }
-    func stopWorkout(save: Bool = true) {
+    func stopWorkout(save: Bool = true, endDate: Date = Date()) {
         guard isActive || isMonitoring else {
             phoneRequestID = nil; endStrengthInactivityTracking()
             clearPersistedWorkoutMetadata()
@@ -270,6 +275,7 @@ final class WatchWorkoutManager: NSObject {
         }
         clearPersistedWorkoutMetadata()
         endStrengthInactivityTracking()
+        endCardioInactivityTracking()
         if save {
             elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
@@ -292,11 +298,10 @@ final class WatchWorkoutManager: NSObject {
         isSwimSession = false; isOutdoorSession = false
         activeSwimSpec = nil; swimWaterLockPending = false
         heartRateEnabled = true; gpsEnabled = false
-        autoPauseDetector.reset(); lastAutoPauseDistance = 0
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
         if let b {
-            b.endCollection(withEnd: Date()) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
+            b.endCollection(withEnd: endDate) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
         }
         // End the session even when its builder is gone, or it records indefinitely.
         s?.end()
@@ -309,22 +314,8 @@ final class WatchWorkoutManager: NSObject {
     }
 
     func resetSavedSummary() { savedSummary = nil }
-    private var lastAutoPauseDistance: Double = 0
-    private func evaluateAutoPause(distance m: Double) {
-        guard isOutdoorSession, !isSwimSession else { return }
-        let speed: Double? = (m - lastAutoPauseDistance) > 0 ? (m - lastAutoPauseDistance) : nil
-        lastAutoPauseDistance = m
-        let enabled = UserDefaults.standard.object(forKey: "watch.cardio.autoPause") as? Bool ?? true
-        switch autoPauseDetector.evaluate(speedMPS: speed, isDisabled: !enabled) {
-        case .pause: if session?.state == .running { session?.pause(); WKInterfaceDevice.current().play(.notification) }
-        case .resume: if session?.state == .paused { session?.resume() }
-        case .none: break
-        }
-    }
-
     // MARK: Helpers
 
-    var autoPauseDetector = AutoPauseDetector()
     var manualLapCount: Int = 0
     var autoLapCount: Int = 0
     var isSwimSession: Bool = false
@@ -336,6 +327,7 @@ final class WatchWorkoutManager: NSObject {
     func incrementManualLap() { manualLapCount += 1 }
     func togglePause() {
         guard let s = session else { return }
+        if toggleCardioPauseIfTracked(s) { return }
         if s.state == .running { s.pause(); elapsedTracker.startPause() }
         else if s.state == .paused { s.resume(); elapsedTracker.resume() }
     }
@@ -348,6 +340,7 @@ final class WatchWorkoutManager: NSObject {
     /// the shared `HKWorkoutSession` start used for strength heart-rate relay.
     var cardioElapsed: TimeInterval {
         guard let cardioSessionStart else { return effectiveElapsed }
+        if let record = cardioInactivity.record { return record.activeDuration(endedAt: Date()) } // excludes paused time
         return max(0, Date().timeIntervalSince(cardioSessionStart))
     }
 
@@ -355,6 +348,7 @@ final class WatchWorkoutManager: NSObject {
     func applyPolledHeartRate(_ bpm: Double, sampleEnd: Date? = nil) {
         guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
         currentBPM = bpm; reconcileWatchStrengthInactivity() // reconcile only; HR is never activity
+        reconcileCardioInactivity(); recordCardioHeartRate(bpm, sampleEnd: sampleEnd)
         recordHeartRateSample(bpm, sampleEnd: sampleEnd)
         relayReading(bpm, endingAt: sampleEnd)
     }
@@ -374,12 +368,14 @@ final class WatchWorkoutManager: NSObject {
     /// Applies one builder callback's values on the main actor.
     func apply(_ sample: CollectedSample) {
         guard isActive || isMonitoring else { return }
+        reconcileCardioInactivity()
         if let id = sample.builderID, builder.map(ObjectIdentifier.init) != id { return }
         if let bpm = sample.bpm {
             currentBPM = bpm
             accumulatedHR += bpm
             hrCount += 1
             recordHeartRateSample(bpm, sampleEnd: sample.bpmSampleEnd)
+            recordCardioHeartRate(bpm, sampleEnd: sample.bpmSampleEnd)
             if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
             if hrSource == .appleWatch { relayReading(bpm, endingAt: sample.bpmSampleEnd) }
         }
@@ -389,7 +385,7 @@ final class WatchWorkoutManager: NSObject {
                 autoLapCount = swimProgress.lapCount ?? 0
             }
             distanceMeters = isSwimSession ? swimProgress.distanceMeters : meters
-            evaluateAutoPause(distance: meters)
+            if !isSwimSession { recordCardioEvidence(.distance(totalMeters: meters)) }
         }
         if let sessionStart { elapsed = Date().timeIntervalSince(sessionStart) }
     }

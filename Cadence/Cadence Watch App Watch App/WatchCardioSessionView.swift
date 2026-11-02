@@ -38,6 +38,7 @@ struct WatchCardioSessionView: View {
             }
         }
         .onAppear {
+            watchManager.reconcileCardioInactivity()
             if metrics == nil {
                 metrics = CardioMetricsModel(kind: kind, unit: watchSettings.unit, distanceUnit: watchSettings.distanceUnit,
                                              heartRateEnabled: spec.heartRateEnabled, gpsEnabled: spec.usesGPS)
@@ -46,10 +47,15 @@ struct WatchCardioSessionView: View {
             }
         }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .active { watchManager.reconcileCardioInactivity() } // not activity
             guard phase == .active, kind == .swim, pendingSummary == nil else { return }
             page = .metrics
             watchManager.enablePendingSwimWaterLock()
             if let metrics { update(metrics) }
+        }
+        .onChange(of: watchManager.cardioInactivityNotice) { _, notice in
+            // The policy already saved and queued this workout; leave the live screen.
+            if notice != nil, pendingSummary == nil { onDone() }
         }
         .onChange(of: watchManager.workoutStartError, initial: true) { _, error in
             if kind == .swim, error != nil { startFailure = true }
@@ -93,6 +99,22 @@ struct WatchCardioSessionView: View {
                     .tag(Page.heart)
             }
             .tabViewStyle(.page)
+            .safeAreaInset(edge: .bottom) {
+                if watchManager.cardioAutoPaused {
+                    VStack(spacing: 4) {
+                        Text("Paused automatically because no activity was detected. It will end and save if not resumed.")
+                            .font(.caption2).multilineTextAlignment(.center)
+                        Button("Resume") {
+                            watchManager.resumeCardioFromBanner()
+                            WatchWorkoutVoiceCoach.shared.speak(.resumed, enabled: watchSettings.spokenCues)
+                            update(metrics)
+                        }
+                        .accessibilityIdentifier("watch.cardio.autoPaused.resume")
+                    }
+                    .accessibilityElement(children: .contain)
+                    .accessibilityIdentifier("watch.cardio.autoPaused")
+                }
+            }
             .alert("End Workout?", isPresented: $isShowingConfirmEnd) {
                 Button("End", role: .destructive) { prepareSummary() }
                 Button("Cancel", role: .cancel) {}

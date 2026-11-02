@@ -13,9 +13,10 @@ extension WatchWorkoutManager {
     }
 
     func enqueueCardioCompletion(type: CardioType, title: String? = nil,
-                                 summary: SavedWorkoutSummary) {
-        let timing = WatchCardioTiming(cardioSessionStart: cardioSessionStart,
-                                       measuredDuration: summary.duration, endedAt: Date())
+                                 summary: SavedWorkoutSummary, endedAt: Date = Date(),
+                                 ignoringSessionStart: Bool = false) {
+        let timing = WatchCardioTiming(cardioSessionStart: ignoringSessionStart ? nil : cardioSessionStart,
+                                       measuredDuration: summary.duration, endedAt: endedAt)
         let completion = WatchCardioCompletion(
             type: type, title: title, start: timing.start,
             end: timing.end, distanceMeters: summary.distanceMeters,

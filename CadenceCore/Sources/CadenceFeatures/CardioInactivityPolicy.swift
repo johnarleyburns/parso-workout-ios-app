@@ -20,7 +20,7 @@ public enum CardioSensorProfile: String, Codable, Sendable, Equatable {
 /// Value-only evidence. Passive events (UI redraw, screen wake, foregrounding, HealthKit or
 /// WatchConnectivity packet receipt, timer ticks, GPS authorization callbacks, duplicate
 /// samples) must never be recorded into these fields.
-public struct CardioActivityEvidence: Sendable, Equatable {
+public struct CardioActivityEvidence: Codable, Sendable, Equatable {
     public var lastUserActionAt: Date?
     public var lastDistanceProgressAt: Date?
     public var lastMotionAt: Date?

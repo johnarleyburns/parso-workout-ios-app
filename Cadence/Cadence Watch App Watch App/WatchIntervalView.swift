@@ -47,7 +47,8 @@ struct WatchIntervalView: View {
         .onAppear {
             watchManager.resetSavedSummary()
             watchManager.beginCardioWorkout(type: kind.lowercased(),
-                                            cardioType: kind == "HIIT" ? .hiit : .boxing)
+                                            cardioType: kind == "HIIT" ? .hiit : .boxing,
+                                            trackInactivity: false)
             watchManager.startHeartRatePolling()
             WatchWorkoutVoiceCoach.shared.speak(
                 .workoutStarted(title: kind), enabled: watchAppSettings.spokenCues)

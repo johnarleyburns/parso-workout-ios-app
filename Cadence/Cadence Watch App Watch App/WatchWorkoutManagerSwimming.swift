@@ -39,6 +39,7 @@ extension WatchWorkoutManager {
 
     func handleSessionStateChange(_ state: HKWorkoutSessionState) {
         reconcileWatchStrengthInactivity() // reconcile only; never counts as activity
+        reconcileCardioInactivity()
         if state == .running {
             startHeartRatePolling()
             sendHeartRateToPhoneSoon()

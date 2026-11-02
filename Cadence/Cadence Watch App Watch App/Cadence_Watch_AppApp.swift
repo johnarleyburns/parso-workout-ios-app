@@ -52,6 +52,8 @@ struct CadenceWatchApp: App {
                             guard !watchManager.needsInitialHealthAuthorization else { return }
                             await Task.yield()
                             watchManager.watchAppSettings = watchAppSettings
+                            watchManager.strengthModelContainer = container
+                            watchManager.reconcileWatchStrengthInactivity()
                             if !watchManager.launchSyncStarted {
                                 watchManager.launchSyncStarted = true
                                 watchManager.activateWCSession()

@@ -149,8 +149,11 @@ extension WatchWorkoutManager {
             }
         }
         sessionStart = recovered.startDate ?? Date()
+        // An overdue inactivity record finalizes at its STORED deadline before anything resumes.
+        reconcileWatchStrengthInactivity()
         if case .endNow(let startedAt) = WatchSessionOwnership.backgroundVerdict(
-            startedAt: sessionStart, ownedByPhone: phoneRequestID != nil) {
+            startedAt: sessionStart, ownedByPhone: phoneRequestID != nil,
+            inactivityDeadline: strengthInactivity.record?.deadline) {
             endAbandonedSession(startedAt: startedAt)
             return
         }
@@ -216,7 +219,8 @@ extension WatchWorkoutManager {
             workoutType: workoutType,
             workoutScreenVisible: workoutScreensVisible > 0 || cardioSessionStart != nil,
             ownedByPhone: phoneRequestID != nil || phoneLaunchPendingSince != nil,
-            hasResumableStrength: hasResumableStrength), now: now)
+            hasResumableStrength: hasResumableStrength,
+            inactivityDeadline: strengthInactivity.record?.deadline), now: now)
     }
 
     /// Ends a session left recording for no one, and leaves a notice for Today.

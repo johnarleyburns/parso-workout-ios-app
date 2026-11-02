@@ -150,6 +150,7 @@ extension WatchWorkoutManager {
     func setDisplayActive(_ active: Bool) {
         displayActive = active
         if active {
+            reconcileWatchStrengthInactivity() // screen wake reconciles; it never extends the deadline
             enablePendingSwimWaterLock()
             if isActive || isMonitoring { startHeartRatePolling() }
         } else {

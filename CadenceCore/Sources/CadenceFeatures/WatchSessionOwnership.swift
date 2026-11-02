@@ -17,9 +17,15 @@ public enum WatchSessionOwnership {
         public var workoutScreenVisible: Bool
         public var ownedByPhone: Bool
         public var hasResumableStrength: Bool
+        /// Deadline of a durable `WatchStrengthInactivityRecord`, when one exists. While it has not
+        /// passed, the inactivity watchdog owns the session and the 4/6-hour emergency policy must
+        /// not end it; sessions with no record (pre-migration, crashed) keep the fallback.
+        public var inactivityDeadline: Date?
 
         public init(isRunning: Bool, startedAt: Date?, workoutType: String?,
-                    workoutScreenVisible: Bool, ownedByPhone: Bool, hasResumableStrength: Bool) {
+                    workoutScreenVisible: Bool, ownedByPhone: Bool, hasResumableStrength: Bool,
+                    inactivityDeadline: Date? = nil) {
+            self.inactivityDeadline = inactivityDeadline
             self.isRunning = isRunning
             self.startedAt = startedAt
             self.workoutType = workoutType
@@ -48,6 +54,7 @@ public enum WatchSessionOwnership {
     public static func verdict(_ input: Input, now: Date = Date()) -> Verdict {
         guard input.isRunning else { return .owned }
         if input.workoutScreenVisible { return .owned }
+        if let deadline = input.inactivityDeadline, now < deadline { return .owned }
         let startedAt = input.startedAt ?? now
         let age = max(0, now.timeIntervalSince(startedAt))
         if input.ownedByPhone { return age < phoneOwnedLimit ? .owned : .endNow(startedAt: startedAt) }
@@ -59,10 +66,12 @@ public enum WatchSessionOwnership {
     /// For a background relaunch, before any UI or SwiftData query exists: only an abandoned
     /// session can be judged, so only `.endNow` or `.owned` come back.
     public static func backgroundVerdict(startedAt: Date?, ownedByPhone: Bool,
+                                         inactivityDeadline: Date? = nil,
                                          now: Date = Date()) -> Verdict {
         let verdict = verdict(Input(isRunning: true, startedAt: startedAt, workoutType: nil,
                                     workoutScreenVisible: false, ownedByPhone: ownedByPhone,
-                                    hasResumableStrength: true), now: now)
+                                    hasResumableStrength: true,
+                                    inactivityDeadline: inactivityDeadline), now: now)
         if case .endNow = verdict { return verdict }
         return .owned
     }

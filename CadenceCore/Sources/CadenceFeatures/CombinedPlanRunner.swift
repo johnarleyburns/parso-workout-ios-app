@@ -113,6 +113,8 @@ public final class CombinedPlanRunner {
         return plan.steps[currentStepIndex]
     }
 
+    public var isPaused: Bool { state == .paused }
+
     public var isComplete: Bool { state == .finished || state == .cancelled }
 
     public func start(now: Date = Date()) {

@@ -1180,6 +1180,17 @@ public final class WatchStrengthFlowModel {
             "planned_rep_ladder": session.plannedRepLadder,
             "exercises": session.exercisesInOrder.map { $0.name },
         ]
+        // Versioned, additive completion metadata. Minted once and reused by retries.
+        let completionID = session.completionID.flatMap(UUID.init(uuidString:)) ?? UUID()
+        session.completionID = completionID.uuidString
+        let endedAt = session.endedAt ?? Date()
+        let reason = StrengthEndReason(rawValue: session.endReasonRaw ?? "") ?? .user
+        payload[StrengthCompletionKey.reason] = reason.rawValue
+        payload[StrengthCompletionKey.completionID] = completionID.uuidString
+        payload[StrengthCompletionKey.version] = 2
+        if reason == .inactivity {
+            payload[StrengthCompletionKey.inactivityDeadline] = endedAt.timeIntervalSince1970
+        }
         if let planPayload {
             let planData = planPayload.propertyList
             if !planData.isEmpty { payload[WatchPlanPayload.transportKey] = planData }

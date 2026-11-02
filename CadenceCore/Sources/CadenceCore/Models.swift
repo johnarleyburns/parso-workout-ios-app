@@ -574,6 +574,8 @@ public final class WorkoutSession {
     public var inactivityAutoEndedAt: Date?
     /// Why the session ended: "user" or "inactivity". nil for legacy/in-progress.
     public var endReasonRaw: String?
+    /// Durable identity of the applied strength completion (idempotence receipt); additive, nil for legacy.
+    public var completionID: String?
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 

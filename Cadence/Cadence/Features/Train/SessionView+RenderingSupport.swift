@@ -32,6 +32,11 @@ extension SessionView {
     func startWatchIfNeeded() {
         guard !isManualLog, model.watchAvailable else { return }
         if case .connected = model.hrm.state, model.hrm.source == .bluetooth { return }
+
+        // Preflight uses the final session ID. Reopening this view must retain that
+        // exact capture instead of sending a second start command to the Watch.
+        guard !model.watchHRConnection.isCapturing(sessionID: session.id) else { return }
+
         model.startWatchStrength()
     }
     func handleIdleTimer(_ _: Date) {

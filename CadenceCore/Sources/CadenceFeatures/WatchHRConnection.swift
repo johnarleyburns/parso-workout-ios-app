@@ -89,6 +89,18 @@ public struct WatchHRConnection: Sendable {
 
     public init() {}
 
+    /// True when this nonterminal connection already owns the given phone workout.
+    /// A second start would replace the request identity and disrupt the Watch session.
+    public func isCapturing(sessionID: UUID) -> Bool {
+        guard identity?.phoneSessionID == sessionID else { return false }
+        switch state {
+        case .notRequested, .ending, .ended:
+            return false
+        default:
+            return true
+        }
+    }
+
     public mutating func start(_ identity: WatchHRConnectionIdentity, now: Date) {
         self.identity = identity
         attempts = 0; lastFailure = nil; lastSampleAt = nil; lastTransportAt = nil

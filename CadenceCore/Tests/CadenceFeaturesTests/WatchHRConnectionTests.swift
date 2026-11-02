@@ -155,4 +155,20 @@ final class WatchHRConnectionTests: XCTestCase {
         let q = WatchHRCommand(action: .query, requestID: nil, issuedAt: 9)
         XCTAssertEqual(WatchHRCommand(payload: q.payload), q)
     }
+
+    func testIsCapturingReturnsTrueForSameSessionWhileAwaitingFirstSample() {
+        let identity = ids()
+        var connection = WatchHRConnection()
+        connection.start(identity, now: t0)
+        XCTAssertTrue(connection.isCapturing(sessionID: identity.phoneSessionID))
+    }
+
+    func testIsCapturingReturnsFalseForDifferentOrTerminalSession() {
+        let identity = ids()
+        var connection = WatchHRConnection()
+        connection.start(identity, now: t0)
+        XCTAssertFalse(connection.isCapturing(sessionID: UUID()))
+        connection.end()
+        XCTAssertFalse(connection.isCapturing(sessionID: identity.phoneSessionID))
+    }
 }

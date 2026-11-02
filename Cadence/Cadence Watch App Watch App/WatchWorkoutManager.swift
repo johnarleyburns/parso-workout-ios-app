@@ -138,6 +138,9 @@ final class WatchWorkoutManager: NSObject {
     var abandonedSessionNotice: Date? = UserDefaults.standard.object(forKey: "watch.abandonedSessionNotice") as? Date {
         didSet { UserDefaults.standard.set(abandonedSessionNotice, forKey: "watch.abandonedSessionNotice") }
     }
+    /// Strength inactivity watchdog state (+StrengthInactivity); the durable record is the truth.
+    @ObservationIgnored var inactivityTask: Task<Void, Never>?; @ObservationIgnored var inactivityFinishing = false; @ObservationIgnored var strengthModelContainer: ModelContainer?
+    var strengthInactivityNotice: WatchStrengthInactivityNotice? = WatchStrengthInactivityStore().loadNotice(); var strengthInactivityEndedSessionID: UUID?
     var accumulatedHR: Double = 0
     var hrCount: Int = 0
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
@@ -255,7 +258,7 @@ final class WatchWorkoutManager: NSObject {
     }
     func stopWorkout(save: Bool = true) {
         guard isActive || isMonitoring else {
-            phoneRequestID = nil
+            phoneRequestID = nil; endStrengthInactivityTracking()
             clearPersistedWorkoutMetadata()
             // Never leave a session HealthKit is still running just because our flags say idle.
             if let s = session {
@@ -266,6 +269,7 @@ final class WatchWorkoutManager: NSObject {
             return
         }
         clearPersistedWorkoutMetadata()
+        endStrengthInactivityTracking()
         if save {
             elapsed = effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
@@ -350,7 +354,7 @@ final class WatchWorkoutManager: NSObject {
     /// A poll refreshes display/relay and records any new HealthKit sample once.
     func applyPolledHeartRate(_ bpm: Double, sampleEnd: Date? = nil) {
         guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
-        currentBPM = bpm
+        currentBPM = bpm; reconcileWatchStrengthInactivity() // reconcile only; HR is never activity
         recordHeartRateSample(bpm, sampleEnd: sampleEnd)
         relayReading(bpm, endingAt: sampleEnd)
     }

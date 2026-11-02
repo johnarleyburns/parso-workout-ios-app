@@ -38,6 +38,20 @@ struct WatchSessionOwnershipCard: View {
             .background(WatchTone.surface, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("watch.orphanSession")
+        } else if let notice = watchManager.strengthInactivityNotice {
+            Button { watchManager.dismissStrengthInactivityNotice() } label: {
+                VStack(alignment: .leading, spacing: 2) {
+                    Label(notice.message, systemImage: "timer")
+                        .font(.caption2.weight(.bold))
+                    Text(notice.keptSets
+                         ? "Ended at \(notice.endedAt, format: .dateTime.hour().minute()). Your logged sets were saved. Change this in Settings. Tap to dismiss."
+                         : "Ended at \(notice.endedAt, format: .dateTime.hour().minute()) with no sets logged, so nothing was saved. Tap to dismiss.")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("watch.strengthInactivity.notice")
         } else if let notice = watchManager.abandonedSessionNotice {
             Button { watchManager.abandonedSessionNotice = nil } label: {
                 VStack(alignment: .leading, spacing: 2) {

@@ -102,11 +102,28 @@ struct WatchStrengthView: View {
                 break
             }
         }
+        // Successful set/exercise/partner mutations only (derived from model state changed by gestures).
+        .onChange(of: flowModel?.setCount) { _, _ in
+            watchManager.recordStrengthMeaningfulActivity(.setMutation)
+        }
+        .onChange(of: flowModel?.exerciseCount) { _, _ in
+            watchManager.recordStrengthMeaningfulActivity(.structuralEdit)
+        }
+        .onChange(of: flowModel?.partners.count) { _, _ in
+            watchManager.recordStrengthMeaningfulActivity(.structuralEdit)
+        }
+        .onChange(of: watchManager.strengthInactivityEndedSessionID) { _, id in
+            // Auto-end finished the session underneath this screen; leave without re-stopping.
+            guard id != nil, id == flowModel?.session?.id || flowModel?.session == nil else { return }
+            shouldStopWorkoutOnDisappear = false
+            dismiss()
+        }
         .onChange(of: flowModel?.lastLoggedSetID) { _, id in
             guard id != nil, let model = flowModel else { return }
             showMoment(model)
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkTogglePause)) { _ in
+            watchManager.recordStrengthMeaningfulActivity(watchManager.isPaused ? .userResume : .userPause)
             watchManager.togglePause()
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkFinish)) { _ in
@@ -125,6 +142,7 @@ struct WatchStrengthView: View {
     /// Finish goes straight to the cool-down; the review/Saved summary comes after it.
     private func finishWorkout() {
         WatchHaptics.success()
+        watchManager.recordStrengthMeaningfulActivity(.userPause) // explicit finish
         flowModel?.finish()
     }
 
@@ -275,6 +293,10 @@ struct WatchStrengthView: View {
             createSession: true
         )
         flowModel = m
+        watchManager.strengthModelContainer = modelContext.container
+        if let id = m.session?.id {
+            watchManager.beginStrengthInactivityTracking(sessionID: id, explicitResume: resumingSession != nil)
+        }
         talk.bind(model: m, unit: watchSettings.unit)
         page = m.exerciseList.isEmpty ? .plan : .main
         if resumingSession == nil, m.beginWarmup() {
@@ -285,7 +307,7 @@ struct WatchStrengthView: View {
         CadenceWatchWidgetStore.save(CadenceWatchWidgetState(workoutTitle: title))
         WidgetCenter.shared.reloadTimelines(ofKind: "CadenceWatchSmartStackWidget")
         if watchManager.isActive {
-            if watchManager.isPaused { watchManager.togglePause() }
+            if watchManager.isPaused { watchManager.recordStrengthMeaningfulActivity(.userResume); watchManager.togglePause() }
         } else {
             watchManager.startWorkout(type: "strength")
         }

@@ -24,6 +24,7 @@ struct WatchStrengthControlsPage: View {
                          systemImage: watchManager.isPaused ? "play.fill" : "pause.fill",
                          identifier: "watchStrength.pause") {
                         WatchHaptics.tap()
+                        watchManager.recordStrengthMeaningfulActivity(watchManager.isPaused ? .userResume : .userPause)
                         watchManager.togglePause()
                     }
                     tile("Finish", systemImage: "checkmark", tint: .red, identifier: "watchStrength.finish", action: onFinish)

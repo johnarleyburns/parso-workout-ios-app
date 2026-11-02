@@ -64,7 +64,7 @@ extension SessionView {
             kettlebellInfoShown = true
             showKettlebellInfo = true
         }
-        recordActivity()
+        recordActivity(meaningful: false) // opening an editor is navigation, not a logged change
     }
     func inlineEditorConfig() -> InlineEditorConfig? {
         guard inlineExerciseID != nil, let exercise = inlineExercise else { return nil }

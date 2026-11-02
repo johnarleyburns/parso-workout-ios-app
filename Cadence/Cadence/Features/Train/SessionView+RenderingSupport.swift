@@ -46,6 +46,11 @@ extension SessionView {
         quickTalkDelayTask?.cancel()
     }
     func handleSessionAppear() {
+        // Backstop only (not activity): the app-level coordinator owns expiry.
+        if active.reconcileStrengthInactivity(enabled: settings.autoEndOnIdle,
+                                              timeoutMinutes: settings.idleTimeoutMinutes) != nil {
+            try? context.save()
+        }
         if expandedExerciseID == nil {
             expandedExerciseID = initiallyExpandedExerciseID
         }
@@ -67,12 +72,6 @@ extension SessionView {
         guard let context, let exercise = exerciseForID(context.exerciseID) else { return }
         quickTalkPressing(pending, exercise: exercise, pressing: raised)
     }
-    func handleScenePhaseChange(_ phase: ScenePhase) {
-        if phase == .active {
-            recordActivity()
-        }
-    }
-
     func handleExercisePickerSelection(_ exercise: Exercise) {
         let isAlreadyInWorkout = session.exercisesInOrder.contains { $0.id == exercise.id }
         let isAlreadyPlanned = session.plannedExerciseNames.contains(exercise.name)

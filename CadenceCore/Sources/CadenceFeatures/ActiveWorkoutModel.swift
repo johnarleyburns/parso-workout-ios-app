@@ -46,6 +46,29 @@ public enum PauseOrigin: Equatable, Sendable {
     case auto
 }
 
+/// Why a strength session ended; persisted as `WorkoutSession.endReasonRaw`.
+public enum StrengthEndReason: String, Sendable, Equatable {
+    case user, inactivity
+}
+
+public enum FinalizeResult: Equatable, Sendable {
+    /// This call ended the session.
+    case finalized
+    /// The session was not active (already ended, or a different session): nothing changed.
+    case alreadyEnded
+}
+
+/// Truthful notice shown at the next UI opportunity after an inactivity auto-end.
+public struct StrengthInactivityNotice: Identifiable, Equatable, Sendable {
+    public let id: UUID
+    public let sessionID: UUID
+    public let endedAt: Date
+    public let timeoutMinutes: Int
+    public var message: String {
+        String(localized: "Ended after \(timeoutMinutes) minutes inactive", bundle: .module)
+    }
+}
+
 /// What the root-level workout cover is showing (launch-blockers plan, Phase 1b).
 /// The live session and its finish summary share one `fullScreenCover(item:)` so
 /// ending a workout swaps surface identity in place — Home never flashes between.
@@ -110,6 +133,14 @@ public final class ActiveWorkoutModel {
     /// Heartbeat + recovery bookkeeping storage (injectable for tests).
     @ObservationIgnored private let defaults: UserDefaults
 
+    /// Side effects owned by the app (stop the phone-owned Watch HR workout once, flush HR,
+    /// Health save, linked scheduled workout, Live Activity). Invoked exactly once per
+    /// finalization, before the active state is cleared. No SwiftUI view is required.
+    @ObservationIgnored public var strengthFinalizer: (@MainActor (WorkoutSession, StrengthEndReason) -> Void)?
+
+    /// Set when a session was auto-ended for inactivity; the UI shows it, then clears it.
+    public var inactivityNotice: StrengthInactivityNotice?
+
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
     }
@@ -153,7 +184,7 @@ public final class ActiveWorkoutModel {
     public var isPaused: Bool { clock.isPaused }
 
     @discardableResult
-    public func startStrength(_ session: WorkoutSession) -> Bool {
+    public func startStrength(_ session: WorkoutSession, now: Date = Date()) -> Bool {
         guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? String(localized: "Workout", bundle: .module) : session.title)) else { return false }
         strengthSession = session
         restEndsAt = nil
@@ -162,6 +193,7 @@ public final class ActiveWorkoutModel {
         nextSetToken = nil
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
+        if session.lastMeaningfulActivityAt == nil { session.lastMeaningfulActivityAt = now }
         presentedSurface = .session(session)
         return true
     }
@@ -170,7 +202,7 @@ public final class ActiveWorkoutModel {
     /// reserved its lease. This is the only path Home uses after a final-boundary
     /// check, so session materialization cannot race another live start.
     @discardableResult
-    public func startStrength(_ session: WorkoutSession, lease: LiveWorkoutLease) -> Bool {
+    public func startStrength(_ session: WorkoutSession, lease: LiveWorkoutLease, now: Date = Date()) -> Bool {
         guard strengthSession == nil,
               liveWorkout.lease == lease,
               liveWorkout.adopt(lease, descriptor: LiveWorkoutDescriptor(
@@ -183,6 +215,7 @@ public final class ActiveWorkoutModel {
         nextSetToken = nil
         clock = WorkoutClock(startedAt: session.date)
         pauseOrigin = nil
+        if session.lastMeaningfulActivityAt == nil { session.lastMeaningfulActivityAt = now }
         presentedSurface = .session(session)
         return true
     }
@@ -219,6 +252,51 @@ public final class ActiveWorkoutModel {
         resume(now: now)
     }
 
+    /// Records a genuine user action (see `StrengthActivityEvent`) as the new inactivity
+    /// baseline. Lifecycle hooks (scene phase, timers, HR, Live Activity) must NOT call this.
+    public func recordMeaningfulActivity(_ event: StrengthActivityEvent, now: Date = Date()) {
+        guard let session = strengthSession else { return }
+        var state = StrengthInactivityPolicy.State(lastMeaningfulActivityAt: session.lastMeaningfulActivityAt ?? now)
+        state.record(event, at: now)
+        session.lastMeaningfulActivityAt = state.lastMeaningfulActivityAt
+        session.updatedAt = now
+    }
+
+    /// Ends the active strength session at the inactivity deadline when it has expired.
+    /// Not activity: callable from foreground, launch recovery, and timers. Idempotent.
+    @discardableResult
+    public func reconcileStrengthInactivity(enabled: Bool, timeoutMinutes: Int,
+                                            now: Date = Date()) -> FinalizeResult? {
+        guard let session = strengthSession,
+              !session.isLogged,
+              let last = session.lastMeaningfulActivityAt else { return nil }
+        let state = StrengthInactivityPolicy.State(lastMeaningfulActivityAt: last)
+        guard case let .end(deadline) = StrengthInactivityPolicy.evaluate(
+            state: state, now: now, timeoutMinutes: timeoutMinutes, enabled: enabled) else { return nil }
+        let result = finalizeStrength(sessionID: session.id, endedAt: deadline,
+                                      reason: .inactivity, now: now)
+        if result == .finalized {
+            inactivityNotice = StrengthInactivityNotice(id: UUID(), sessionID: session.id,
+                                                        endedAt: deadline, timeoutMinutes: max(1, timeoutMinutes))
+        }
+        return result
+    }
+
+    /// One idempotent finalization path. `endedAt` is stamped verbatim (the deadline for
+    /// inactivity); `inactivityAutoEndedAt` records the actual reconciliation time.
+    /// Never deletes or discards sets.
+    @discardableResult
+    public func finalizeStrength(sessionID: UUID, endedAt: Date, reason: StrengthEndReason,
+                                 now: Date = Date()) -> FinalizeResult {
+        guard let session = strengthSession, session.id == sessionID else { return .alreadyEnded }
+        strengthFinalizer?(session, reason)
+        endStrength(now: endedAt)
+        session.endReasonRaw = reason.rawValue
+        if reason == .inactivity { session.inactivityAutoEndedAt = now }
+        if reason == .inactivity { presentedSurface = nil }
+        return .finalized
+    }
+
     /// Marks the active strength session finished: stamps `endedAt` on the model
     /// and clears the active reference. The caller saves its `ModelContext`.
     /// Deliberately leaves `presentedSurface` alone — the caller flips it to the
@@ -228,6 +306,7 @@ public final class ActiveWorkoutModel {
         clock.end(now: now)
         session.endedAt = clock.endedAt
         session.updatedAt = Date()
+        if session.endReasonRaw == nil { session.endReasonRaw = StrengthEndReason.user.rawValue }
         strengthSession = nil
         restEndsAt = nil
         nextExercise = nil

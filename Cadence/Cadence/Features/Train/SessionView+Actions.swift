@@ -237,15 +237,22 @@ extension SessionView {
             .background(color, in: Circle())
             .accessibilityIdentifier("set.performer.\((p?.isMe ?? true) ? "Me" : (p?.name ?? "?"))")
     }
-    func recordActivity() {
+    func recordActivity(meaningful: Bool = true) {
         guard active.strengthSession?.id == session.id else { return }
         active.recordActivityAutoResume()
+        // Callers of recordActivity are genuine user actions (set/structure edits).
+        if meaningful {
+            active.recordMeaningfulActivity(.setMutation)
+            try? context.save()
+        }
     }
     func togglePause() {
         if active.isPaused { active.resume() }
         else { active.pause(origin: .manual) }
     }
     func endWorkout() {
+        // The coordinator may already have ended this session at its inactivity deadline.
+        if session.endReasonRaw == StrengthEndReason.inactivity.rawValue { return }
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         RestAlarmCoordinator.shared.cancel()
         let recorderForEnd = active.heartRateRecorder

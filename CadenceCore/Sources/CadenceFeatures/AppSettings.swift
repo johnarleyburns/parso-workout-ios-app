@@ -56,7 +56,7 @@ public final class AppSettings {
         // Field-testing §06 polish settings.
         self.idleTimeoutMinutes = defaults.object(forKey: "settings.idleTimeout") as? Int ?? 10
         self.gpsHighAccuracy = defaults.object(forKey: "settings.gpsHighAccuracy") as? Bool ?? false
-        self.autoPause = defaults.object(forKey: "settings.autoPause") as? Bool ?? false
+        self.autoPause = defaults.object(forKey: "settings.autoPause") as? Bool ?? true
         self.intervalColorBlind = defaults.object(forKey: "settings.intervalColorBlind") as? Bool ?? false
         self.spokenCues = defaults.object(forKey: "settings.spokenCues") as? Bool ?? false
         self.plateRounding = defaults.object(forKey: "settings.plateRounding") as? Bool ?? false
@@ -111,10 +111,10 @@ public final class AppSettings {
             self.coachSchedulePreferences = .default
         }
         self.lastStrengthSettings = Self.readWorkoutSettings(defaults, "settings.lastStrengthSettings")
-        self.lastCardioSettings = Self.readWorkoutSettings(defaults, "settings.lastCardioSettings")
+        self.lastCardioSettings = Self.readWorkoutSettings(defaults, "settings.lastCardioSettings", fallback: .cardioDefault)
         self.excludedCardioTypeRawValues = defaults.stringArray(forKey: "settings.excludedCardioTypes") ?? []
         self.excludedHIITProtocolIDs = defaults.stringArray(forKey: "settings.excludedHIITProtocols") ?? []
-        self.lastIntervalSettings = Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings")
+        self.lastIntervalSettings = Self.readWorkoutSettings(defaults, "settings.lastIntervalSettings", fallback: .cardioDefault)
         // In UI tests the countdown is off by default (so workout-start flows stay
         // fast); a test can opt in with `-preCountdown N`.
         if ProcessInfo.processInfo.arguments.contains("-uiTest") {
@@ -293,10 +293,11 @@ public final class AppSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastIntervalSettings", lastIntervalSettings) }
     }
 
-    private static func readWorkoutSettings(_ defaults: UserDefaults, _ key: String) -> WorkoutSettings {
+    private static func readWorkoutSettings(_ defaults: UserDefaults, _ key: String,
+                                            fallback: WorkoutSettings = .default) -> WorkoutSettings {
         guard let data = defaults.data(forKey: key),
               let ws = try? JSONDecoder().decode(WorkoutSettings.self, from: data)
-        else { return .default }
+        else { return fallback }
         return ws
     }
 

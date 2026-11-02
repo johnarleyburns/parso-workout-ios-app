@@ -54,6 +54,7 @@ struct CadenceWatchApp: App {
                             watchManager.watchAppSettings = watchAppSettings
                             watchManager.strengthModelContainer = container
                             watchManager.reconcileWatchStrengthInactivity()
+                            watchManager.reconcileCardioInactivity()
                             if !watchManager.launchSyncStarted {
                                 watchManager.launchSyncStarted = true
                                 watchManager.activateWCSession()

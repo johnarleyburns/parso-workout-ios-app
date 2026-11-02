@@ -11,10 +11,15 @@ extension WatchWorkoutManager {
     /// for automatic distance/turn measurements.
     @discardableResult
     func beginCardioWorkout(type rawType: String, cardioType: CardioType? = nil,
-                            spec: WorkoutConfigurationSpec? = nil) -> Bool {
+                            spec: WorkoutConfigurationSpec? = nil, trackInactivity: Bool = true) -> Bool {
         let ownsSession = startWorkout(type: rawType, cardioType: cardioType, spec: spec)
         if (spec?.kind == .swim || rawType == "swim"), !ownsSession { return false }
         beginCardioSession(ownsSession: ownsSession)
+        let type = cardioType ?? CardioType(rawValue: rawType) ?? .other
+        let isSwim = spec?.kind == .swim || rawType == "swim" || type == .swim
+        if trackInactivity {
+            beginCardioInactivityTracking(type: type, isSwim: isSwim, ownsSession: ownsSession)
+        }
         return ownsSession
     }
 
@@ -22,6 +27,7 @@ extension WatchWorkoutManager {
     /// stops normally; one layered over a phone-started strength workout only
     /// clears its own timing state.
     func finishCardioSession(save: Bool) {
+        endCardioInactivityTracking()
         if cardioOwnsSession {
             stopWorkout(save: save)
         } else {

@@ -102,6 +102,8 @@ struct RootTabView: View {
         // (e.g. crash-recovered onto Home), which shouldn't burn the screen.
         .keepAwake(active.isActive && !(active.isPaused && active.presentedSurface == nil))
         .onReceive(heartbeatTimer) { _ in
+            // Bounded foreground backstop; reconciling is not activity.
+            reconcileStrengthInactivity()
             active.writeHeartbeat()
             if let request = CadencePlatformRequestStore.consumeLiveActivityRequest() {
                 NotificationCenter.default.post(name: .cadenceLiveActivityActionRequested,
@@ -141,6 +143,7 @@ struct RootTabView: View {
             // an in-progress workout paused and return straight to its session
             // surface. A workout is never auto-ended or discarded, no matter
             // how stale. Manual minimization remains a deliberate path to Home.
+            installStrengthFinalizer()
             recoverActiveSessionIfNeeded()
             // End any Live Activity orphaned by a previous launch when no
             // workout is running (issue #74).
@@ -165,6 +168,9 @@ struct RootTabView: View {
             // store automatically on launch and as changes happen.
         }
         .onChange(of: scenePhase) { _, phase in
+            // Reconcile BEFORE anything else: foregrounding is never activity, and an
+            // expired workout ends at its original deadline, not at wake-up time.
+            if phase == .active { reconcileStrengthInactivity() }
             active.writeHeartbeat()
             // End any Live Activity that outlived its workout (e.g. a finish
             // while suspended could lose the async end) on every transition.
@@ -181,6 +187,13 @@ struct RootTabView: View {
             if CadencePlatformRequestStore.consumeQuickTalk() {
                 NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
             }
+        }
+        .alert("Workout ended", isPresented: Binding(
+            get: { active.inactivityNotice != nil },
+            set: { if !$0 { active.inactivityNotice = nil } })) {
+            Button("OK", role: .cancel) { active.inactivityNotice = nil }
+        } message: {
+            Text(inactivityNoticeMessage)
         }
         .modifier(WatchSettingsContextSync(settings: settings, model: model))
         .onChange(of: model.watchSyncState) { _, state in
@@ -246,7 +259,45 @@ struct RootTabView: View {
             return
         }
         active.adopt(candidate, heartbeat: WorkoutHeartbeatStore.read())
-        active.present()
+        // Reconcile before re-presenting: an expired session is finalized at its deadline.
+        reconcileStrengthInactivity()
+        if active.isActive { active.present() }
+    }
+
+    private var inactivityNoticeMessage: String {
+        guard let notice = active.inactivityNotice else { return "" }
+        return String(localized: "\(notice.message). Your logged sets were saved in History; the workout was not resumed.")
+    }
+
+    /// Ends an expired phone strength session without needing `SessionView`.
+    private func reconcileStrengthInactivity() {
+        guard active.reconcileStrengthInactivity(enabled: settings.autoEndOnIdle,
+                                                 timeoutMinutes: settings.idleTimeoutMinutes) != nil else { return }
+        try? context.save()
+    }
+
+    /// App-owned side effects for finalization; runs exactly once per ended session.
+    private func installStrengthFinalizer() {
+        active.strengthFinalizer = { [model, active, context, settings] session, reason in
+            guard reason == .inactivity else { return }
+            let recorder = active.heartRateRecorder
+            recorder?.flush()
+            RestAlarmCoordinator.shared.cancel()
+            model.stopWatchWorkout()
+            if let scheduledID = session.scheduledWorkoutID,
+               !session.orderedSets.isEmpty,
+               let scheduled = try? context.fetch(FetchDescriptor<ScheduledWorkout>(
+                   predicate: #Predicate { $0.id == scheduledID })).first {
+                _ = try? ScheduledWorkoutStore.markCompleted(recordID: scheduled.id, in: context)
+            }
+            let sessionID = session.id
+            Task { @MainActor in
+                if let recorder, !recorder.snapshot.isEmpty {
+                    let profile = await cardioIntensityProfile(model: model, settings: settings)
+                    active.finalizeHeartRate(profile: profile, sessionID: sessionID)
+                }
+            }
+        }
     }
 
     private func showWatchSyncToast(for state: WatchSyncState) {

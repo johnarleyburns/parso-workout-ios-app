@@ -72,7 +72,6 @@ struct SessionView: View {
     @State var endDatePickerPresented = false
     @State var exerciseToRemove: Exercise?
     @State var managePartnersPresented = false
-    @Environment(\.scenePhase) var scenePhase
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Namespace var sessionRotorNamespace
     @State var usePreviousPresented = false

@@ -166,6 +166,10 @@ public struct ExportSession: Codable, Equatable, Sendable {
     /// Optional and additive: an export written before this field decodes it as
     /// nil and imports exactly as it always did, so no version bump is needed.
     public var plannedPerformerPrescriptions: [PlannedPerformerPrescription]?
+    /// Strength inactivity metadata; optional so older exports decode as nil.
+    public var lastMeaningfulActivityAt: Date?
+    public var inactivityAutoEndedAt: Date?
+    public var endReasonRaw: String?
     public init(id: UUID, title: String, date: Date, notes: String?, sets: [ExportSet],
                 endedAt: Date? = nil, isLogged: Bool? = nil, planKey: String? = nil,
                 templateName: String? = nil, plannedExerciseNames: [String]? = nil,
@@ -174,7 +178,12 @@ public struct ExportSession: Codable, Equatable, Sendable {
                 activePartnerIDs: [String]? = nil,
                 plannedPrescriptions: [PlannedExercisePrescription]? = nil,
                 plannedPerformerPrescriptions: [PlannedPerformerPrescription]? = nil,
-                planSessionID: UUID? = nil) {
+                planSessionID: UUID? = nil,
+                lastMeaningfulActivityAt: Date? = nil, inactivityAutoEndedAt: Date? = nil,
+                endReasonRaw: String? = nil) {
+        self.lastMeaningfulActivityAt = lastMeaningfulActivityAt
+        self.inactivityAutoEndedAt = inactivityAutoEndedAt
+        self.endReasonRaw = endReasonRaw
         self.id = id; self.title = title; self.date = date; self.notes = notes; self.sets = sets
         self.endedAt = endedAt; self.isLogged = isLogged; self.planKey = planKey
         self.templateName = templateName; self.plannedExerciseNames = plannedExerciseNames

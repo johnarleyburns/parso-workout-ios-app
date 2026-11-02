@@ -221,9 +221,6 @@ extension SessionView {
         .onReceive(idleTimer) { date in
             handleIdleTimer(date)
         }
-        .onChange(of: scenePhase) { _, phase in
-            handleScenePhaseChange(phase)
-        }
         .alert("Rename workout", isPresented: $renamePresented) {
             TextField("Title", text: $editedTitle).accessibilityIdentifier("rename.field")
             Button("Save") {

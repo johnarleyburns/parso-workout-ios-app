@@ -566,6 +566,14 @@ public final class WorkoutSession {
         get { StringArray.decode(activePartnerIDsData) }
         set { activePartnerIDsData = StringArray.encode(newValue) }
     }
+    /// Last user action that counts toward the strength inactivity clock
+    /// (`StrengthInactivityPolicy`). Optional/additive for CloudKit + legacy
+    /// sessions; nil means "no inactivity tracking" (never auto-ended).
+    public var lastMeaningfulActivityAt: Date?
+    /// When the app reconciled an inactivity expiry (>= the deadline stored in `endedAt`).
+    public var inactivityAutoEndedAt: Date?
+    /// Why the session ended: "user" or "inactivity". nil for legacy/in-progress.
+    public var endReasonRaw: String?
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 

@@ -76,6 +76,9 @@ private struct NativeWorkoutSession: Codable, Equatable, Sendable {
     var updatedAt: Date
     var originDevice: String
     var setIDs: [UUID]
+    var lastMeaningfulActivityAt: Date?
+    var inactivityAutoEndedAt: Date?
+    var endReasonRaw: String?
 }
 
 private struct NativeSetEntry: Codable, Equatable, Sendable {
@@ -416,7 +419,10 @@ public enum NativeDatabaseExport {
                                              prescribedLoadKg: row.prescribedLoadKg,
                                              activePartnerIDs: row.activePartnerIDs,
                                              updatedAt: row.updatedAt, originDevice: row.originDevice,
-                                             setIDs: row.orderedSets.map(\.id)))
+                                             setIDs: row.orderedSets.map(\.id),
+                                             lastMeaningfulActivityAt: row.lastMeaningfulActivityAt,
+                                             inactivityAutoEndedAt: row.inactivityAutoEndedAt,
+                                             endReasonRaw: row.endReasonRaw))
         }
         for row in try context.fetch(FetchDescriptor<SetEntry>()) {
             try append("SetEntry", id: row.id, updatedAt: row.updatedAt,
@@ -764,6 +770,9 @@ public enum NativeDatabaseExport {
             session.cooldownSeconds = value.cooldownSeconds; session.prescribedLoadKg = value.prescribedLoadKg
             session.activePartnerIDs = value.activePartnerIDs; session.updatedAt = value.updatedAt
             session.originDevice = value.originDevice
+            session.lastMeaningfulActivityAt = value.lastMeaningfulActivityAt
+            session.inactivityAutoEndedAt = value.inactivityAutoEndedAt
+            session.endReasonRaw = value.endReasonRaw
         }
 
         var setsByID: [UUID: SetEntry] = [:]

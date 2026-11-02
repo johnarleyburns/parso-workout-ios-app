@@ -1535,7 +1535,10 @@ public enum WorkoutRepository {
                 plannedPrescriptions: session.plannedPrescriptions.isEmpty ? nil : session.plannedPrescriptions,
                 plannedPerformerPrescriptions: session.plannedPerformerPrescriptions.isEmpty
                     ? nil : session.plannedPerformerPrescriptions,
-                planSessionID: session.planSessionID)
+                planSessionID: session.planSessionID,
+                lastMeaningfulActivityAt: session.lastMeaningfulActivityAt,
+                inactivityAutoEndedAt: session.inactivityAutoEndedAt,
+                endReasonRaw: session.endReasonRaw)
         }
         let cardio = try allCardio(context).map { c -> ExportCardio in
             ExportCardio(
@@ -1784,6 +1787,9 @@ public enum WorkoutRepository {
             session.planSessionID = es.planSessionID
             session.warmupSeconds = es.warmupSeconds ?? 0
             session.cooldownSeconds = es.cooldownSeconds ?? 0
+            session.lastMeaningfulActivityAt = es.lastMeaningfulActivityAt
+            session.inactivityAutoEndedAt = es.inactivityAutoEndedAt
+            session.endReasonRaw = es.endReasonRaw
             session.prescribedLoadKg = es.prescribedLoadKg ?? 0
             if let partners = es.activePartnerIDs { session.activePartnerIDs = partners }
             context.insert(session)

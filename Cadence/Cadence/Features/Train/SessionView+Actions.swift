@@ -238,23 +238,11 @@ extension SessionView {
             .accessibilityIdentifier("set.performer.\((p?.isMe ?? true) ? "Me" : (p?.name ?? "?"))")
     }
     func recordActivity() {
-        watchdog.recordActivity()
         guard active.strengthSession?.id == session.id else { return }
         active.recordActivityAutoResume()
     }
-    func handleIdleTick() {
-        guard active.strengthSession?.id == session.id else { return }
-        switch watchdog.tick(now: Date(),
-                             timeoutMinutes: settings.idleTimeoutMinutes,
-                             isPaused: active.isPaused,
-                             enabled: settings.autoEndOnIdle) {
-        case .showPrompt: idlePromptShown = true
-        case .autoPause: idlePromptShown = false; active.pause(origin: .auto)
-        case .none: break
-        }
-    }
     func togglePause() {
-        if active.isPaused { active.resume(); watchdog.recordActivity() }
+        if active.isPaused { active.resume() }
         else { active.pause(origin: .manual) }
     }
     func endWorkout() {

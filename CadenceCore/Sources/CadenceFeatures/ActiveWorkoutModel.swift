@@ -339,6 +339,13 @@ public final class ActiveWorkoutModel {
     public func adopt(_ session: WorkoutSession, heartbeat: WorkoutHeartbeat?, now: Date = Date()) {
         let elapsed = ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: heartbeat)
         let gross = max(0, now.timeIntervalSince(session.date))
+        // Legacy session (pre-inactivity metadata): baseline at the last proof of life so the
+        // returning user cannot inherit an unbounded active workout; reconciliation then ends it
+        // at lastAlive + timeout. Existing metadata is never touched (adoption is not activity).
+        if session.lastMeaningfulActivityAt == nil {
+            session.lastMeaningfulActivityAt = heartbeat?.sessionID == session.id
+                ? (heartbeat?.lastAlive ?? session.date) : session.date
+        }
         strengthSession = session
         nextSetSummary = nil
         nextSetToken = nil

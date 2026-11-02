@@ -1342,10 +1342,14 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// only after persistence succeeds.
     @discardableResult
     private func handleWatchHeartRateProtocol(_ message: [String: Any]) -> Bool {
-        switch watchHeartRateReceiver.handle(message) {
+        switch handleWatchHeartRateOutcome(message) {
         case .accepted, .duplicate, .tombstoned, .finalizationUpdated: return true
         case .rejected, .persistenceFailed: return false
         }
+    }
+
+    private func handleWatchHeartRateOutcome(_ message: [String: Any]) -> WatchHRReceiveOutcome {
+        watchHeartRateReceiver.handle(message)
     }
 
     // MARK: Watch HR preflight reservation
@@ -1685,9 +1689,41 @@ extension AppModel {
             requestID: requestID, sampleID: sampleID))
     }
 
+    /// Promotes a durably persisted, fresh, active-capture batch into the live HR state.
+    func promoteDurableWatchHR(_ message: WatchHRMessage, now: Date) {
+        guard let newest = WatchHRLivePromotion.newestFreshObservation(
+            in: message,
+            activeSessionID: _active?.strengthSession?.id,
+            activeRequestID: watchHRConnection.identity?.requestID,
+            now: now
+        ) else { return }
+
+        let observedAt = Date(timeIntervalSince1970: newest.sampleEnd)
+        watchLastSampleEnd = max(watchLastSampleEnd ?? .distantPast, observedAt)
+        guard watchHRRelay.receive(bpm: Int(newest.bpm.rounded()),
+                                   requestID: message.watchRequestID) else { return }
+        _ = watchHRConnection.receiveSample(requestID: message.watchRequestID, at: now)
+        hrm.injectExternalBPM(newest.bpm)
+        watchActive = true
+        watchStartInProgress = false
+        watchError = nil
+        scheduleWatchReconcile()
+    }
+
     fileprivate func handleWatchUserInfo(_ userInfo: [String: Any]) {
         if WatchHRMessage.isWatchHRPayload(userInfo) {
-            handleWatchHeartRateProtocol(userInfo)
+            guard case let .success(message) = WatchHRMessage.parse(userInfo) else {
+                _ = handleWatchHeartRateProtocol(userInfo)
+                return
+            }
+            let outcome = handleWatchHeartRateOutcome(userInfo)
+            switch outcome {
+            case .accepted, .duplicate:
+                break
+            case .tombstoned, .finalizationUpdated, .rejected, .persistenceFailed:
+                return
+            }
+            promoteDurableWatchHR(message, now: Date())
             return
         }
         if let ack = WatchSyncHandshake.Ack(message: userInfo) {

@@ -16,6 +16,24 @@ final class AppModelWCSessionDelegateTests: XCTestCase {
         XCTAssertEqual(model.cachedTodayPlanForTesting, plan)
     }
 
+    @MainActor
+    func testDurableBatchWithoutActiveCaptureLeavesLiveStateUntouched() {
+        let model = AppModel()
+        let request = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        model.watchHRRelay.begin(requestID: request)
+        let message = WatchHRMessage(
+            kind: .observations, deliveryID: UUID(),
+            phoneWorkoutSessionID: UUID(uuidString: "11111111-1111-1111-1111-111111111111")!,
+            watchRequestID: request, captureEpoch: UUID(), sequence: 1,
+            observations: [WatchHRObservation(observationID: UUID(), source: .watchHealthKit,
+                                              sampleEnd: Date().timeIntervalSince1970, bpm: 140)])
+
+        model.promoteDurableWatchHR(message, now: Date())
+
+        XCTAssertNil(model.watchHRRelay.freshBPM)
+        XCTAssertFalse(model.watchActive)
+    }
+
     func testActivationCallbackCanEnterFromWatchConnectivityQueue() async {
         let model = await MainActor.run { AppModel() }
         let delegate = await MainActor.run {

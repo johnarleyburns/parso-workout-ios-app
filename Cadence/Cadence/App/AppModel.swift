@@ -112,6 +112,18 @@ final class AppModel: NSObject, @unchecked Sendable {
     let healthBackup: HealthBackupCoordinator
     /// The single paused-and-minimized cardio session (reopened from Today).
     let parkedCardio = ParkedCardioStore()
+    /// Durable owner of iPhone cardio inactivity (not a view): reconciles parked,
+    /// minimized and backgrounded recorders at their original deadlines.
+    @ObservationIgnored let phoneCardio = PhoneCardioInactivityCoordinator(
+        store: UserDefaultsPhoneLiveCardioStore())
+    @ObservationIgnored var phoneCardioContexts: [UUID: PhoneCardioContext] = [:]
+    @ObservationIgnored weak var phoneCardioSettings: AppSettings?
+    @ObservationIgnored var phoneCardioLastBPM: Double?
+    /// Set when a workout was auto-ended while no view was showing it.
+    var autoEndedCardio: AutoEndedCardio?
+    /// True while a live cardio view is on screen to claim an auto-ended summary.
+    @ObservationIgnored var phoneCardioHasLiveView = false
+    var phoneCardioModelContainer: ModelContainer? { _modelContainer }
     let hrm: HeartRateMonitor
     let location: LocationTracker
     let isUITestMode: Bool

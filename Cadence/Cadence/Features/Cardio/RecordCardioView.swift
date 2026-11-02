@@ -31,6 +31,8 @@ struct RecordCardioView: View {
     @State private var finishedSummary: WorkoutSummaryData?
     /// Set by Cancel so a discard is never mistaken for a minimize.
     @State private var cancelled = false
+    /// Coordinator session id; inactivity is owned by `AppModel.phoneCardio`, not this view.
+    @State private var phoneSessionID: UUID?
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     private let types: [CardioType] = [.run, .cycle, .rowing, .walk, .boxing, .hiit]
@@ -52,18 +54,19 @@ struct RecordCardioView: View {
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { cancelled = true; model.stopWatchWorkout(); dismiss() }.accessibilityIdentifier("record.cancel")
+                            Button("Cancel") { cancelled = true; if let id = phoneSessionID { model.endPhoneCardio(id) }; model.stopWatchWorkout(); dismiss() }.accessibilityIdentifier("record.cancel")
                         }
                     }
                 }
             }
         }
-        .onReceive(timer) { _ in recorder?.tick() }
+        .onReceive(timer) { _ in recorder?.tick(); phoneTick() }
         .interactiveDismissDisabled(started && !(recorder.map { CardioPresentation.live(isPaused: $0.isPaused).allowsInteractiveMinimize } ?? false))
         .onChange(of: recorder?.isPaused ?? false) { _, paused in announceCardioPaused(paused) }
-        .onDisappear { parkIfMinimized() }
+        .onDisappear { model.phoneCardioHasLiveView = false; parkIfMinimized() }
         .keepAwake(started && finishedSummary == nil)
         .onAppear {
+            model.phoneCardioHasLiveView = true
             if adoptParked() { return }
             if let t = initialType, !started { startRecorder(t) }
         }
@@ -77,7 +80,33 @@ struct RecordCardioView: View {
         _ = model.parkedCardio.take()
         recorder = r
         started = true
+        phoneSessionID = model.phoneCardio.session?.id
         return true
+    }
+
+    /// Reconcile first (a tick or foreground is never activity), then feed real evidence.
+    private func phoneTick() {
+        guard let r = recorder, let id = phoneSessionID else { return }
+        Task {
+            await model.reconcilePhoneCardio()
+            if let w = model.claimAutoEnded(id) {
+                onSaved(w); finishedSummary = WorkoutSummaryData.from(cardio: w); return
+            }
+            if !r.isPaused {
+                model.feedPhoneCardioEvidence(distanceMeters: r.usesGPS ? r.distanceMeters : nil,
+                                              bpm: r.currentBPM)
+            }
+        }
+    }
+
+    private func togglePause(_ r: CardioRecorder) {
+        if r.isPaused {
+            guard model.phoneCardioMayResume(phoneSessionID) else { phoneTick(); return }
+            r.resume()
+        } else {
+            if let id = phoneSessionID { model.phoneCardioManualPause(id) }
+            r.pause()
+        }
     }
 
     /// Dismissal while paused (button or downward gesture) minimizes; it never
@@ -94,6 +123,11 @@ struct RecordCardioView: View {
         r.start(type: type, usesGPS: tracksGPS)
         recorder = r
         started = true
+        phoneSessionID = model.beginPhoneCardio(
+            type: type, route: "record", start: r.startDate,
+            profile: r.usesGPS ? .outdoor : .indoor,
+            autoPauseEnabled: settings.lastCardioSettings.autoPause,
+            context: PhoneCardioContext(recorder: r, customTitle: customTitle))
         WorkoutCues.startBeepSequence(enabled: settings.workoutSounds)
     }
 
@@ -152,10 +186,11 @@ struct RecordCardioView: View {
 
             WorkoutControlBar(
                 isPaused: recorder.isPaused,
-                onPauseToggle: { recorder.isPaused ? recorder.resume() : recorder.pause() },
+                onPauseToggle: { togglePause(recorder) },
                 onEnd: { Task { await endWorkout(recorder) } },
                 idPrefix: "record"
             )
+            if recorder.isPaused && model.phoneCardioAutoPaused { AutoPausedBanner(idPrefix: "record") }
             if recorder.isPaused {
                 ReturnToTodayButton(idPrefix: "record") { dismiss() }
             }
@@ -185,6 +220,7 @@ struct RecordCardioView: View {
     private func endWorkout(_ recorder: CardioRecorder) async {
         // A watch session started at the HR gate outlives the recorder unless we
         // tear it down here (field-test batch 2026-08-20 issue 5).
+        if let id = phoneSessionID { model.endPhoneCardio(id) }
         model.stopWatchWorkout()
         WorkoutCues.endBeepSequence(enabled: settings.workoutSounds)
         var summary = recorder.end()

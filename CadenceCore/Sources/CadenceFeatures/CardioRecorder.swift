@@ -61,11 +61,11 @@ public final class CardioRecorder {
     }
 
     /// Ends recording and returns a summary ready to persist (FR-2.5).
-    public func end() -> CardioWorkoutSummary {
+    public func end(at endedAt: Date = Date()) -> CardioWorkoutSummary {
         isRecording = false
         if usesGPS { location.stop() }
         let summary = CardioWorkoutSummary(
-            id: UUID(), type: type, start: startDate, end: Date(),
+            id: UUID(), type: type, start: startDate, end: endedAt,
             distanceMeters: usesGPS ? location.distanceMeters : nil,
             activeEnergyKcal: calories,
             hrSamples: hrSamples,

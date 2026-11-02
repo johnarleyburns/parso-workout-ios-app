@@ -124,6 +124,9 @@ final class WatchWorkoutManager: NSObject {
     /// ending it must not tear that session down.
     var cardioOwnsSession = false
     var phoneRequestID: String?
+    var isPhoneOwnedWorkoutActive: Bool {
+        WatchPhoneWorkoutPresentation.shouldShow(isActive: isActive, phoneRequestID: phoneRequestID)
+    }
     var phoneCaptureEpoch: UUID? // adopted from the start command
     var phoneWorkoutSessionID: UUID? // paired with phoneRequestID; see +HeartRateOutbox
     @ObservationIgnored var lastOutboxFlushUptime: TimeInterval = 0

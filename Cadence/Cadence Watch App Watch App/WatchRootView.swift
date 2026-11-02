@@ -47,6 +47,8 @@ struct WatchRootView: View {
         Group {
             if watchManager.needsInitialHealthAuthorization && !watchManager.isActive && !watchManager.isMonitoring {
                 WatchHealthAuthorizationView()
+            } else if watchManager.isPhoneOwnedWorkoutActive {
+                WatchPhoneWorkoutView()
             } else if let activeIntervalSession {
                 WatchIntervalView(plan: activeIntervalSession.plan, kind: activeIntervalSession.kind) {
                     self.activeIntervalSession = nil
@@ -62,8 +64,7 @@ struct WatchRootView: View {
         }
         .task { watchManager.applyCustomExercisesInBackground(container: context.container) }
         .onChange(of: watchManager.customExercisesUpdatedAt) { _, _ in
-            // Stored on a background context, and skipped entirely when the
-            // phone replays an unchanged list (it does on every activation).
+            // Stored in the background; skipped when the phone replays an unchanged list.
             watchManager.applyCustomExercisesInBackground(container: context.container)
         }
         .onChange(of: watchManager.activeSwimSpec, initial: true) { _, spec in

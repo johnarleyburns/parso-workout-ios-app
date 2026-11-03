@@ -56,10 +56,36 @@ while IFS= read -r qa_failed_issue; do
 done < <(gh issue list --repo "$repo" --state closed --label qa-failed --limit 1000 --json number,author \
   --jq '.[] | select(.author.login == "johnarleyburns") | .number')
 
+# The implementation worker posts a pinned <!-- claude-progress-heartbeat -->
+# comment every 5 minutes while it runs. No prior way existed to tell a merely
+# slow run from a genuinely stuck one short of the 360-minute job timeout; a
+# stale heartbeat while the reservation is still held is that signal.
+check_stall_and_warn() {
+  local issue="$1" stale_minutes=20 hb hb_time hb_epoch now_epoch
+  hb=$(gh api --paginate "${api}/issues/${issue}/comments?per_page=100" \
+    --jq '[.[] | select(.body | startswith("<!-- claude-progress-heartbeat -->"))] | last // empty')
+  [[ -n "$hb" ]] || return 0
+  hb_time=$(jq -r '.updated_at' <<<"$hb")
+  hb_epoch=$(date -u -d "$hb_time" +%s 2>/dev/null || date -u -jf '%Y-%m-%dT%H:%M:%SZ' "$hb_time" +%s 2>/dev/null) || return 0
+  now_epoch=$(date -u +%s)
+  if (( (now_epoch - hb_epoch) / 60 > stale_minutes )); then
+    if ! gh issue view "$issue" --repo "$repo" --json labels --jq '.labels[].name' | grep -Fxq 'possibly-stuck'; then
+      ensure_label possibly-stuck D93F0B 'No progress heartbeat recently while a worker holds the intake reservation'
+      gh issue edit "$issue" --repo "$repo" --add-label possibly-stuck >/dev/null
+      gh issue comment "$issue" --repo "$repo" --body "<!-- claude-possibly-stuck -->
+**Possibly stuck:** no progress heartbeat for over ${stale_minutes} minutes while this issue still holds the repository's intake reservation. The run may be hung; consider cancelling its workflow run and letting the controller re-admit (removing \`intake-running\`), or inspect the run directly." >/dev/null
+    fi
+  fi
+}
+
 # The controller workflow is serialized, and any active reservation is a
 # repository-wide lock: a second sweep cannot race the delayed job listing.
 active=$(gh issue list --repo "$repo" --state open --limit 1000 --json number,labels --jq '.[] | select(any(.labels[]?.name; . == "intake-running")) | .number' | head -1)
-if [[ -n "$active" ]]; then echo "Repository reservation held by #${active}."; exit 0; fi
+if [[ -n "$active" ]]; then
+  echo "Repository reservation held by #${active}."
+  check_stall_and_warn "$active" || true
+  exit 0
+fi
 
 # Reject malformed or circular dependency metadata before it can silently freeze
 # an issue. A dependency must be explicit and every graph edge is one-way.

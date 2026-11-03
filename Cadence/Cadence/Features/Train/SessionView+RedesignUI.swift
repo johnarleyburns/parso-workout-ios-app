@@ -67,6 +67,24 @@ extension SessionView {
         .accessibilityIdentifier("session.prMoment")
     }
 
+    /// Numerals never split mid-number: one line when it fits, otherwise break only after the slash.
+    private func setProgressLabel(completed: Int, planned: Int) -> some View {
+        ViewThatFits(in: .horizontal) {
+            Text("\(completed)/\(planned)")
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+
+            Text("\(completed)/\n\(planned)")
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .font(.caption2.weight(.bold))
+        .monospacedDigit()
+        .frame(width: 44, height: 44, alignment: .center)
+        .accessibilityHidden(true)
+    }
+
     var sessionTitleHeader: some View {
         let completed = cache.state.contexts.reduce(0) { count, context in
             count + context.sets.filter { !$0.isWarmup }.count
@@ -90,8 +108,7 @@ extension SessionView {
                 Circle().trim(from: 0, to: planned > 0 ? min(1, Double(completed) / Double(planned)) : 0)
                     .stroke(CadenceTheme.accent, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                     .rotationEffect(.degrees(-90))
-                Text("\(completed)/\(planned)").font(.caption2.weight(.bold)).monospacedDigit()
-                    .padding(.horizontal, 10)
+                setProgressLabel(completed: completed, planned: planned)
             }
             .frame(width: 60, height: 60)
             .accessibilityLabel(SessionProgressPresenter.progress(completedWorkingSets: completed,

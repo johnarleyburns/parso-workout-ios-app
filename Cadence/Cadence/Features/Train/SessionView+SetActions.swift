@@ -4,9 +4,15 @@ import CadenceCore
 import CadenceFeatures
 
 extension SessionView {
-    func addSet(to exercise: Exercise, weightKg: Double, reps: Int,
-                rpe: Double?, isWarmup: Bool, usesBodyweight: Bool = false,
+    func addSet(to exercise: Exercise, weightKg requestedWeightKg: Double, reps: Int,
+                rpe: Double?, isWarmup: Bool, usesBodyweight requestedUsesBodyweight: Bool = false,
                 note: String?, performedBy: Person? = nil) {
+        let normalized = SessionViewModel.normalizedSetEntry(
+            exercise: exercise,
+            requestedWeightKg: requestedWeightKg,
+            requestedUsesBodyweight: requestedUsesBodyweight)
+        let weightKg = normalized.weightKg
+        let usesBodyweight = normalized.usesBodyweight
         recordActivity()
         let person = (performedBy?.isMe ?? true) ? nil : performedBy
         let priorOwnerSamples = (exercise.sets ?? [])

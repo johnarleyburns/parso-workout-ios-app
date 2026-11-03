@@ -139,8 +139,12 @@ extension SessionView {
         setEditorRoute = nil
     }
     func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
-        let kg = SessionViewModel.canonicalKg(input: draft.weightString, unit: draft.unit,
-                                              plateRounding: settings.plateRounding)
+        let enteredKg = SessionViewModel.canonicalKg(input: draft.weightString, unit: draft.unit,
+                                                     plateRounding: settings.plateRounding)
+        let normalized = SessionViewModel.normalizedSetEntry(
+            exercise: exercise, requestedWeightKg: enteredKg,
+            requestedUsesBodyweight: draft.bodyweight)
+        let kg = normalized.weightKg
         let rpe = draft.rpe.map(Double.init)
         if let editingSetID = inlineEditingSetID,
            let editing = session.orderedSets.first(where: { $0.id == editingSetID }) {
@@ -148,7 +152,7 @@ extension SessionView {
                 ? [:] : (editing.exercise?.volumeCredits ?? [:])
             try? WorkoutRepository.updateSet(editing, weightKg: kg, reps: draft.reps,
                                              rpe: .some(rpe),
-                                             usesBodyweight: draft.bodyweight,
+                                             usesBodyweight: normalized.usesBodyweight,
                                              performedBy: .some(people(for: draft.performerID)),
                                              in: context)
             let after: [MuscleGroup: Double] = draft.performerID == nil ? exercise.volumeCredits : [:]

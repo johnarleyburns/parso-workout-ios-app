@@ -165,4 +165,37 @@ final class SessionViewModelTests: XCTestCase {
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         XCTAssertNil(SessionViewModel.prescription(for: "Anything", session: s, plan: nil, unit: .kilograms))
     }
+
+    func testNormalizedSetEntryTable() {
+        let ropes = Exercise(name: "Battling Ropes")
+        let pull = Exercise(name: "Pull-Up"); pull.equipment = Equipment.bodyweight.rawValue
+        let bench = Exercise(name: "Bench"); bench.equipment = Equipment.barbell.rawValue
+        let cases: [(Exercise, Double, Bool, Double, Bool)] = [
+            (ropes, 45, false, 0, false), (ropes, 0, false, 0, false),
+            (ropes, 45, true, 0, false),
+            (pull, 0, false, 0, true), (pull, 10, true, 10, true),
+            (bench, 45, false, 45, false),
+        ]
+        for (ex, kg, bw, wantKg, wantBW) in cases {
+            let r = SessionViewModel.normalizedSetEntry(exercise: ex, requestedWeightKg: kg,
+                                                        requestedUsesBodyweight: bw)
+            XCTAssertEqual(r.weightKg, wantKg, ex.name)
+            XCTAssertEqual(r.usesBodyweight, wantBW, ex.name)
+        }
+    }
+
+    func testNormalizedBattlingRopeSetsPersistZeroLoad() throws {
+        let ctx = try makeContext()
+        let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
+        let ropes = try WorkoutRepository.findOrCreateExercise(named: "Battling Ropes", category: .cardio, in: ctx)
+        for _ in 0..<2 {
+            let n = SessionViewModel.normalizedSetEntry(exercise: ropes, requestedWeightKg: 45,
+                                                        requestedUsesBodyweight: false)
+            let set = try WorkoutRepository.addSet(to: s, exercise: ropes, weightKg: n.weightKg, reps: 20,
+                                                   rpe: nil, isWarmup: false, usesBodyweight: n.usesBodyweight,
+                                                   note: nil, completedAt: Date(), performedBy: nil, in: ctx)
+            XCTAssertEqual(set.weight, 0)
+            XCTAssertFalse(set.usesBodyweight)
+        }
+    }
 }

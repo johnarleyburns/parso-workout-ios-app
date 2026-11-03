@@ -11,6 +11,7 @@ public enum SessionViewModel {
     /// Whether the set editor should default to a bodyweight set for an exercise.
     public static func isBodyweight(_ exercise: Exercise) -> Bool {
         exercise.equipmentValue == .bodyweight
+            || ExerciseLoading.isBodyweight(named: exercise.name)
     }
 
     /// Movements whose load is not a meaningful input. These are separate from
@@ -19,6 +20,23 @@ public enum SessionViewModel {
         let name = exercise.name.lowercased()
         return name.contains("battling rope") || name.contains("glute ham raise")
             || name.contains("glute-ham raise") || exercise.volumeEligible == false
+    }
+
+    /// The one shared normalization for every set written by the strength screen.
+    public static func normalizedSetEntry(
+        exercise: Exercise,
+        requestedWeightKg: Double,
+        requestedUsesBodyweight: Bool
+    ) -> (weightKg: Double, usesBodyweight: Bool) {
+        if isNonWeighted(exercise) {
+            // These movements have no external load field. Never carry a last,
+            // planned, voice, or session-prescribed strength load into history.
+            return (0, false)
+        }
+        return (
+            max(0, requestedWeightKg),
+            requestedUsesBodyweight || isBodyweight(exercise)
+        )
     }
 
     /// Whether a set belongs to the given performer (nil ⇒ the owner / "Me").

@@ -42,6 +42,11 @@ final class WorkoutSummaryPresenterTests: XCTestCase {
         XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(0, 12, bw: true), unit: .pounds), "BW x 12")
     }
 
+    func testZeroLoadNonBodyweightStaysZeroNotBW() {
+        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(0, 20), unit: .pounds), "0 lb x 20")
+        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(0, 20, bw: true), unit: .pounds), "BW x 20")
+    }
+
     func testSetLineRendersWeightedBodyweight() {
         XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(10, 12, bw: true), unit: .kilograms),
                        "BW + 10 kg x 12")

@@ -110,6 +110,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     let health: HealthDataProviding
     let healthBackup: HealthBackupCoordinator
+    let phoneWorkoutMirror = PhoneWorkoutMirror()
     /// The single paused-and-minimized cardio session (reopened from Today).
     let parkedCardio = ParkedCardioStore()
     /// Durable owner of iPhone cardio inactivity (not a view): reconciles parked,
@@ -339,6 +340,10 @@ final class AppModel: NSObject, @unchecked Sendable {
 
         super.init()
         self.watchSessionDelegate.owner = self
+        phoneWorkoutMirror.onData = { [weak self] chunks in self?.handleMirroredHeartRate(chunks) }
+        (health as? HealthKitProvider)?.installWorkoutMirroringStartHandler { [weak self] session in
+            Task { @MainActor [weak self] in self?.phoneWorkoutMirror.attach(session) }
+        }
     }
 
     // MARK: Watch HR relay (FR-8)
@@ -1687,6 +1692,31 @@ extension AppModel {
         recorder.record(HeartRateObservation(
             source: source, observedAt: Date(timeIntervalSince1970: end), bpm: bpm,
             requestID: requestID, sampleID: sampleID))
+    }
+
+    /// Live-display HR from the mirrored workout session. Scoped by session,
+    /// request and capture epoch; never touches the durable outbox or recorder.
+    func handleMirroredHeartRate(_ chunks: [Data], now: Date = Date()) {
+        for packet in WatchHRMirrorRouting.decode(chunks) {
+            let sessionID = _active?.strengthSession?.id
+            let decision = WatchHRMirrorRouting.decide(
+                packet, activeSessionID: sessionID,
+                activeRequestID: watchHRConnection.identity?.requestID,
+                routeCaptureEpoch: WatchHeartRateRouteStore().route(for: packet.phoneWorkoutSessionID)?.captureEpoch,
+                now: now)
+            guard decision == .accept else { continue }
+            let end = Date(timeIntervalSince1970: packet.sampleEnd)
+            guard end > (watchLastSampleEnd ?? .distantPast) else { continue }
+            watchLastSampleEnd = end
+            guard watchHRRelay.receive(bpm: Int(packet.bpm.rounded()), requestID: packet.watchRequestID) else { continue }
+            _ = watchHRConnection.receiveSample(requestID: packet.watchRequestID, at: now)
+            watchTimeout?.invalidate(); watchTimeout = nil
+            watchError = nil
+            watchActive = true
+            watchStartInProgress = false
+            hrm.injectExternalBPM(packet.bpm)
+            scheduleWatchReconcile()
+        }
     }
 
     /// Promotes a durably persisted, fresh, active-capture batch into the live HR state.

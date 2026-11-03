@@ -37,7 +37,27 @@ extension WatchWorkoutManager {
         guard relaySchedule.observeReading(endingAt: sampleEnd, uptime: uptimeNow) else { return }
         // A strap reading has no sample time; stamp it when observed.
         lastObservedReading = (bpm, sampleEnd ?? Date(), sampleEnd != nil)
+        sendHeartRateToMirroredPhone(bpm: bpm, sampleEnd: sampleEnd)
         sendHeartRateToPhoneSoon()
+    }
+
+    /// Live-display copy over the mirrored workout session. The durable outbox
+    /// and WatchConnectivity paths are unchanged and remain authoritative.
+    func sendHeartRateToMirroredPhone(bpm: Double, sampleEnd: Date?) {
+        guard let session,
+              let phoneWorkoutSessionID,
+              let captureEpoch = phoneCaptureEpoch,
+              let request = phoneRequestID.flatMap(UUID.init(uuidString:)),
+              let sampleEnd else { return }
+        let packet = WatchHRMirrorPacket(
+            phoneWorkoutSessionID: phoneWorkoutSessionID,
+            watchRequestID: request,
+            captureEpoch: captureEpoch,
+            sampleEnd: sampleEnd.timeIntervalSince1970,
+            bpm: bpm
+        )
+        guard let data = try? JSONEncoder().encode(packet) else { return }
+        session.sendToRemoteWorkoutSession(data: data) { _, _ in }
     }
 
     /// Sends the latest value now, or as soon as the minimum gap allows.

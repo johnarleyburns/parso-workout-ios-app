@@ -176,7 +176,8 @@ extension SessionView {
         NavigationStack {
             DatePicker("Workout date", selection: Binding(
                 get: { session.date },
-                set: { setSessionDate($0) }))
+                set: { setSessionDate($0) }),
+                displayedComponents: [.date, .hourAndMinute])
                 .datePickerStyle(.graphical)
                 .padding()
                 .navigationTitle("Edit Date")
@@ -187,7 +188,8 @@ extension SessionView {
                     }
                 }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder
@@ -195,7 +197,8 @@ extension SessionView {
         NavigationStack {
             DatePicker("End time", selection: Binding(
                 get: { session.endedAt ?? session.date },
-                set: { setSessionEndDate($0) }))
+                set: { setSessionEndDate($0) }),
+                displayedComponents: [.date, .hourAndMinute])
                 .datePickerStyle(.graphical)
                 .padding()
                 .navigationTitle("Edit End Time")
@@ -206,7 +209,8 @@ extension SessionView {
                     }
                 }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
+        .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder

@@ -35,16 +35,22 @@ struct WatchMetricField: View {
     let onFocus: () -> Void
     let onSubmit: (String) -> Void
 
+    private var metricValue: some View {
+        Text(value)
+            .font(.system(.title2, design: .rounded).weight(.bold))
+            .monospacedDigit()
+            .allowsTightening(true)
+    }
+
+    private var metricUnit: some View {
+        Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+    }
+
     var body: some View {
         WatchNativeSetEntryLink(prompt: prompt, onSubmit: onSubmit) {
-            HStack(alignment: .center, spacing: 2) {
-                Text(value)
-                    .font(.system(.title2, design: .rounded).weight(.bold))
-                    .monospacedDigit()
-                    .allowsTightening(true)
-                    .layoutPriority(1)
-                Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: true, vertical: false)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 2) { metricValue; metricUnit }
+                VStack(alignment: .center, spacing: 0) { metricValue; metricUnit }
             }
             .padding(.horizontal, 6)
             .padding(.vertical, 6)

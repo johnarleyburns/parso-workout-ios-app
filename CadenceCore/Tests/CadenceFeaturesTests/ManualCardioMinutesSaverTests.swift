@@ -14,6 +14,19 @@ final class ManualCardioMinutesSaverTests: XCTestCase {
                        .init(moderate: 17, vigorous: 11))
     }
 
+    func testFirstSaveFromNilSummaryPersistsManualOverride() {
+        let s = WorkoutSession(title: "Lift", date: Date())
+        XCTAssertNil(s.intensitySummary)
+        var persisted = false
+        let result = ManualCardioMinutesSaver.save(session: s, moderate: 12, vigorous: 3,
+                                                   persist: { persisted = true }, center: NotificationCenter())
+        XCTAssertNoThrow(try result.get())
+        XCTAssertTrue(persisted)
+        XCTAssertTrue(s.hasManualCardioMinutesOverride)
+        XCTAssertEqual(ManualCardioMinutesSaver.existingMinutes(from: s.intensitySummary),
+                       .init(moderate: 12, vigorous: 3))
+    }
+
     func testNotificationPostedAfterPersist() {
         let s = WorkoutSession(title: "Lift", date: Date())
         let center = NotificationCenter()

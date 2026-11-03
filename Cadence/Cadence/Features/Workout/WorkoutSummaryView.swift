@@ -89,7 +89,21 @@ struct WorkoutSummaryView: View {
             }
             if let onEdit {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Edit") { onEdit() }.accessibilityIdentifier("summary.edit")
+                    Menu {
+                        Button("Edit workout", action: onEdit)
+                        if onEditCardioMinutes != nil {
+                            Button("Edit cardio minutes", action: beginEditingCardioMinutes)
+                                .accessibilityIdentifier("summary.edit.cardioMinutes")
+                        }
+                    } label: {
+                        Text("Edit")
+                    }
+                    .accessibilityIdentifier("summary.edit")
+                }
+            } else if onEditCardioMinutes != nil {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Edit", action: beginEditingCardioMinutes)
+                        .accessibilityIdentifier("summary.edit")
                 }
             }
             if let onDone {
@@ -254,17 +268,18 @@ struct WorkoutSummaryView: View {
         .accessibilityIdentifier("summary.cardio.intensity")
     }
 
+    private func beginEditingCardioMinutes() {
+        let existing = ManualCardioMinutesSaver.existingMinutes(from: data.cardioIntensity)
+        moderateInput = existing?.moderate ?? 0
+        vigorousInput = existing?.vigorous ?? 0
+        editingMinutes = true
+    }
+
     private var editMinutesButton: some View {
-        Button {
-            guard let existing = ManualCardioMinutesSaver.existingMinutes(from: data.cardioIntensity) else { return }
-            moderateInput = existing.moderate
-            vigorousInput = existing.vigorous
-            editingMinutes = true
-        } label: {
+        Button(action: beginEditingCardioMinutes) {
             Label("Edit cardio minutes", systemImage: "pencil")
         }
         .buttonStyle(.bordered)
-        .disabled(data.cardioIntensity == nil)
         .accessibilityIdentifier("summary.cardio.editMinutes")
     }
 

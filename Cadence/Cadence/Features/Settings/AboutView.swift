@@ -12,7 +12,7 @@ struct AboutView: View {
     private let exerciseDBURL = URL(string: "https://github.com/yuhonas/free-exercise-db")!
     private let exerciseAnnotationURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
     private let enginePackageURL = URL(string: "https://github.com/johnarleyburns/free-exercise-db-plusplus")!
-    private let enginePackageVersion = "1.16.0"
+    private let enginePackageVersion = "1.18.2"
 
     var body: some View {
         ScrollView {

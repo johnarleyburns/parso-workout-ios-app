@@ -99,8 +99,38 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
     /// `TrainingFacts.weeklySetsByMuscle` when this record was built, so Home's
     /// dashboard restores real set counts on cold launch instead of zeros.
     public var weeklySetsByMuscle: [String: Double]
+    /// Additive (v1-compatible): up to two display-only daily recommendation
+    /// rows. `nil`/absent in legacy records, which still restore the single hero.
+    public var dailyRows: [DailyRowDTO]?
 
-    public init(hero: TodayHero, primaryIsStrength: Bool, weeklySetsByMuscle: [String: Double]) {
+    /// Display-only text for one daily recommendation. It carries no workout
+    /// plan or identifiers that could launch anything; Start must wait for the
+    /// matching live `CoachSession`.
+    public struct DailyRowDTO: Codable, Equatable, Sendable, Identifiable {
+        public enum Modality: String, Codable, Equatable, Sendable { case strength, cardio, other }
+        public var modality: Modality
+        public var title: String
+        public var estimatedMinutes: Int?
+        public var exercises: [LineDTO]
+        public var reason: String?
+        public var citationIDs: [String]
+        /// Plain-language companion state (e.g. "Partner session"), if any.
+        public var companionState: String?
+        public var id: String { modality.rawValue }
+
+        public init(modality: Modality, title: String, estimatedMinutes: Int? = nil,
+                    exercises: [LineDTO] = [], reason: String? = nil,
+                    citationIDs: [String] = [], companionState: String? = nil) {
+            self.modality = modality; self.title = title
+            self.estimatedMinutes = estimatedMinutes; self.exercises = exercises
+            self.reason = reason; self.citationIDs = citationIDs
+            self.companionState = companionState
+        }
+    }
+
+    public init(hero: TodayHero, primaryIsStrength: Bool, weeklySetsByMuscle: [String: Double],
+                dailyRows: [DailyRowDTO]? = nil) {
+        self.dailyRows = dailyRows.map { Array($0.prefix(2)) }
         isRest = hero.kind == .restDay
         self.primaryIsStrength = primaryIsStrength
         title = hero.title
@@ -116,6 +146,26 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
                   estimatedMinutes: estimatedMinutes,
                   exercises: exercises.map { TodayHero.Line(name: $0.name, detail: $0.detail) },
                   reason: reason, citationIDs: citationIDs)
+    }
+}
+
+/// Merges restored display rows with live availability. Restored rows are never
+/// actionable; a row becomes actionable only when a live session exists for the
+/// same modality, and rows with no live counterpart are dropped once live.
+public enum TodayDailyRowsPresenter {
+    public struct Row: Equatable, Sendable, Identifiable {
+        public var dto: TodayRecommendationPayload.DailyRowDTO
+        public var isActionable: Bool
+        public var id: String { dto.id }
+    }
+
+    public static func rows(restored: [TodayRecommendationPayload.DailyRowDTO],
+                            live: [TodayRecommendationPayload.DailyRowDTO]?,
+                            liveSessionModalities: Set<TodayRecommendationPayload.DailyRowDTO.Modality>) -> [Row] {
+        guard let live else {
+            return restored.prefix(2).map { Row(dto: $0, isActionable: false) }
+        }
+        return live.prefix(2).map { Row(dto: $0, isActionable: liveSessionModalities.contains($0.modality)) }
     }
 }
 

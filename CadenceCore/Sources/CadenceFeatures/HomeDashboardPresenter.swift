@@ -192,11 +192,15 @@ public enum HomeDashboardPresenter {
                             goal: TrainingGoal, experience: ExperienceLevel,
                             userAge: Int?, liveVolumeDelta: [MuscleGroup: Double] = [:],
                             weeklyCardio: WeeklyCardioSummary? = nil,
-                            activityDose: WeeklyActivitySummary? = nil) -> HomeDashboardState {
+                            activityDose: WeeklyActivitySummary? = nil,
+                            restoredWeeklySetsByMuscle: [String: Double]? = nil) -> HomeDashboardState {
         let balance = snapshot.decision.weeklyBalance
         // Weekly sets, not days per week: frequency is not an independent
         // indicator of training impact (O'Donovan/Lee et al. 2022).
-        let strengthSets = snapshot.facts.weeklySetsByGroup.values.reduce(0, +)
+        // Before the coach pipeline produces real facts (cold launch), the
+        // durably cached same-day counts avoid a "0 of N sets" flash.
+        let strengthSets = restoredWeeklySetsByMuscle?.values.reduce(0, +)
+            ?? snapshot.facts.weeklySetsByGroup.values.reduce(0, +)
         let strengthTarget = Double(max(1, schedule.trackedMuscleGroups.count)) * 12
         let strength = HomeDashboardState.Progress(completed: strengthSets, target: strengthTarget,
             displayText: String(localized: "\(Int(strengthSets.rounded())) of \(Int(strengthTarget)) sets", bundle: .module),
@@ -211,12 +215,16 @@ public enum HomeDashboardPresenter {
         // used by coaching/adherence, but merging it here allowed a stale or
         // differently-windowed engine projection to make this card look like
         // it contained multiple weeks of muscle volume.
-        var currentWeekVolume = snapshot.facts.weeklySetsByGroup
-        for (group, delta) in liveVolumeDelta where delta != 0 {
-            currentWeekVolume[group, default: 0] += delta
+        let volume: [HomeDashboardState.VolumeRow]
+        if let restoredWeeklySetsByMuscle {
+            volume = volumeRows(setsByMuscle: restoredWeeklySetsByMuscle, tracked: schedule.trackedMuscleGroups)
+        } else {
+            var currentWeekVolume = snapshot.facts.weeklySetsByGroup
+            for (group, delta) in liveVolumeDelta where delta != 0 {
+                currentWeekVolume[group, default: 0] += delta
+            }
+            volume = volumeRows(setsByGroup: currentWeekVolume, tracked: schedule.trackedMuscleGroups)
         }
-        let volume = volumeRows(setsByGroup: currentWeekVolume,
-                                tracked: schedule.trackedMuscleGroups)
         // Averaged over the TRACKED rows only, so half a set of incidental neck
         // work cannot drag the headline number down.
         let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))

@@ -96,8 +96,11 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
     public var exercises: [LineDTO]
     public var reason: String?
     public var citationIDs: [String]
+    /// `TrainingFacts.weeklySetsByMuscle` when this record was built, so Home's
+    /// dashboard restores real set counts on cold launch instead of zeros.
+    public var weeklySetsByMuscle: [String: Double]
 
-    public init(hero: TodayHero, primaryIsStrength: Bool) {
+    public init(hero: TodayHero, primaryIsStrength: Bool, weeklySetsByMuscle: [String: Double]) {
         isRest = hero.kind == .restDay
         self.primaryIsStrength = primaryIsStrength
         title = hero.title
@@ -105,6 +108,7 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
         exercises = hero.exercises.map { LineDTO(name: $0.name, detail: $0.detail) }
         reason = hero.reason
         citationIDs = hero.citationIDs
+        self.weeklySetsByMuscle = weeklySetsByMuscle
     }
 
     public func makeHero() -> TodayHero {

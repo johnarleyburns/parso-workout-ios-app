@@ -24,7 +24,8 @@ final class TodayRecommendationCacheTests: XCTestCase {
             hero: TodayHero(kind: .suggested, title: title, estimatedMinutes: 45,
                             exercises: [.init(name: "Bench", detail: "3 × 8")],
                             reason: "why", citationIDs: ["c1"]),
-            primaryIsStrength: true)
+            primaryIsStrength: true,
+            weeklySetsByMuscle: ["chest": 9, "biceps": 2])
     }
     private func fp(dayKey: String = "d", sessions: String = "s", goal: TrainingGoal = .strength,
                     experience: ExperienceLevel = .intermediate, formula: OneRepMaxFormula = .epley,
@@ -144,5 +145,22 @@ final class TodayRecommendationCacheTests: XCTestCase {
         clock.date = day(6)
         let next = await s.hasSameDayEntry()
         XCTAssertFalse(next)
+    }
+
+    func testPreMigrationFileMissingWeeklySetsByMuscleKeyDegradesToCorruptNotCrash() async throws {
+        let stamp = fixed
+        let u = url(); defer { try? FileManager.default.removeItem(at: u) }
+        let s = TodayRecommendationCacheStore(fileURL: u, calendar: cal, now: { stamp })
+        await s.save(payload(), fingerprint: "f", passiveStamp: "p")
+        // Simulate a file written before this field existed: strip the key.
+        var root = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: u)) as? [String: Any])
+        var inner = try XCTUnwrap(root["payload"] as? [String: Any])
+        XCTAssertNotNil(inner.removeValue(forKey: "weeklySetsByMuscle"))
+        root["payload"] = inner
+        try JSONSerialization.data(withJSONObject: root).write(to: u)
+        let reader = TodayRecommendationCacheStore(fileURL: u, calendar: cal, now: { stamp })
+        let hit = await reader.restore(fingerprint: "f")
+        XCTAssertNil(hit, "a pre-migration record without the new key must be discarded, not crash")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: u.path))
     }
 }

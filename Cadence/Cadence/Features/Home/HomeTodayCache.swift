@@ -81,7 +81,8 @@ extension HomeView {
             snapshot,
             payload: TodayRecommendationPayload(
                 hero: TodayHeroPresenter.recommendation(snapshot.decision),
-                primaryIsStrength: snapshot.decision.primary.kind == .strength),
+                primaryIsStrength: snapshot.decision.primary.kind == .strength,
+                weeklySetsByMuscle: snapshot.facts.weeklySetsByMuscle),
             fingerprint: key.fingerprint, passiveStamp: key.passiveStamp,
             surface: surface.cacheSurface)
         return snapshot

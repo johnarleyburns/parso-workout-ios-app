@@ -237,7 +237,8 @@ extension WatchWorkoutManager: WCSessionDelegate {
             warmupMinutes: s.warmupMinutes,
             cooldownMinutes: s.cooldownMinutes,
             workoutSounds: s.workoutSounds,
-            spokenCues: s.spokenCues
+            spokenCues: s.spokenCues,
+            cardioIntensityProfile: s.syncedCardioIntensityProfile
         )
         let payload = UncheckedWatchPayload(value: applicationContext)
         Task { [weak self] in
@@ -300,6 +301,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
         s.cooldownMinutes = preferences.cooldownMinutes
         s.workoutSounds = preferences.workoutSounds
         s.spokenCues = preferences.spokenCues
+        if let profile = preferences.cardioIntensityProfile { s.syncedCardioIntensityProfile = profile }
         recentPartnerNames = preferences.recentPartnerNames
         todayPlan = incoming.todayPlan
         if let week = incoming.weekSummary { weekSummary = week }

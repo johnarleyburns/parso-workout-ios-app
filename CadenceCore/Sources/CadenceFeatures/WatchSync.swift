@@ -56,6 +56,8 @@ public enum WatchSync {
         public static let spokenCues = "settings.spokenCues"
         public static let recentPartners = "partners.recent"
         public static let customExercises = "exercises.custom"
+        /// JSON `Data` of the phone-resolved `CardioIntensityProfile`; absent/malformed = unavailable.
+        public static let cardioIntensityProfile = "cardio.intensityProfile"
 
         public static let todayPlanSessions = "todayPlan.sessions"
         public static let todayPlanUpdatedAt = "todayPlan.updatedAt"
@@ -398,6 +400,7 @@ public enum WatchSync {
         public var workoutSounds: Bool
         public var spokenCues: Bool
         public var recentPartnerNames: [String]
+        public var cardioIntensityProfile: CardioIntensityProfile?
 
         public init(unit: MeasurementUnitPreference = .kilograms,
                     distanceUnit: DistanceUnitPreference = .kilometers,
@@ -407,7 +410,9 @@ public enum WatchSync {
                     cooldownMinutes: Int = 5,
                     workoutSounds: Bool = true,
                     spokenCues: Bool = false,
-                    recentPartnerNames: [String] = []) {
+                    recentPartnerNames: [String] = [],
+                    cardioIntensityProfile: CardioIntensityProfile? = nil) {
+            self.cardioIntensityProfile = cardioIntensityProfile
             self.unit = unit
             self.distanceUnit = distanceUnit
             self.intervalColorBlind = intervalColorBlind
@@ -432,6 +437,10 @@ public enum WatchSync {
             ]
             if !prefs.recentPartnerNames.isEmpty {
                 dict[Key.recentPartners] = prefs.recentPartnerNames
+            }
+            if let profile = prefs.cardioIntensityProfile,
+               let data = CardioIntensityProfileProvider.encode(profile) {
+                dict[Key.cardioIntensityProfile] = data
             }
             return dict
         }
@@ -472,6 +481,11 @@ public enum WatchSync {
             }
             if let names = context[Key.recentPartners] as? [String] {
                 copy.recentPartnerNames = names
+            }
+            // Absent or malformed data keeps whatever valid profile we already had.
+            if let data = context[Key.cardioIntensityProfile] as? Data,
+               let profile = CardioIntensityProfileProvider.decode(data) {
+                copy.cardioIntensityProfile = profile
             }
             return copy
         }

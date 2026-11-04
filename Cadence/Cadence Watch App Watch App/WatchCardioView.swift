@@ -18,9 +18,7 @@ struct WatchCardioView: View {
             elapsed: metrics.elapsed, bpm: metrics.hrBPM, distanceMeters: metrics.distanceMeters,
             heartRateEnabled: metrics.heartRateEnabled, gpsEnabled: metrics.gpsEnabled,
             distanceUnit: metrics.distanceUnit,
-            intensityProfile: CardioIntensityProfile.resolved(
-                userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
-                age: watchSettings.userAge)
+            intensityProfile: watchSettings.resolvedCardioIntensityProfile
         )
         VStack(alignment: .leading, spacing: 4) {
             if kind == .swim {

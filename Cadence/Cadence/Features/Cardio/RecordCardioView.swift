@@ -255,18 +255,8 @@ struct RecordCardioView: View {
 func cardioIntensityProfile(model: AppModel, settings: AppSettings) async -> CardioIntensityProfile {
     let passive = await model.health.passiveReadinessSamples(days: 30)
     let vo2Max = await model.health.latestVO2Max()
-    let values = passive
-        .sorted { $0.date > $1.date }
-        .compactMap(\.restingHR)
-        .filter { $0.isFinite && $0 > 30 && $0 < 220 }
-        .prefix(7)
-        .sorted()
-    let resting: Double?
-    if values.isEmpty { resting = nil }
-    else if values.count % 2 == 1 { resting = values[values.count / 2] }
-    else { resting = (values[values.count / 2 - 1] + values[values.count / 2]) / 2 }
-    return CardioIntensityProfile.resolved(
-        restingHR: resting,
-        userEnteredMaximumHR: settings.cardioMaximumHROverride,
-        age: settings.userAge, vo2Max: vo2Max, updatedAt: Date())
+    return CardioIntensityProfileProvider.profile(
+        samples: passive, vo2Max: vo2Max,
+        maximumHROverride: settings.cardioMaximumHROverride,
+        age: settings.userAge, updatedAt: Date())
 }

@@ -63,8 +63,7 @@ struct WatchStrengthSummaryView: View {
     }
 
     private var intensityProfile: CardioIntensityProfile {
-        CardioIntensityProfile.resolved(userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
-                                        age: watchSettings.userAge)
+        watchSettings.resolvedCardioIntensityProfile
     }
 
     private var hrCoverageRow: some View {

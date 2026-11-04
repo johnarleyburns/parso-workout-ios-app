@@ -119,17 +119,23 @@ extension HomeView {
     /// on the main actor. Active set-entry changes do not alter these rows;
     /// completion and edits bump `historyRefreshToken`.
     func refreshHomeActivitySnapshot() async {
+        let key = activityCacheKey
+        if let cached = HomeActivityCache.shared.cached(for: key) {
+            apply(cached)
+            return
+        }
         let signpostID = OSSignpostID(log: Self.healthIngestLog)
         os_signpost(.begin, log: Self.healthIngestLog, name: "homeActivityProjection", signpostID: signpostID)
         defer { os_signpost(.end, log: Self.healthIngestLog, name: "homeActivityProjection", signpostID: signpostID) }
         let now = Date()
+        let projection: HomeActivityProjection
         if let container = cadenceModelContainer {
             // Immutable values only; no SwiftData model crosses the boundary.
             let passiveSamples = self.passiveSamples
             let userAge = settings.userAge
             let maximumHROverride = settings.cardioMaximumHROverride
             dashboardActivityReady = false
-            let projection = await Task.detached(priority: .utility) { [container, now, passiveSamples, userAge, maximumHROverride] in
+            projection = await Task.detached(priority: .utility) { [container, now, passiveSamples, userAge, maximumHROverride] in
                 let backgroundContext = ModelContext(container)
                 let sessions = (try? WorkoutRepository.allSessions(backgroundContext)) ?? []
                 let cardio = (try? WorkoutRepository.allCardio(backgroundContext)) ?? []
@@ -196,50 +202,59 @@ extension HomeView {
                         sessions: sessions, scheduled: scheduled, now: now))
             }.value
             guard !Task.isCancelled else { return }
-            cachedWorkoutsTodayRows = projection.today
-            cachedWeekStrengthEntries = projection.weekStrength
-            cachedWeekCardioEntries = projection.weekCardio
-            cachedWeeklyVolumeKg = projection.weeklyVolumeKg
-            cachedMuscleHistory = projection.muscleHistory
-            cachedWeeklyVolumeByPerformer = projection.weeklyVolumeByPerformer
-            cachedWeeklyVolumeKgByPerformer = projection.weeklyVolumeKgByPerformer
-            cachedWeeklyVolumePerformers = projection.weeklyVolumePerformers
-            cachedMuscleHistoryByPerformer = projection.muscleHistoryByPerformer
-            cachedScheduledItems = projection.scheduledItems
-            cachedRecentCardioTypes = projection.recentCardioTypes
-            cachedTodayHeroActivity = projection.heroActivity
-            cachedWeeklyCardio = projection.weeklyCardio
+        } else {
+            let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio, now: now)
+            let weeklyVolume = HomeWeeklyVolumeProjection.make(
+                sessions: sessions, since: WeeklyStats.weekStart(now: now), now: now)
+            // No store (previews/tests): weekly cardio stays the injected value fixture.
+            projection = HomeActivityProjection(
+                weeklyCardio: nil,
+                activityDose: nil,
+                today: WorkoutsTodayPresenter.historicalRows(sessions: sessions, cardio: cardio, now: now),
+                weekStrength: week.strength,
+                weekCardio: week.cardio,
+                weeklyVolumeKg: WeeklyStats.volumeKg(
+                    sessions.filter { $0.deletedAt == nil },
+                    since: WeeklyStats.weekStart(now: now)),
+                muscleHistory: HomeMuscleHistoryPresenter.make(
+                    sessions: sessions,
+                    since: WeeklyStats.weekStart(now: now),
+                    now: now),
+                weeklyVolumeByPerformer: weeklyVolume.volumes,
+                weeklyVolumeKgByPerformer: weeklyVolume.tonnage,
+                weeklyVolumePerformers: weeklyVolume.performers,
+                muscleHistoryByPerformer: weeklyVolume.histories,
+                scheduledItems: scheduledWorkouts.map(HomePlannedWorkoutsSection.item),
+                recentCardioTypes: recentCardioTypesFromCurrentCardio,
+                heroActivity: TodayHeroActivityPresenter.make(
+                    sessions: sessions, scheduled: scheduledWorkouts, now: now))
+        }
+        apply(projection)
+        HomeActivityCache.shared.store(projection, for: key)
+    }
+
+    private func apply(_ projection: HomeActivityProjection) {
+        cachedWorkoutsTodayRows = projection.today
+        cachedWeekStrengthEntries = projection.weekStrength
+        cachedWeekCardioEntries = projection.weekCardio
+        cachedWeeklyVolumeKg = projection.weeklyVolumeKg
+        cachedMuscleHistory = projection.muscleHistory
+        cachedWeeklyVolumeByPerformer = projection.weeklyVolumeByPerformer
+        cachedWeeklyVolumeKgByPerformer = projection.weeklyVolumeKgByPerformer
+        cachedWeeklyVolumePerformers = projection.weeklyVolumePerformers
+        cachedMuscleHistoryByPerformer = projection.muscleHistoryByPerformer
+        cachedScheduledItems = projection.scheduledItems
+        cachedRecentCardioTypes = projection.recentCardioTypes
+        cachedTodayHeroActivity = projection.heroActivity
+        if let weeklyCardio = projection.weeklyCardio {
+            cachedWeeklyCardio = weeklyCardio
             cachedWeeklyActivityDose = projection.activityDose
             dashboardActivityReady = true
             cachedDashboard = makeDashboard()
-            homeActivityReady = true
         } else {
-            cachedWorkoutsTodayRows = WorkoutsTodayPresenter.historicalRows(
-                sessions: sessions, cardio: cardio, now: now)
-            let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio, now: now)
-            cachedWeekStrengthEntries = week.strength
-            cachedWeekCardioEntries = week.cardio
-            cachedWeeklyVolumeKg = WeeklyStats.volumeKg(
-                sessions.filter { $0.deletedAt == nil },
-                since: WeeklyStats.weekStart(now: now))
-            cachedMuscleHistory = HomeMuscleHistoryPresenter.make(
-                sessions: sessions,
-                since: WeeklyStats.weekStart(now: now),
-                now: now)
-            let weeklyVolume = HomeWeeklyVolumeProjection.make(
-                sessions: sessions, since: WeeklyStats.weekStart(now: now), now: now)
-            cachedWeeklyVolumeByPerformer = weeklyVolume.volumes
-            cachedWeeklyVolumeKgByPerformer = weeklyVolume.tonnage
-            cachedWeeklyVolumePerformers = weeklyVolume.performers
-            cachedMuscleHistoryByPerformer = weeklyVolume.histories
-            cachedScheduledItems = scheduledWorkouts.map(HomePlannedWorkoutsSection.item)
-            cachedRecentCardioTypes = recentCardioTypesFromCurrentCardio
-            cachedTodayHeroActivity = TodayHeroActivityPresenter.make(
-                sessions: sessions, scheduled: scheduledWorkouts, now: now)
-            // No store (previews/tests): weekly cardio stays the injected value fixture.
             dashboardActivityReady = true
-            homeActivityReady = true
         }
+        homeActivityReady = true
     }
 
     private var recentCardioTypesFromCurrentCardio: [WorkoutType] {
@@ -265,9 +280,9 @@ extension HomeView {
         return result
     }
 
-    private struct HomeActivityProjection: @unchecked Sendable {
-        let weeklyCardio: WeeklyCardioSummary
-        let activityDose: WeeklyActivitySummary
+    struct HomeActivityProjection: @unchecked Sendable {
+        let weeklyCardio: WeeklyCardioSummary?
+        let activityDose: WeeklyActivitySummary?
         let today: [WorkoutsTodayPresenter.Row]
         let weekStrength: [TodayActivityPresenter.Entry]
         let weekCardio: [TodayActivityPresenter.Entry]

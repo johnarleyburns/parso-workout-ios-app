@@ -128,13 +128,7 @@ extension HomeView {
                 passiveSamples: passiveSamples,
                 userAge: settings.userAge,
                 maximumHROverride: settings.cardioMaximumHROverride,
-                scheduledWorkouts: scheduledWorkouts.map {
-                    ScheduledWorkoutTaskSignature(id: $0.id,
-                                                  scheduledDate: $0.scheduledDate,
-                                                  updatedAt: $0.updatedAt,
-                                                  statusRaw: $0.statusRaw,
-                                                  payloadVersion: $0.payloadVersion)
-                })) {
+                scheduledWorkouts: scheduledWorkoutTaskSignatures)) {
                 // Let the first interactive frame render before walking the
                 // historical SwiftData relationships for these compact rows.
                 await Task.yield()

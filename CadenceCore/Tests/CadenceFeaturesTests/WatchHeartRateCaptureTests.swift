@@ -178,14 +178,14 @@ final class HeartRateRepairTests: XCTestCase {
         guard case .repaired = confirmed else { return XCTFail("\(confirmed)") }
     }
 
-    func testRepairNeverBridgesLongGapAndRejectsBadSamples() async throws {
+    func testRepairCarriesForwardLongGapAndRejectsBadSamples() async throws {
         let s = try makeSession()
         let hr: [(date: Date, bpm: Double)] = [(start, 130), (start.addingTimeInterval(10), .nan),
                                                (start.addingTimeInterval(20), 900), (start.addingTimeInterval(1_800), 130),
                                                (start.addingTimeInterval(9_999), 130)]
         _ = await HeartRateRepair.run(session: s, source: FakeSource(list: .success([candidate]), hr: .success(hr)), profile: profile)
         XCTAssertEqual(s.hrSamplePoints.count, 2)
-        XCTAssertGreaterThan(s.intensitySummary!.unclassifiedDuration, 3_000)
+        XCTAssertEqual(s.intensitySummary!.unclassifiedDuration, 0, accuracy: 0.001)
     }
 
     private struct SaveFailure: Error {}

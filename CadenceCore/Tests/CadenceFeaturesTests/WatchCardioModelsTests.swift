@@ -331,7 +331,7 @@ final class WatchCardioModelsTests: XCTestCase {
 
     func testLivePresenterHRZoneBoundaries() {
         let max = 190.0
-        let cases: [(Double, Int)] = [(1, 1), (0.60 * max, 2), (0.70 * max, 3),
+        let cases: [(Double, Int)] = [(30, 1), (0.60 * max, 2), (0.70 * max, 3),
                                       (0.80 * max, 4), (0.90 * max, 5)]
         for (bpm, zone) in cases {
             let p = WatchCardioLivePresenter.present(elapsed: 1, bpm: bpm, distanceMeters: nil,

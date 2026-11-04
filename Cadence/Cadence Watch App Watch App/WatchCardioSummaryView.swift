@@ -21,9 +21,7 @@ struct WatchCardioSummaryView: View {
             summaryRow(String(localized: "Total"), formatTime(summary.duration))
             WatchHeartRateSection(
                 hrSamples: summary.hrSamples,
-                intensityProfile: CardioIntensityProfile.resolved(
-                    userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
-                    age: watchSettings.userAge))
+                intensityProfile: watchSettings.resolvedCardioIntensityProfile)
                 .padding(.horizontal, 20)
             if summary.distanceMeters > 0 {
                 summaryRow(String(localized: "Distance"), isSwim ? String(format: "%.0f m", summary.distanceMeters) : metrics.formatDistance())

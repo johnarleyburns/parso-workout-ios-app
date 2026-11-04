@@ -427,7 +427,11 @@ final class AppModel: NSObject, @unchecked Sendable {
         let cardioHistory: WatchSync.CardioHistorySnapshot?
         let setDefaultSnapshot: WatchSetDefaultSnapshot?
         let singleExerciseSuggestionContext: WatchSingleExerciseSuggestionContext?
+        var cardioIntensityProfile: CardioIntensityProfile?
     }
+
+    /// Last phone-resolved HRR profile sent to the Watch; the timestamp is kept while content is unchanged.
+    private var cachedCardioIntensityProfile: CardioIntensityProfile?
 
     /// Last suggestion context published; reused when only its timestamps differ so the
     /// handshake revision does not churn.
@@ -668,11 +672,22 @@ final class AppModel: NSObject, @unchecked Sendable {
         )
         let container = _modelContainer
         let previousCardioIDs = Set(cachedCardioHistory?.liveItems.map(\.id) ?? [])
+        let hrMaxOverride = settings.cardioMaximumHROverride
+        let hrAge = settings.userAge
         watchPayloadTask?.cancel()
         watchPayloadTask = Task { [weak self] in
+            // Resolved on the phone (never on the Watch) before the context is built.
+            let resolvedProfile: CardioIntensityProfile?
+            if let health = self?.health {
+                let passive = await health.passiveReadinessSamples(days: 30)
+                let vo2 = await health.latestVO2Max()
+                resolvedProfile = CardioIntensityProfileProvider.profile(
+                    samples: passive, vo2Max: vo2, maximumHROverride: hrMaxOverride,
+                    age: hrAge, updatedAt: now)
+            } else { resolvedProfile = nil }
             let signpostID = OSSignpostID(log: Self.performanceLog)
             os_signpost(.begin, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
-            let payload = await Task.detached(priority: .utility) {
+            let basePayload = await Task.detached(priority: .utility) {
                 guard let container else {
                     return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [], cardioHistory: nil,
                                                setDefaultSnapshot: nil, singleExerciseSuggestionContext: nil)
@@ -699,6 +714,9 @@ final class AppModel: NSObject, @unchecked Sendable {
             }.value
             os_signpost(.end, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             guard !Task.isCancelled else { return }
+            var withProfile = basePayload
+            withProfile.cardioIntensityProfile = resolvedProfile
+            let payload = withProfile
             await MainActor.run {
                 guard let self else { return }
                 self.finishWatchSettingsContext(basePreferences: basePreferences,
@@ -715,6 +733,14 @@ final class AppModel: NSObject, @unchecked Sendable {
                                             session: WCSession) {
         var prefs = basePreferences
         prefs.recentPartnerNames = payload.recentPartnerNames
+        if let fresh = payload.cardioIntensityProfile, CardioIntensityProfileProvider.isValid(fresh),
+           !CardioIntensityProfileProvider.sameContent(fresh, cachedCardioIntensityProfile) {
+            cachedCardioIntensityProfile = fresh
+        } else if let rejected = payload.cardioIntensityProfile,
+                  !CardioIntensityProfileProvider.isValid(rejected) {
+            cachedCardioIntensityProfile = nil
+        }
+        prefs.cardioIntensityProfile = cachedCardioIntensityProfile
         var context = WatchSync.Preferences.contextDict(prefs, updatedAt: date)
         context[WatchSync.Key.customExercises] = payload.customExercises.map(\.propertyList)
         if let fresh = payload.setDefaultSnapshot {

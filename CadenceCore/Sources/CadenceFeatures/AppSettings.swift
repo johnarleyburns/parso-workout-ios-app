@@ -82,6 +82,8 @@ public final class AppSettings {
         self.preferredWorkoutStyle = Self.read(defaults, "settings.preferredWorkoutStyle", SuggestedWorkoutStyle.self) ?? .fitness
         self.userAge = defaults.object(forKey: "settings.userAge") as? Int
         self.cardioMaximumHROverride = defaults.object(forKey: "settings.cardioMaximumHROverride") as? Double
+        self.syncedCardioIntensityProfile = (defaults.data(forKey: "settings.syncedCardioIntensityProfile"))
+            .flatMap(CardioIntensityProfileProvider.decode)
         self.useHRMonitoring = defaults.object(forKey: "settings.useHRMonitoring") as? Bool ?? false
         self.recoveryAwareCoachV2 = defaults.object(forKey: "settings.recoveryAwareCoachV2") as? Bool ?? true
         self.lastCoachComputeDay = defaults.string(forKey: "settings.lastCoachComputeDay") ?? ""
@@ -188,6 +190,21 @@ public final class AppSettings {
     /// stored as a setting so new workout provenance can name its source.
     public var cardioMaximumHROverride: Double? {
         didSet { defaults.set(cardioMaximumHROverride, forKey: "settings.cardioMaximumHROverride") }
+    }
+    /// Watch-side persisted copy of the phone-resolved HRR profile (JSON). Never read from HealthKit.
+    public var syncedCardioIntensityProfile: CardioIntensityProfile? {
+        didSet {
+            if let profile = syncedCardioIntensityProfile {
+                defaults.set(CardioIntensityProfileProvider.encode(profile), forKey: "settings.syncedCardioIntensityProfile")
+            } else {
+                defaults.removeObject(forKey: "settings.syncedCardioIntensityProfile")
+            }
+        }
+    }
+    /// The synced phone profile when valid; otherwise the age / max-override fallback.
+    public var resolvedCardioIntensityProfile: CardioIntensityProfile {
+        if let synced = syncedCardioIntensityProfile, CardioIntensityProfileProvider.isValid(synced) { return synced }
+        return CardioIntensityProfile.resolved(userEnteredMaximumHR: cardioMaximumHROverride, age: userAge)
     }
     public var useHRMonitoring: Bool { didSet { defaults.set(useHRMonitoring, forKey: "settings.useHRMonitoring") } }
     /// Recovery-aware Coach v2: new eligibility-gated decision engine. Enable by default

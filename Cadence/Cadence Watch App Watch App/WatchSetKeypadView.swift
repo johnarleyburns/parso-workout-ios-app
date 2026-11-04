@@ -139,7 +139,7 @@ struct WatchSetKeypadView: View {
                     .accessibilityIdentifier("watchSet.nonWeighted")
                 reps
             }
-        } else if dynamicTypeSize >= .accessibility1 {
+        } else if WatchSetCardMetricLayout.fields(isAccessibilitySize: dynamicTypeSize >= .accessibility1) == .stacked {
             VStack(spacing: 4) { weight; reps }
         } else {
             HStack(spacing: 4) { weight; reps }

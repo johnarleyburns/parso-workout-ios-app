@@ -3,9 +3,9 @@ import Foundation
 import CadenceCore
 @testable import CadenceFeatures
 
-/// The Watch Set Card metric text must reach the view complete: the view scales
-/// the font (`WatchMetricField`) instead of truncating, so the model must never
-/// hand it an ellipsis or a shortened number.
+/// The Watch Set Card metric text must reach the view complete. The metric
+/// layout is shared with the Watch view so its scale and accessibility layout
+/// rules remain headlessly testable.
 @Suite struct WatchSetCardMetricTextTests {
     private func card(lbs: Double, reps: Int) -> WatchSetCardState {
         WatchSetCardBuilder.make(
@@ -28,9 +28,16 @@ import CadenceCore
         }
     }
 
-    @Test func weightTextIsIndependentOfDynamicTypeInputs() {
-        // Same state regardless of size category; scaling is a view concern.
-        #expect(card(lbs: 650, reps: 100) == card(lbs: 650, reps: 100))
-        #expect(card(lbs: 650, reps: 100).weightText.hasPrefix("650"))
+    @Test func compactMetricsScaleBeforeTheyCanTruncate() {
+        #expect(WatchSetCardMetricLayout.valueMinimumScaleFactor == 0.55)
+        #expect(WatchSetCardMetricLayout.unitMinimumScaleFactor == 0.70)
+        #expect(WatchSetCardMetricLayout.fields(isAccessibilitySize: false) == .twoColumns)
+        #expect(WatchSetCardMetricLayout.fields(isAccessibilitySize: true) == .stacked)
+
+        // The same complete model text reaches normal, large, and accessibility
+        // paths; only their layout changes.
+        let state = card(lbs: 650, reps: 100)
+        #expect(state.weightText.hasPrefix("650"))
+        #expect(state.reps == 100)
     }
 }

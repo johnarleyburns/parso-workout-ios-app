@@ -41,11 +41,20 @@ struct WatchMetricField: View {
         Text(value)
             .font(.system(.title2, design: .rounded).weight(.bold))
             .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(WatchSetCardMetricLayout.valueMinimumScaleFactor)
             .allowsTightening(true)
+            .layoutPriority(2)
     }
 
     private var metricUnit: some View {
-        Text(unit).font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+        Text(unit)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(WatchSetCardMetricLayout.unitMinimumScaleFactor)
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
     }
 
     var body: some View {

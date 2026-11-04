@@ -342,6 +342,19 @@ final class WatchCardioModelsTests: XCTestCase {
         }
     }
 
+    func testLivePresenterUsesThePhoneHRRTrainingZone() {
+        let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 180,
+                                             maximumHRSource: .userEntered)
+        let bpm = 144.0 // 70% HRR: Z4 under the shared classifier.
+        let expected = CardioIntensityClassifier.classify(heartRate: bpm, profile: profile)
+        let presentation = WatchCardioLivePresenter.present(
+            elapsed: 1, bpm: bpm, distanceMeters: nil, heartRateEnabled: true,
+            gpsEnabled: false, distanceUnit: .kilometers, intensityProfile: profile)
+        XCTAssertEqual(presentation.hrZone, expected.trainingZone?.rawValue)
+        XCTAssertEqual(presentation.relativeIntensity, expected.relativeIntensity)
+        XCTAssertEqual(presentation.guidelineIntensity, expected.guidelineIntensity)
+    }
+
     func testLivePresenterNoHRHidesBPMAndZone() {
         let p = WatchCardioLivePresenter.present(elapsed: 65, bpm: 150, distanceMeters: 20,
                                                    heartRateEnabled: false, gpsEnabled: false,

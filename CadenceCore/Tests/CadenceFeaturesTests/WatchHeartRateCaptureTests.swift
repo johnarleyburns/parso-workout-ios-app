@@ -85,9 +85,8 @@ final class WatchHeartRateCaptureTests: XCTestCase {
         let duration = 3_600.0
         let sparse = [0, 900, 1_800, 2_700].map { HRSamplePoint(t: Double($0), bpm: 130) }
         let s = CardioMinuteAccumulator.summarize(duration: duration, samples: sparse, profile: profile)
-        XCTAssertGreaterThan(s.unclassifiedDuration, 3_000)
-        XCTAssertEqual(HeartRateCoverageState.evaluate(summary: s, sampleCount: 4),
-                       .incomplete(unclassifiedFraction: s.unclassifiedDuration / duration))
+        XCTAssertEqual(s.unclassifiedDuration, 0, accuracy: 0.001)
+        XCTAssertEqual(HeartRateCoverageState.evaluate(summary: s, sampleCount: 4), .complete)
         let dense = stride(from: 0.0, to: duration, by: 5).map { HRSamplePoint(t: $0, bpm: 130) }
         let d = CardioMinuteAccumulator.summarize(duration: duration, samples: dense, profile: profile)
         XCTAssertEqual(d.unclassifiedDuration, 0, accuracy: 1)

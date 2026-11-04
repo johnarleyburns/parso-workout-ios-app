@@ -277,14 +277,18 @@ final class WatchWorkoutManager: NSObject {
             }
             return
         }
+        // Read the durable cardio pause record before clearing it below: the
+        // HealthKit session's wall clock includes manual pauses.
+        let completedCardioDuration = cardioSessionStart == nil ? nil : cardioElapsed
         clearPersistedWorkoutMetadata()
         endStrengthInactivityTracking()
         endCardioInactivityTracking()
         if save {
-            elapsed = effectiveElapsed
+            elapsed = completedCardioDuration ?? effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
             savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate,
-                                               distanceMeters: distanceMeters, hrSamples: currentHRSamplesForSummary)
+                                               distanceMeters: distanceMeters,
+                                               hrSamples: hrRecorder.finalSamples(duration: elapsed))
         }
         let b = builder; let s = session
         hrPollTimer?.invalidate(); hrPollTimer = nil
@@ -345,15 +349,22 @@ final class WatchWorkoutManager: NSObject {
     var cardioElapsed: TimeInterval {
         guard let cardioSessionStart else { return effectiveElapsed }
         if let record = cardioInactivity.record { return record.activeDuration(endedAt: Date()) } // excludes paused time
+        // Swimming and legacy cardio do not have an inactivity record; their
+        // owned session's elapsed tracker is still pause-aware.
+        if cardioOwnsSession { return effectiveElapsed }
         return max(0, Date().timeIntervalSince(cardioSessionStart))
     }
 
-    /// A poll refreshes display/relay and records any new HealthKit sample once.
+    /// A poll is a visible physiological reading, so it must be reflected in
+    /// the saved aggregate and sample history as well as the live display.
     func applyPolledHeartRate(_ bpm: Double, sampleEnd: Date? = nil) {
         guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
         currentBPM = bpm; reconcileWatchStrengthInactivity() // reconcile only; HR is never activity
         reconcileCardioInactivity(); recordCardioHeartRate(bpm, sampleEnd: sampleEnd)
-        recordHeartRateSample(bpm, sampleEnd: sampleEnd)
+        accumulatedHR += bpm
+        hrCount += 1
+        if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
+        recordHeartRateSample(bpm, sampleEnd: sampleEnd, replacingDuplicate: true)
         relayReading(bpm, endingAt: sampleEnd)
     }
 

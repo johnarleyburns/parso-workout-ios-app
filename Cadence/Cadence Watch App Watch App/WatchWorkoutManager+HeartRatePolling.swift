@@ -140,10 +140,11 @@ extension WatchWorkoutManager {
 
     /// Persists a physiological reading exactly once (see `WatchHeartRateSampleRecorder`).
     /// Relay heartbeats/retries never call this.
-    func recordHeartRateSample(_ bpm: Double, sampleEnd: Date?) {
+    func recordHeartRateSample(_ bpm: Double, sampleEnd: Date?, replacingDuplicate: Bool = false) {
         journalHeartRate(bpm, sampleEnd: sampleEnd)
         guard let start = cardioSessionStart ?? sessionStart else { return }
-        hrRecorder.record(bpm: bpm, sampleEnd: sampleEnd, now: Date(), sessionStart: start)
+        hrRecorder.record(bpm: bpm, sampleEnd: sampleEnd, now: Date(), sessionStart: start,
+                          replacingDuplicate: replacingDuplicate)
     }
 
     // MARK: - Watch display refresh

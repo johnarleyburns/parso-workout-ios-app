@@ -30,14 +30,24 @@ public struct WatchHeartRateSampleRecorder: Sendable {
 
     /// Returns true when a new point was persisted.
     @discardableResult
-    public mutating func record(bpm: Double, sampleEnd: Date?, now: Date, sessionStart: Date) -> Bool {
+    public mutating func record(bpm: Double, sampleEnd: Date?, now: Date, sessionStart: Date,
+                                replacingDuplicate: Bool = false) -> Bool {
         observedCount += 1
         guard bpm.isFinite, bpm >= HRSampleNormalizer.minimumBPM, bpm <= HRSampleNormalizer.maximumBPM else { return false }
         let when = sampleEnd ?? now
         let t = max(0, when.timeIntervalSince(sessionStart))
         if let sampleEnd {
             let key = sampleEnd.timeIntervalSince1970
-            guard seenSampleEnds.insert(key).inserted else { duplicateCount += 1; return false }
+            guard seenSampleEnds.insert(key).inserted else {
+                // A poll is the value actually rendered on the Watch. If it races
+                // the builder callback for this timestamp, preserve that value.
+                if replacingDuplicate, let index = samples.lastIndex(where: { $0.t == t }) {
+                    samples[index] = HRSamplePoint(t: t, bpm: bpm)
+                    return true
+                }
+                duplicateCount += 1
+                return false
+            }
         } else if let last = lastBLE {
             let changed = abs(bpm - last.bpm) >= Self.bleChangeThreshold
             guard t - last.t >= Self.bleMinimumInterval || (changed && t - last.t >= 1) else {

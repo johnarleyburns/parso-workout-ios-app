@@ -76,12 +76,7 @@ struct CoachSchedulePreferencesView: View {
             Section {
                 Text("Cardio is tracked as weekly minutes, not days per week.")
                     .font(.footnote).foregroundStyle(.secondary)
-                if let citation = CitationRegistry.citation(forId: "leeWeekendWarrior2022") {
-                    CitationLink(citation: citation, compact: true)
-                }
-                if let citation = CitationRegistry.citation(forId: "ekelundActivityMortality2016") {
-                    CitationLink(citation: citation, compact: true)
-                }
+                CoachSourcesLink(citationIds: ["leeWeekendWarrior2022", "ekelundActivityMortality2016"])
             } header: {
                 Text("Cardio")
             }

@@ -4,13 +4,9 @@ import CadenceFeatures
 
 /// Home Coach-card line surfacing the passive-readiness signal (HRV/sleep/RHR) with
 /// tappable citations. The copy + citation IDs come from `PassiveReadinessPresenter`
-/// (headless, tested); this view only renders them and maps IDs → `CitationLink`.
+/// (headless, tested); this view only renders them via `CoachSourcesLink`.
 struct PassiveReadinessCard: View {
     let display: PassiveReadinessPresenter.Display
-
-    private var citations: [Citation] {
-        display.citationIds.compactMap { CitationRegistry.citation(forId: $0) }
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -29,9 +25,7 @@ struct PassiveReadinessCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let citation = citations.first {
-                CitationLink(citation: citation, compact: true)
-            }
+            CoachSourcesLink(citationIds: display.citationIds, identifier: "coach.passiveReadiness.science")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)

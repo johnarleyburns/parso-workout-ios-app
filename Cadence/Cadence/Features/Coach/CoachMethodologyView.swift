@@ -330,19 +330,9 @@ struct CoachMethodologyView: View {
                 }
             }
 
-            // Render a CitationLink for each cited study
             if !citationIds.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(citationIds, id: \.self) { id in
-                        if let citation = CitationRegistry.citation(forId: id) {
-                            CitationLink(
-                                citation: citation,
-                                context: CitationRegistry.usageReason(forId: id),
-                                compact: false)
-                        }
-                    }
-                }
-                .padding(.leading, 36)
+                CoachSourcesLink(citationIds: citationIds, identifier: "coach.methodology.sources.\(citationIds[0])")
+                    .padding(.leading, 36)
             }
         }
     }

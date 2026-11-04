@@ -5,6 +5,9 @@ import CadenceFeatures
 struct HomeWeekRingsCard: View {
     let dashboard: HomeDashboardState
     let summary: String
+    /// Weekly sets come from the coach snapshot. A placeholder snapshot has
+    /// empty facts and must not be presented as a measured zero.
+    let isStrengthLoading: Bool
 
     private var rings: [WeekRing] {
         WeekRingsPresenter.rings(
@@ -37,7 +40,15 @@ struct HomeWeekRingsCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Open This Week")
             HStack(spacing: 6) {
-                ringButton(rings[0], tint: CadenceTheme.accent)
+                if isStrengthLoading {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, minHeight: 88)
+                        .accessibilityElement(children: .ignore)
+                        .accessibilityLabel("Sets loading")
+                        .accessibilityIdentifier("home.weekRing.sets.loading")
+                } else {
+                    ringButton(rings[0], tint: CadenceTheme.accent)
+                }
                 ringButton(rings[1], tint: cardioTint)
             }
             .frame(maxWidth: .infinity)

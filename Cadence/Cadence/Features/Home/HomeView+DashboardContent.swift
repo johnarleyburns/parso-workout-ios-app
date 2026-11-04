@@ -41,7 +41,8 @@ extension HomeView {
             dashboard: dashboard,
             summary: ThisWeekWorkoutsPresenter.summary(
                 planned: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems).count,
-                done: cachedWeekStrengthEntries.count + cachedWeekCardioEntries.count))
+                done: cachedWeekStrengthEntries.count + cachedWeekCardioEntries.count),
+            isStrengthLoading: !coachSnapshotReady)
     }
 
     private var todayHeroCard: some View {
@@ -157,7 +158,7 @@ extension HomeView {
             weeklyVolumeKgByPerformer: cachedWeeklyVolumeKgByPerformer,
             weeklyVolumePerformers: cachedWeeklyVolumePerformers,
             totalVolumeKg: weeklyVolumeKg,
-            isVolumeLoading: !dashboardActivityReady,
+            isVolumeLoading: !(coachSnapshotReady && dashboardActivityReady),
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,
             onOpenPlanned: { path.append(HomeRoute.plannedWorkoutDetail($0)) },

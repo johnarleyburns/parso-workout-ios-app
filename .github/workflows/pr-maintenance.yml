@@ -41,7 +41,7 @@ jobs:
       TARGET_PR: ${{ inputs.pr_number }}
       QUARANTINED_WORKFLOW_RUN_ID: ${{ vars.CLAUDE_QUARANTINED_WORKFLOW_RUN_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false
@@ -52,7 +52,7 @@ jobs:
           bash "$RUNNER_TEMP/pr-maintenance-runner.sh"
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pr-maintenance-${{ github.run_id }}
           path: /tmp/pr-maintenance-report.json

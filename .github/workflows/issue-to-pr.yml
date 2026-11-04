@@ -56,7 +56,7 @@ jobs:
       ANTHROPIC_MODEL: sonnet
       CLAUDE_MAX_TURNS: ${{ vars.CLAUDE_MAX_TURNS || '1000' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.base_sha }}
           fetch-depth: 0
@@ -78,7 +78,7 @@ jobs:
           exit "${PIPESTATUS[0]}"
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: issue-${{ env.ISSUE }}-validation
           path: /tmp/claude-issue-logs/
@@ -93,5 +93,5 @@ jobs:
       ISSUE: ${{ inputs.issue_number }}
       ATTEMPT: ${{ inputs.attempt_id }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: bash .github/scripts/finalize-issue-intake.sh "${{ needs.implement.result }}" "$ATTEMPT"

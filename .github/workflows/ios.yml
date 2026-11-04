@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 90
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Select supported release Xcode
         run: |
@@ -37,7 +37,7 @@ jobs:
         run: sudo xcodebuild -license accept
 
       - name: Cache SPM
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.swiftpm
@@ -101,7 +101,7 @@ jobs:
     timeout-minutes: 150
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -157,7 +157,7 @@ jobs:
             -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Watch_Widgets_App_Store.mobileprovision"
 
       - name: Cache SPM
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.swiftpm
@@ -288,7 +288,7 @@ jobs:
 
       - name: Retain release dSYMs for crash resolution
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           # BUILD_NUMBER is the same monotonic CFBundleVersion sent to TestFlight.
           name: testflight-dsyms-${{ env.BUILD_NUMBER }}
@@ -326,7 +326,7 @@ jobs:
 
       - name: Upload TestFlight transport diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: testflight-transport-${{ github.run_id }}
           path: ${{ runner.temp }}/testflight-transport.log
@@ -346,7 +346,7 @@ jobs:
 
       - name: Upload archive diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: archive-diagnostics-${{ github.run_id }}
           path: build.log
@@ -390,7 +390,7 @@ jobs:
       issues: write
       actions: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Report deployment outcome
         env:
           GH_TOKEN: ${{ github.token }}

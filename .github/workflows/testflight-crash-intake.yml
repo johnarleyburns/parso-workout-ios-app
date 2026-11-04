@@ -34,7 +34,7 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false

@@ -23,7 +23,7 @@ jobs:
       ASC_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
       ASC_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
           persist-credentials: false

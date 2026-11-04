@@ -35,7 +35,7 @@ jobs:
       CLAUDE_MAX_TURNS: ${{ vars.CLAUDE_MAX_TURNS || '1000' }}
       TARGET_PR: ${{ inputs.pr_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           persist-credentials: false   # the token is passed per git command, never stored for Claude
@@ -56,7 +56,7 @@ jobs:
           bash "$RUNNER_TEMP/pr-conflict-repair-runner.sh"
       - name: Upload logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pr-repair-${{ inputs.pr_number }}-${{ github.run_id }}
           path: /tmp/claude-issue-logs/

@@ -1050,10 +1050,15 @@ public final class WatchStrengthFlowModel {
         Format.weightValue(currentWeight, unit: unit, decimals: 1)
     }
 
+    /// Session length in seconds (0 without a session).
+    public var durationSeconds: TimeInterval {
+        guard let session else { return 0 }
+        return max(0, (session.endedAt ?? Date()).timeIntervalSince(session.date))
+    }
+
     public var durationText: String {
-        guard let session else { return "0:00" }
-        let dur = max(0, (session.endedAt ?? Date()).timeIntervalSince(session.date))
-        let total = Int(dur)
+        guard session != nil else { return "0:00" }
+        let total = Int(durationSeconds)
         return String(format: "%d:%02d", total / 60, total % 60)
     }
 

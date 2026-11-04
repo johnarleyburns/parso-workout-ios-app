@@ -10,6 +10,8 @@ struct WatchHeartRateSection: View {
     @Environment(AppSettings.self) private var watchSettings
 
     let intensityProfile: CardioIntensityProfile
+    /// Real session length; unmeasured time stays unclassified rather than shrinking the session.
+    let sessionDuration: TimeInterval
 
     /// Chart banding only; the minute rows below come solely from `CardioMinuteAccumulator`.
     private var zoneMaxHR: Double {
@@ -64,14 +66,18 @@ struct WatchHeartRateSection: View {
                 if let max = presentation.maximumBPM {
                     row(String(localized: "Max HR"), "\(Int(max.rounded()))")
                 }
-                if let minutes = WatchCardioMinutesSummary.make(
-                    hrSamples: hrSamples,
-                    sessionDuration: hrSamples.map(\.t).max() ?? 0,
-                    profile: intensityProfile) {
+                let summary = WatchStrengthHRCoverage.summary(
+                    samples: hrSamples, duration: sessionDuration, profile: intensityProfile)
+                if let minutes = WatchCardioMinutesSummary.make(summary: summary) {
                     row(String(localized: "Below moderate"), CardioMinutesDisplay.zone(minutes.belowModerateMinutes))
                     row(String(localized: "Moderate"), CardioMinutesDisplay.zone(minutes.moderateMinutes))
                     row(String(localized: "Vigorous"), CardioMinutesDisplay.zone(minutes.vigorousMinutes))
                     row(String(localized: "Cardio minutes"), CardioMinutesDisplay.zone(minutes.totalMinutes))
+                }
+                if let note = WatchStrengthHRCoverage.unclassifiedNote(summary: summary) {
+                    Text(note).font(.caption2).foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityIdentifier("watchSummary.hrUnclassified")
                 }
             }
         }

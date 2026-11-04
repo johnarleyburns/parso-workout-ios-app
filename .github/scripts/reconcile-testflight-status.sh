@@ -162,11 +162,31 @@ reconcile_issue() {
   else
     gh issue comment "$issue" --repo "$repo" --body "$availability" >/dev/null
   fi
+
+  # A VALID TestFlight build is the delivery boundary: the implementation is
+  # believed complete and human device QA is now the remaining gate.  Keep the
+  # issue's TestFlight labels/comments on the closed issue so a human can
+  # report the exact build.  `admit-one-stranded-issue.sh` reopens closed issues
+  # marked `qa-failed`, so this does not hide a failed device check.
+  if [[ "$status" == Apple\ processing\ completed* ]]; then
+    issue_state=$(gh issue view "$issue" --repo "$repo" --json state --jq .state)
+    if [[ "$issue_state" == OPEN ]]; then
+      gh issue close "$issue" --repo "$repo" --reason completed --comment \
+        "Closed automatically: TestFlight build $version ($build) is ready for human QA. If device QA fails, add \`qa-failed\` to reopen this issue for repair." >/dev/null
+      echo "Closed #$issue: TestFlight build is ready for human QA"
+    fi
+  fi
   echo "Reconciled #$issue: $status"
 }
 
 if [[ -n "$only_issue" ]]; then
   reconcile_issue "$only_issue"
 else
-  while IFS= read -r issue; do reconcile_issue "$issue"; done < <(gh issue list --repo "$repo" --state open --limit 1000 --json number --jq '.[].number')
+  # Keep reconciling closed issues that still carry TestFlight state.  A user
+  # may close an uploaded build before Apple has finished processing it; that
+  # must not prevent its durable availability record from reaching ready-for-QA.
+  while IFS= read -r issue; do reconcile_issue "$issue"; done < <(
+    gh issue list --repo "$repo" --state all --limit 1000 --json number,labels --jq \
+      '.[] | select(any(.labels[]?.name; startswith("testflight-"))) | .number'
+  )
 fi

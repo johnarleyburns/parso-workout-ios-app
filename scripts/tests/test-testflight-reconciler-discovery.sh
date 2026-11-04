@@ -16,5 +16,15 @@ marker=$(grep -hE '<!-- testflight-delivery:[^:]+:[^:]+:[^ ]+ -->' "$fixture" | 
 [[ "$marker" == '<!-- testflight-delivery:guru.parso.example:1.2.4:457 -->' ]]
 grep -Fq 'delivery=$(grep -hE' "$script"
 ! grep -Fq 'delivery=$(rg ' "$script"
-grep -Fq 'gh issue list --repo "$repo" --state open --limit 1000' "$script"
-echo "TestFlight reconciler discovery: passed"
+# A closed issue may still be waiting for Apple processing.  It must remain in
+# the reconciliation set so its availability comment/labels become accurate.
+grep -Fq 'gh issue list --repo "$repo" --state all --limit 1000 --json number,labels' "$script"
+grep -Fq 'startswith("testflight-")' "$script"
+
+# Apple VALID is the delivery boundary.  The issue closes only after the
+# reconciler has recorded availability, and the human `qa-failed` repair path
+# remains explicit in the auto-close comment.
+grep -Fq 'if [[ "$status" == Apple\ processing\ completed* ]]; then' "$script"
+grep -Fq 'gh issue close "$issue" --repo "$repo" --reason completed' "$script"
+grep -Fq 'add \`qa-failed\` to reopen this issue for repair' "$script"
+echo "TestFlight reconciler discovery and auto-close policy: passed"

@@ -60,7 +60,9 @@ jobs:
         run: bash scripts/test-check-owned-warnings.sh
 
       - name: Check TestFlight reporting fixture
-        run: bash scripts/tests/test-testflight-delivery-body.sh
+        run: |
+          bash scripts/tests/test-testflight-delivery-body.sh
+          bash scripts/tests/test-testflight-reconciler-discovery.sh
 
       - name: Test-pyramid guardrail
         run: bash scripts/check-test-pyramid.sh

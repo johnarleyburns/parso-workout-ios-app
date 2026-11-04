@@ -165,9 +165,9 @@ struct HomeView: View {
                                            goal: settings.trainingGoal,
                                            experience: settings.experienceLevel,
                                            userAge: settings.userAge,
-                                           liveVolumeDelta: liveVolumeDelta,
-                                           weeklyCardio: cachedWeeklyCardio,
-                                           activityDose: cachedWeeklyActivityDose)
+                                           liveVolumeDelta: liveVolumeDelta, weeklyCardio: cachedWeeklyCardio,
+                                           activityDose: cachedWeeklyActivityDose,
+                                           restoredWeeklySetsByMuscle: coachSnapshotReady ? nil : restoredRecommendation?.weeklySetsByMuscle)
     }
 
     func savePlatformSnapshot(for dashboard: HomeDashboardState) {

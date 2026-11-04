@@ -342,4 +342,22 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(summary(age: 30, override: nil), summary(age: 30, override: nil))
         XCTAssertNotNil(context)
     }
+
+    func testRestoredWeeklySetsByMuscleOverridesEmptyPlaceholderSnapshot() {
+        let emptySnapshot = CoachSnapshotBuilder.build(
+            sessions: [], cardio: [], assessments: [], hasPainToday: false,
+            goal: .strength, experience: .intermediate, formula: .epley,
+            schedulePreferences: .default, profile: .empty)
+        let restored = HomeDashboardPresenter.make(
+            snapshot: emptySnapshot, schedule: .default, goal: .strength,
+            experience: .intermediate, userAge: nil,
+            restoredWeeklySetsByMuscle: ["chest": 9, "biceps": 3])
+        XCTAssertEqual(restored.strength.completed, 12)
+        XCTAssertTrue(restored.strength.displayText.contains("12"))
+        XCTAssertEqual(restored.volume.first { $0.group == .chest }?.sets, 9)
+        let unrestored = HomeDashboardPresenter.make(
+            snapshot: emptySnapshot, schedule: .default, goal: .strength,
+            experience: .intermediate, userAge: nil)
+        XCTAssertEqual(unrestored.strength.completed, 0)
+    }
 }

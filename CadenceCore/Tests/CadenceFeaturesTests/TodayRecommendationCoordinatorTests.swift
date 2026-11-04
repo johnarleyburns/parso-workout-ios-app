@@ -32,7 +32,8 @@ final class TodayRecommendationCoordinatorTests: XCTestCase {
         TodayRecommendationPayload(
             hero: TodayHero(kind: .suggested, title: t, estimatedMinutes: 30,
                             exercises: [.init(name: "Squat", detail: "5x5")], reason: nil, citationIDs: []),
-            primaryIsStrength: true)
+            primaryIsStrength: true,
+            weeklySetsByMuscle: ["quadriceps": 5])
     }
     private func fp(day: String = "d", sessions: String = "s", goal: TrainingGoal = .strength,
                     experience: ExperienceLevel = .intermediate, readiness: String = "r",
@@ -234,7 +235,8 @@ final class TodayRecommendationCoordinatorTests: XCTestCase {
         let old = url()
         let json = """
         {"schemaVersion":0,"dayKey":"x","fingerprint":"f","passiveStamp":"p","updatedAt":0,
-         "payload":{"isRest":false,"primaryIsStrength":true,"title":"t","exercises":[],"citationIDs":[]}}
+         "payload":{"isRest":false,"primaryIsStrength":true,"title":"t","exercises":[],"citationIDs":[],
+         "weeklySetsByMuscle":{}}}
         """
         try? Data(json.utf8).write(to: old)
         let c2 = make(rec: old, plan: plan)

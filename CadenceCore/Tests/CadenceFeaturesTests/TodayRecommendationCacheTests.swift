@@ -40,6 +40,50 @@ final class TodayRecommendationCacheTests: XCTestCase {
             cardioMaximumHROverride: hr, overrideWeekKey: override, passiveSamples: samples)
     }
 
+    private func rows() -> [TodayRecommendationPayload.DailyRowDTO] {
+        [.init(modality: .strength, title: "Push", estimatedMinutes: 45,
+               exercises: [.init(name: "Bench", detail: "3 × 8")], reason: "r",
+               citationIDs: ["c1"], companionState: "Solo"),
+         .init(modality: .cardio, title: "Zone 2", estimatedMinutes: 30)]
+    }
+
+    func testDualRowsRoundTripAndLegacyDecodes() async throws {
+        var p = payload()
+        p = TodayRecommendationPayload(
+            hero: p.makeHero(), primaryIsStrength: true, weeklySetsByMuscle: [:], dailyRows: rows())
+        let back = try JSONDecoder().decode(TodayRecommendationPayload.self,
+                                            from: JSONEncoder().encode(p))
+        XCTAssertEqual(back.dailyRows, rows())
+        // Legacy JSON without the key.
+        var obj = try JSONSerialization.jsonObject(with: JSONEncoder().encode(p)) as! [String: Any]
+        obj.removeValue(forKey: "dailyRows")
+        let legacy = try JSONDecoder().decode(TodayRecommendationPayload.self,
+                                              from: JSONSerialization.data(withJSONObject: obj))
+        XCTAssertNil(legacy.dailyRows)
+        XCTAssertEqual(legacy.makeHero().title, "Push Day")
+    }
+
+    func testRestoredRowsNotActionableUntilLive() async {
+        let r = rows()
+        let restored = TodayDailyRowsPresenter.rows(restored: r, live: nil, liveSessionModalities: [])
+        XCTAssertEqual(restored.count, 2)
+        XCTAssertTrue(restored.allSatisfy { !$0.isActionable })
+        let live = TodayDailyRowsPresenter.rows(restored: r, live: [r[0]], liveSessionModalities: [.strength])
+        XCTAssertEqual(live.map(\.id), ["strength"])
+        XCTAssertTrue(live[0].isActionable)
+    }
+
+    func testFingerprintMismatchDoesNotExposeRows() async {
+        let u = url(); defer { try? FileManager.default.removeItem(at: u) }
+        let fixed = self.fixed
+        let s = TodayRecommendationCacheStore(fileURL: u, calendar: cal, now: { fixed })
+        let p = TodayRecommendationPayload(hero: payload().makeHero(), primaryIsStrength: true,
+                                           weeklySetsByMuscle: [:], dailyRows: rows())
+        await s.save(p, fingerprint: fp().fingerprint, passiveStamp: "")
+        let miss = await s.restore(fingerprint: fp(sessions: "other").fingerprint)
+        XCTAssertNil(miss)
+    }
+
     func testRestartRestoresFromDisk() async {
         let fixed = self.fixed
         let u = url(); defer { try? FileManager.default.removeItem(at: u) }

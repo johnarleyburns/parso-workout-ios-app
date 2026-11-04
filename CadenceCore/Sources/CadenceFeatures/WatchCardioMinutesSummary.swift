@@ -10,16 +10,24 @@ public struct WatchCardioMinutesSummary: Equatable, Sendable {
     public let vigorousMinutes: Double
     public let totalMinutes: Double
 
-    public static func make(hrSamples: [HRSamplePoint], maxHR: Double) -> WatchCardioMinutesSummary? {
-        guard hrSamples.count >= 2, let last = hrSamples.map(\.t).max(), last > 0 else { return nil }
-        let session = CardioZoneAggregator.Session(
-            modality: .other, intensity: .easy, durationMinutes: last / 60,
-            hrSamples: hrSamples.map { .init(t: $0.t, bpm: $0.bpm) })
-        let profile = CardioZoneAggregator.intensityProfile(for: session, maxHR: maxHR)
-        guard profile.totalMinutes > 0 else { return nil }
-        return WatchCardioMinutesSummary(belowModerateMinutes: profile.easyMinutes,
-                                         moderateMinutes: profile.moderateMinutes,
-                                         vigorousMinutes: profile.vigorousMinutes,
-                                         totalMinutes: profile.totalMinutes)
+    /// Minutes come solely from the shared phone classifier; unmeasured time stays unclassified
+    /// (so `totalMinutes` is the classified time, never the full session).
+    public static func make(
+        hrSamples: [HRSamplePoint],
+        sessionDuration: TimeInterval,
+        profile: CardioIntensityProfile
+    ) -> WatchCardioMinutesSummary? {
+        guard hrSamples.count >= 2 else { return nil }
+        let summary = CardioMinuteAccumulator.summarize(
+            duration: sessionDuration,
+            samples: hrSamples,
+            profile: profile
+        )
+        guard summary.classifiedDuration > 0 else { return nil }
+        return WatchCardioMinutesSummary(
+            belowModerateMinutes: summary.belowModerateDuration / 60,
+            moderateMinutes: summary.moderateDuration / 60,
+            vigorousMinutes: summary.vigorousDuration / 60,
+            totalMinutes: summary.classifiedDuration / 60)
     }
 }

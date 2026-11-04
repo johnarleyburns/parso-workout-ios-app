@@ -10,6 +10,7 @@ struct WatchCardioSummaryView: View {
     let onSave: () -> Void
     let onDiscard: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchSettings
 
     var body: some View {
         ScrollView {
@@ -18,7 +19,11 @@ struct WatchCardioSummaryView: View {
                 .font(.system(size: 28)).foregroundStyle(.green)
 
             summaryRow(String(localized: "Total"), formatTime(summary.duration))
-            WatchHeartRateSection(hrSamples: summary.hrSamples)
+            WatchHeartRateSection(
+                hrSamples: summary.hrSamples,
+                intensityProfile: CardioIntensityProfile.resolved(
+                    userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
+                    age: watchSettings.userAge))
                 .padding(.horizontal, 20)
             if summary.distanceMeters > 0 {
                 summaryRow(String(localized: "Distance"), isSwim ? String(format: "%.0f m", summary.distanceMeters) : metrics.formatDistance())

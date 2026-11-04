@@ -9,10 +9,11 @@ struct WatchHeartRateSection: View {
     let hrSamples: [HRSamplePoint]
     @Environment(AppSettings.self) private var watchSettings
 
+    let intensityProfile: CardioIntensityProfile
+
+    /// Chart banding only; the minute rows below come solely from `CardioMinuteAccumulator`.
     private var zoneMaxHR: Double {
-        CardioIntensityProfile.resolved(userEnteredMaximumHR: watchSettings.cardioMaximumHROverride,
-                                        age: watchSettings.userAge).maximumHR
-            ?? CardioMath.defaultMaxHR(age: watchSettings.userAge)
+        intensityProfile.maximumHR ?? CardioMath.defaultMaxHR(age: watchSettings.userAge)
     }
 
     private func zoneColor(_ tint: HRZoneTint) -> Color {
@@ -63,7 +64,10 @@ struct WatchHeartRateSection: View {
                 if let max = presentation.maximumBPM {
                     row(String(localized: "Max HR"), "\(Int(max.rounded()))")
                 }
-                if let minutes = WatchCardioMinutesSummary.make(hrSamples: hrSamples, maxHR: zoneMaxHR) {
+                if let minutes = WatchCardioMinutesSummary.make(
+                    hrSamples: hrSamples,
+                    sessionDuration: hrSamples.map(\.t).max() ?? 0,
+                    profile: intensityProfile) {
                     row(String(localized: "Below moderate"), CardioMinutesDisplay.zone(minutes.belowModerateMinutes))
                     row(String(localized: "Moderate"), CardioMinutesDisplay.zone(minutes.moderateMinutes))
                     row(String(localized: "Vigorous"), CardioMinutesDisplay.zone(minutes.vigorousMinutes))

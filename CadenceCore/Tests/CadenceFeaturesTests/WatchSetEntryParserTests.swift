@@ -48,7 +48,8 @@ import CadenceCore
         #expect(WatchSetEntryParser.reps("8.5", locale: us) == .failure(.fractionalReps))
         #expect(WatchSetEntryParser.reps("0", locale: us) == .failure(.outOfRange))
         #expect(WatchSetEntryParser.reps("101", locale: us) == .failure(.outOfRange))
-        #expect(WatchSetEntryParser.reps("eight", locale: us) == .failure(.notANumber))
+        #expect(WatchSetEntryParser.reps("eight", locale: us) == .success(8))
+        #expect(WatchSetEntryParser.reps("about ten", locale: us) == .failure(.notANumber))
         #expect(WatchSetEntryParser.reps("", locale: us) == .failure(.empty))
     }
 

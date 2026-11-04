@@ -24,16 +24,18 @@ enum WatchTone {
 }
 
 /// §3 `MetricField`: one big number with its unit; outlined while it owns the Crown. Tapping it opens
-/// the system text-input UI directly (dictation first on watchOS 11) via `TextFieldLink`.
+/// `WatchNumericEntrySheet`, a numeric-only keypad (never the system keyboard).
 struct WatchMetricField: View {
     let value: String
     let unit: String
     let isFocused: Bool
     let accessibilityName: Text
+    let field: WatchNumericField
     let prompt: Text
     let hint: Text
     let onFocus: () -> Void
     let onSubmit: (String) -> Void
+    @State private var showingEntry = false
 
     private var metricValue: some View {
         Text(value)
@@ -47,7 +49,7 @@ struct WatchMetricField: View {
     }
 
     var body: some View {
-        WatchNativeSetEntryLink(prompt: prompt, onSubmit: onSubmit) {
+        Button { onFocus(); showingEntry = true } label: {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 2) { metricValue; metricUnit }
                 VStack(alignment: .center, spacing: 0) { metricValue; metricUnit }
@@ -61,7 +63,10 @@ struct WatchMetricField: View {
                 .stroke(isFocused ? WatchTone.accent : Color.clear, lineWidth: 1.5))
             .contentShape(Rectangle())
         }
-        .simultaneousGesture(TapGesture().onEnded(onFocus))
+        .buttonStyle(.plain)
+        .sheet(isPresented: $showingEntry) {
+            WatchNumericEntrySheet(field: field, initial: "", title: prompt, submit: onSubmit)
+        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityName)
         .accessibilityValue(Text("\(value) \(unit)"))

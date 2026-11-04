@@ -116,15 +116,17 @@ struct WatchSetKeypadView: View {
     private func fields(_ card: WatchSetCardState) -> some View {
         let weight = WatchMetricField(value: card.weightText, unit: card.unitText, isFocused: focus == .weight,
                                       accessibilityName: Text("Weight"),
-                                      prompt: Text("Say or enter weight in \(card.unitText)"),
-                                      hint: Text("Double-tap to say or enter weight"),
+                                      field: .weight,
+                                      prompt: Text("Enter weight in \(card.unitText)"),
+                                      hint: Text("Double-tap to enter weight"),
                                       onFocus: { focus = .weight },
                                       onSubmit: submitWeight)
             .accessibilityIdentifier("watchWeight.current")
         let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps,
                                     accessibilityName: Text("Reps"),
-                                    prompt: Text("Say or enter reps"),
-                                    hint: Text("Double-tap to say or enter reps"),
+                                    field: .reps,
+                                    prompt: Text("Enter reps"),
+                                    hint: Text("Double-tap to enter reps"),
                                     onFocus: { focus = .reps },
                                     onSubmit: submitReps)
             .accessibilityIdentifier("watchReps.current")

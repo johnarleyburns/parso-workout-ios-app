@@ -47,13 +47,27 @@ public enum WatchWeekRings {
     /// Strength first, then cardio. Cardio uses the 150/300 guideline scale shared with the phone;
     /// strength thresholds come from the phone because they scale with the muscle groups tracked.
     public static func rings(from summary: WatchSync.WeekSummary?) -> [WatchWeekRing] {
-        let summary = summary ?? WatchSync.WeekSummary(
+        rings(baseline: summary, overlays: [], currentWeekKey: "")
+    }
+
+    /// The phone baseline plus any unresolved local overlays for the current week only.
+    /// Overlay targets/minimums never change: only the displayed values grow, so a
+    /// disconnected completion is visible immediately without re-deriving thresholds.
+    public static func rings(
+        baseline: WatchSync.WeekSummary?,
+        overlays: [WatchWeekLocalOverlay],
+        currentWeekKey: String
+    ) -> [WatchWeekRing] {
+        let summary = baseline ?? WatchSync.WeekSummary(
             sets: 0, setsMinimum: 0, setsTarget: 0, cardioMinutes: 0, updatedAt: .distantPast)
         let minimum = summary.setsMinimum > 0 ? summary.setsMinimum : WeeklySetProgress.minimum
         let target = summary.setsTarget > 0 ? summary.setsTarget : WeeklySetProgress.maximum
+        let current = overlays.filter { $0.weekKey == currentWeekKey }
+        let overlaySets = current.reduce(0.0) { $0 + $1.sets }
+        let overlayCardio = current.reduce(0.0) { $0 + $1.moderateEquivalentMinutes }
         return [
-            WatchWeekRing(kind: .strength, value: summary.sets, minimum: minimum, target: target),
-            WatchWeekRing(kind: .cardio, value: summary.cardioMinutes,
+            WatchWeekRing(kind: .strength, value: summary.sets + overlaySets, minimum: minimum, target: target),
+            WatchWeekRing(kind: .cardio, value: summary.cardioMinutes + overlayCardio,
                           minimum: WeeklyCardioProgress.minimum, target: WeeklyCardioProgress.target),
         ]
     }

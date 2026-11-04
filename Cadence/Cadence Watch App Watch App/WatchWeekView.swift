@@ -6,8 +6,12 @@ import CadenceFeatures
 /// sets, inner Cardio minutes — with text labels, so colour is never the only signal.
 struct WatchWeekView: View {
     let summary: WatchSync.WeekSummary?
+    var overlays: [WatchWeekLocalOverlay] = []
+    var currentWeekKey: String = WatchWorkoutManager.currentWeekKey()
 
-    private var rings: [WatchWeekRing] { WatchWeekRings.rings(from: summary) }
+    private var rings: [WatchWeekRing] {
+        WatchWeekRings.rings(baseline: summary, overlays: overlays, currentWeekKey: currentWeekKey)
+    }
 
     var body: some View {
         GeometryReader { proxy in

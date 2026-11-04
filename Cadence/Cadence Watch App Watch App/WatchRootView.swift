@@ -123,7 +123,7 @@ struct WatchRootView: View {
             // Page 1 is Today; swipe left for This Week (HIG: peer pages in a page-style TabView).
             TabView {
                 launcherList
-                WatchWeekView(summary: watchManager.weekSummary)
+                WatchWeekView(summary: watchManager.weekSummary, overlays: watchManager.weekLocalOverlays, currentWeekKey: WatchWorkoutManager.currentWeekKey())
                 WatchMyWorkoutsView(plan: watchManager.todayPlan, cardioHistoryRevision: watchManager.cardioHistoryRevision, distanceUnit: watchAppSettings.distanceUnit)
             }
             .tabViewStyle(.page)

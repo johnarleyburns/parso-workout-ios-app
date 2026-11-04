@@ -28,6 +28,9 @@ extension WatchWorkoutManager {
         guard !pendingCardioCompletions.contains(where: { $0.id == completion.id }) else { return }
         pendingCardioCompletions.append(completion)
         persistPendingCardioCompletions()
+        // Recorded before transport: a disconnected or retrying state shows the
+        // same contribution as a connected one.
+        recordCardioCompletionOverlay(completion)
         flushPendingCardioCompletions()
     }
 
@@ -49,6 +52,7 @@ extension WatchWorkoutManager {
     func acknowledgeCardioCompletion(_ id: UUID) {
         pendingCardioCompletions.removeAll { $0.id == id }
         persistPendingCardioCompletions()
+        acknowledgeWeekOverlay(id: id)
         lastPhoneSyncError = nil
         lastPhoneSyncAt = Date()
         UserDefaults.standard.set(lastPhoneSyncAt, forKey: "watch.lastPhoneSyncAt")

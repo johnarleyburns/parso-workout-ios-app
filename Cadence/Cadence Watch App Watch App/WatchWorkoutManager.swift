@@ -82,6 +82,7 @@ final class WatchWorkoutManager: NSObject {
     @ObservationIgnored var customExerciseApplyTask: Task<Void, Never>?
     @ObservationIgnored var customExerciseApplyingFingerprint: String?
     var pendingCardioCompletions: [WatchCardioCompletion] = []
+    var weekLocalOverlays: [WatchWeekLocalOverlay] = []; @ObservationIgnored let weekOverlayStore = WatchWeekLocalOverlayStore()
     struct SavedWorkoutSummary {
         let duration: TimeInterval, avgHR: Double?, maxHR: Double?, distanceMeters: Double
         let hrSamples: [HRSamplePoint]
@@ -181,7 +182,7 @@ final class WatchWorkoutManager: NSObject {
         self.uiTestMode = uiTestMode
         self.healthAuthorizationGateActive = WatchHealthAuthorizationGate.initialGateActive()
         super.init()
-        pendingCardioCompletions = Self.loadPendingCardioCompletions()
+        pendingCardioCompletions = Self.loadPendingCardioCompletions(); refreshWeekLocalOverlays()
         startCoachSuggestionLifecycle()
     }
 

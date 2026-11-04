@@ -114,6 +114,11 @@ extension WatchWorkoutManager: WCSessionDelegate {
             acknowledgeCardioCompletion(id)
             return ["ack": true]
         }
+        if message["action"] as? String == "strength_completion_ack",
+           let rawID = message["id"] as? String, let id = UUID(uuidString: rawID) {
+            acknowledgeWeekOverlay(id: id)
+            return ["ack": true]
+        }
         guard let rawAction = message[WatchSync.Key.command] as? String,
               let action = WatchHRCommand.Action(rawValue: rawAction) else { return ["ack": false] }
         let command = WatchHRCommand(payload: message)

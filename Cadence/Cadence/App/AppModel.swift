@@ -1901,6 +1901,15 @@ extension AppModel {
                         }
                     } catch { return false }
                 }
+                // Narrow ack carrying only the stable completion ID, mirroring
+                // cardio_completion_ack, so the Watch can remove its matching
+                // local overlay without a second weekly-total transport channel.
+                if let id = (info[StrengthCompletionKey.completionID] as? String).flatMap(UUID.init(uuidString:)),
+                   let session = wcSession {
+                    let ack: [String: Any] = ["action": "strength_completion_ack", "id": id.uuidString]
+                    session.transferUserInfo(ack)
+                    if session.isReachable { session.sendMessage(ack, replyHandler: nil, errorHandler: nil) }
+                }
                 NotificationCenter.default.post(name: .watchSessionEnded, object: nil)
             default:
                 break

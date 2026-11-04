@@ -50,10 +50,24 @@ struct WatchCoolDownView: View {
 
     private func sendEndSession() {
         guard let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
+        recordStrengthCompletionOverlay(model: model, watchManager: watchManager)
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
         watchManager.strengthCompletionOutbox.flush()
     }
+}
+
+/// Records the Watch-local completion overlay before transport, using the same
+/// stable `completion_id` the `end_session` payload carries and the same
+/// completed-owner-working-set source the phone summary uses, so a disconnected
+/// or retrying state shows the identical contribution.
+private func recordStrengthCompletionOverlay(model: WatchStrengthFlowModel, watchManager: WatchWorkoutManager) {
+    guard let session = model.session,
+          let completionID = session.completionID.flatMap(UUID.init(uuidString:)) else { return }
+    watchManager.recordStrengthCompletionOverlay(
+        completionID: completionID,
+        ownerWorkingSetCount: session.completedOwnerWorkingSetCount,
+        endedAt: session.endedAt ?? Date())
 }
 
 @MainActor
@@ -86,6 +100,7 @@ private final class WatchCooldownTimerController {
     private func sendEndSession(_ model: WatchStrengthFlowModel) {
         guard let watchManager,
               let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
+        recordStrengthCompletionOverlay(model: model, watchManager: watchManager)
         guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(payload)
         watchManager.strengthCompletionOutbox.flush()

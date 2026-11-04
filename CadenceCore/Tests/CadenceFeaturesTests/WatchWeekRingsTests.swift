@@ -37,6 +37,46 @@ final class WatchWeekRingsTests: XCTestCase {
         XCTAssertEqual(rings[1].displayValue, 200)
     }
 
+    func testOverlayAddsToBaselineForCurrentWeekOnly() {
+        let baseline = WatchSync.WeekSummary(sets: 111, setsMinimum: 40, setsTarget: 120,
+                                             cardioMinutes: 76, updatedAt: Date())
+        let overlays = [
+            WatchWeekLocalOverlay(id: UUID(), weekKey: "2026-11-02", kind: .strength,
+                                  sets: 5, completedAt: Date()),
+            WatchWeekLocalOverlay(id: UUID(), weekKey: "2026-11-02", kind: .cardio,
+                                  moderateEquivalentMinutes: 30, completedAt: Date()),
+            // A previous week's unresolved overlay must never leak into the current week.
+            WatchWeekLocalOverlay(id: UUID(), weekKey: "2026-10-26", kind: .strength,
+                                  sets: 99, completedAt: Date()),
+        ]
+        let rings = WatchWeekRings.rings(baseline: baseline, overlays: overlays, currentWeekKey: "2026-11-02")
+        XCTAssertEqual(rings[0].value, 116)
+        XCTAssertEqual(rings[1].value, 106)
+    }
+
+    func testAcknowledgedOverlayIsNotDoubleCountedAgainstTheNewBaseline() {
+        let staleBaseline = WatchSync.WeekSummary(sets: 111, setsMinimum: 40, setsTarget: 120,
+                                                  cardioMinutes: 76, updatedAt: Date())
+        let overlays = [
+            WatchWeekLocalOverlay(id: UUID(), weekKey: "2026-11-02", kind: .strength,
+                                  sets: 5, completedAt: Date()),
+            WatchWeekLocalOverlay(id: UUID(), weekKey: "2026-11-02", kind: .cardio,
+                                  moderateEquivalentMinutes: 30, completedAt: Date()),
+        ]
+        let beforeReconnect = WatchWeekRings.rings(baseline: staleBaseline, overlays: overlays, currentWeekKey: "2026-11-02")
+        XCTAssertEqual(beforeReconnect[0].value, 116)
+        XCTAssertEqual(beforeReconnect[1].value, 106)
+
+        // The phone's new baseline already includes the acknowledged completions;
+        // once acknowledged, the overlay list is empty, so the total must land on
+        // the new baseline exactly — never baseline + overlay (121/136).
+        let freshBaseline = WatchSync.WeekSummary(sets: 116, setsMinimum: 40, setsTarget: 120,
+                                                  cardioMinutes: 106, updatedAt: Date())
+        let afterReconnect = WatchWeekRings.rings(baseline: freshBaseline, overlays: [], currentWeekKey: "2026-11-02")
+        XCTAssertEqual(afterReconnect[0].value, 116)
+        XCTAssertEqual(afterReconnect[1].value, 106)
+    }
+
     func testWeekSummaryContextRoundTrip() {
         let date = Date(timeIntervalSince1970: 1_000)
         let summary = WatchSync.WeekSummary(sets: 12.5, setsMinimum: 40, setsTarget: 120,

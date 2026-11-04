@@ -114,8 +114,7 @@ struct HeartRateRepairSection: View {
                         confirmed: Bool = false, legacy: Bool = false) async {
         isLoading = true
         defer { isLoading = false }
-        let profile = CardioIntensityProfile.resolved(userEnteredMaximumHR: settings.cardioMaximumHROverride,
-                                                      age: settings.userAge)
+        let profile = await appModel.refreshIntensityProfile(settings: settings)
         let outcome = await HeartRateRepair.run(session: session, source: HealthKitHeartRateSource(),
                                                 profile: profile, chosen: chosen, confirmReplacement: confirm,
                                                 confirmed: confirmed, allowLegacyFallback: true,

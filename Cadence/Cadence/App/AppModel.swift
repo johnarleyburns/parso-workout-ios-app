@@ -433,6 +433,32 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Last phone-resolved HRR profile sent to the Watch; the timestamp is kept while content is unchanged.
     private var cachedCardioIntensityProfile: CardioIntensityProfile?
 
+    /// Last Health-derived inputs (resting HR, VO2max) for the shared phone profile. Every
+    /// strength finalization path reads this without waiting on HealthKit.
+    private var intensityHealthSnapshot: (restingHR: Double?, vo2Max: Double?)?
+
+    /// Non-blocking shared profile: last valid Health snapshot plus the current max-HR
+    /// override/age; falls back to the percent-max profile when no snapshot exists.
+    func currentIntensityProfile() -> CardioIntensityProfile {
+        CardioIntensityProfile.resolved(
+            restingHR: intensityHealthSnapshot?.restingHR,
+            userEnteredMaximumHR: _settings?.cardioMaximumHROverride,
+            age: _settings?.userAge, vo2Max: intensityHealthSnapshot?.vo2Max,
+            updatedAt: Date())
+    }
+
+    /// Reads Health and refreshes the snapshot; used ahead of time and by phone-origin paths.
+    func refreshIntensityProfile(settings: AppSettings) async -> CardioIntensityProfile {
+        let passive = await health.passiveReadinessSamples(days: 30)
+        let vo2Max = await health.latestVO2Max()
+        let resting = CardioIntensityProfileProvider.restingHR(from: passive)
+        if resting != nil || vo2Max != nil { intensityHealthSnapshot = (resting, vo2Max) }
+        return CardioIntensityProfileProvider.profile(
+            samples: passive, vo2Max: vo2Max,
+            maximumHROverride: settings.cardioMaximumHROverride,
+            age: settings.userAge, updatedAt: Date())
+    }
+
     /// Last suggestion context published; reused when only its timestamps differ so the
     /// handshake revision does not churn.
     private var cachedSuggestionContext: WatchSingleExerciseSuggestionContext?
@@ -684,6 +710,8 @@ final class AppModel: NSObject, @unchecked Sendable {
                 resolvedProfile = CardioIntensityProfileProvider.profile(
                     samples: passive, vo2Max: vo2, maximumHROverride: hrMaxOverride,
                     age: hrAge, updatedAt: now)
+                let resting = CardioIntensityProfileProvider.restingHR(from: passive)
+                if resting != nil || vo2 != nil { self?.intensityHealthSnapshot = (resting, vo2) }
             } else { resolvedProfile = nil }
             let signpostID = OSSignpostID(log: Self.performanceLog)
             os_signpost(.begin, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
@@ -1473,8 +1501,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         let recorder = PhoneStrengthHeartRateRecorder(session: session, save: { try context.save() })
         for o in observations { recorder.record(make(o.source, o)) }
         guard session.endedAt != nil else { return recorder.flush() }
-        let profile = CardioIntensityProfile.resolved(
-            userEnteredMaximumHR: _settings?.cardioMaximumHROverride, age: _settings?.userAge)
+        let profile = currentIntensityProfile()
         let saved = recorder.finalize(profile: profile)
         if saved { NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil) }
         return saved
@@ -1853,10 +1880,7 @@ extension AppModel {
                 in: ctx,
                 phoneActiveID: _active?.strengthSession?.id,
                 acceptedWatchRoute: acceptedWatchCompletionRoute(for: info),
-                intensityProfile: _settings.map {
-                    CardioIntensityProfile.resolved(userEnteredMaximumHR: $0.cardioMaximumHROverride,
-                                                    age: $0.userAge, updatedAt: Date())
-                }
+                intensityProfile: currentIntensityProfile()
             )
             guard action != .ignored else { return true }
             switch action {

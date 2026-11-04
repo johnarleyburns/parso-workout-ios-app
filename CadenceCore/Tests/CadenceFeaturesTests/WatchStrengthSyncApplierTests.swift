@@ -224,6 +224,92 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         XCTAssertEqual(none.moderateEquivalentMinutes, 0)
     }
 
+    // MARK: - Shared resolved profile (issue #546)
+
+    private func profile6317() -> CardioIntensityProfile {
+        CardioIntensityProfile(restingHR: 63, maximumHR: 173, maximumHRSource: .userEntered)
+    }
+
+    private func watchEnd(_ id: UUID, _ samples: [HRSamplePoint]) -> [String: Any] {
+        ["action": "end_session", "session_id": id.uuidString, "ended_at": 2_000.0,
+         WatchStrengthHeartRate.transportKey: WatchStrengthHeartRate.encode(samples)]
+    }
+
+    private func denseSamples() -> [HRSamplePoint] {
+        (0..<40).map { HRSamplePoint(t: Double($0) * 30, bpm: $0 < 20 ? 111 : 130) }
+    }
+
+    func testWatchEndImportMatchesAccumulatorForResolvedProfile() throws {
+        let id = UUID()
+        let samples = denseSamples()
+        let profile = profile6317()
+        try WatchStrengthSyncApplier.apply(userInfo: watchEnd(id, samples), in: context, intensityProfile: profile)
+        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        let expected = CardioMinuteAccumulator.summarize(
+            duration: max(session.duration, samples.map(\.t).max() ?? 0), samples: samples, profile: profile)
+        let got = try XCTUnwrap(session.intensitySummary)
+        XCTAssertEqual(got, expected)
+        XCTAssertGreaterThan(got.moderateDuration, 0)
+        XCTAssertGreaterThan(got.vigorousDuration, 0)
+    }
+
+    @MainActor func testLateObservationFinalizationMatchesNormalWatchImport() throws {
+        let samples = denseSamples()
+        let profile = profile6317()
+        let id = UUID()
+        let base = Date(timeIntervalSince1970: 1_000_000)
+        let pre = WorkoutSession(title: "Strength", date: base)
+        pre.id = id
+        context.insert(pre)
+        var payload = watchEnd(id, samples)
+        payload["ended_at"] = base.addingTimeInterval(1_200).timeIntervalSince1970
+        try WatchStrengthSyncApplier.apply(userInfo: payload, in: context, intensityProfile: profile)
+        let normal = try XCTUnwrap(fetchSessions().first { $0.id == id })
+
+        let late = WorkoutSession(title: "Strength", date: base)
+        late.endedAt = normal.endedAt
+        context.insert(late)
+        let recorder = PhoneStrengthHeartRateRecorder(session: late, save: { try self.context.save() })
+        for s in samples {
+            recorder.record(HeartRateObservation(source: .watchHealthKit,
+                                                 observedAt: base.addingTimeInterval(s.t), bpm: s.bpm), now: base)
+        }
+        XCTAssertTrue(recorder.finalize(profile: profile))
+        let lateSummary = try XCTUnwrap(late.intensitySummary)
+        let normalSummary = try XCTUnwrap(normal.intensitySummary)
+        XCTAssertGreaterThan(normalSummary.moderateDuration, 0)
+        XCTAssertGreaterThan(normalSummary.vigorousDuration, 0)
+        XCTAssertEqual(lateSummary.moderateDuration, normalSummary.moderateDuration, accuracy: 0.001)
+        XCTAssertEqual(lateSummary.vigorousDuration, normalSummary.vigorousDuration, accuracy: 0.001)
+    }
+
+    func testWatchImportWithoutCachedProfileUsesPercentMaxFallback() throws {
+        let id = UUID()
+        let fallback = CardioIntensityProfile.resolved(userEnteredMaximumHR: nil, age: 35)
+        try WatchStrengthSyncApplier.apply(userInfo: watchEnd(id, denseSamples()), in: context,
+                                           intensityProfile: fallback)
+        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        XCTAssertNotNil(session.intensitySummary)
+        XCTAssertEqual(session.hrSamplePoints.count, 40)
+    }
+
+    @MainActor func testLateFinalizationDoesNotOverwriteManualCardioMinutes() throws {
+        let base = Date()
+        let session = WorkoutSession(title: "Strength", date: base)
+        session.endedAt = base.addingTimeInterval(2_000)
+        context.insert(session)
+        session.setManualCardioMinutes(moderate: 12, vigorous: 3)
+        let manual = session.intensitySummary
+        let recorder = PhoneStrengthHeartRateRecorder(session: session, save: { try self.context.save() })
+        for s in denseSamples() {
+            recorder.record(HeartRateObservation(source: .watchHealthKit,
+                                                 observedAt: base.addingTimeInterval(s.t), bpm: s.bpm), now: base)
+        }
+        XCTAssertTrue(recorder.finalize(profile: profile6317()))
+        XCTAssertTrue(session.hasManualCardioMinutesOverride)
+        XCTAssertEqual(session.intensitySummary, manual)
+    }
+
     func testDeleteSetPayloadRemovesMirroredSet() throws {
         let session = try WorkoutRepository.createSession(title: "Strength", in: context)
         let exercise = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: context)

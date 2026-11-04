@@ -33,7 +33,7 @@ public enum WatchSetEntryParser {
         if let suffix = matching.first(where: { text.hasSuffix($0) }) {
             text = String(text.dropLast(suffix.count)).trimmingCharacters(in: .whitespaces)
         }
-        guard let value = number(text, locale: locale) else {
+        guard let value = number(spokenNormalized(text), locale: locale) else {
             return .failure(text.isEmpty ? .empty : .notANumber)
         }
         guard range.contains(value) else { return .failure(.outOfRange) }
@@ -44,7 +44,7 @@ public enum WatchSetEntryParser {
         -> Result<Int, Failure> {
         let text = normalized(raw)
         guard !text.isEmpty else { return .failure(.empty) }
-        guard let value = number(text, locale: locale) else { return .failure(.notANumber) }
+        guard let value = number(spokenNormalized(text), locale: locale) else { return .failure(.notANumber) }
         guard value == value.rounded() else { return .failure(.fractionalReps) }
         guard value >= Double(range.lowerBound), value <= Double(range.upperBound) else {
             return .failure(.outOfRange)
@@ -70,6 +70,11 @@ public enum WatchSetEntryParser {
     }
 
     // MARK: Helpers
+
+    /// Dictation may return number words; map them to digits before the numeric validation.
+    private static func spokenNormalized(_ text: String) -> String {
+        WatchSpokenNumber.normalize(text) ?? text
+    }
 
     private static func normalized(_ raw: String) -> String {
         raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()

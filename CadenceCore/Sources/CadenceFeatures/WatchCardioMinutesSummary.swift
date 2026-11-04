@@ -18,11 +18,13 @@ public struct WatchCardioMinutesSummary: Equatable, Sendable {
         profile: CardioIntensityProfile
     ) -> WatchCardioMinutesSummary? {
         guard hrSamples.count >= 2 else { return nil }
-        let summary = CardioMinuteAccumulator.summarize(
-            duration: sessionDuration,
-            samples: hrSamples,
-            profile: profile
-        )
+        return make(summary: CardioMinuteAccumulator.summarize(
+            duration: sessionDuration, samples: hrSamples, profile: profile))
+    }
+
+    /// Splits an already-computed shared summary, so callers never summarize twice.
+    public static func make(summary: CardioMinuteSummary?) -> WatchCardioMinutesSummary? {
+        guard let summary else { return nil }
         guard summary.classifiedDuration > 0 else { return nil }
         return WatchCardioMinutesSummary(
             belowModerateMinutes: summary.belowModerateDuration / 60,

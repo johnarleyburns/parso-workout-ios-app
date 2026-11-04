@@ -27,7 +27,8 @@ struct WatchStrengthSummaryView: View {
                     + Text(verbatim: " · \(model.weightValue(model.volume)) \(model.unit.abbreviation)"))
                     .font(.caption2).foregroundStyle(.secondary)
                     .accessibilityLabel(Text("Duration \(model.durationText)") + Text(verbatim: ", ") + Text("\(model.setCount) sets"))
-                WatchHeartRateSection(hrSamples: model.recordedHeartRate, intensityProfile: intensityProfile)
+                WatchHeartRateSection(hrSamples: model.recordedHeartRate, intensityProfile: intensityProfile,
+                                      sessionDuration: model.durationSeconds)
                 hrCoverageRow
                 WatchReceiptRow(title: "Saved on watch", state: receipt.watch)
                 WatchReceiptRow(title: "iPhone", state: receipt.iPhone)
@@ -69,7 +70,7 @@ struct WatchStrengthSummaryView: View {
     private var hrCoverageRow: some View {
         let coverage = WatchStrengthHRCoverage.presentation(
             samples: model.recordedHeartRate,
-            duration: model.recordedHeartRate.map(\.t).max() ?? 0,
+            duration: model.durationSeconds,
             profile: intensityProfile,
             pending: watchManager.strengthCompletionOutbox.failedRecoverably || model.completionHeartRateOmitted)
         return Text(coverage.text).font(.caption2).foregroundStyle(.secondary)

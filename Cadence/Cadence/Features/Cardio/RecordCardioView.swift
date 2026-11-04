@@ -253,10 +253,5 @@ struct RecordCardioView: View {
 /// is stored with the workout so later HealthKit changes do not rewrite history.
 @MainActor
 func cardioIntensityProfile(model: AppModel, settings: AppSettings) async -> CardioIntensityProfile {
-    let passive = await model.health.passiveReadinessSamples(days: 30)
-    let vo2Max = await model.health.latestVO2Max()
-    return CardioIntensityProfileProvider.profile(
-        samples: passive, vo2Max: vo2Max,
-        maximumHROverride: settings.cardioMaximumHROverride,
-        age: settings.userAge, updatedAt: Date())
+    await model.refreshIntensityProfile(settings: settings)
 }

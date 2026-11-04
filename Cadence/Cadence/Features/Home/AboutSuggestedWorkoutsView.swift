@@ -30,16 +30,8 @@ struct AboutSuggestedWorkoutsView: View {
                 }
             }
             Section("Scientific backing") {
-                ForEach(SuggestedWorkoutPresenter.citationIDs, id: \.self) { id in
-                    if let citation = CitationRegistry.citation(forId: id) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(citation.title).font(.caption)
-                            CitationLink(citation: citation, identifier: "suggestedWorkout.about.science.\(id)")
-                        }
-                        .accessibilityElement(children: .contain)
-                        .accessibilityIdentifier("suggestedWorkout.about.science.\(id)")
-                    }
-                }
+                CoachSourcesLink(citationIds: SuggestedWorkoutPresenter.citationIDs,
+                                 identifier: "suggestedWorkout.about.science")
             }
         }
         .navigationTitle("About suggested workouts")

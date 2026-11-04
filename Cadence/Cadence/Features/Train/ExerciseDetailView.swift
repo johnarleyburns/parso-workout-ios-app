@@ -274,11 +274,7 @@ struct ExerciseDetailView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(item.displayName).font(.subheadline.weight(.semibold))
                         Text(item.summary).font(.caption).foregroundStyle(.secondary)
-                        HStack { ForEach(item.citationIDs, id: \.self) { id in
-                            if let citation = CitationRegistry.citation(forId: id) {
-                                CitationLink(citation: citation, compact: true, identifier: "exercise.evidence.\(item.id)")
-                            }
-                        }}
+                        CoachSourcesLink(citationIds: item.citationIDs, identifier: "exercise.evidence.\(item.id)")
                     }
                 }
             }

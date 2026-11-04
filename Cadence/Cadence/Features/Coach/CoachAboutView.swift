@@ -30,14 +30,8 @@ struct CoachAboutView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     row("cross.case", String(localized: "Safety-first guardrails"),
                         String(localized: "Coach references published evidence on exercise-based injury prevention to inform its pain/illness gates, warm-up recommendations, and progressive-overload pacing. It never claims any single exercise or modality prevents all injuries — only that the overall approach is grounded in the evidence."))
-                    ForEach(CitationRegistry.injuryPreventionPool.citationIds.compactMap {
-                        CitationRegistry.citation(forId: $0)
-                    }) { citation in
-                        CitationLink(
-                            citation: citation,
-                            context: CitationRegistry.usageReason(forId: citation.id))
-                    }
-                    .padding(.leading, 36)
+                    CoachSourcesLink(citationIds: CitationRegistry.injuryPreventionPool.citationIds)
+                        .padding(.leading, 36)
                 }
             }
 

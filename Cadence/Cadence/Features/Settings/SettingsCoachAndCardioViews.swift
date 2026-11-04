@@ -123,11 +123,9 @@ struct CardioIntensityScienceView: View {
                 Text("Strength training also induces a cardiorespiratory response. When heart rate is recorded during a strength workout (from a chest strap or your Apple Watch), its minutes are classified with the same heart-rate-reserve rules and added to your weekly cardio minutes and zone totals. Without heart-rate data, a strength workout adds no cardio credit.")
             }
             Section("Sources") {
-                ForEach(["swainLeutholtz1997HRR", "tanakaMaxHR2001", "piercy2018PhysicalActivityGuidelines", "compendium2024AdultPhysicalActivities"] + CardioIntensityPolicy.strengthCardioCitationIDs, id: \.self) { id in
-                    if let citation = CitationRegistry.citation(forId: id) {
-                        CitationLink(citation: citation, compact: true)
-                    }
-                }
+                CoachSourcesLink(
+                    citationIds: ["swainLeutholtz1997HRR", "tanakaMaxHR2001", "piercy2018PhysicalActivityGuidelines", "compendium2024AdultPhysicalActivities"] + CardioIntensityPolicy.strengthCardioCitationIDs,
+                    identifier: "cardioIntensity.science.sources")
             }
         }
         .navigationTitle("Cardio Science")

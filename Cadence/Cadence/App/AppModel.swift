@@ -478,6 +478,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     #if DEBUG
     var cachedTodayPlanForTesting: WatchSync.TodayPlan? { cachedTodayPlan }
+    var cachedWeekSummaryForTesting: WatchSync.WeekSummary? { cachedWeekSummary }
     #endif
 
     func configureWatchSync(settings: AppSettings, container: ModelContainer,

@@ -250,7 +250,7 @@ extension HomeView {
             cachedWeeklyCardio = weeklyCardio
             cachedWeeklyActivityDose = projection.activityDose
             dashboardActivityReady = true
-            cachedDashboard = makeDashboard()
+            publishCachedDashboard()
         } else {
             dashboardActivityReady = true
         }

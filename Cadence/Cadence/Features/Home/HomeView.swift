@@ -175,10 +175,7 @@ struct HomeView: View {
             Calendar.current.isDateInToday($0.scheduledDate) && $0.isVisible
         }
         let target = dashboard.volume.filter(\.isTracked).reduce(0.0) { total, _ in total + 12 }
-        model.updateWatchWeekSummary(WatchSync.WeekSummary(
-            sets: dashboard.volume.reduce(0) { $0 + $1.sets },
-            setsMinimum: target / WeeklySetProgress.maximum * WeeklySetProgress.minimum, setsTarget: target,
-            cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes, updatedAt: Date()))
+        model.updateWatchWeekSummary(WatchWeekSummaryPresenter.make(dashboard: dashboard))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(
             dayKey: Self.dayString(),
             planTitle: todayScheduled?.title ?? String(localized: "Recovery day"),
@@ -193,6 +190,14 @@ struct HomeView: View {
                 CadenceWeeklyMuscleSnapshot(id: $0.displayName, sets: $0.sets, target: $0.isTracked ? 12 : 0)
             },
             updatedAt: Date()))
+    }
+    /// Rebuilds and publishes the dashboard together so every refresh path
+    /// (cold launch, coach refresh, activity/cardio refresh, live volume
+    /// change) republishes the Watch weekly baseline the same way.
+    func publishCachedDashboard() {
+        let dashboard = makeDashboard()
+        cachedDashboard = dashboard
+        savePlatformSnapshot(for: dashboard)
     }
     var coachFacts: TrainingFacts { coachSnapshot.facts }
     var coachInsights: [Insight] { coachSnapshot.insights }
@@ -296,7 +301,7 @@ struct HomeView: View {
         coachSnapshot = await buildAndCacheCoachSnapshot()
         coachSnapshotReady = true
         liveVolumeDelta = [:]
-        cachedDashboard = makeDashboard()
+        publishCachedDashboard()
     }
     func handleInsightAction(_ action: Insight.Action) {
         switch action {

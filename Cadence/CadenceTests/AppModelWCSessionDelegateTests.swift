@@ -17,6 +17,22 @@ final class AppModelWCSessionDelegateTests: XCTestCase {
     }
 
     @MainActor
+    func testWeekSummaryUpdateUsesCacheForLaterForegroundSync() {
+        // The reported defect: a successful handshake rendered 0 sets / 0 min
+        // because `savePlatformSnapshot` was not reached from every refresh
+        // path. This pins the AppModel half of the fix — a published summary
+        // is cached so the next application-context build carries it even
+        // without a fresh `workoutVolumeChanged` notification.
+        let model = AppModel()
+        let summary = WatchSync.WeekSummary(sets: 111, setsMinimum: 40, setsTarget: 120,
+                                            cardioMinutes: 76, updatedAt: Date())
+
+        model.updateWatchWeekSummary(summary)
+
+        XCTAssertEqual(model.cachedWeekSummaryForTesting, summary)
+    }
+
+    @MainActor
     func testDurableBatchWithoutActiveCaptureLeavesLiveStateUntouched() {
         let model = AppModel()
         let request = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!

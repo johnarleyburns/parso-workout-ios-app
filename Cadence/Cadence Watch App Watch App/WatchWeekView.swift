@@ -7,7 +7,7 @@ import CadenceFeatures
 struct WatchWeekView: View {
     let summary: WatchSync.WeekSummary?
     var overlays: [WatchWeekLocalOverlay] = []
-    var currentWeekKey: String = WatchWorkoutManager.currentWeekKey()
+    var currentWeekKey: String
 
     private var rings: [WatchWeekRing] {
         WatchWeekRings.rings(baseline: summary, overlays: overlays, currentWeekKey: currentWeekKey)

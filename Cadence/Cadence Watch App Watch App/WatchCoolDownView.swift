@@ -61,6 +61,7 @@ struct WatchCoolDownView: View {
 /// stable `completion_id` the `end_session` payload carries and the same
 /// completed-owner-working-set source the phone summary uses, so a disconnected
 /// or retrying state shows the identical contribution.
+@MainActor
 private func recordStrengthCompletionOverlay(model: WatchStrengthFlowModel, watchManager: WatchWorkoutManager) {
     guard let session = model.session,
           let completionID = session.completionID.flatMap(UUID.init(uuidString:)) else { return }

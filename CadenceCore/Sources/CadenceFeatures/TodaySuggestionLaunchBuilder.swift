@@ -98,7 +98,10 @@ public enum TodaySuggestionLaunchBuilder {
         let key = earlyKey(sessions: sessions, catalogCount: exercises.count,
                            scheduledStamps: stamps, exclusions: exclusions,
                            activeSessionID: activeSessionID, settings: settings)
-        let hasMinimum = sessions.lazy.filter { $0.countsAsStrengthHistory }.prefix(2).count >= 2
+        // Zero history opens the pipeline for the day-one starter hero; exactly one
+        // session stays gated (the `.needsHistory` interstitial).
+        let strengthHistoryCount = sessions.lazy.filter { $0.countsAsStrengthHistory }.prefix(2).count
+        let hasMinimum = strengthHistoryCount == 0 || strengthHistoryCount >= 2
         guard hasMinimum else {
             return TodaySuggestionLaunchSnapshot(earlyKey: key, hasMinimumHistory: false,
                                                  request: nil, scheduledStamps: stamps)

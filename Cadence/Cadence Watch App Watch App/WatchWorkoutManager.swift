@@ -343,20 +343,6 @@ final class WatchWorkoutManager: NSObject {
         else if s.state == .paused { s.resume(); elapsedTracker.resume() }
     }
     var isPaused: Bool { session?.state == .paused }
-    var effectiveElapsed: TimeInterval {
-        guard let sessionStart else { return 0 }
-        return elapsedTracker.elapsed(since: sessionStart)
-    }
-    /// Elapsed time of the cardio session the user is running, independent of
-    /// the shared `HKWorkoutSession` start used for strength heart-rate relay.
-    var cardioElapsed: TimeInterval {
-        guard let cardioSessionStart else { return effectiveElapsed }
-        if let record = cardioInactivity.record { return record.activeDuration(endedAt: Date()) } // excludes paused time
-        // Swimming and legacy cardio do not have an inactivity record; their
-        // owned session's elapsed tracker is still pause-aware.
-        if cardioOwnsSession { return effectiveElapsed }
-        return max(0, Date().timeIntervalSince(cardioSessionStart))
-    }
 
     /// A poll is a visible physiological reading, so it must be reflected in
     /// the saved aggregate and sample history as well as the live display.

@@ -77,6 +77,6 @@ struct CadenceProgressRing: View {
 
 private extension Format {
     static func number(_ value: Double) -> String {
-        value == value.rounded() ? String(Int(value)) : String(format: "%.1f", value)
+        String(Int(value.rounded()))
     }
 }

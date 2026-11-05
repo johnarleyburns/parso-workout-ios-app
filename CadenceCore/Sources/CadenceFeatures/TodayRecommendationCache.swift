@@ -173,7 +173,7 @@ public enum TodayDailyRowsPresenter {
 /// so it is safe to log for device-QA diagnosis.
 public enum TodayCacheOutcome: String, Equatable, Sendable {
     case noFile, corrupt, schemaRejected, dayRejected
-    case provisionalRestore, stableMatch, stableInvalidation
+    case provisionalRestore, staleProvisionalRestore, stableMatch, stableInvalidation
     case writeFailed, invalidated
 }
 
@@ -269,14 +269,30 @@ public actor TodayRecommendationCacheStore {
     }
 
     /// Display eligibility only: never judges the fingerprint, and never deletes
-    /// a record because startup inputs are still settling. Only unusable records
-    /// (corrupt, unsupported schema, wrong local day) are rejected and cleaned up.
+    /// a record because startup inputs are still settling. A record from today,
+    /// or from exactly the previous calendar day, is displayable provisionally —
+    /// this bridges the overnight gap so the first open of a new day is not
+    /// forced to show a loading state (the caller's reconciliation always
+    /// replaces a stale record once the recompute finishes). Older records,
+    /// corrupt files, and unsupported schemas are rejected and cleaned up.
     public func peekDisplayable() -> (record: TodayProvisionalRecord?, outcome: TodayCacheOutcome) {
         guard let env = loadEnvelope() else { return (nil, loadFailure ?? .noFile) }
         guard env.schemaVersion == Self.schemaVersion else { discard(); return (nil, .schemaRejected) }
-        guard env.dayKey == dayKey() else { discard(); return (nil, .dayRejected) }
+        let today = dayKey()
+        guard env.dayKey == today || env.dayKey == previousDayKey() else {
+            discard(); return (nil, .dayRejected)
+        }
+        let outcome: TodayCacheOutcome = env.dayKey == today ? .provisionalRestore : .staleProvisionalRestore
         return (TodayProvisionalRecord(payload: env.payload, fingerprint: env.fingerprint,
-                                       passiveStamp: env.passiveStamp), .provisionalRestore)
+                                       passiveStamp: env.passiveStamp), outcome)
+    }
+
+    /// Same format as `dayKey()`, for exactly one calendar day before `now()`.
+    private func previousDayKey() -> String {
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now()) ?? now()
+        let c = calendar.dateComponents([.year, .month, .day], from: yesterday)
+        return String(format: "%04d-%02d-%02d@%@", c.year ?? 0, c.month ?? 0, c.day ?? 0,
+                      calendar.timeZone.identifier)
     }
 
     @discardableResult

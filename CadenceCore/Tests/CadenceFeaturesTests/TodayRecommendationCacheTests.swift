@@ -112,6 +112,41 @@ final class TodayRecommendationCacheTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: u.path))
     }
 
+    func testPeekDisplayableAcceptsYesterdaysRecordAsStaleProvisional() async {
+        let u = url(); defer { try? FileManager.default.removeItem(at: u) }
+        let clock = Clock(day(5))
+        let s = TodayRecommendationCacheStore(fileURL: u, calendar: cal, now: { clock.date })
+        await s.save(payload(), fingerprint: "f", passiveStamp: "p")
+        clock.date = day(6)
+        let (record, outcome) = await s.peekDisplayable()
+        XCTAssertEqual(record?.payload.title, "Push Day")
+        XCTAssertEqual(outcome, .staleProvisionalRestore)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: u.path),
+                      "a displayable stale record must not be deleted")
+    }
+
+    func testPeekDisplayableRejectsRecordTwoOrMoreDaysOld() async {
+        let u = url(); defer { try? FileManager.default.removeItem(at: u) }
+        let clock = Clock(day(5))
+        let s = TodayRecommendationCacheStore(fileURL: u, calendar: cal, now: { clock.date })
+        await s.save(payload(), fingerprint: "f", passiveStamp: "p")
+        clock.date = day(7)
+        let (record, outcome) = await s.peekDisplayable()
+        XCTAssertNil(record)
+        XCTAssertEqual(outcome, .dayRejected)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: u.path))
+    }
+
+    func testPeekDisplayableStillAcceptsSameDayRecord() async {
+        let fixed = self.fixed
+        let u = url(); defer { try? FileManager.default.removeItem(at: u) }
+        let s = TodayRecommendationCacheStore(fileURL: u, calendar: cal, now: { fixed })
+        await s.save(payload(), fingerprint: "f", passiveStamp: "p")
+        let (record, outcome) = await s.peekDisplayable()
+        XCTAssertEqual(record?.payload.title, "Push Day")
+        XCTAssertEqual(outcome, .provisionalRestore)
+    }
+
     func testWrongFingerprintAndPassiveMismatchDiscard() async {
         let fixed = self.fixed
         let u = url(); defer { try? FileManager.default.removeItem(at: u) }

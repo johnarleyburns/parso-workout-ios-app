@@ -237,7 +237,7 @@ struct HomeTodayHeroCard: View {
 
     private func doneExerciseRows(_ lines: [TodayHero.Line]) -> some View {
         let disclosure = TodayExerciseDisclosure(lines: lines, capacity: doneExerciseCapacity)
-        VStack(spacing: 0) {
+        return VStack(spacing: 0) {
             ForEach(Array(disclosure.visible.enumerated()), id: \.offset) { _, line in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(line.name)

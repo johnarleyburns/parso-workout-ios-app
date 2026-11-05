@@ -137,9 +137,7 @@ extension HomeView {
                                  onEdit: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
                                  onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
                                  onViewSummary: {
-                                     if let row = workoutsTodayRows.first(where: { $0.modality == .strength }) {
-                                         openTodayWorkout(row)
-                                     }
+                                     path.append(HomeRoute.history)
                                  },
                                  onAddSomething: { selectWorkoutPresented = true })
     }

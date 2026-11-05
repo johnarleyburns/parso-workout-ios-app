@@ -124,7 +124,7 @@ struct WatchStrengthView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkTogglePause)) { _ in
             watchManager.recordStrengthMeaningfulActivity(watchManager.isPaused ? .userResume : .userPause)
-            watchManager.togglePause()
+            watchManager.userToggleStrengthPause(origin: .quickTalk)
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkFinish)) { _ in
             finishWorkout()
@@ -307,7 +307,7 @@ struct WatchStrengthView: View {
         CadenceWatchWidgetStore.save(CadenceWatchWidgetState(workoutTitle: title))
         WidgetCenter.shared.reloadTimelines(ofKind: "CadenceWatchSmartStackWidget")
         if watchManager.isActive {
-            if watchManager.isPaused { watchManager.recordStrengthMeaningfulActivity(.userResume); watchManager.togglePause() }
+            if watchManager.isPaused { watchManager.recordStrengthMeaningfulActivity(.userResume); watchManager.userToggleStrengthPause(origin: .userControl) }
         } else {
             watchManager.startWorkout(type: "strength")
         }

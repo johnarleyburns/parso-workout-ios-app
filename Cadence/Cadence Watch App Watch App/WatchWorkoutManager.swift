@@ -155,6 +155,7 @@ final class WatchWorkoutManager: NSObject {
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
     var hrRecorder = WatchHeartRateSampleRecorder()
     var elapsedTracker = ElapsedTimeTracker()
+    var strengthPause = StrengthPauseProvenance()
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -304,6 +305,7 @@ final class WatchWorkoutManager: NSObject {
         heartRateEnabled = true; gpsEnabled = false
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
+        strengthPause.clear()
         if let b {
             b.endCollection(withEnd: endDate) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
         }
@@ -332,22 +334,11 @@ final class WatchWorkoutManager: NSObject {
     func togglePause() {
         guard let s = session else { return }
         if toggleCardioPauseIfTracked(s) { return }
+        if workoutType == "strength" { userToggleStrengthPause(origin: .userControl); return }
         if s.state == .running { s.pause(); elapsedTracker.startPause() }
         else if s.state == .paused { s.resume(); elapsedTracker.resume() }
     }
     var isPaused: Bool { session?.state == .paused }
-    var effectiveElapsed: TimeInterval {
-        guard let sessionStart else { return 0 }
-        return elapsedTracker.elapsed(since: sessionStart)
-    }
-    /// Elapsed time of the cardio session the user is running, independent of
-    /// the shared `HKWorkoutSession` start used for strength heart-rate relay.
-    var cardioElapsed: TimeInterval {
-        guard let cardioSessionStart else { return effectiveElapsed }
-        if let record = cardioInactivity.record { return record.activeDuration(endedAt: Date()) } // excludes paused time
-        return max(0, Date().timeIntervalSince(cardioSessionStart))
-    }
-
     /// A poll refreshes display/relay and records any new HealthKit sample once.
     func applyPolledHeartRate(_ bpm: Double, sampleEnd: Date? = nil) {
         guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
@@ -396,5 +387,4 @@ final class WatchWorkoutManager: NSObject {
 
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
-
 }

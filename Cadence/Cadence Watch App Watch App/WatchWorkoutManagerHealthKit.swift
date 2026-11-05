@@ -28,7 +28,7 @@ extension WatchWorkoutManager: HKWorkoutSessionDelegate {
         let id = ObjectIdentifier(workoutSession)
         Task { @MainActor [weak self] in
             guard let self, self.session.map(ObjectIdentifier.init) == id else { return }
-            self.handleSessionStateChange(toState)
+            self.handleSessionStateChange(toState, from: fromState, date: date)
         }
     }
 

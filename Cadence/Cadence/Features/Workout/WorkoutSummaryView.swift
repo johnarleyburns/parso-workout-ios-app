@@ -67,6 +67,7 @@ struct WorkoutSummaryView: View {
                 }
                 if let coverage = data.hrCoveragePresentation { hrCoverageRow(coverage) }
                 if data.kind == .strength, let repairSession { HeartRateRepairSection(session: repairSession) }
+                if data.kind == .strength, let repairSession { GarminFITExportButton(session: repairSession) }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }

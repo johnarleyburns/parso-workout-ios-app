@@ -485,6 +485,10 @@ public final class WatchStrengthFlowModel {
             currentWeight = weight
         } else if prescribed > 0 {
             currentWeight = prescribed
+        } else if SessionViewModel.isBodyweight(exercise) || SessionViewModel.isNonWeighted(exercise) {
+            // A new bodyweight movement must start as BW, never with the generic
+            // barbell fallback. A previously logged added load still wins above.
+            currentWeight = 0
         } else {
             currentWeight = unit == .pounds ? WorkoutMath.canonical(45, from: .pounds) : 20
         }
@@ -498,6 +502,10 @@ public final class WatchStrengthFlowModel {
     public func goToPartners() { stage = .partners }
 
     public func goBackToHome() { stage = .home }
+
+    /// The movement the rest screen is preparing for. It remains available while
+    /// the stage is `.rest`, unlike `currentExerciseName` which is card-only.
+    public var restExercise: Exercise? { exercisePendingAfterRest }
 
     public func logSet() -> SetEntry? {
         guard case .keypad = stage else { return nil }

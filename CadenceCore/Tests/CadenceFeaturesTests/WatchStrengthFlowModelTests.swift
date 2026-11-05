@@ -70,6 +70,16 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.stage, .home)
     }
 
+    func testNewBodyweightExerciseDefaultsToBodyweightInsteadOfBarbellFallback() {
+        let m = makeModel()
+        m.start(title: "Bodyweight", plannedExerciseNames: ["Push-Up"], createSession: true)
+        guard let pushUp = m.exerciseList.first?.exercise else { return XCTFail("Missing Push-Up") }
+
+        m.startLogSet(for: pushUp)
+
+        XCTAssertEqual(m.currentWeight, 0)
+    }
+
     // MARK: - Add result contract (issue #408)
 
     private struct SaveBoom: Error {}

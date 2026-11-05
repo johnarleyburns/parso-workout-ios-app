@@ -50,6 +50,8 @@ final class WatchSmokeTests: XCTestCase {
                       "Custom setup did not start")
 
         // An empty workout opens on the Plan page.
+        XCTAssertTrue(app.buttons["watchStrength.suggestExercise"].waitForExistence(timeout: 10),
+                      "Plan page did not offer Suggest exercise above Add exercise")
         XCTAssertTrue(app.tapButton("watchStrength.addExercise", scrollAttempts: 2),
                       "Plan page did not offer Add exercise")
         XCTAssertTrue(app.textFields["watchAddExercise.search"].waitForExistence(timeout: 10),

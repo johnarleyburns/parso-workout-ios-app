@@ -75,6 +75,13 @@ extension HomeView {
                       exercises: heroLines(plan), reason: reason,
                       citationIDs: SuggestedWorkoutPresenter.citationIDs)
         } : nil
+        let starter = todaySuggestedPlan.map { plan in
+            TodayHero(kind: .starter, title: plan.title,
+                      estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
+                      exercises: heroLines(plan),
+                      reason: String(localized: "A general starter workout to get your first session going. It personalizes once you've logged a couple of workouts."),
+                      citationIDs: SuggestedWorkoutPresenter.citationIDs)
+        }
         // The personalized generator is intentionally asynchronous and may
         // briefly have no result while the Home card is already rendering.
         // Falling straight through to "Recovery day" made the same Today
@@ -96,6 +103,7 @@ extension HomeView {
         let hero = TodayHeroPresenter.hero(inProgress: inProgress, scheduled: scheduled,
                                            suggested: suggested,
                                            fallbackRecommendation: coachFallback,
+                                           starter: starter,
                                            // Unloaded history must not read as "no history".
                                            completedWorkoutCount: activity.isLoaded ? activity.completedWorkoutCount : max(2, activity.completedWorkoutCount),
                                            completedToday: activity.daySummary(),
@@ -108,11 +116,13 @@ extension HomeView {
         case .needsHistory: String(localized: "Build your history")
         case .restDay: String(localized: "Recovery day")
         case .suggested: String(localized: "Suggested for you")
+        case .starter: String(localized: "Starter workout")
         case .loading: String(localized: "Loading")
         }
+        let showingSuggestedPlan = todaySuggestedPlan != nil && (coachRecommendsStrength || hero.kind == .starter)
         return HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
-                                 rationale: hero.kind == .suggested && coachRecommendsStrength && suggested != nil
+                                 rationale: showingSuggestedPlan
                                     ? todaySuggestedPlan?.recommendationRationale
                                     : hero.reason.map { SuggestedWorkoutRationale(whyWorkout: $0, exercises: []) },
                                  citationIDs: hero.citationIDs,
@@ -127,14 +137,14 @@ extension HomeView {
                                          active.present()
                                      } else if activity.todayScheduled != nil, startTodayScheduledWorkout() {
                                          // Started the scheduled plan.
-                                     } else if coachRecommendsStrength && todaySuggestedPlan != nil {
+                                     } else if showingSuggestedPlan {
                                          openTodaySuggestion()
                                      } else {
                                          launchDecision(coachDecision.primary)
                                      }
                                  },
-                                 onShowAllExercises: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
-                                 onEdit: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
+                                 onShowAllExercises: { if showingSuggestedPlan { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
+                                 onEdit: { if showingSuggestedPlan { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
                                  onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
                                  onViewSummary: {
                                      if let row = workoutsTodayRows.first(where: { $0.modality == .strength }) {

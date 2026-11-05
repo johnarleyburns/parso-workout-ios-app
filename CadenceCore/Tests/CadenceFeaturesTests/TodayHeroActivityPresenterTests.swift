@@ -104,6 +104,7 @@ final class TodayHeroActivityPresenterTests: XCTestCase {
             inProgress: nil, scheduled: snap.todayScheduled?.makeHero(), suggested: nil,
             completedWorkoutCount: snap.completedWorkoutCount, completedToday: snap.daySummary(),
             remainingScheduledToday: snap.remainingScheduledToday)
-        XCTAssertEqual(hero.kind, .needsHistory)
+        // Day-one install: no starter plan yet means the hero is loading, never recovery.
+        XCTAssertEqual(hero.kind, .loading)
     }
 }

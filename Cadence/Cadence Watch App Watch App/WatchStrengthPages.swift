@@ -19,13 +19,19 @@ struct WatchStrengthControlsPage: View {
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(WatchTone.accent)
                 }
+                if watchManager.isPaused, let copy = watchManager.strengthPause.statusCopy {
+                    Text(copy)
+                        .font(.caption2)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("watchStrength.pauseReason")
+                }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     tile(watchManager.isPaused ? "Resume" : "Pause",
                          systemImage: watchManager.isPaused ? "play.fill" : "pause.fill",
                          identifier: "watchStrength.pause") {
                         WatchHaptics.tap()
                         watchManager.recordStrengthMeaningfulActivity(watchManager.isPaused ? .userResume : .userPause)
-                        watchManager.togglePause()
+                        watchManager.userToggleStrengthPause(origin: .userControl)
                     }
                     tile("Finish", systemImage: "checkmark", tint: .red, identifier: "watchStrength.finish", action: onFinish)
                     tile("Water Lock", systemImage: "drop.fill", identifier: "watchStrength.waterLock") {

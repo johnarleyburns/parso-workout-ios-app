@@ -23,19 +23,15 @@ enum WatchTone {
     static let ringGradient = AngularGradient(colors: [accent.opacity(0.55), accent, accentBright], center: .center)
 }
 
-/// §3 `MetricField`: one big number with its unit; outlined while it owns the Crown. Tapping it opens
-/// `WatchNumericEntrySheet`, a numeric-only keypad (never the system keyboard).
+/// §3 `MetricField`: one big number with its unit; outlined while it owns the Crown. Tapping selects
+/// the value, so the visible +/- controls and the Crown always adjust the same number.
 struct WatchMetricField: View {
     let value: String
     let unit: String
     let isFocused: Bool
     let accessibilityName: Text
-    let field: WatchNumericField
-    let prompt: Text
     let hint: Text
     let onFocus: () -> Void
-    let onSubmit: (String) -> Void
-    @State private var showingEntry = false
 
     private var metricValue: some View {
         Text(value)
@@ -58,7 +54,7 @@ struct WatchMetricField: View {
     }
 
     var body: some View {
-        Button { onFocus(); showingEntry = true } label: {
+        Button { onFocus() } label: {
             ViewThatFits(in: .horizontal) {
                 HStack(alignment: .center, spacing: 2) { metricValue; metricUnit }
                 VStack(alignment: .center, spacing: 0) { metricValue; metricUnit }
@@ -73,9 +69,6 @@ struct WatchMetricField: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .sheet(isPresented: $showingEntry) {
-            WatchNumericEntrySheet(field: field, initial: "", title: prompt, submit: onSubmit)
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityName)
         .accessibilityValue(Text("\(value) \(unit)"))

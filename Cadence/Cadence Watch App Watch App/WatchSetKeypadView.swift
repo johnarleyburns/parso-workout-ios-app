@@ -15,9 +15,11 @@ struct WatchSetKeypadView: View {
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var focus: WatchSetCardField = .weight
+    /// The initial step is a common smallest practical plate. People can change it in More;
+    /// both the Crown and visible buttons always use this same step.
+    @State private var weightStep: Double
     @State private var showingMore = false
     @State private var showingLifters = false
-    @State private var entryError: String?
     @State private var holdStartedTalk = false
     @State private var isLogging = false
     @State private var toastLastTime: String?
@@ -25,6 +27,7 @@ struct WatchSetKeypadView: View {
     init(model: WatchStrengthFlowModel, talk: WatchQuickTalkController) {
         self.bindableModel = model
         self.talk = talk
+        self._weightStep = State(initialValue: model.unit == .pounds ? 5 : 2.5)
     }
 
     private var increment: WeightIncrement { WeightIncrement(unit: model.unit) }
@@ -92,18 +95,13 @@ struct WatchSetKeypadView: View {
             .navigationBarTitleDisplayMode(.inline)
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
-                                  by: focus == .weight ? increment.crownDetent : 1,
+                                  by: focus == .weight ? weightStep : 1,
                                   sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
             .sheet(isPresented: $showingMore) {
-                NavigationStack { WatchSetMoreView(model: model, talk: talk) }
+                NavigationStack { WatchSetMoreView(model: model, talk: talk, weightStep: $weightStep) }
             }
             .sheet(isPresented: $showingLifters) {
                 NavigationStack { WatchPartnersView(model: model) }
-            }
-            .alert("Try again", isPresented: Binding(get: { entryError != nil }, set: { if !$0 { entryError = nil } })) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(verbatim: entryError ?? "")
             }
             .accessibilityAction(named: Text("Log set")) { log() }
             .accessibilityAction(named: Text("More")) { showingMore = true }
@@ -116,19 +114,13 @@ struct WatchSetKeypadView: View {
     private func fields(_ card: WatchSetCardState) -> some View {
         let weight = WatchMetricField(value: card.weightText, unit: card.unitText, isFocused: focus == .weight,
                                       accessibilityName: Text("Weight"),
-                                      field: .weight,
-                                      prompt: Text("Enter weight in \(card.unitText)"),
-                                      hint: Text("Double-tap to enter weight"),
-                                      onFocus: { focus = .weight },
-                                      onSubmit: submitWeight)
+                                      hint: Text("Select weight, then use the plus and minus buttons or turn the Digital Crown"),
+                                      onFocus: { focus = .weight })
             .accessibilityIdentifier("watchWeight.current")
         let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps,
                                     accessibilityName: Text("Reps"),
-                                    field: .reps,
-                                    prompt: Text("Enter reps"),
-                                    hint: Text("Double-tap to enter reps"),
-                                    onFocus: { focus = .reps },
-                                    onSubmit: submitReps)
+                                    hint: Text("Select reps, then use the plus and minus buttons or turn the Digital Crown"),
+                                    onFocus: { focus = .reps })
             .accessibilityIdentifier("watchReps.current")
         if card.isNonWeighted {
             VStack(spacing: 4) {
@@ -138,35 +130,59 @@ struct WatchSetKeypadView: View {
                     .frame(maxWidth: .infinity, minHeight: 28)
                     .accessibilityIdentifier("watchSet.nonWeighted")
                 reps
+                adjustmentControls(card)
             }
         } else if WatchSetCardMetricLayout.fields(isAccessibilitySize: dynamicTypeSize >= .accessibility1) == .stacked {
-            VStack(spacing: 4) { weight; reps }
+            VStack(spacing: 4) { weight; reps; adjustmentControls(card) }
         } else {
-            HStack(spacing: 4) { weight; reps }
+            VStack(spacing: 4) { HStack(spacing: 4) { weight; reps }; adjustmentControls(card) }
         }
     }
 
-    /// Direct entry: the binding changes only on a fully valid value; failures leave it untouched.
-    private func submitWeight(_ raw: String) {
-        focus = .weight
-        switch WatchSetEntryParser.weight(raw, unit: model.unit, range: increment.range) {
-        case .success(let entered):
-            bindableModel.currentWeightDisplay = entered
-            WatchHaptics.success()
-        case .failure(let failure):
-            entryError = WatchSetEntryParser.weightMessage(for: failure, unit: model.unit, range: increment.range)
+    /// Apple advises backing a Crown interaction with touch controls. This is deliberately shown
+    /// on the Set Card rather than hidden in More, and changes exactly the focused Crown value.
+    @ViewBuilder
+    private func adjustmentControls(_ card: WatchSetCardState) -> some View {
+        let isWeight = focus == .weight && !card.isNonWeighted
+        let amount = isWeight ? weightStep : 1
+        let label = isWeight ? "Weight" : "Reps"
+        HStack(spacing: 6) {
+            Button { adjustFocusedValue(by: -amount) } label: {
+                Label("−\(stepText(amount))", systemImage: "minus")
+                    .frame(maxWidth: .infinity, minHeight: 36)
+            }
+            .accessibilityLabel("Subtract \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
+            .accessibilityIdentifier(isWeight ? "watchWeight.minus" : "watchReps.minus")
+
+            Text("\(label) · turn Crown")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .frame(minWidth: 64)
+                .accessibilityHidden(true)
+
+            Button { adjustFocusedValue(by: amount) } label: {
+                Label("+\(stepText(amount))", systemImage: "plus")
+                    .frame(maxWidth: .infinity, minHeight: 36)
+            }
+            .accessibilityLabel("Add \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
+            .accessibilityIdentifier(isWeight ? "watchWeight.plus" : "watchReps.plus")
         }
+        .buttonStyle(.bordered)
     }
 
-    private func submitReps(_ raw: String) {
-        focus = .reps
-        switch WatchSetEntryParser.reps(raw) {
-        case .success(let entered):
-            bindableModel.currentReps = Double(entered)
-            WatchHaptics.success()
-        case .failure(let failure):
-            entryError = WatchSetEntryParser.repsMessage(for: failure)
+    private func adjustFocusedValue(by amount: Double) {
+        if focus == .weight && !isCurrentExerciseNonWeighted {
+            bindableModel.currentWeightDisplay = min(increment.range.upperBound,
+                                                      max(increment.range.lowerBound, model.currentWeightDisplay + amount))
+        } else {
+            bindableModel.currentReps = min(100, max(1, model.currentReps + amount))
         }
+        WatchHaptics.tap()
+    }
+
+    private func stepText(_ value: Double) -> String {
+        value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
     }
 
     private var crownBinding: Binding<Double> {
@@ -258,9 +274,12 @@ struct WatchSetKeypadView: View {
 struct WatchSetMoreView: View {
     @Bindable var model: WatchStrengthFlowModel
     let talk: WatchQuickTalkController
+    @Binding var weightStep: Double
     @Environment(\.dismiss) private var dismiss
     @State private var dictation = ""
     @State private var confirmRemove = false
+    @State private var showingExactWeight = false
+    @State private var showingExactReps = false
 
     var body: some View {
         List {
@@ -270,9 +289,18 @@ struct WatchSetMoreView: View {
             .accessibilityIdentifier("watchSet.warmup")
 
             if !isCurrentExerciseNonWeighted {
-                WatchWeightAdjustSection(value: $model.currentWeightDisplay, unit: model.unit)
+                WatchWeightAdjustSection(value: $model.currentWeightDisplay, unit: model.unit, plate: $weightStep)
             }
             WatchRepsAdjustSection(value: $model.currentReps)
+
+            Section("Exact value") {
+                if !isCurrentExerciseNonWeighted {
+                    Button("Enter exact weight") { showingExactWeight = true }
+                        .accessibilityIdentifier("watchWeight.exactEntry")
+                }
+                Button("Enter exact reps") { showingExactReps = true }
+                    .accessibilityIdentifier("watchReps.exactEntry")
+            }
 
             if !model.currentWorkoutHistoryLines.isEmpty {
                 Section("This workout") {
@@ -326,6 +354,16 @@ struct WatchSetMoreView: View {
             }
         }
         .navigationTitle("More")
+        .sheet(isPresented: $showingExactWeight) {
+            WatchNumericEntrySheet(field: .weight, initial: "", title: Text("Enter weight in \(model.unit.abbreviation)")) { raw in
+                applyExactWeight(raw)
+            }
+        }
+        .sheet(isPresented: $showingExactReps) {
+            WatchNumericEntrySheet(field: .reps, initial: "", title: Text("Enter reps")) { raw in
+                applyExactReps(raw)
+            }
+        }
         .alert("Remove \(removableExercise?.name ?? "")?", isPresented: $confirmRemove, presenting: removableExercise) { exercise in
             Button("Remove", role: .destructive) {
                 WatchHaptics.delete()
@@ -348,6 +386,21 @@ struct WatchSetMoreView: View {
     private var removableExercise: Exercise? {
         if case .keypad(let exercise) = model.stage { return exercise }
         return nil
+    }
+
+    private func applyExactWeight(_ raw: String) {
+        let increment = WeightIncrement(unit: model.unit)
+        if case .success(let value) = WatchSetEntryParser.weight(raw, unit: model.unit, range: increment.range) {
+            model.currentWeightDisplay = value
+            WatchHaptics.success()
+        }
+    }
+
+    private func applyExactReps(_ raw: String) {
+        if case .success(let value) = WatchSetEntryParser.reps(raw) {
+            model.currentReps = Double(value)
+            WatchHaptics.success()
+        }
     }
 
 }

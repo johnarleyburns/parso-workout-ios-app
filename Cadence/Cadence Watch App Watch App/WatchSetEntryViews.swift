@@ -63,15 +63,13 @@ struct WatchNumericEntrySheet: View {
 struct WatchWeightAdjustSection: View {
     @Binding var value: Double
     let unit: MeasurementUnitPreference
-    @State private var plate: Double
+    @Binding var plate: Double
     @State private var plateStepPicker = false
 
-    init(value: Binding<Double>, unit: MeasurementUnitPreference) {
+    init(value: Binding<Double>, unit: MeasurementUnitPreference, plate: Binding<Double>) {
         self._value = value
         self.unit = unit
-        let increment = WeightIncrement(unit: unit)
-        self._plate = State(initialValue: increment.plateOptions.filter { $0 >= (unit == .pounds ? 5 : 2.5) }.min()
-            ?? increment.plateOptions.min() ?? 2.5)
+        self._plate = plate
     }
 
     private var increment: WeightIncrement { WeightIncrement(unit: unit) }

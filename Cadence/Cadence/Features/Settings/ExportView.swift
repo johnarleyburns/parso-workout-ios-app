@@ -107,6 +107,8 @@ struct ExportView: View {
             } footer: {
                 Text("Choose a Cladiron backup (.json.gz or .json), or a FIT activity file. JSON restores the complete backup; FIT imports cardio activity data and merges it with your existing history.")
             }
+
+            GarminFITImportSection { rebuild() }
         }
         .navigationTitle("Export")
         .navigationBarTitleDisplayMode(.inline)

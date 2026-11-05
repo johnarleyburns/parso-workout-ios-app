@@ -148,3 +148,9 @@ Run `ruby scripts/tests/test-testflight-crash-intake.rb` for collector regressio
 The workflow uses existing App Store Connect and owner workflow-token secrets.
 Missing logs/symbols remain held and retry hourly; Apple feedback is not a complete
 feed of every dashboard crash. Only the owner closes repair issues after device QA.
+
+## Garmin FIT import/export
+
+Completed strength workouts export as a Garmin-valid `.fit` Activity (standard File Id/Session/Lap/Event messages) plus a DB++ developer-field sidecar carrying the exact workout, via `FreeExerciseDBPlusPlusFIT` v1.18.2. Everything runs on-device; no Garmin account, network, or telemetry.
+
+Compatibility contract: re-importing a Cladiron-exported file restores the workout losslessly and atomically (duplicates can be cancelled, kept as a traceable copy, or replaced). A FIT file **without** the sidecar (e.g. a native Garmin recording) is never guessed into a strength workout — strict import reports that the sidecar is required and writes nothing. FIT timestamps are whole seconds, so sub-second precision is not preserved.

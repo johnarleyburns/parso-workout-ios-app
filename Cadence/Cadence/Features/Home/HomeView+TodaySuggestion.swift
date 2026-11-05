@@ -31,7 +31,7 @@ extension HomeView {
         // A valid same-day durable plan is restored before any generation.
         if let restored = await HomeTodayCache.suggestionStore.restoreEarly(earlyKey: earlyKey) {
             guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
-            if todaySuggestedPlan == nil { todaySuggestedPlan = restored.makePlan() }
+            applyOrHoldTodaySuggestion(restored)
             todaySuggestionRenderedKey = earlyKey
             return
         }
@@ -98,7 +98,7 @@ extension HomeView {
                 guard suggestedWorkoutTask != nil,
                       suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
-                todaySuggestedPlan = payload.makePlan()
+                applyOrHoldTodaySuggestion(payload)
                 todaySuggestionRenderedKey = earlyKey
             }
         }
@@ -111,7 +111,23 @@ extension HomeView {
             return
         }
         todaySuggestedPlan = nil
+        pendingSuggestedWorkoutPlan = nil
         suggestedWorkoutPlan = plan
+    }
+
+    /// Applies a freshly available Today suggestion immediately if nothing is
+    /// shown yet or the content is unchanged; otherwise holds it behind the
+    /// "Created a new workout" banner. The only place that may assign
+    /// `todaySuggestedPlan` from a computed result.
+    func applyOrHoldTodaySuggestion(_ payload: TodaySuggestedPlanPayload) {
+        let displayed = todaySuggestedPlan.map(TodaySuggestedPlanPayload.init)
+        switch TodaySuggestionReplacementGate.decide(displayed: displayed, freshlyComputed: payload) {
+        case .applyImmediately:
+            todaySuggestedPlan = payload.makePlan()
+            pendingSuggestedWorkoutPlan = nil
+        case .holdPending:
+            pendingSuggestedWorkoutPlan = payload.makePlan()
+        }
     }
 }
 

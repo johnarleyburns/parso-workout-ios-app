@@ -155,6 +155,7 @@ final class WatchWorkoutManager: NSObject {
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
     var hrRecorder = WatchHeartRateSampleRecorder()
     var elapsedTracker = ElapsedTimeTracker()
+    var strengthPause = StrengthPauseProvenance()
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -308,6 +309,7 @@ final class WatchWorkoutManager: NSObject {
         heartRateEnabled = true; gpsEnabled = false
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
+        strengthPause.clear()
         if let b {
             b.endCollection(withEnd: endDate) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
         }
@@ -336,6 +338,7 @@ final class WatchWorkoutManager: NSObject {
     func togglePause() {
         guard let s = session else { return }
         if toggleCardioPauseIfTracked(s) { return }
+        if workoutType == "strength" { userToggleStrengthPause(origin: .userControl); return }
         if s.state == .running { s.pause(); elapsedTracker.startPause() }
         else if s.state == .paused { s.resume(); elapsedTracker.resume() }
     }
@@ -407,5 +410,4 @@ final class WatchWorkoutManager: NSObject {
 
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
-
 }

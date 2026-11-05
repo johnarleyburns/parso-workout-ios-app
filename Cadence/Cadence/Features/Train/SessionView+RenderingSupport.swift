@@ -224,7 +224,8 @@ extension SessionView {
             tint: .teal,
             idPrefix: "cooldown",
             soundsEnabled: settings.workoutSounds,
-            onFinish: finishCooldown)
+            onFinish: finishCooldown,
+            liveMetric: AnyView(SessionLiveHRBand(sessionID: session.id, showsEmptyState: true)))
     }
 
     @ViewBuilder

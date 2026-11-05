@@ -83,6 +83,47 @@ final class CoachDecisionEngineTests: XCTestCase {
                        "With 0 strength and aerobic met, primary should be strength. Got: \(decision.primary.kind)")
     }
 
+    // MARK: - Daily recommendation slots
+
+    func testDailySlotsBothModalitiesWithoutTwoADays() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let prefs = CoachSchedulePreferences(allowsTwoADays: false)
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+        XCTAssertEqual(decision.dailyRecommendationSlots.map(\.modality), [.strength, .cardio])
+        XCTAssertEqual(decision.dailyRecommendationSlots.filter { !$0.isCompanion }.count <= 1, true)
+        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty)
+        for slot in decision.dailyRecommendationSlots {
+            XCTAssertNotNil(decision.scoreBreakdowns[slot.session.id],
+                            "Slot sessions must come from the scored candidates")
+        }
+    }
+
+    func testDailySlotsFilterCompletedModality() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let strength = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                             primaryMuscles: ["chest"],
+                                             date: now.addingTimeInterval(-2 * 3600))
+        let cardio = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-3600),
+                                     duration: 1800, avgHR: 140)
+        let onlyStrength = CoachDecisionEngine.run(
+            CoachFacts.make(from: [strength], goal: .strength, experience: .intermediate, now: now))
+        XCTAssertFalse(onlyStrength.dailyRecommendationSlots.contains { $0.modality == .strength })
+        let onlyCardio = CoachDecisionEngine.run(
+            CoachFacts.make(from: [cardio], goal: .strength, experience: .intermediate, now: now))
+        XCTAssertFalse(onlyCardio.dailyRecommendationSlots.contains { $0.modality == .cardio })
+        let both = CoachDecisionEngine.run(
+            CoachFacts.make(from: [strength, cardio], goal: .strength, experience: .intermediate, now: now))
+        XCTAssertTrue(both.dailyRecommendationSlots.isEmpty)
+    }
+
+    func testDailySlotsEmptyOnPainConcern() throws {
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: testNow)
+        let decision = CoachDecisionEngine.run(facts, hasPainConcern: true)
+        XCTAssertTrue(decision.dailyRecommendationSlots.isEmpty)
+    }
+
     // MARK: - Pain concern
 
     func testPainConcernBlocksHardTraining() throws {

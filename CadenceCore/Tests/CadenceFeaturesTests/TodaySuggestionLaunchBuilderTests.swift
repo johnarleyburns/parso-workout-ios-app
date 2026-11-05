@@ -69,6 +69,13 @@ final class TodaySuggestionLaunchBuilderTests: XCTestCase {
         XCTAssertNotEqual(base.earlyKey, try Self.build(context, settings: settings()).earlyKey)
     }
 
+    func testZeroHistoryBuildsStarterRequest() throws {
+        let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
+        let snap = try Self.build(context, settings: settings())
+        XCTAssertTrue(snap.hasMinimumHistory)
+        XCTAssertNotNil(snap.request)
+    }
+
     func testTooLittleHistoryHasNoRequest() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         try seed(context, workouts: 1)

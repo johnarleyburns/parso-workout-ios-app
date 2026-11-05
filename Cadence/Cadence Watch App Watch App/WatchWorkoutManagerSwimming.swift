@@ -37,7 +37,21 @@ extension WatchWorkoutManager {
         autoLapCount += 1
     }
 
-    func handleSessionStateChange(_ state: HKWorkoutSessionState) {
+    func handleSessionStateChange(_ state: HKWorkoutSessionState, from: HKWorkoutSessionState? = nil, date: Date = Date()) {
+        if workoutType == "strength" {
+            let kind: StrengthPauseProvenance.HKStateKind
+            switch state {
+            case .running: kind = .running
+            case .paused: kind = .paused
+            case .ended, .stopped: kind = .terminal
+            default: kind = .other
+            }
+            switch strengthPause.healthKitTransition(to: kind, now: date) {
+            case .pause: elapsedTracker.startPause(now: date)
+            case .resume: elapsedTracker.resume(now: date)
+            case .none: break
+            }
+        }
         reconcileWatchStrengthInactivity() // reconcile only; never counts as activity
         reconcileCardioInactivity()
         if state == .running {

@@ -178,6 +178,9 @@ extension WatchWorkoutManager {
             startHeartRatePolling()
             sendHeartRateToPhoneSoon()
             enablePendingSwimWaterLock()
+        } else if recovered.state == .paused, workoutType == "strength" {
+            // Observational only: label the pause as recovered; never resume here.
+            strengthPause.recoveredPaused()
         }
     }
 

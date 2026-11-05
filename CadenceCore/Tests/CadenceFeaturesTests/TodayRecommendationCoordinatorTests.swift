@@ -216,14 +216,28 @@ final class TodayRecommendationCoordinatorTests: XCTestCase {
         XCTAssertEqual(again?.payload.title, "B")
     }
 
-    func testUnusableRecordsFallBackToLoading() async {
-        // wrong day
+    func testOneDayOldRecordDisplaysProvisionallyThenReconcilesOrInvalidates() async {
         let rec = url(), plan = url()
         let day1 = Date(timeIntervalSince1970: 1_800_000_000)
         await seed(make(rec: rec, plan: plan, now: { day1 }), key: fp())
         let nextDay = make(rec: rec, plan: plan, now: { day1.addingTimeInterval(86_400) })
-        let none = await nextDay.restoreProvisional(surface: .today)
-        XCTAssertNil(none); XCTAssertEqual(nextDay.lastOutcome, .dayRejected)
+        let hit = await nextDay.restoreProvisional(surface: .today)
+        XCTAssertEqual(hit?.payload.title, "A")
+        XCTAssertEqual(nextDay.lastOutcome, .staleProvisionalRestore)
+        let today = fp(day: "different-day")
+        XCTAssertFalse(nextDay.reconcileProvisional(stableFingerprint: today.fingerprint,
+                                                     stablePassiveStamp: today.passiveStamp, surface: .today))
+        XCTAssertEqual(nextDay.lastOutcome, .stableInvalidation)
+    }
+
+    func testUnusableRecordsFallBackToLoading() async {
+        // two or more days old: genuinely stale, still rejected
+        let rec = url(), plan = url()
+        let day1 = Date(timeIntervalSince1970: 1_800_000_000)
+        await seed(make(rec: rec, plan: plan, now: { day1 }), key: fp())
+        let twoDaysLater = make(rec: rec, plan: plan, now: { day1.addingTimeInterval(86_400 * 2) })
+        let none = await twoDaysLater.restoreProvisional(surface: .today)
+        XCTAssertNil(none); XCTAssertEqual(twoDaysLater.lastOutcome, .dayRejected)
         // corrupt
         let bad = url()
         try? Data("not json".utf8).write(to: bad)

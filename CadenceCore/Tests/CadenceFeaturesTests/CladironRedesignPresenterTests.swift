@@ -40,6 +40,15 @@ final class CladironRedesignPresenterTests: XCTestCase {
                                                suggested: suggested, completedWorkoutCount: 10).kind, .scheduled)
         XCTAssertEqual(TodayHeroPresenter.hero(inProgress: nil, scheduled: nil,
                                                suggested: suggested, completedWorkoutCount: 1).kind, .needsHistory)
+        let starter = TodayHero(kind: .suggested, title: "Starter")
+        let starterHero = TodayHeroPresenter.hero(inProgress: nil, scheduled: nil, suggested: nil,
+                                                  starter: starter, completedWorkoutCount: 0)
+        XCTAssertEqual(starterHero.kind, .starter)
+        XCTAssertEqual(starterHero.title, "Starter")
+        XCTAssertEqual(TodayHeroPresenter.hero(inProgress: nil, scheduled: nil, suggested: nil,
+                                               starter: nil, completedWorkoutCount: 0).kind, .loading)
+        XCTAssertEqual(TodayHeroPresenter.hero(inProgress: nil, scheduled: nil, suggested: nil,
+                                               starter: starter, completedWorkoutCount: 1).kind, .needsHistory)
         XCTAssertEqual(TodayHeroPresenter.hero(inProgress: nil, scheduled: nil,
                                                suggested: nil, fallbackRecommendation: fallback,
                                                completedWorkoutCount: 10).title, "Coach fallback")

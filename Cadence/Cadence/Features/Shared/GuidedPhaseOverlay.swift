@@ -28,6 +28,10 @@ struct GuidedPhaseOverlay: View {
     var soundsEnabled: Bool = false
     let onFinish: (_ elapsedSeconds: Int) -> Void
     let onSkip: ((_ elapsedSeconds: Int) -> Void)?
+    /// Optional caller-owned live metric (e.g. heart rate), rendered under the
+    /// clock as `<prefix>.liveHR`. The HR source stays at the call site; the
+    /// overlay adds no acquisition of its own.
+    let liveMetric: AnyView?
     @Environment(\.scenePhase) private var scenePhase
 
     private let total: Int
@@ -40,7 +44,9 @@ struct GuidedPhaseOverlay: View {
     init(title: String, minutes: Int, tint: Color = .green,
          idPrefix: String, soundsEnabled: Bool = false,
          onFinish: @escaping (_ elapsedSeconds: Int) -> Void,
-         onSkip: ((_ elapsedSeconds: Int) -> Void)? = nil) {
+         onSkip: ((_ elapsedSeconds: Int) -> Void)? = nil,
+         liveMetric: AnyView? = nil) {
+        self.liveMetric = liveMetric
         self.title = title
         self.minutes = minutes
         self.tint = tint
@@ -77,6 +83,10 @@ struct GuidedPhaseOverlay: View {
                     .scaledSystemFont(96, relativeTo: .largeTitle, weight: .black, design: .rounded)
                     .monospacedDigit().contentTransition(.numericText())
                     .accessibilityIdentifier("\(idPrefix).remaining")
+                if let liveMetric {
+                    liveMetric
+                        .accessibilityIdentifier("\(idPrefix).liveHR")
+                }
                 Spacer()
                 HStack(spacing: 16) {
                     Button {

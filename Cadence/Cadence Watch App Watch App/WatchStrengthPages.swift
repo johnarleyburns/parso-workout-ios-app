@@ -19,13 +19,19 @@ struct WatchStrengthControlsPage: View {
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(WatchTone.accent)
                 }
+                if watchManager.isPaused, let copy = watchManager.strengthPause.statusCopy {
+                    Text(copy)
+                        .font(.caption2)
+                        .multilineTextAlignment(.center)
+                        .accessibilityIdentifier("watchStrength.pauseReason")
+                }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     tile(watchManager.isPaused ? "Resume" : "Pause",
                          systemImage: watchManager.isPaused ? "play.fill" : "pause.fill",
                          identifier: "watchStrength.pause") {
                         WatchHaptics.tap()
                         watchManager.recordStrengthMeaningfulActivity(watchManager.isPaused ? .userResume : .userPause)
-                        watchManager.togglePause()
+                        watchManager.userToggleStrengthPause(origin: .userControl)
                     }
                     tile("Finish", systemImage: "checkmark", tint: .red, identifier: "watchStrength.finish", action: onFinish)
                     tile("Water Lock", systemImage: "drop.fill", identifier: "watchStrength.waterLock") {
@@ -75,11 +81,11 @@ struct WatchHeartPage: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(watchManager.currentBPM.map { "\(Int($0))" } ?? "--")
+            Text(LiveHeartRateDisplay(bpm: watchManager.currentBPM).valueText)
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(WatchTone.heart)
-                .accessibilityLabel(Text("Heart rate \(watchManager.currentBPM.map { "\(Int($0))" } ?? "unknown") beats per minute"))
+                .accessibilityLabel(Text("Heart rate \(LiveHeartRateDisplay(bpm: watchManager.currentBPM).valueText) beats per minute"))
             Text("BPM").font(.caption2).foregroundStyle(.secondary)
             if !isLuminanceReduced {
                 Text(Duration.seconds(watchManager.elapsed).formatted(.time(pattern: .hourMinuteSecond)))

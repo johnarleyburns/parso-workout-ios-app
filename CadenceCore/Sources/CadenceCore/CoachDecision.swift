@@ -495,7 +495,10 @@ public enum CoachDecisionEngine {
 
         return TodayPlanStatus(
             strengthPlannedAtStart: facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups),
-            cardioPlannedAtStart: creditBeforeToday < 150.0,
+            // The two-a-day card uses the weekly target rather than the minimum:
+            // keep offering the paired recommendation until 300 moderate-equivalent
+            // minutes have already been banked before today.
+            cardioPlannedAtStart: creditBeforeToday < 300.0,
             strengthCompleted: todayCompleted.contains(where: \.isStrength),
             cardioCompleted: todayCompleted.contains(where: \.isAerobic)
         )
@@ -809,9 +812,9 @@ public enum CoachDecisionEngine {
     }
 
     /// Builds the list of today's planned-but-uncompleted recommendations.
-    /// Only populates when the user has enabled two-a-days AND both strength and
-    /// cardio are needed. Single-type plans let the scored primary carry the
-    /// recommendation alone.
+    /// Only populates when the user has enabled two-a-days, both modalities are
+    /// needed, and neither has been completed today. Candidate selection remains
+    /// recovery/eligibility filtered by the scored list above.
     private static func buildTodayRecommendations(
         scored: [(session: CoachSession, breakdown: SessionScoreBreakdown)],
         todayCompleted: [TrainingEvent],
@@ -825,9 +828,9 @@ public enum CoachDecisionEngine {
                                         facts: facts,
                                         schedulePreferences: schedulePreferences)
 
-        // Only build when both are needed (a two-a-day) and at least one remains.
+        // A dual list is an up-front plan, never a partial-completion reminder.
         guard todayPlan.wasTwoADayAtStart else { return [] }
-        guard !todayPlan.strengthCompleted || !todayPlan.cardioCompleted else { return [] }
+        guard !todayPlan.strengthCompleted, !todayPlan.cardioCompleted else { return [] }
 
         let bestStrength = scored.first { $0.session.kind == .strength }?.session
         let bestCardio = scored.first { $0.session.isAerobic }?.session

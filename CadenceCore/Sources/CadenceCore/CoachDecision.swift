@@ -18,6 +18,10 @@ public struct CoachDecision: Sendable, Identifiable {
     /// When today's plan includes both strength and cardio, both appear here.
     /// Completed session kinds are filtered out. Empty when plan is complete.
     public let todayPlannedRecommendations: [CoachSession]
+    /// Up to one safe, uncompleted strength and one cardio suggestion, chosen
+    /// from the already-scored candidates. Independent of `allowsTwoADays`:
+    /// this is presentation availability, not a request to train twice.
+    public let dailyRecommendationSlots: [DailyRecommendationSlot]
 
     public init(id: String, generatedAt: Date, primary: CoachSession,
                 alternatives: [CoachSession] = [], deferred: [DeferredCandidate] = [],
@@ -27,7 +31,8 @@ public struct CoachDecision: Sendable, Identifiable {
                 planAdherence: PlanAdherence = .planAhead,
                 todayCompletedMatches: [CoachSession] = [],
                 scoreBreakdowns: [String: SessionScoreBreakdown] = [:],
-                todayPlannedRecommendations: [CoachSession] = []) {
+                todayPlannedRecommendations: [CoachSession] = [],
+                dailyRecommendationSlots: [DailyRecommendationSlot] = []) {
         self.id = id
         self.generatedAt = generatedAt
         self.primary = primary
@@ -42,6 +47,25 @@ public struct CoachDecision: Sendable, Identifiable {
         self.todayCompletedMatches = todayCompletedMatches
         self.scoreBreakdowns = scoreBreakdowns
         self.todayPlannedRecommendations = todayPlannedRecommendations
+        self.dailyRecommendationSlots = dailyRecommendationSlots
+    }
+}
+
+public enum DailyRecommendationModality: String, Sendable, Equatable, CaseIterable {
+    case strength
+    case cardio
+}
+
+public struct DailyRecommendationSlot: Sendable, Equatable, Identifiable {
+    public let modality: DailyRecommendationModality
+    public let session: CoachSession
+    public let isCompanion: Bool
+    public var id: DailyRecommendationModality { modality }
+
+    public init(modality: DailyRecommendationModality, session: CoachSession, isCompanion: Bool) {
+        self.modality = modality
+        self.session = session
+        self.isCompanion = isCompanion
     }
 }
 
@@ -388,7 +412,9 @@ public enum CoachDecisionEngine {
             planAdherence: planState,
             todayCompletedMatches: todayMatches,
             scoreBreakdowns: breakdownMap,
-            todayPlannedRecommendations: todayRecommendations
+            todayPlannedRecommendations: todayRecommendations,
+            dailyRecommendationSlots: buildDailyRecommendationSlots(
+                scored: scored, todayCompleted: todayCompleted, primary: effectivePrimary)
         )
     }
 
@@ -845,6 +871,31 @@ public enum CoachDecisionEngine {
         }
 
         return recommendations
+    }
+
+    /// Picks at most one uncompleted eligible strength and one aerobic candidate
+    /// from `scored` (ordering preserved). Not gated by `allowsTwoADays`.
+    private static func buildDailyRecommendationSlots(
+        scored: [(session: CoachSession, breakdown: SessionScoreBreakdown)],
+        todayCompleted: [TrainingEvent],
+        primary: CoachSession) -> [DailyRecommendationSlot] {
+        let primaryModality: DailyRecommendationModality? = {
+            if primary.kind == .strength { return .strength }
+            if primary.isAerobic { return .cardio }
+            return nil
+        }()
+        var slots: [DailyRecommendationSlot] = []
+        if !todayCompleted.contains(where: { $0.isStrength }),
+           let s = scored.first(where: { $0.session.kind == .strength })?.session {
+            slots.append(DailyRecommendationSlot(modality: .strength, session: s,
+                                                 isCompanion: primaryModality != .strength))
+        }
+        if !todayCompleted.contains(where: { $0.isAerobic }),
+           let c = scored.first(where: { $0.session.isAerobic })?.session {
+            slots.append(DailyRecommendationSlot(modality: .cardio, session: c,
+                                                 isCompanion: primaryModality != .cardio))
+        }
+        return slots
     }
 
     private static func formatRelative(_ date: Date, _ now: Date) -> String {

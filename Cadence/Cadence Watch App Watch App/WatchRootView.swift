@@ -124,7 +124,10 @@ struct WatchRootView: View {
             TabView {
                 launcherList
                 WatchWeekView(summary: watchManager.weekSummary, overlays: watchManager.weekLocalOverlays, currentWeekKey: WatchWorkoutManager.currentWeekKey())
-                WatchMyWorkoutsView(plan: watchManager.todayPlan, cardioHistoryRevision: watchManager.cardioHistoryRevision, distanceUnit: watchAppSettings.distanceUnit)
+                WatchMyWorkoutsView(plan: watchManager.todayPlan,
+                                    pendingCardioCompletions: watchManager.pendingCardioCompletions,
+                                    cardioHistoryRevision: watchManager.cardioHistoryRevision,
+                                    distanceUnit: watchAppSettings.distanceUnit)
             }
             .tabViewStyle(.page)
             .navigationTitle("Cladiron")

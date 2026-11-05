@@ -1838,9 +1838,7 @@ extension AppModel {
               let container = _modelContainer else { return false }
         let ctx = ModelContext(container)
         do {
-            let profile = CardioIntensityProfile.resolved(
-                userEnteredMaximumHR: _settings?.cardioMaximumHROverride,
-                age: _settings?.userAge)
+            let profile = currentIntensityProfile()
             _ = try WorkoutRepository.ingest(completion, profile: profile, in: ctx)
             let ack: [String: Any] = ["action": "cardio_completion_ack", "id": completion.id.uuidString]
             if let session = wcSession {

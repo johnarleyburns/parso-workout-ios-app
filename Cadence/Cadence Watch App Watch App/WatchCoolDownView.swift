@@ -18,6 +18,7 @@ struct WatchCoolDownView: View {
                 Text(formatTime(TimeInterval(model.cooldownTimerModel.remaining)))
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white)
+                WatchLiveHeartRateBadge(bpm: watchManager.currentBPM)
                 HStack(spacing: 16) {
                     Button("+1m") {
                         WatchHaptics.tap()

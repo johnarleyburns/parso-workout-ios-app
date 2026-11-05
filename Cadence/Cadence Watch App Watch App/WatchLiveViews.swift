@@ -178,3 +178,20 @@ extension CardioType {
         }
     }
 }
+
+/// Compact live-HR readout for warm-up and cool-down. Reads the existing
+/// `WatchWorkoutManager.currentBPM`; adds no query, timer, or session.
+struct WatchLiveHeartRateBadge: View {
+    let bpm: Double?
+
+    var body: some View {
+        let display = LiveHeartRateDisplay(bpm: bpm)
+        Label(display.hasSample ? "\(display.valueText) BPM" : "-- BPM", systemImage: "heart.fill")
+            .font(.footnote.monospacedDigit())
+            .foregroundStyle(.white)
+            .accessibilityLabel(display.hasSample
+                ? Text("Heart rate \(display.valueText) beats per minute")
+                : Text("Heart rate unavailable"))
+            .accessibilityIdentifier("watchLiveHeartRateBadge")
+    }
+}

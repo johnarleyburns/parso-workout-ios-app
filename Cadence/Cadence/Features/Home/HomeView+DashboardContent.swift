@@ -63,12 +63,18 @@ extension HomeView {
         // Until history has projected, only a restored recommendation may
         // render; otherwise the hero stays "loading" (never a false recovery
         // or onboarding state).
+        // A recommendation that was rendered from the same-day display cache
+        // is a promise to the person looking at Home. Hydration can update
+        // internal Coach state, but must not silently exchange its modality or
+        // workout beneath them. A later interaction or a new day may choose a
+        // new recommendation deliberately.
+        let pinnedRecommendation = restoredRecommendation
         let recommendationReady = activity.isLoaded
             ? (coachSnapshotReady || restoredRecommendation != nil)
             : restoredRecommendation != nil
-        let coachRecommendsStrength = coachSnapshotReady
+        let coachRecommendsStrength = pinnedRecommendation?.primaryIsStrength ?? (coachSnapshotReady
             ? coachDecision.primary.kind == .strength
-            : (restoredRecommendation?.primaryIsStrength ?? false)
+            : false)
         let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
             TodayHero(kind: .suggested, title: plan.title,
                       estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
@@ -82,9 +88,9 @@ extension HomeView {
         // launch timing. The already-computed Coach decision is the stable
         // fallback until the personalized plan arrives (or if generation has
         // no launchable catalog result).
-        let coachFallback = coachSnapshotReady
+        let coachFallback = pinnedRecommendation?.makeHero() ?? (coachSnapshotReady
             ? TodayHeroPresenter.recommendation(coachDecision)
-            : restoredRecommendation?.makeHero()
+            : nil)
         let scheduled = activity.todayScheduled?.makeHero()
         let inProgress = activeSession.map { session -> TodayHero in
             let progress = InProgressWorkoutPresenter.progress(session: session)

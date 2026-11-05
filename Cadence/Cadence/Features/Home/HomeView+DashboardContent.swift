@@ -120,7 +120,7 @@ extension HomeView {
         case .loading: String(localized: "Loading")
         }
         let showingSuggestedPlan = todaySuggestedPlan != nil && (coachRecommendsStrength || hero.kind == .starter)
-        return HomeTodayHeroCard(title: hero.title, tag: tag,
+        let heroCard = HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
                                  rationale: showingSuggestedPlan
                                     ? todaySuggestedPlan?.recommendationRationale
@@ -152,6 +152,34 @@ extension HomeView {
                                      }
                                  },
                                  onAddSomething: { selectWorkoutPresented = true })
+        return VStack(alignment: .leading, spacing: 8) {
+            heroCard
+            if let pending = pendingSuggestedWorkoutPlan,
+               hero.kind == .suggested || hero.kind == .starter || hero.kind == .restDay {
+                HStack(spacing: 12) {
+                    Label("Created a new workout for today", systemImage: "sparkles")
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    Button("Show it") {
+                        todaySuggestedPlan = pending
+                        pendingSuggestedWorkoutPlan = nil
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                    Button("Not now") {
+                        pendingSuggestedWorkoutPlan = nil
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
+                .padding(12)
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("Created a new workout for today. Show it, or dismiss to keep your current suggestion.")
+                .accessibilityIdentifier("home.hero.newSuggestionBanner")
+            }
+        }
     }
 
     var dashboardWeekContent: some View {

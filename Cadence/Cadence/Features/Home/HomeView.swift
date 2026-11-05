@@ -107,6 +107,9 @@ struct HomeView: View {
     /// (avoids racing a value push against the nested Start Workout stack).
     @State var suggestedWorkoutPlan: EditablePlan?
     @State var todaySuggestedPlan: EditablePlan?
+    /// A freshly computed Today suggestion that differs from `todaySuggestedPlan`
+    /// and awaits the user's explicit "show it". See `TodaySuggestionReplacementGate`.
+    @State var pendingSuggestedWorkoutPlan: EditablePlan?
     /// Early key the rendered Today suggestion was produced under (nil = unproven).
     @State var todaySuggestionRenderedKey: String?
     /// Other Home entry points present directly too: a value push can lose its

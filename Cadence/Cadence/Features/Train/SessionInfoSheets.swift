@@ -13,6 +13,8 @@ import CadenceFeatures
 struct SessionLiveHRBand: View {
     @Environment(AppModel.self) private var model
     var sessionID: UUID? = nil
+    /// Guided warm-up/cool-down shows an explicit state before any fresh sample.
+    var showsEmptyState = false
 
     @ViewBuilder
     var body: some View {
@@ -21,9 +23,11 @@ struct SessionLiveHRBand: View {
                 // Never show a frozen injected Watch value.
                 if model.hrm.source == .appleWatch,
                    !model.watchHRConnection.isSampleFresh(now: context.date) {
-                    EmptyView()
+                    noReading
                 } else if let bpm = model.hrm.currentBPM {
                     band(bpm)
+                } else {
+                    noReading
                 }
             }
             if model.watchHRConnection.identity != nil { watchRow }
@@ -33,6 +37,16 @@ struct SessionLiveHRBand: View {
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .accessibilityIdentifier("session.watch.hrFinalization")
             }
+        }
+    }
+
+    @ViewBuilder
+    private var noReading: some View {
+        if showsEmptyState {
+            Label("No heart rate yet", systemImage: "heart.slash")
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, 12).padding(.vertical, 4)
+                .accessibilityIdentifier("session.hr.none")
         }
     }
 

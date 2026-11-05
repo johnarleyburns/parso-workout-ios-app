@@ -378,29 +378,4 @@ struct WatchSetMoreView: View {
         }
     }
 
-    private var isCurrentExerciseNonWeighted: Bool {
-        guard case .keypad(let exercise) = model.stage else { return false }
-        return SessionViewModel.isNonWeighted(exercise)
-    }
-
-    private var removableExercise: Exercise? {
-        if case .keypad(let exercise) = model.stage { return exercise }
-        return nil
-    }
-
-    private func applyExactWeight(_ raw: String) {
-        let increment = WeightIncrement(unit: model.unit)
-        if case .success(let value) = WatchSetEntryParser.weight(raw, unit: model.unit, range: increment.range) {
-            model.currentWeightDisplay = value
-            WatchHaptics.success()
-        }
-    }
-
-    private func applyExactReps(_ raw: String) {
-        if case .success(let value) = WatchSetEntryParser.reps(raw) {
-            model.currentReps = Double(value)
-            WatchHaptics.success()
-        }
-    }
-
 }

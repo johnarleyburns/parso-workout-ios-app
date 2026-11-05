@@ -6,6 +6,7 @@ import CadenceFeatures
 /// Skip (or the timer reaching zero) moves on to the first set.
 struct WatchWarmUpView: View {
     let model: WatchStrengthFlowModel
+    @Environment(WatchWorkoutManager.self) private var watchManager
     @State private var ticker: Task<Void, Never>?
 
     var body: some View {
@@ -19,6 +20,7 @@ struct WatchWarmUpView: View {
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white)
                     .accessibilityLabel("Warm-up time remaining")
+                WatchLiveHeartRateBadge(bpm: watchManager.currentBPM)
                 HStack(spacing: 16) {
                     Button("+1m") {
                         WatchHaptics.tap()

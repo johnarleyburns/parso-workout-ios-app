@@ -81,11 +81,11 @@ struct WatchHeartPage: View {
 
     var body: some View {
         VStack(spacing: 4) {
-            Text(watchManager.currentBPM.map { "\(Int($0))" } ?? "--")
+            Text(LiveHeartRateDisplay(bpm: watchManager.currentBPM).valueText)
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(WatchTone.heart)
-                .accessibilityLabel(Text("Heart rate \(watchManager.currentBPM.map { "\(Int($0))" } ?? "unknown") beats per minute"))
+                .accessibilityLabel(Text("Heart rate \(LiveHeartRateDisplay(bpm: watchManager.currentBPM).valueText) beats per minute"))
             Text("BPM").font(.caption2).foregroundStyle(.secondary)
             if !isLuminanceReduced {
                 Text(Duration.seconds(watchManager.elapsed).formatted(.time(pattern: .hourMinuteSecond)))

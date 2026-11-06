@@ -181,10 +181,11 @@ struct WatchRootView: View {
             WatchSessionOwnershipCard(verdict: sessionOwnership)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
+            // A workout explicitly sent from the phone takes precedence over coaching content.
+            WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
             heroCard
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
-            WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
             // Two tiles in one row: plain Buttons with their own destinations, because a List row
             // with two NavigationLinks activates as one (tapping Lift opened Cardio).
             HStack(spacing: 6) {

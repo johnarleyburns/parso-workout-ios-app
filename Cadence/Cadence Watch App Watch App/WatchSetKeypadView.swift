@@ -269,8 +269,6 @@ struct WatchSetKeypadView: View {
     }
 }
 
-/// S3 — More: warm-up, plate step with ± (Crown-free adjustment), this workout's sets with delete,
-/// Last set (finish the exercise), and dictation when the iPhone isn't nearby (Quick Talk C).
 struct WatchSetMoreView: View {
     @Bindable var model: WatchStrengthFlowModel
     let talk: WatchQuickTalkController
@@ -280,19 +278,16 @@ struct WatchSetMoreView: View {
     @State private var confirmRemove = false
     @State private var showingExactWeight = false
     @State private var showingExactReps = false
-
     var body: some View {
         List {
             Toggle(isOn: Binding(get: { model.isWarmupSet }, set: { if $0 != model.isWarmupSet { model.toggleWarmup() } })) {
                 Label("Warm-up set", systemImage: "flame.fill")
             }
             .accessibilityIdentifier("watchSet.warmup")
-
             if !isCurrentExerciseNonWeighted {
                 WatchWeightAdjustSection(value: $model.currentWeightDisplay, unit: model.unit, plate: $weightStep)
             }
             WatchRepsAdjustSection(value: $model.currentReps)
-
             Section("Exact value") {
                 if !isCurrentExerciseNonWeighted {
                     Button("Enter exact weight") { showingExactWeight = true }
@@ -301,7 +296,6 @@ struct WatchSetMoreView: View {
                 Button("Enter exact reps") { showingExactReps = true }
                     .accessibilityIdentifier("watchReps.exactEntry")
             }
-
             if !model.currentWorkoutHistoryLines.isEmpty {
                 Section("This workout") {
                     ForEach(model.currentWorkoutHistoryLines) { line in
@@ -322,7 +316,6 @@ struct WatchSetMoreView: View {
                     }
                 }
             }
-
             Section {
                 if WatchQuickTalkController.isEnabled, !talk.isPhoneReachable {
                     TextField("Dictate a set", text: $dictation)
@@ -343,7 +336,6 @@ struct WatchSetMoreView: View {
                 }
                 .accessibilityIdentifier("lastSetButton")
             }
-
             if case .keypad(let exercise) = model.stage {
                 Section {
                     Button(role: .destructive) { confirmRemove = true } label: {

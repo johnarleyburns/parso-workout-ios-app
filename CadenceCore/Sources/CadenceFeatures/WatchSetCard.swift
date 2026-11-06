@@ -251,7 +251,10 @@ extension WatchStrengthFlowModel {
     /// The exercise on the keypad (or waiting after rest), for Quick Talk's "current exercise".
     public var currentExerciseName: String? {
         if case .keypad(let exercise) = stage { return exercise.name }
-        return exerciseList.last?.exercise.name
+        // There is no active keypad card during rest. The prior fallback to the
+        // final exercise in the plan made Quick Talk and achievement UI attribute
+        // the action to an unrelated movement.
+        return lastLoggedSetContext?.exerciseName
     }
 
     /// A planned exercise by name (case-insensitive).

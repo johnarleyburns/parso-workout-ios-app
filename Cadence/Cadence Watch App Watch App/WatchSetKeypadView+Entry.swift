@@ -3,11 +3,6 @@ import CadenceCore
 import CadenceFeatures
 
 extension WatchSetKeypadView {
-    var isCurrentExerciseNonWeighted: Bool {
-        guard case .keypad(let exercise) = model.stage else { return false }
-        return SessionViewModel.isNonWeighted(exercise)
-    }
-
     var removableExercise: Exercise? {
         if case .keypad(let exercise) = model.stage { return exercise }
         return nil

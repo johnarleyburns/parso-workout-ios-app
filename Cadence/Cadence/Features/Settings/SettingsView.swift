@@ -10,14 +10,6 @@ struct SettingsView: View {
     @State private var healthStatus: HealthAuthorizationStatus = .notDetermined
     @State private var primingPresented = false
     @State private var workoutPreferencesPresented = false
-    @State private var healthExpanded = false
-    @State private var watchExpanded = false
-    @State private var coachExpanded = false
-    @State private var exercisesExpanded = false
-    @State private var dataExpanded = false
-    @State private var transparencyExpanded = false
-    @State private var cloudKitExpanded = false
-    @State private var supportExpanded = false
 
     var body: some View {
         @Bindable var settings = settingsObject
@@ -72,7 +64,7 @@ struct SettingsView: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
 
-            settingsDisclosure(String(localized: "Health & Sensors"), expanded: $healthExpanded,
+            settingsSection(String(localized: "Health & Sensors"),
                               identifier: "settings.section.health") {
                 Button {
                     primingPresented = true
@@ -110,7 +102,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure(String(localized: "Watch Sync"), expanded: $watchExpanded,
+            settingsSection(String(localized: "Watch Sync"),
                               identifier: "settings.section.watch") {
                 HStack {
                     Label("Status", systemImage: "applewatch")
@@ -161,7 +153,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure(String(localized: "Coach, Science & Rationale"), expanded: $coachExpanded,
+            settingsSection(String(localized: "Coach, Science & Rationale"),
                               identifier: "settings.section.coach") {
                 NavigationLink {
                     CardioIntensitySettingsView()
@@ -220,7 +212,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure(String(localized: "Exercises & Exclusions"), expanded: $exercisesExpanded,
+            settingsSection(String(localized: "Exercises & Exclusions"),
                               identifier: "settings.section.exercises") {
                 NavigationLink {
                     TemplatesView(onStart: { _ in })
@@ -244,7 +236,7 @@ struct SettingsView: View {
                 .accessibilityIdentifier("settings.excludedExercises")
             }
 
-            settingsDisclosure(String(localized: "Data & Backup"), expanded: $dataExpanded,
+            settingsSection(String(localized: "Data & Backup"),
                               identifier: "settings.section.data") {
                 NavigationLink {
                     ImportView()
@@ -256,7 +248,7 @@ struct SettingsView: View {
                     .accessibilityIdentifier("settings.export")
             }
 
-            settingsDisclosure(String(localized: "Transparency & Control"), expanded: $transparencyExpanded,
+            settingsSection(String(localized: "Transparency & Control"),
                               identifier: "settings.section.transparency") {
                 NavigationLink {
                     TransparencyCenterView()
@@ -269,7 +261,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure(String(localized: "CloudKit Sync"), expanded: $cloudKitExpanded,
+            settingsSection(String(localized: "CloudKit Sync"),
                               identifier: "settings.section.cloudKit") {
                 HStack {
                     Label("iCloud Sync", systemImage: "arrow.triangle.2.circlepath.icloud")
@@ -291,7 +283,7 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsDisclosure(String(localized: "Support & About"), expanded: $supportExpanded,
+            settingsSection(String(localized: "Support & About"),
                               identifier: "settings.section.support") {
                 NavigationLink {
                     AboutView()
@@ -333,19 +325,17 @@ struct SettingsView: View {
     }
 
     @ViewBuilder
-    private func settingsDisclosure<Content: View>(
+    private func settingsSection<Content: View>(
         _ title: String,
-        expanded: Binding<Bool>,
         identifier: String,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
         Section {
-            DisclosureGroup(isExpanded: expanded) {
-                content()
-            } label: {
-                Text(title).font(.headline)
-            }
-            .accessibilityIdentifier(identifier)
+            content()
+        } header: {
+            Text(title)
+                .font(.headline)
+                .accessibilityIdentifier(identifier)
         }
     }
 

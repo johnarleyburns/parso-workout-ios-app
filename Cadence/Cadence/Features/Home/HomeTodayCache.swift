@@ -150,24 +150,37 @@ extension HomeView {
         // refresh, but replacing a card a user just saw is a silent plan change.
     }
 
-    /// First-frame restore may recover a compatible generated strength plan,
-    /// but never publishes a provisional hero recommendation. It never
-    /// computes `todayFingerprint`, touches SwiftData, waits for HealthKit, or
-    /// builds a snapshot.
+    /// First-frame restore publishes the paired, display-only recommendation
+    /// and generated plan from the last launch. It never computes
+    /// `todayFingerprint`, touches SwiftData, waits for HealthKit, or builds a
+    /// snapshot. Later hydration validates it and asks before any replacement.
     func restoreTodayDisplayCacheImmediately() async {
         // INVARIANT (display-only): this function and its callees must never
         // call todayFingerprint, coachSignature, makeDashboard,
         // refreshCoachSnapshot, HealthKit, Watch sync, or any SwiftData API.
         guard surface == .today else { return }
-        // Do not render a provisional recommendation here. Its semantic inputs
-        // have not been checked yet, and displaying it causes the hero to flash
-        // a different workout when hydration completes.
+        if restoredRecommendation == nil,
+           let record = await HomeTodayCache.coordinator.restoreProvisional(surface: .today) {
+            restoredRecommendation = record.payload
+        }
         if todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
            let hit = await HomeTodayCache.suggestionStore.peekDisplayable() {
             guard todaySuggestedPlan == nil, suggestedWorkoutPlan == nil else { return }
             todaySuggestedPlan = hit.plan.makePlan()
+            todaySuggestionIsStartupFallback = false
             todaySuggestionRenderedKey = hit.earlyKey
             HomeTodayCache.signposter.emitEvent("suggestionRestored")
+        }
+        // A true first install has neither cache. Provide an immediately usable,
+        // clearly-labelled local plan rather than a spinner. The personalized
+        // result is held for confirmation by TodaySuggestionReplacementGate.
+        if todaySuggestedPlan == nil,
+           restoredRecommendation?.primaryIsStrength != false {
+            todaySuggestedPlan = TodayStartupPresentation.immediateFallback(
+                style: settings.preferredWorkoutStyle,
+                warmupMinutes: settings.warmupMinutes,
+                cooldownMinutes: settings.cooldownMinutes).makePlan()
+            todaySuggestionIsStartupFallback = true
         }
     }
 

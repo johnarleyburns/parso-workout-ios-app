@@ -80,6 +80,20 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentWeight, 0)
     }
 
+    func testLoggedSetContextIsFrozenBeforeRestAdvancesToNextExercise() {
+        let m = makeModel()
+        m.start(title: "Test", plannedExerciseNames: ["Bench Press", "Squat"], createSession: true)
+        guard let bench = m.exerciseList.first(where: { $0.exercise.name == "Bench Press" })?.exercise else {
+            return XCTFail("Missing bench")
+        }
+        m.startLogSet(for: bench)
+        m.currentWeight = 80
+        m.currentReps = 5
+        XCTAssertNotNil(m.logSet())
+
+        XCTAssertEqual(m.lastLoggedSetContext, WatchLoggedSetContext(exerciseName: "Bench Press", weightKg: 80, reps: 5))
+    }
+
     // MARK: - Add result contract (issue #408)
 
     private struct SaveBoom: Error {}

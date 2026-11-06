@@ -23,7 +23,10 @@ struct WatchRestView: View {
     var body: some View {
         VStack(spacing: 4) {
             ring
-            if let next = nextSetText {
+            if let logged = loggedSetText {
+                Text("Resting after · \(logged)").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            }
+            if let next = nextSetText, next != loggedSetText {
                 Text("Next · \(next)").font(.caption2).foregroundStyle(.secondary).lineLimit(1)
             }
             if model.plannedRestApplied && !isOver {
@@ -160,6 +163,17 @@ struct WatchRestView: View {
             load = "\(model.currentWeightText) \(model.unit.abbreviation)"
         }
         return "\(load) × \(Int(model.currentReps)) · \(exercise.name)"
+    }
+
+    private var loggedSetText: String? {
+        guard let logged = model.lastLoggedSetContext else { return nil }
+        let load: String
+        if logged.weightKg <= 0.001 {
+            load = "BW"
+        } else {
+            load = "\(Format.weightValue(logged.weightKg, unit: model.unit, decimals: 1)) \(model.unit.abbreviation)"
+        }
+        return "\(load) × \(logged.reps) · \(logged.exerciseName)"
     }
 
     private func startNext() {

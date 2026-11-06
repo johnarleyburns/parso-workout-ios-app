@@ -215,7 +215,9 @@ struct WatchStrengthView: View {
     // MARK: Moments (M1/M2)
 
     private func showMoment(_ model: WatchStrengthFlowModel) {
-        let name = model.currentExerciseName ?? ""
+        // Logging immediately advances the flow into rest. Use the immutable logged
+        // context, not the next-set/current-card exercise.
+        let name = model.lastLoggedSetContext?.exerciseName ?? model.currentExerciseName ?? ""
         let next: Moment = model.lastLoggedSetWasPR ? .personalRecord(name) : .logged(name)
         if case .personalRecord = next { WKInterfaceDevice.current().play(.notification) }
         withAnimation(.easeOut(duration: 0.2)) { moment = next }

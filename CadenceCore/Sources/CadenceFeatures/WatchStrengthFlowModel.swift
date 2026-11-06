@@ -107,6 +107,20 @@ public struct WatchPendingTurn: Equatable {
     public let performerIndex: Int
 }
 
+/// Immutable identity of the set that just completed. Rest and achievement UI must
+/// use this rather than the mutable next-set state, which may already have advanced.
+public struct WatchLoggedSetContext: Equatable, Sendable {
+    public let exerciseName: String
+    public let weightKg: Double
+    public let reps: Int
+
+    public init(exerciseName: String, weightKg: Double, reps: Int) {
+        self.exerciseName = exerciseName
+        self.weightKg = weightKg
+        self.reps = reps
+    }
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -154,6 +168,8 @@ public final class WatchStrengthFlowModel {
     public private(set) var personalRecordCount = 0
     /// The id of the most recently logged set (Quick Talk "undo").
     public private(set) var lastLoggedSetID: UUID?
+    /// Frozen when a set is saved, before the flow selects the next turn.
+    public private(set) var lastLoggedSetContext: WatchLoggedSetContext?
     /// The user's PR rule and 1RM formula (Settings), so the watch's PR moment agrees with Progress.
     public var prRule: PRRule = SettingsDefault.prRule
     public var prFormula: OneRepMaxFormula = SettingsDefault.oneRepMaxFormula
@@ -598,6 +614,9 @@ public final class WatchStrengthFlowModel {
 
             let isOwner = set.isOwnerSet
             lastLoggedSetID = set.id
+            lastLoggedSetContext = WatchLoggedSetContext(exerciseName: exercise.name,
+                                                         weightKg: set.effectiveLoadKg,
+                                                         reps: set.reps)
             lastLoggedSetWasPR = isPRBeforeSave
             if lastLoggedSetWasPR { personalRecordCount += 1 }
             syncLogSet(session: session, exercise: exercise, set: set)

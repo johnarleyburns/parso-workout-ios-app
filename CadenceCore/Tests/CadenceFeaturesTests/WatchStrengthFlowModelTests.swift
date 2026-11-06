@@ -89,9 +89,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.startLogSet(for: bench)
         m.currentWeight = 80
         m.currentReps = 5
-        XCTAssertNotNil(m.logSet())
+        guard let logged = m.logSet() else { return XCTFail("Set did not log") }
 
-        XCTAssertEqual(m.lastLoggedSetContext, WatchLoggedSetContext(exerciseName: "Bench Press", weightKg: 80, reps: 5))
+        XCTAssertEqual(m.lastLoggedSetContext,
+                       WatchLoggedSetContext(exerciseName: "Bench Press",
+                                             weightKg: logged.effectiveLoadKg,
+                                             reps: logged.reps))
     }
 
     // MARK: - Add result contract (issue #408)

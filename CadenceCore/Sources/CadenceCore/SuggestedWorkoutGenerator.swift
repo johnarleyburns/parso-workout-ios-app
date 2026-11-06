@@ -1010,6 +1010,16 @@ public enum SuggestedWorkoutGenerator {
         if style != .personalized && (style != .bodyweight || !inStyle.contains(true)) {
             fill(restrictedToStyle: false, membership: inStyle, outputMembership: inStyle)
         }
+        if style == .personalized && allowPersonalizedFallback {
+            // A personalized/history or preferred-style pool is a ranking
+            // preference, not permission to leave training gaps unaddressed.
+            // For example, a narrow preferred style may contain only one
+            // movement ("Circus Bell") while several tracked muscles remain
+            // below target. After the preference-first passes above, let the
+            // full eligible catalog complete those gaps just as the Fill the
+            // Gaps workout does.
+            fill(restrictedToStyle: false, membership: inStyle, outputMembership: inStyle)
+        }
 
         // A suggestion is an on-demand workout, not only a gap-filling alert.
         // Once this week's tracked gaps are already covered, the old solver

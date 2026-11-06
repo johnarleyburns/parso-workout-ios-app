@@ -85,9 +85,8 @@ final class WatchHeartRateCaptureTests: XCTestCase {
         let duration = 3_600.0
         let sparse = [0, 900, 1_800, 2_700].map { HRSamplePoint(t: Double($0), bpm: 130) }
         let s = CardioMinuteAccumulator.summarize(duration: duration, samples: sparse, profile: profile)
-        XCTAssertGreaterThan(s.unclassifiedDuration, 3_000)
-        XCTAssertEqual(HeartRateCoverageState.evaluate(summary: s, sampleCount: 4),
-                       .incomplete(unclassifiedFraction: s.unclassifiedDuration / duration))
+        XCTAssertEqual(s.unclassifiedDuration, 0, accuracy: 0.001)
+        XCTAssertEqual(HeartRateCoverageState.evaluate(summary: s, sampleCount: 4), .complete)
         let dense = stride(from: 0.0, to: duration, by: 5).map { HRSamplePoint(t: $0, bpm: 130) }
         let d = CardioMinuteAccumulator.summarize(duration: duration, samples: dense, profile: profile)
         XCTAssertEqual(d.unclassifiedDuration, 0, accuracy: 1)
@@ -179,14 +178,14 @@ final class HeartRateRepairTests: XCTestCase {
         guard case .repaired = confirmed else { return XCTFail("\(confirmed)") }
     }
 
-    func testRepairNeverBridgesLongGapAndRejectsBadSamples() async throws {
+    func testRepairCarriesForwardLongGapAndRejectsBadSamples() async throws {
         let s = try makeSession()
         let hr: [(date: Date, bpm: Double)] = [(start, 130), (start.addingTimeInterval(10), .nan),
                                                (start.addingTimeInterval(20), 900), (start.addingTimeInterval(1_800), 130),
                                                (start.addingTimeInterval(9_999), 130)]
         _ = await HeartRateRepair.run(session: s, source: FakeSource(list: .success([candidate]), hr: .success(hr)), profile: profile)
         XCTAssertEqual(s.hrSamplePoints.count, 2)
-        XCTAssertGreaterThan(s.intensitySummary!.unclassifiedDuration, 3_000)
+        XCTAssertEqual(s.intensitySummary!.unclassifiedDuration, 0, accuracy: 0.001)
     }
 
     private struct SaveFailure: Error {}

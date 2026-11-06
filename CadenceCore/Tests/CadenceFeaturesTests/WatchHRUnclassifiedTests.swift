@@ -15,15 +15,14 @@ final class WatchHRUnclassifiedTests: XCTestCase {
         XCTAssertEqual(p.kind, .complete)
     }
 
-    func testFourSamplesAcrossAnHourAreCappedAndReportUnclassified() {
+    func testFourSamplesAcrossAnHourCarryForwardToCoverTheWorkout() {
         let samples = [0, 900, 1800, 2700].map { HRSamplePoint(t: Double($0), bpm: 130) }
         let summary = WatchStrengthHRCoverage.summary(samples: samples, duration: 3600, profile: profile)!
-        XCTAssertEqual(summary.classifiedDuration, 4 * CardioMinuteAccumulator.maximumSampleGap, accuracy: 0.001)
-        XCTAssertEqual(summary.unclassifiedDuration, 3600 - 480, accuracy: 0.001)
-        XCTAssertEqual(WatchStrengthHRCoverage.unclassifiedNote(summary: summary),
-                       "52 min unclassified — heart-rate measurements were missing.")
+        XCTAssertEqual(summary.classifiedDuration, 3600, accuracy: 0.001)
+        XCTAssertEqual(summary.unclassifiedDuration, 0, accuracy: 0.001)
+        XCTAssertNil(WatchStrengthHRCoverage.unclassifiedNote(summary: summary))
         XCTAssertEqual(WatchStrengthHRCoverage.presentation(samples: samples, duration: 3600, profile: profile,
-                                                            pending: false).kind, .incomplete)
+                                                            pending: false).kind, .complete)
     }
 
     func testNoSamplesInventNothing() {

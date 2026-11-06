@@ -1355,9 +1355,11 @@ public enum WorkoutRepository {
             }
             try context.save()
         }
-        if completion.hrSamples.isEmpty {
-            saved.avgHeartRate = completion.avgHeartRate
-            saved.maxHeartRate = completion.maxHeartRate
+        // Aggregate values include every HR reading rendered during the run,
+        // including polling values that race a builder callback.
+        if let average = completion.avgHeartRate { saved.avgHeartRate = average }
+        if let maximum = completion.maxHeartRate { saved.maxHeartRate = maximum }
+        if completion.avgHeartRate != nil || completion.maxHeartRate != nil {
             try context.save()
         }
         return true

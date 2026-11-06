@@ -184,8 +184,20 @@ public enum HeartRateRepair {
             beforeClassifiedMinutes: Int((existing / 60).rounded()),
             afterClassifiedMinutes: Int((proposal.summary.classifiedDuration / 60).rounded()),
             sampleCount: proposal.observations.count, isLegacyFallback: proposal.isLegacyFallback,
-            isLowerQuality: !session.hrSamplePoints.isEmpty && proposal.summary.classifiedDuration <= existing,
+            isLowerQuality: requiresReplacementConfirmation(session: session, proposal: proposal),
             proposal: proposal)
+    }
+
+    /// Carried-forward classification can make a handful of old samples appear
+    /// to cover a whole workout. Coverage alone therefore is not evidence that
+    /// the old series is as trustworthy as a dense HealthKit replacement.
+    private static func requiresReplacementConfirmation(session: WorkoutSession,
+                                                        proposal: HeartRateRepairProposal) -> Bool {
+        let existing = session.hrSamplePoints
+        guard !existing.isEmpty else { return false }
+        let existingCovered = session.intensitySummary?.classifiedDuration ?? 0
+        guard proposal.summary.classifiedDuration <= existingCovered else { return false }
+        return proposal.observations.count <= existing.count
     }
 
     /// Older builds discarded the Health association. Accept only Apple Watch
@@ -207,18 +219,12 @@ public enum HeartRateRepair {
             duration: duration)
         guard !points.isEmpty else { return .noMatch }
         let summary = CardioMinuteAccumulator.summarize(duration: duration, samples: points, profile: profile)
-        guard summary.classifiedDuration > (session.intensitySummary?.classifiedDuration ?? 0) else {
-            return .needsReplacementConfirmation(existingCovered: session.intensitySummary?.classifiedDuration ?? 0,
-                                                 repairedCovered: summary.classifiedDuration)
-        }
+        let proposal = makeProposal(session: session, points: points, summary: summary, token: nil,
+                                    sourceName: "Apple Watch", legacy: true)
         guard confirmed else {
-            return .preview(makePreview(session: session, proposal: makeProposal(
-                session: session, points: points, summary: summary, token: nil,
-                sourceName: "Apple Watch", legacy: true)))
+            return .preview(makePreview(session: session, proposal: proposal))
         }
-        return apply(makeProposal(session: session, points: points, summary: summary, token: nil,
-                                  sourceName: "Apple Watch", legacy: true),
-                     to: session, confirmReplacement: true, now: now, save: save)
+        return apply(proposal, to: session, now: now, save: save)
     }
 
     /// Everything a repair or undo can touch, captured so a failed save restores it exactly.
@@ -246,9 +252,8 @@ public enum HeartRateRepair {
         guard proposal.sessionID == session.id, proposal.sessionRevision == session.updatedAt else {
             return .staleProposal
         }
-        let existing = session.intensitySummary?.classifiedDuration ?? 0
-        if !confirmReplacement, !session.hrSamplePoints.isEmpty, proposal.summary.classifiedDuration <= existing {
-            return .needsReplacementConfirmation(existingCovered: existing,
+        if !confirmReplacement, requiresReplacementConfirmation(session: session, proposal: proposal) {
+            return .needsReplacementConfirmation(existingCovered: session.intensitySummary?.classifiedDuration ?? 0,
                                                  repairedCovered: proposal.summary.classifiedDuration)
         }
         let duration = (session.endedAt ?? session.date).timeIntervalSince(session.date)

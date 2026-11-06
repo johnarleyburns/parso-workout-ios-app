@@ -56,7 +56,11 @@ endstep
 step "iPhone + embedded Watch build"
 # Release configuration, same as the release archive, so deprecation warnings
 # the archive gate would reject surface here before merge.
-build_log="$(mktemp -t ci-validate-build.XXXXXX)"
+# Keep a stable path so the workflow can upload the complete transcript even
+# when xcodebuild or the warning gate fails. GitHub's rendered step log is
+# size-limited, while this file remains inspectable as an artifact.
+build_log="${RUNNER_TEMP:-/tmp}/ci-validate-build.log"
+rm -f "$build_log"
 bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
   -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$build_log"
 endstep

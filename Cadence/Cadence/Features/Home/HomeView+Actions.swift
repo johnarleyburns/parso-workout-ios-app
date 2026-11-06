@@ -199,7 +199,7 @@ extension HomeView {
                         .map(HomePlannedWorkoutsSection.item),
                     recentCardioTypes: recentCardioTypes,
                     heroActivity: TodayHeroActivityPresenter.make(
-                        sessions: sessions, scheduled: scheduled, now: now))
+                        sessions: sessions, cardio: cardio, scheduled: scheduled, now: now))
             }.value
             guard !Task.isCancelled else { return }
         } else {
@@ -227,7 +227,7 @@ extension HomeView {
                 scheduledItems: scheduledWorkouts.map(HomePlannedWorkoutsSection.item),
                 recentCardioTypes: recentCardioTypesFromCurrentCardio,
                 heroActivity: TodayHeroActivityPresenter.make(
-                    sessions: sessions, scheduled: scheduledWorkouts, now: now))
+                    sessions: sessions, cardio: cardio, scheduled: scheduledWorkouts, now: now))
         }
         apply(projection)
         HomeActivityCache.shared.store(projection, for: key)

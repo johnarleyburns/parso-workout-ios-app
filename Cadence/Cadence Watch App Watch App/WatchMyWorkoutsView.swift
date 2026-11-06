@@ -6,6 +6,9 @@ import CadenceFeatures
 /// My Workouts page (swipe left from This Week): today's planned sessions, then recent history.
 struct WatchMyWorkoutsView: View {
     let plan: WatchSync.TodayPlan?
+    /// Watch-owned cardio completions are visible immediately; the phone snapshot
+    /// replaces them after acknowledgement.
+    var pendingCardioCompletions: [WatchCardioCompletion] = []
     /// Bumped by the manager only after a phone cardio-history snapshot is durably stored.
     var cardioHistoryRevision: Int = 0
     var distanceUnit: DistanceUnitPreference = .kilometers
@@ -50,7 +53,12 @@ struct WatchMyWorkoutsView: View {
         .listStyle(.plain)
         .navigationTitle("My Workouts")
         .accessibilityIdentifier("watch.myWorkouts")
-        .task(id: cardioHistoryRevision) { load() }
+        .task(id: "\(cardioHistoryRevision)|\(pendingCardioCompletions.map(\.id.uuidString).joined(separator: ","))") { load() }
+        .onReceive(NotificationCenter.default.publisher(for: WatchLocalHistoryMutation.name)) { _ in
+            // Strength is already in the Watch SwiftData store; refresh its local
+            // projection immediately rather than waiting for the phone round trip.
+            load()
+        }
     }
 
     private func subtitle(_ row: WatchMyWorkoutRow, date: Date) -> Text {
@@ -73,11 +81,21 @@ struct WatchMyWorkoutsView: View {
         var cardioDescriptor = FetchDescriptor<WatchCardioHistoryRecord>(
             sortBy: [SortDescriptor(\.start, order: .reverse)])
         cardioDescriptor.fetchLimit = WatchSync.CardioHistorySnapshot.maxLiveItems
-        cardio = ((try? context.fetch(cardioDescriptor)) ?? []).map {
+        let mirrored = ((try? context.fetch(cardioDescriptor)) ?? []).map {
             WatchMyWorkouts.CardioInput(id: $0.id, title: $0.title, type: $0.typeRaw, start: $0.start,
                                         end: $0.end, distanceMeters: $0.distanceMeters,
                                         importLabel: $0.importLabel)
         }
+        let mirroredIDs = Set(mirrored.map(\.id))
+        let local = pendingCardioCompletions
+            .filter { !mirroredIDs.contains($0.id) }
+            .map {
+                WatchMyWorkouts.CardioInput(id: $0.id, title: $0.title ?? $0.type.displayName,
+                                            type: $0.type.rawValue, start: $0.start, end: $0.end,
+                                            distanceMeters: $0.distanceMeters,
+                                            importLabel: String(localized: "Saved on Watch"))
+            }
+        cardio = mirrored + local
     }
 }
 

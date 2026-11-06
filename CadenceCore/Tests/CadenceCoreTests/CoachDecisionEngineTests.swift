@@ -1033,7 +1033,7 @@ final class CoachDecisionEngineTests: XCTestCase {
                       "Should include a cardio recommendation")
     }
 
-    func testTwoADayAfterCardioCompleteShowsOnlyStrength() throws {
+    func testTwoADayAfterCardioCompleteDoesNotShowPartialDualList() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1045,16 +1045,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
-        // Cardio done, strength still needed → one recommendation remains
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 1,
-                       "After cardio, only strength should remain")
-        XCTAssertEqual(decision.todayPlannedRecommendations.first?.kind, .strength,
-                       "Remaining should be strength")
+        // Partial completion is not a dual-list state.
+        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty,
+                      "After cardio, the dual list should not show a strength-only remainder")
         XCTAssertEqual(decision.planAdherence, .planAhead,
                        "Plan should not be complete — strength still needed")
     }
 
-    func testTwoADayAfterStrengthCompleteShowsOnlyCardio() throws {
+    func testTwoADayAfterStrengthCompleteDoesNotShowPartialDualList() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1066,11 +1064,9 @@ final class CoachDecisionEngineTests: XCTestCase {
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
-        // Strength done, cardio still needed → one recommendation remains
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 1,
-                       "After strength, only cardio should remain")
-        XCTAssertTrue(decision.todayPlannedRecommendations.first?.isAerobic ?? false,
-                      "Remaining should be cardio")
+        // Partial completion is not a dual-list state.
+        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty,
+                      "After strength, the dual list should not show a cardio-only remainder")
         XCTAssertEqual(decision.planAdherence, .planAhead,
                        "Plan should not be complete — cardio still needed")
     }
@@ -1101,10 +1097,8 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         XCTAssertEqual(afterFacts.weeklyBalance.strengthDays, 2,
                        "The morning strength workout is the second logged strength day")
-        XCTAssertEqual(afterDecision.todayPlannedRecommendations.count, 1,
-                       "Cardio should remain planned after only strength is complete")
-        XCTAssertTrue(afterDecision.todayPlannedRecommendations.first?.isAerobic ?? false,
-                      "The remaining planned workout should be cardio")
+        XCTAssertTrue(afterDecision.todayPlannedRecommendations.isEmpty,
+                      "A partially completed two-a-day must not retain a one-item dual list")
         XCTAssertTrue(afterDecision.primary.isAerobic,
                       "The card's single Start action should launch the remaining cardio workout")
         XCTAssertEqual(afterDecision.planAdherence, .planAhead,

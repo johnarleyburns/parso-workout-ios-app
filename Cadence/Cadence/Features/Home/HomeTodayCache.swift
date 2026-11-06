@@ -7,7 +7,7 @@ import CadenceFeatures
 /// Today's recommendation cache. Two layers, both keyed on a deterministic
 /// semantic fingerprint (never view identity or a `@State` UUID):
 /// - a durable Application Support DTO (`TodayRecommendationCacheStore`) that
-///   renders the hero immediately after an app relaunch, and
+///   restores the hero when its exact semantic inputs match, and
 /// - an in-process full `HomeCoachSnapshot` so tab switches / view recreation
 ///   skip the coach pipeline entirely.
 /// The ownership boundary lives in `TodayRecommendationCoordinator`: calls
@@ -88,8 +88,8 @@ extension HomeView {
         return snapshot
     }
 
-    /// Restores a valid cached recommendation without running the coach
-    /// pipeline. Returns true when no recomputation is needed.
+    /// Restores an exactly matching cached recommendation without running the
+    /// coach pipeline. Returns true when no recomputation is needed.
     func restoreTodayRecommendation() async -> Bool {
         await HomeTodayCache.coordinator.settle()
         let key = todayFingerprint
@@ -100,15 +100,12 @@ extension HomeView {
             restoredRecommendation = nil
             return true
         }
-        guard !coachSnapshotReady,
-              let hit = await HomeTodayCache.coordinator.restoreProvisional(surface: surface.cacheSurface)
-        else {
-            restoredRecommendation = nil
-            return false
-        }
-        // Hero renders from the durable DTO now, without waiting for SwiftData
-        // or HealthKit inputs to settle; freshness is reconciled afterwards.
-        restoredRecommendation = hit.payload
+        // A recommendation whose semantic fingerprint is not yet known is not
+        // safe to present as Today's workout: HealthKit import/readiness can
+        // legitimately select a different modality minutes later. Keep it out
+        // of the hero until the exact snapshot is restored or recomputed, so a
+        // visible workout is never silently swapped under the user.
+        restoredRecommendation = nil
         return false
     }
 }
@@ -148,24 +145,23 @@ extension HomeView {
         let interval = signpost.beginInterval("fullSnapshot")
         await refreshCoachSnapshot()
         signpost.endInterval("fullSnapshot", interval)
-        restoredRecommendation = nil
+        // Keep a visible provisional recommendation pinned for this Home visit.
+        // The hydrated result has already been cached for a later, intentional
+        // refresh, but replacing a card a user just saw is a silent plan change.
     }
 
-    /// First-frame restore: reads only the small Application Support envelopes,
-    /// validates schema/day and publishes DTO state. It never computes
-    /// `todayFingerprint`, touches SwiftData, waits for HealthKit or builds a
-    /// snapshot; freshness is reconciled afterwards by `runCoachTask` and
-    /// `prepareTodaySuggestion`.
+    /// First-frame restore may recover a compatible generated strength plan,
+    /// but never publishes a provisional hero recommendation. It never
+    /// computes `todayFingerprint`, touches SwiftData, waits for HealthKit, or
+    /// builds a snapshot.
     func restoreTodayDisplayCacheImmediately() async {
         // INVARIANT (display-only): this function and its callees must never
         // call todayFingerprint, coachSignature, makeDashboard,
         // refreshCoachSnapshot, HealthKit, Watch sync, or any SwiftData API.
         guard surface == .today else { return }
-        if !coachSnapshotReady, restoredRecommendation == nil,
-           let hit = await HomeTodayCache.coordinator.restoreProvisional(surface: .today) {
-            restoredRecommendation = hit.payload
-            HomeTodayCache.signposter.emitEvent("heroRestored")
-        }
+        // Do not render a provisional recommendation here. Its semantic inputs
+        // have not been checked yet, and displaying it causes the hero to flash
+        // a different workout when hydration completes.
         if todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
            let hit = await HomeTodayCache.suggestionStore.peekDisplayable() {
             guard todaySuggestedPlan == nil, suggestedWorkoutPlan == nil else { return }

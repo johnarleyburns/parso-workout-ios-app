@@ -27,3 +27,11 @@ jobs:
           xcodebuild -version
       - name: Validate (shell, YAML, automation tests, Swift tests, builds, guardrails)
         run: bash scripts/ci-validate.sh
+      - name: Upload build transcript
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-validation-build-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-validate-build.log
+          if-no-files-found: ignore
+          retention-days: 7

@@ -110,6 +110,29 @@ final class PersonalizedSuggestionTests: XCTestCase {
         XCTAssertTrue(option.exercises.contains { $0.candidateID == freshMovement.id })
     }
 
+    func testPersonalizedFillsGapsOutsideANarrowPreferredStyle() {
+        let circusBell = SuggestedExerciseCandidate(
+            id: "circus-bell", name: "Circus Bell Press", mechanics: .compound,
+            primaryMuscles: ["shoulders"], trainingTypes: [.strength, .strongman])
+        let squat = SuggestedExerciseCandidate(
+            id: "squat", name: "Back Squat", mechanics: .compound,
+            primaryMuscles: ["quadriceps"], trainingTypes: [.strength])
+        let row = SuggestedExerciseCandidate(
+            id: "row", name: "Barbell Row", mechanics: .compound,
+            primaryMuscles: ["lats"], trainingTypes: [.strength])
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: [:], candidates: [circusBell, squat, row],
+            historyWorkoutCount: 5, historyWorkingSetCount: 20,
+            trackedGroups: [.shoulders, .quadriceps, .lats],
+            preferredSetsPerExercise: 3, trainingGoal: .hypertrophy,
+            preferredStyle: .strongman)
+
+        let option = SuggestedWorkoutGenerator.generatePersonalized(input: input)
+
+        XCTAssertEqual(Set(option.exercises.map(\.candidateID)),
+                       [circusBell.id, squat.id, row.id])
+    }
+
     func testSingleSuggestionReturnsOneMovementAndExcludesExistingAllocation() {
         let press = SuggestedExerciseCandidate(
             id: "press", name: "Bench Press", mechanics: .compound,

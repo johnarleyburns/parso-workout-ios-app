@@ -50,6 +50,8 @@ final class WatchSmokeTests: XCTestCase {
                       "Custom setup did not start")
 
         // An empty workout opens on the Plan page.
+        XCTAssertTrue(app.buttons["watchStrength.suggestExercise"].waitForExistence(timeout: 10),
+                      "Plan page did not offer Suggest exercise above Add exercise")
         XCTAssertTrue(app.tapButton("watchStrength.addExercise", scrollAttempts: 2),
                       "Plan page did not offer Add exercise")
         XCTAssertTrue(app.textFields["watchAddExercise.search"].waitForExistence(timeout: 10),
@@ -71,6 +73,11 @@ final class WatchSmokeTests: XCTestCase {
 
         // Set Card.
         XCTAssertTrue(app.buttons["logSetButton"].waitForExistence(timeout: 10), "The Set Card did not open")
+        XCTAssertTrue(app.buttons["watchWeight.minus"].waitForExistence(timeout: 10),
+                      "The Set Card did not expose direct weight decrement control")
+        XCTAssertTrue(app.tapButton("watchReps.current"), "Could not select reps on the Set Card")
+        XCTAssertTrue(app.buttons["watchReps.plus"].waitForExistence(timeout: 10),
+                      "Selecting reps did not expose direct increment control")
         snapshot(app, "S1-set-card")
         XCTAssertTrue(app.tapButton("watchStrength.lifterChip"), "The Set Card did not show who is lifting")
         snapshot(app, "C2-partners")

@@ -9,6 +9,7 @@ struct WatchSuggestedExerciseView: View {
     let catalog: ExerciseCatalogSnapshot
     let onRefreshCatalog: () -> Void
     let onBack: () -> Void
+    let onAdded: () -> Void
     @State private var shell = WatchSuggestedExerciseShell()
     @State private var confirmation = WatchAddConfirmation()
     @State private var showingDetails = false
@@ -138,7 +139,9 @@ struct WatchSuggestedExerciseView: View {
         }) else { return }
         let outcome = WatchExerciseAddPresenter.outcome(for: result)
         switch outcome.feedback {
-        case .success: WatchHaptics.success()
+        case .success:
+            WatchHaptics.success()
+            onAdded()
         case .failure:
             WatchHaptics.failure()
             AccessibilityNotification.Announcement(outcome.message).post()

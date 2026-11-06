@@ -107,6 +107,20 @@ public struct WatchPendingTurn: Equatable {
     public let performerIndex: Int
 }
 
+/// Immutable identity of the set that just completed. Rest and achievement UI must
+/// use this rather than the mutable next-set state, which may already have advanced.
+public struct WatchLoggedSetContext: Equatable, Sendable {
+    public let exerciseName: String
+    public let weightKg: Double
+    public let reps: Int
+
+    public init(exerciseName: String, weightKg: Double, reps: Int) {
+        self.exerciseName = exerciseName
+        self.weightKg = weightKg
+        self.reps = reps
+    }
+}
+
 @Observable
 public final class WatchStrengthFlowModel {
     public enum Stage: Equatable {
@@ -154,6 +168,8 @@ public final class WatchStrengthFlowModel {
     public private(set) var personalRecordCount = 0
     /// The id of the most recently logged set (Quick Talk "undo").
     public private(set) var lastLoggedSetID: UUID?
+    /// Frozen when a set is saved, before the flow selects the next turn.
+    public private(set) var lastLoggedSetContext: WatchLoggedSetContext?
     /// The user's PR rule and 1RM formula (Settings), so the watch's PR moment agrees with Progress.
     public var prRule: PRRule = SettingsDefault.prRule
     public var prFormula: OneRepMaxFormula = SettingsDefault.oneRepMaxFormula
@@ -485,6 +501,10 @@ public final class WatchStrengthFlowModel {
             currentWeight = weight
         } else if prescribed > 0 {
             currentWeight = prescribed
+        } else if SessionViewModel.isBodyweight(exercise) || SessionViewModel.isNonWeighted(exercise) {
+            // A new bodyweight movement must start as BW, never with the generic
+            // barbell fallback. A previously logged added load still wins above.
+            currentWeight = 0
         } else {
             currentWeight = unit == .pounds ? WorkoutMath.canonical(45, from: .pounds) : 20
         }
@@ -498,6 +518,10 @@ public final class WatchStrengthFlowModel {
     public func goToPartners() { stage = .partners }
 
     public func goBackToHome() { stage = .home }
+
+    /// The movement the rest screen is preparing for. It remains available while
+    /// the stage is `.rest`, unlike `currentExerciseName` which is card-only.
+    public var restExercise: Exercise? { exercisePendingAfterRest }
 
     public func logSet() -> SetEntry? {
         guard case .keypad = stage else { return nil }
@@ -590,6 +614,9 @@ public final class WatchStrengthFlowModel {
 
             let isOwner = set.isOwnerSet
             lastLoggedSetID = set.id
+            lastLoggedSetContext = WatchLoggedSetContext(exerciseName: exercise.name,
+                                                         weightKg: set.effectiveLoadKg,
+                                                         reps: set.reps)
             lastLoggedSetWasPR = isPRBeforeSave
             if lastLoggedSetWasPR { personalRecordCount += 1 }
             syncLogSet(session: session, exercise: exercise, set: set)

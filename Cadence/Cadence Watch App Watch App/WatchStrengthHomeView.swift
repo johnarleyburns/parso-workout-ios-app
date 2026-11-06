@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
@@ -8,12 +9,34 @@ import CadenceFeatures
 struct WatchStrengthHomeView: View {
     let model: WatchStrengthFlowModel
     let onSelect: () -> Void
+    @Environment(\.modelContext) private var context
+    @Query(ExerciseCatalogSnapshot.changeSignalDescriptor) private var newestExercise: [Exercise]
     @State private var pendingExerciseID: UUID?
     @State private var exerciseToRemove: Exercise?
+    @State private var catalog = ExerciseCatalogSnapshot.empty
+    @State private var showingSuggestion = false
     /// Set when a long-press fires so the button's tap on finger-lift doesn't also navigate away.
     @State private var longPressHandled = false
 
     var body: some View {
+        Group {
+            if showingSuggestion {
+                WatchSuggestedExerciseView(
+                    model: model, catalog: catalog,
+                    onRefreshCatalog: refreshCatalog,
+                    onBack: { showingSuggestion = false },
+                    onAdded: { showingSuggestion = false }
+                )
+            } else {
+                planList
+            }
+        }
+        .task(id: newestExercise.first?.updatedAt) {
+            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
+        }
+    }
+
+    private var planList: some View {
         List {
             if let added = model.lastAddedExerciseName {
                 Button {
@@ -57,6 +80,15 @@ struct WatchStrengthHomeView: View {
 
             Button {
                 WatchHaptics.tap()
+                showingSuggestion = true
+            } label: {
+                Label("Suggest exercise", systemImage: "wand.and.stars")
+            }
+            .accessibilityIdentifier("watchStrength.suggestExercise")
+            .accessibilityHint("Finds an exercise suited to this workout")
+
+            Button {
+                WatchHaptics.tap()
                 model.goToAddExercise()
                 onSelect()
             } label: {
@@ -74,6 +106,12 @@ struct WatchStrengthHomeView: View {
             Button("Keep", role: .cancel) { exerciseToRemove = nil }
         } message: { _ in
             Text("Its sets in this workout are removed too.")
+        }
+    }
+
+    private func refreshCatalog() {
+        Task { @MainActor in
+            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
         }
     }
 

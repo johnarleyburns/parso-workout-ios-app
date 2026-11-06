@@ -27,10 +27,11 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
         public let volumeKg: Double
         public let durationMinutes: Int?
         public let exercises: [TodayHero.Line]
+        public let occurredAt: Date
         public init(title: String, setCount: Int, volumeKg: Double,
-                    durationMinutes: Int?, exercises: [TodayHero.Line]) {
+                    durationMinutes: Int?, exercises: [TodayHero.Line], occurredAt: Date) {
             self.title = title; self.setCount = setCount; self.volumeKg = volumeKg
-            self.durationMinutes = durationMinutes; self.exercises = exercises
+            self.durationMinutes = durationMinutes; self.exercises = exercises; self.occurredAt = occurredAt
         }
     }
 
@@ -38,7 +39,10 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
     /// treat the empty values as "no history".
     public let isLoaded: Bool
     public let completedWorkoutCount: Int
-    public let completedToday: CompletedWorkout?
+    /// Every completed activity today, across strength and cardio.  Keeping the
+    /// individual items here lets the Home hero reflect a real two-a-day rather
+    /// than silently selecting a strength session.
+    public let completedToday: [CompletedWorkout]
     public let nextScheduled: ScheduledHeroSnapshot?
     public let todayScheduled: ScheduledHeroSnapshot?
     public let remainingScheduledToday: Int
@@ -46,7 +50,7 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
     public let durationSamples: [Double]
 
     public init(isLoaded: Bool = true, completedWorkoutCount: Int,
-                completedToday: CompletedWorkout?, nextScheduled: ScheduledHeroSnapshot?,
+                completedToday: [CompletedWorkout], nextScheduled: ScheduledHeroSnapshot?,
                 todayScheduled: ScheduledHeroSnapshot?, remainingScheduledToday: Int,
                 durationSamples: [Double]) {
         self.isLoaded = isLoaded
@@ -59,15 +63,26 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
     }
 
     public static let empty = TodayHeroActivitySnapshot(
-        isLoaded: false, completedWorkoutCount: 0, completedToday: nil, nextScheduled: nil,
+        isLoaded: false, completedWorkoutCount: 0, completedToday: [], nextScheduled: nil,
         todayScheduled: nil, remainingScheduledToday: 0, durationSamples: [])
 
     public func daySummary() -> DaySummary? {
-        completedToday.map {
-            DaySummary(title: $0.title, setCount: $0.setCount, volumeKg: $0.volumeKg,
-                       durationMinutes: $0.durationMinutes, nextSessionTitle: nextScheduled?.title,
-                       nextSessionDate: nextScheduled?.date, exercises: $0.exercises)
+        guard !completedToday.isEmpty else { return nil }
+        let duration = completedToday.compactMap(\.durationMinutes).reduce(0, +)
+        let exercises = completedToday.flatMap(\.exercises)
+        let title: String
+        if completedToday.count == 1 {
+            title = completedToday[0].title
+        } else {
+            title = String(localized: "\(completedToday.count) workouts complete", bundle: .module)
         }
+        return DaySummary(title: title,
+                          setCount: completedToday.reduce(0) { $0 + $1.setCount },
+                          volumeKg: completedToday.reduce(0) { $0 + $1.volumeKg },
+                          durationMinutes: duration > 0 ? duration : nil,
+                          nextSessionTitle: nextScheduled?.title,
+                          nextSessionDate: nextScheduled?.date,
+                          exercises: exercises)
     }
 
     public func suggestedDurationMinutes(plan: EditablePlan) -> Int? {
@@ -83,18 +98,24 @@ public enum TodayHeroActivityPresenter {
     }
 
     /// Runs on a background context; every read of a model happens here.
-    public static func make(sessions: [WorkoutSession], scheduled: [ScheduledWorkout],
+    public static func make(sessions: [WorkoutSession], cardio: [CardioWorkout] = [], scheduled: [ScheduledWorkout],
                             now: Date, calendar: Calendar = .current) -> TodayHeroActivitySnapshot {
         let samples = WorkoutDurationEstimator.workSecondsSamples(from: sessions)
         let today = calendar.startOfDay(for: now)
-        let completed = sessions
+        let completedStrength = sessions
             .filter { s in
                 s.deletedAt == nil && s.endedAt != nil && s.hasSets
                     && calendar.isDate(s.endedAt ?? s.date, inSameDayAs: today)
             }
             .sorted { ($0.endedAt ?? $0.date) > ($1.endedAt ?? $1.date) }
-            .first
             .map(completedWorkout)
+        let completedCardio = cardio
+            .filter { workout in
+                workout.deletedAt == nil && calendar.isDate(workout.start, inSameDayAs: today)
+            }
+            .map(completedWorkout)
+        let completed = (completedStrength + completedCardio)
+            .sorted { $0.occurredAt > $1.occurredAt }
         let visible = scheduled.filter(\.isVisible)
         let todayRows = visible.filter { calendar.isDate($0.scheduledDate, inSameDayAs: now) }
         func snapshot(_ row: ScheduledWorkout) -> ScheduledHeroSnapshot {
@@ -109,7 +130,8 @@ public enum TodayHeroActivityPresenter {
             .first
         return TodayHeroActivitySnapshot(
             isLoaded: true,
-            completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count,
+            completedWorkoutCount: sessions.filter { $0.hasSets && $0.deletedAt == nil }.count
+                + cardio.filter { $0.deletedAt == nil }.count,
             completedToday: completed,
             nextScheduled: next.map { ScheduledHeroSnapshot(title: $0.title, date: $0.scheduledDate,
                                                             exercises: [], durationMinutes: nil) },
@@ -137,6 +159,27 @@ public enum TodayHeroActivityPresenter {
                      setCount: sets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
                      volumeKg: session.totalVolume,
                      durationMinutes: duration > 0 ? Int((duration / 60).rounded()) : nil,
-                     exercises: lines)
+                     exercises: lines,
+                     occurredAt: session.endedAt ?? session.date)
+    }
+
+    private static func completedWorkout(_ workout: CardioWorkout) -> TodayHeroActivitySnapshot.CompletedWorkout {
+        let title = workout.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let displayTitle = title.isEmpty ? String(localized: "Cardio", bundle: .module) : title
+        let minutes = Int((workout.duration / 60).rounded())
+        let distance: String?
+        if let meters = workout.distance, meters > 0 {
+            distance = meters >= 1000 ? String(format: "%.1f km", meters / 1000) : "\(Int(meters)) m"
+        } else {
+            distance = nil
+        }
+        let detail = [distance, minutes > 0 ? String(localized: "\(minutes) min", bundle: .module) : nil]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+        return .init(title: displayTitle, setCount: 0, volumeKg: 0,
+                     durationMinutes: minutes > 0 ? minutes : nil,
+                     exercises: [TodayHero.Line(name: displayTitle,
+                                                detail: detail.isEmpty ? String(localized: "Complete", bundle: .module) : detail)],
+                     occurredAt: workout.start)
     }
 }

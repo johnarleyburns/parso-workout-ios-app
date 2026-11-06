@@ -26,6 +26,10 @@ extension WatchWorkoutManager {
     var cardioElapsed: TimeInterval {
         guard let cardioSessionStart else { return effectiveElapsed }
         if let record = cardioInactivity.record { return record.activeDuration(endedAt: Date()) } // excludes paused time
+        // Swimming and legacy cardio do not have an inactivity record. When
+        // their Watch session owns the clock, it is still pause-aware and is
+        // the only duration that matches what the person performed.
+        if cardioOwnsSession { return effectiveElapsed }
         return max(0, Date().timeIntervalSince(cardioSessionStart))
     }
 }

@@ -94,7 +94,7 @@ extension HomeView {
             coachFallback: coachRecommendsStrength ? coachFallback : nil,
             reason: reason).map { hero in
                 TodayHero(kind: hero.kind, title: hero.title,
-                          estimatedMinutes: activity.suggestedDurationMinutes(plan: todaySuggestedPlan),
+                          estimatedMinutes: todaySuggestedPlan.map { activity.suggestedDurationMinutes(plan: $0) },
                           exercises: hero.exercises, reason: hero.reason,
                           citationIDs: hero.citationIDs)
             }

@@ -73,17 +73,31 @@ extension HomeView {
         // new recommendation deliberately.
         let pinnedRecommendation = restoredRecommendation
         let recommendationReady = activity.isLoaded
-            ? (coachSnapshotReady || restoredRecommendation != nil)
-            : restoredRecommendation != nil
+            ? (coachSnapshotReady || restoredRecommendation != nil || todaySuggestedPlan != nil)
+            : (restoredRecommendation != nil || todaySuggestedPlan != nil)
         let coachRecommendsStrength = pinnedRecommendation?.primaryIsStrength ?? (coachSnapshotReady
             ? coachDecision.primary.kind == .strength
             : false)
-        let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
-            TodayHero(kind: .suggested, title: plan.title,
-                      estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
-                      exercises: heroLines(plan), reason: reason,
-                      citationIDs: SuggestedWorkoutPresenter.citationIDs)
-        } : nil
+        // The personalized generator is intentionally asynchronous. Its compact
+        // decision is a fallback only; a complete generated plan always wins.
+        let coachFallback = pinnedRecommendation?.makeHero() ?? (coachSnapshotReady
+            ? TodayHeroPresenter.recommendation(coachDecision)
+            : nil)
+        // A generated plan is the source of truth for both this hero and the
+        // plan opened by Start.  Never substitute the compact one-exercise
+        // coach fallback while a full plan is already available.
+        let pairedPlan = (todaySuggestionIsStartupFallback || restoredRecommendation?.primaryIsStrength == true || coachRecommendsStrength)
+            ? todaySuggestedPlan.map(TodaySuggestedPlanPayload.init)
+            : nil
+        let suggested = TodayStartupPresentation.hero(
+            plan: pairedPlan,
+            coachFallback: coachRecommendsStrength ? coachFallback : nil,
+            reason: reason).map { hero in
+                TodayHero(kind: hero.kind, title: hero.title,
+                          estimatedMinutes: todaySuggestedPlan.flatMap { activity.suggestedDurationMinutes(plan: $0) },
+                          exercises: hero.exercises, reason: hero.reason,
+                          citationIDs: hero.citationIDs)
+            }
         let starter = todaySuggestedPlan.map { plan in
             TodayHero(kind: .starter, title: plan.title,
                       estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
@@ -91,16 +105,6 @@ extension HomeView {
                       reason: String(localized: "A general starter workout to get your first session going. It personalizes once you've logged a couple of workouts."),
                       citationIDs: SuggestedWorkoutPresenter.citationIDs)
         }
-        // The personalized generator is intentionally asynchronous and may
-        // briefly have no result while the Home card is already rendering.
-        // Falling straight through to "Recovery day" made the same Today
-        // recommendation appear to flip between strength and recovery based on
-        // launch timing. The already-computed Coach decision is the stable
-        // fallback until the personalized plan arrives (or if generation has
-        // no launchable catalog result).
-        let coachFallback = pinnedRecommendation?.makeHero() ?? (coachSnapshotReady
-            ? TodayHeroPresenter.recommendation(coachDecision)
-            : nil)
         let scheduled = activity.todayScheduled?.makeHero()
         let inProgress = activeSession.map { session -> TodayHero in
             let progress = InProgressWorkoutPresenter.progress(session: session)
@@ -124,7 +128,9 @@ extension HomeView {
         case .doneToday: String(localized: "Done for today")
         case .needsHistory: String(localized: "Build your history")
         case .restDay: String(localized: "Recovery day")
-        case .suggested: String(localized: "Suggested for you")
+        case .suggested: todaySuggestionIsStartupFallback
+            ? String(localized: "Starter strength workout")
+            : String(localized: "Suggested for you")
         case .starter: String(localized: "Starter workout")
         case .loading: String(localized: "Loading")
         }
@@ -170,6 +176,7 @@ extension HomeView {
                     Spacer(minLength: 8)
                     Button("Show it") {
                         todaySuggestedPlan = pending
+                        todaySuggestionIsStartupFallback = false
                         pendingSuggestedWorkoutPlan = nil
                     }
                     .buttonStyle(.borderedProminent)
@@ -236,7 +243,11 @@ extension HomeView {
             weeklyVolumeKgByPerformer: cachedWeeklyVolumeKgByPerformer,
             weeklyVolumePerformers: cachedWeeklyVolumePerformers,
             totalVolumeKg: weeklyVolumeKg,
-            isVolumeLoading: !(coachSnapshotReady && dashboardActivityReady),
+            // The restored recommendation already carries last-known weekly
+            // sets. Render those rows immediately and replace their values
+            // when the full projection lands; never block the Sets surface on
+            // unrelated coach/HealthKit work.
+            isVolumeLoading: false,
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,
             onOpenPlanned: { path.append(HomeRoute.plannedWorkoutDetail($0)) },

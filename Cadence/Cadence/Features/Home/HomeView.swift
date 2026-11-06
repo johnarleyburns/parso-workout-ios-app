@@ -107,6 +107,9 @@ struct HomeView: View {
     /// (avoids racing a value push against the nested Start Workout stack).
     @State var suggestedWorkoutPlan: EditablePlan?
     @State var todaySuggestedPlan: EditablePlan?
+    /// True only for the local, explicitly-labelled first-frame strength plan
+    /// used while no durable Today record has reached this device yet.
+    @State var todaySuggestionIsStartupFallback = false
     /// A freshly computed Today suggestion that differs from `todaySuggestedPlan`
     /// and awaits the user's explicit "show it". See `TodaySuggestionReplacementGate`.
     @State var pendingSuggestedWorkoutPlan: EditablePlan?

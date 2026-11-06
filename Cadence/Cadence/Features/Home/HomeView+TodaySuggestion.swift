@@ -14,10 +14,16 @@ extension HomeView {
     /// generator. Starting or editing still goes through the normal editor.
     func prepareTodaySuggestion() async {
         guard surface == .today, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
-        // Defer all history/catalog work until the cached hero is on screen
-        // (bounded, so a missing cache cannot stall the suggestion).
-        for _ in 0..<20 where !(coachSnapshotReady || restoredRecommendation != nil) && !Task.isCancelled {
-            try? await Task.sleep(for: .milliseconds(50))
+        // The paired recommendation cache has established that strength is
+        // appropriate, but the plan file may have been purged independently.
+        // Give Home a complete, launchable plan now; a personalized replacement
+        // is held behind the existing explicit confirmation banner.
+        if todaySuggestedPlan == nil, restoredRecommendation?.primaryIsStrength == true {
+            todaySuggestedPlan = TodayStartupPresentation.immediateFallback(
+                style: settings.preferredWorkoutStyle,
+                warmupMinutes: settings.warmupMinutes,
+                cooldownMinutes: settings.cooldownMinutes).makePlan()
+            todaySuggestionIsStartupFallback = true
         }
         await Task.yield()
         guard !Task.isCancelled else { return }
@@ -34,11 +40,6 @@ extension HomeView {
             applyOrHoldTodaySuggestion(restored)
             todaySuggestionRenderedKey = earlyKey
             return
-        }
-        // Cold generation is deferred past launch. Any provisional plan stays
-        // visible until the replacement is published.
-        if !(await HomeTodayCache.suggestionStore.hasSameDayEntry()) {
-            try? await Task.sleep(for: .seconds(1.5))
         }
         guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil,
               let request = snapshot.request else { return }
@@ -124,6 +125,7 @@ extension HomeView {
         switch TodaySuggestionReplacementGate.decide(displayed: displayed, freshlyComputed: payload) {
         case .applyImmediately:
             todaySuggestedPlan = payload.makePlan()
+            todaySuggestionIsStartupFallback = false
             pendingSuggestedWorkoutPlan = nil
         case .holdPending:
             pendingSuggestedWorkoutPlan = payload.makePlan()

@@ -100,6 +100,11 @@ struct HomeView: View {
     @State var suggestedWorkoutGeneration = SuggestionGenerationGate()
     @State var suggestedCardioTask: Task<Void, Never>?
     @State var suggestedCardio: CardioSuggestion?
+    /// Today's "Suggested Cardio for You": cached first, newer one held pending.
+    @State var todayCardio: CardioSuggestion?
+    @State var pendingTodayCardio: CardioSuggestion?
+    @State var todayCardioInput: CardioSuggestionInput?
+    @State var todayCardioCalculating = false
     /// HIIT protocols skipped with "Suggest another" during this Cardio for You session.
     @State var lastSuggestedCardioInput: CardioSuggestionInput?
     @State var skippedHIITProtocolIDs: Set<String> = []

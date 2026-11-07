@@ -37,9 +37,13 @@ extension HomeView {
             .accessibilityIdentifier("week.closeMoment")
         }
         todayHeroCard
-        if coachSnapshotReady, coachDecision.todayPlannedRecommendations.count > 1 {
-            todayDualPlanCard
-        }
+        HomeTodayCardioCard(
+            suggestion: todayCardio,
+            isCalculating: todayCardioCalculating,
+            hasNewer: pendingTodayCardio != nil,
+            onStart: { launchSuggestedCardio($0) },
+            onSuggestAnother: { suggestAnotherTodayCardio($0) },
+            onShowNewer: { showNewerTodayCardio() })
         HomeWeekRingsCard(
             dashboard: dashboard,
             summary: ThisWeekWorkoutsPresenter.summary(
@@ -130,7 +134,7 @@ extension HomeView {
         case .restDay: String(localized: "Recovery day")
         case .suggested: todaySuggestionIsStartupFallback
             ? String(localized: "Starter strength workout")
-            : String(localized: "Suggested for you")
+            : String(localized: "Suggested Strength for You")
         case .starter: String(localized: "Starter workout")
         case .loading: String(localized: "Loading")
         }
@@ -169,64 +173,23 @@ extension HomeView {
             heroCard
             if let pending = pendingSuggestedWorkoutPlan,
                hero.kind == .suggested || hero.kind == .starter || hero.kind == .restDay {
-                HStack(spacing: 12) {
-                    Label("Created a new workout for today", systemImage: "sparkles")
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
-                    Spacer(minLength: 8)
-                    Button("Show it") {
-                        todaySuggestedPlan = pending
-                        todaySuggestionIsStartupFallback = false
-                        pendingSuggestedWorkoutPlan = nil
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                    Button("Not now") {
-                        pendingSuggestedWorkoutPlan = nil
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                Button("Show newer suggested workout…") {
+                    todaySuggestedPlan = pending
+                    todaySuggestionIsStartupFallback = false
+                    pendingSuggestedWorkoutPlan = nil
                 }
-                .padding(12)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Created a new workout for today. Show it, or dismiss to keep your current suggestion.")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(CadenceTheme.link)
                 .accessibilityIdentifier("home.hero.newSuggestionBanner")
             }
-        }
-    }
-
-    /// The hero intentionally focuses on one next action. When Coach has
-    /// produced an eligible two-a-day, show the complete plan immediately
-    /// below it instead of silently hiding the second modality.
-    private var todayDualPlanCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Today's plan", systemImage: "calendar.badge.clock")
-                .font(.headline)
-            ForEach(coachDecision.todayPlannedRecommendations) { session in
-                HStack(spacing: 10) {
-                    Image(systemName: session.kind == .strength ? "dumbbell.fill" : "heart.fill")
-                        .foregroundStyle(session.kind == .strength ? .green : .teal)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(session.title).font(.subheadline.weight(.semibold))
-                        Text(session.subtitle).font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button("Start") {
-                        if session.kind == .strength, todaySuggestedPlan != nil {
-                            openTodaySuggestion()
-                        } else {
-                            launchDecision(session)
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                }
-                .accessibilityIdentifier("home.today.dual.\(session.id)")
+            if showingSuggestedPlan, hero.kind == .suggested || hero.kind == .starter {
+                Button("Suggest Another") { suggestAnotherTodayStrength() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(CadenceTheme.link)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("home.hero.another")
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceCard()
-        .accessibilityIdentifier("home.today.dualPlan")
     }
 
     var dashboardWeekContent: some View {

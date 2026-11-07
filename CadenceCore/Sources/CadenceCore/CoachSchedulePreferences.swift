@@ -59,6 +59,8 @@ public enum SameDayCardioTiming: String, Codable, Sendable, CaseIterable {
 
 public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var restPreference: RestPreference
+    /// Retired setting: strength and cardio are always both suggested, so this
+    /// is always true regardless of init arguments or stored data.
     public var allowsTwoADays: Bool
     public var sameDayCardioTiming: SameDayCardioTiming
     public var dailyStepTarget: Int
@@ -84,7 +86,7 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
 
     public static let `default` = CoachSchedulePreferences(
         restPreference: .defaultRolling,
-        allowsTwoADays: false,
+        allowsTwoADays: true,
         sameDayCardioTiming: .afterStrength,
         desiredSetsPerExercise: 3,
         trackedMuscleGroups: MuscleGroup.defaultTracked)
@@ -96,7 +98,7 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
                 desiredSetsPerExercise: Int = 3,
                 trackedMuscleGroups: Set<MuscleGroup> = MuscleGroup.defaultTracked) {
         self.restPreference = restPreference
-        self.allowsTwoADays = allowsTwoADays
+        self.allowsTwoADays = true
         self.sameDayCardioTiming = sameDayCardioTiming
         self.dailyStepTarget = min(20_000, max(2_000, dailyStepTarget))
         self.desiredSetsPerExercise = Self.clampDesiredSets(desiredSetsPerExercise)
@@ -107,7 +109,7 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         restPreference = try c.decodeIfPresent(RestPreference.self, forKey: .restPreference) ?? .defaultRolling
-        allowsTwoADays = try c.decodeIfPresent(Bool.self, forKey: .allowsTwoADays) ?? false
+        allowsTwoADays = true
         sameDayCardioTiming = try c.decodeIfPresent(SameDayCardioTiming.self, forKey: .sameDayCardioTiming) ?? .afterStrength
         dailyStepTarget = min(20_000, max(2_000, try c.decodeIfPresent(Int.self, forKey: .dailyStepTarget) ?? 8_000))
         // Pre-DB++ stores keyed coverage opt-outs by the retired 8-case `BodyPart`.
@@ -198,7 +200,7 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
 
     public func withTwoADays(_ allowed: Bool) -> CoachSchedulePreferences {
         var copy = self
-        copy.allowsTwoADays = allowed
+        copy.allowsTwoADays = true
         return copy
     }
 

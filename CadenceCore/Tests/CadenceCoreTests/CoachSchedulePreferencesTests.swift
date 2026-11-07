@@ -13,7 +13,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         } else {
             XCTFail("Default rest preference should be rolling every 3")
         }
-        XCTAssertFalse(prefs.allowsTwoADays)
+        XCTAssertTrue(prefs.allowsTwoADays, "retired setting is always on")
         XCTAssertEqual(prefs.sameDayCardioTiming, .afterStrength)
         XCTAssertEqual(prefs.desiredSetsPerExercise, 3)
     }
@@ -201,7 +201,7 @@ final class CoachSchedulePreferencesTests: XCTestCase {
 
     // MARK: - Two-a-days gating
 
-    func testTwoADaysDisabledNoDoubleSession() throws {
+    func testLegacyTwoADaysOptOutIsIgnored() throws {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: Date())
         let prefs = CoachSchedulePreferences(allowsTwoADays: false)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
@@ -212,8 +212,8 @@ final class CoachSchedulePreferencesTests: XCTestCase {
             let cardioCount = day.sessions.filter {
                 $0.kind == .moderateAerobic || $0.kind == .easyAerobic
             }.count
-            XCTAssertTrue(strengthCount + cardioCount <= 1,
-                          "Without two-a-days, at most one workout per day. Day: \(day.date)")
+            XCTAssertTrue(strengthCount <= 1 && cardioCount <= 1,
+                          "At most one strength and one cardio workout per day. Day: \(day.date)")
         }
     }
 

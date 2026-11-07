@@ -154,7 +154,9 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
         let writer = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { Date() })
         await writer.save(Self.payload(), fingerprint: "f")
         var json = try String(contentsOf: url, encoding: .utf8)
-        json = json.replacingOccurrences(of: "\"schemaVersion\":1", with: "\"schemaVersion\":99")
+        json = json.replacingOccurrences(
+            of: "\"schemaVersion\":\(TodaySuggestedWorkoutCacheStore.schemaVersion)",
+            with: "\"schemaVersion\":99")
         try json.write(to: url, atomically: true, encoding: .utf8)
         let reader = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { Date() })
         let old = await reader.restore(fingerprint: "f")
@@ -223,7 +225,9 @@ final class TodaySuggestionCacheOutcomeTests: XCTestCase {
 
         await store(url, clock).save(Self.payload(), fingerprint: "f", earlyKey: "k")
         let json = try String(contentsOf: url, encoding: .utf8)
-            .replacingOccurrences(of: "\"schemaVersion\":1", with: "\"schemaVersion\":99")
+            .replacingOccurrences(
+                of: "\"schemaVersion\":\(TodaySuggestedWorkoutCacheStore.schemaVersion)",
+                with: "\"schemaVersion\":99")
         try json.write(to: url, atomically: true, encoding: .utf8)
         let schema = await store(url, clock).restoreEarlyResolution(earlyKey: "k")
         XCTAssertEqual(schema.outcome, .schemaRejected)

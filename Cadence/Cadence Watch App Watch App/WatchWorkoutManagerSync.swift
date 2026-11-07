@@ -23,11 +23,16 @@ extension WatchWorkoutManager {
             recordPhoneSyncFailure(String(localized: "Open Cladiron on iPhone"))
             return
         }
-        session.sendMessage(request, replyHandler: nil) { [weak self] error in
-            DispatchQueue.main.async {
-                self?.recordPhoneSyncFailure(error.localizedDescription)
+        // WatchConnectivity invokes this on a background queue. A closure formed in this
+        // @MainActor method would inherit main-actor isolation and trap at runtime
+        // (Swift 6 isolation check), so declare it @Sendable and hop explicitly.
+        let onError: @Sendable (Error) -> Void = { [weak self] error in
+            let message = error.localizedDescription
+            Task { @MainActor [weak self] in
+                self?.recordPhoneSyncFailure(message)
             }
         }
+        session.sendMessage(request, replyHandler: nil, errorHandler: onError)
     }
 }
 

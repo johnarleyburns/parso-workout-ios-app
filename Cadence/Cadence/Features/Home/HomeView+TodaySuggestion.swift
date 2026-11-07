@@ -34,7 +34,8 @@ extension HomeView {
         let earlyKey = snapshot.earlyKey
         // A rendered plan whose key is proven current needs no further work.
         if todaySuggestedPlan != nil, todaySuggestionRenderedKey == earlyKey { return }
-        // A valid same-day durable plan is restored before any generation.
+        // A valid same-day cached result from the shared suggestion service is
+        // restored before generation. A differing key is rejected by the store.
         if let restored = await HomeTodayCache.suggestionStore.restoreEarly(earlyKey: earlyKey) {
             guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
             applyOrHoldTodaySuggestion(restored)

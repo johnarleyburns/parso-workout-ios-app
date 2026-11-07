@@ -163,6 +163,9 @@ extension HomeView {
            let record = await HomeTodayCache.coordinator.restoreProvisional(surface: .today) {
             restoredRecommendation = record.payload
         }
+        // The cache stores the result produced by the same shared suggestion
+        // service that powers "Suggest a workout". Schema validation prevents
+        // legacy Today-only results from reappearing after an app restart.
         if todaySuggestedPlan == nil, suggestedWorkoutPlan == nil,
            let hit = await HomeTodayCache.suggestionStore.peekDisplayable() {
             guard todaySuggestedPlan == nil, suggestedWorkoutPlan == nil else { return }

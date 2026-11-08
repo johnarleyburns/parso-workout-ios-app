@@ -53,8 +53,8 @@ while IFS= read -r qa_failed_issue; do
   gh issue reopen "$qa_failed_issue" --repo "$repo" >/dev/null
   gh issue edit "$qa_failed_issue" --repo "$repo" --remove-label ready-for-qa >/dev/null
   echo "Reopened #${qa_failed_issue} for human-QA repair."
-done < <(gh issue list --repo "$repo" --state closed --label qa-failed --limit 1000 --json number \
-  --jq '.[].number')
+done < <(gh issue list --repo "$repo" --state closed --label qa-failed --limit 1000 --json number,author \
+  --jq '.[] | select(.author.login == "johnarleyburns") | .number')
 
 # The implementation worker posts a pinned <!-- claude-progress-heartbeat -->
 # comment every 5 minutes while it runs. No prior way existed to tell a merely
@@ -139,7 +139,7 @@ done < <(gh issue list --repo "$repo" --state open --limit 1000 --json number,la
 macos_capacity_available || { echo 'Actual xcode-27 capacity is occupied.'; exit 0; }
 all_pr_bodies=$(gh pr list --repo "$repo" --state all --base main --limit 1000 --json body --jq '.[].body // ""')
 issues=$(gh issue list --repo "$repo" --state open --limit 1000 --json number,author,labels,createdAt --jq '
-sort_by([if any(.labels[]?.name; . == "priority-high") then 0 elif any(.labels[]?.name; . == "qa-failed") then 1 else 2 end, .createdAt, .number])[]
+sort_by([if any(.labels[]?.name; . == "priority-high") then 0 elif any(.labels[]?.name; . == "qa-failed") then 1 else 2 end, .createdAt, .number])[] | select(.author.login == "johnarleyburns")
 | select(any(.labels[]?.name; . == "awaiting-ci-authorization" or . == "tracking" or . == "blocked-by-dependency" or . == "intake-running" or . == "intake-retry-deferred") | not)
 | select((any(.labels[]?.name; . == "ready-for-qa") | not) or any(.labels[]?.name; . == "qa-failed"))
 | select((any(.labels[]?.name; . == "needs-human-review") | not) or any(.labels[]?.name; . == "retry-ai"))

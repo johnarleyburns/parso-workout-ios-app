@@ -526,10 +526,14 @@ final class AppModel: NSObject, @unchecked Sendable {
         guard let container = _modelContainer else { return nil }
         let coordinator = CardioImportCoordinator(
             provider: health,
-            persist: { delta in
-                try await Task.detached(priority: .utility) {
+            persist: { [weak self] delta in
+                // Resolve the immutable profile on the main actor; Core never sees settings/HealthKit.
+                let profile: CardioIntensityProfile?
+                if let self, let settings = self._settings { profile = await self.refreshIntensityProfile(settings: settings) } else { profile = nil }
+                return try await Task.detached(priority: .utility) {
                     try WorkoutRepository.applyCardioImport(
                         upserts: delta.upserts, deletedIDs: delta.deletedHealthKitUUIDs,
+                        intensityProfile: profile,
                         in: ModelContext(container))
                 }.value
             },

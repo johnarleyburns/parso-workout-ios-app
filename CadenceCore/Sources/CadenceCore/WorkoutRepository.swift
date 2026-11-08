@@ -1222,9 +1222,66 @@ public enum WorkoutRepository {
     /// number newly inserted.
     @discardableResult
     public static func ingest(_ workouts: [IngestedWorkout], in context: ModelContext) throws -> Int {
-        let (inserted, changed) = try ingestUnsaved(workouts, in: context)
-        if inserted > 0 || changed { try context.save() }
-        return inserted
+        let r = try ingestUnsaved(workouts, profile: nil, in: context)
+        if r.inserted > 0 || r.enriched > 0 || r.matched > 0 { try context.save() }
+        return r.inserted
+    }
+
+    /// Profile-aware HealthKit import (#422). Every inserted row gets the immutable
+    /// profile snapshot and the accumulator summary; replays of a known UUID
+    /// backfill missing/obsolete intensity once and never touch manual overrides.
+    @discardableResult
+    public static func ingest(_ workouts: [IngestedWorkout],
+                              intensityProfile: CardioIntensityProfile,
+                              in context: ModelContext) throws -> CardioImportReport {
+        let r = try ingestUnsaved(workouts, profile: intensityProfile, in: context)
+        if r.inserted > 0 || r.enriched > 0 || r.matched > 0 { try context.save() }
+        return CardioImportReport(inserted: r.inserted, removed: 0,
+                                  changed: r.enriched > 0 || r.matched > 0,
+                                  enriched: r.enriched, unchanged: r.unchanged,
+                                  rejected: r.rejected)
+    }
+
+    /// Idempotent backfill of HealthKit-imported rows lacking current intensity
+    /// provenance. Skips manual overrides, recorded/logged/deleted/unknown rows,
+    /// and rows with no duration. Returns the number of rows changed.
+    @discardableResult
+    public static func backfillImportedCardioIntensity(
+        profile: CardioIntensityProfile, in context: ModelContext
+    ) throws -> Int {
+        let rows = try context.fetch(FetchDescriptor<CardioWorkout>())
+        var count = 0
+        for row in rows where row.deletedAt == nil
+            && row.originValue == .healthKitImported
+            && row.healthKitWorkoutUUID != nil {
+            if applyIntensity(to: row, samples: row.orderedHRSamples.map { ($0.t, $0.bpm) },
+                              profile: profile) { count += 1 }
+        }
+        if count > 0 { try context.save() }
+        return count
+    }
+
+    /// Returns true only when the row actually changed.
+    private static func applyIntensity(to row: CardioWorkout, samples: [(t: TimeInterval, bpm: Double)],
+                                       profile: CardioIntensityProfile) -> Bool {
+        guard row.duration > 0 else { return false }
+        if row.intensitySummary != nil,
+           row.cardioAlgorithmVersion == CardioIntensityPolicy.algorithmVersion { return false }
+        let summary = CardioMinuteAccumulator.summarize(
+            duration: max(0, row.duration),
+            samples: samples.map { HRSamplePoint(t: $0.t, bpm: $0.bpm) }, profile: profile)
+        // Keep a more complete existing profile; otherwise store the snapshot.
+        if row.intensityProfile == nil {
+            row.intensityProfile = profile
+            row.effectiveRestingHR = profile.restingHR
+            row.effectiveMaximumHR = profile.maximumHR
+            row.heartRateMaximumSourceRaw = profile.maximumHRSource.rawValue
+        }
+        row.intensitySummary = summary
+        row.cardioAlgorithmVersion = summary.algorithmVersion
+        row.trainingZonePolicy = CardioIntensityPolicy.trainingZonePolicy
+        row.updatedAt = Date()
+        return true
     }
 
     /// Applies one anchored HealthKit delta in a single save: upserts first,
@@ -1232,8 +1289,9 @@ public enum WorkoutRepository {
     /// deleted there. Cladiron-recorded rows are never removed by HealthKit.
     public static func applyCardioImport(upserts: [IngestedWorkout],
                                          deletedIDs: [UUID],
+                                         intensityProfile: CardioIntensityProfile? = nil,
                                          in context: ModelContext) throws -> CardioImportReport {
-        let (inserted, changed) = try ingestUnsaved(upserts, in: context)
+        let r = try ingestUnsaved(upserts, profile: intensityProfile, in: context)
         var removed = 0
         if !deletedIDs.isEmpty {
             let ids = Set(deletedIDs)
@@ -1246,20 +1304,37 @@ public enum WorkoutRepository {
                 }
             }
         }
-        if inserted > 0 || changed || removed > 0 { try context.save() }
-        return CardioImportReport(inserted: inserted, removed: removed, changed: changed)
+        var backfilled = 0
+        if let intensityProfile {
+            let rows = try context.fetch(FetchDescriptor<CardioWorkout>())
+            for row in rows where row.deletedAt == nil && row.originValue == .healthKitImported
+                && row.healthKitWorkoutUUID != nil {
+                if applyIntensity(to: row, samples: row.orderedHRSamples.map { ($0.t, $0.bpm) },
+                                  profile: intensityProfile) { backfilled += 1 }
+            }
+        }
+        let changed = r.enriched > 0 || r.matched > 0 || backfilled > 0
+        if r.inserted > 0 || changed || removed > 0 { try context.save() }
+        return CardioImportReport(inserted: r.inserted, removed: removed, changed: changed,
+                                  enriched: r.enriched + backfilled, unchanged: r.unchanged,
+                                  rejected: r.rejected)
     }
 
     private static func ingestUnsaved(_ workouts: [IngestedWorkout],
-                                      in context: ModelContext) throws -> (inserted: Int, changed: Bool) {
+                                      profile: CardioIntensityProfile?,
+                                      in context: ModelContext)
+        throws -> (inserted: Int, enriched: Int, matched: Int, unchanged: Int, rejected: Int) {
         var existing = try context.fetch(FetchDescriptor<CardioWorkout>())
-        var inserted = 0
-        var changed = false
+        var inserted = 0, enriched = 0, matched = 0, unchanged = 0, rejected = 0
         for w in workouts {
             guard w.origin == .healthKitImported, w.end > w.start,
-                  let kind = w.importedKind, !kind.isStrength else { continue }
+                  let kind = w.importedKind, !kind.isStrength else { rejected += 1; continue }
             if let match = existing.first(where: { $0.healthKitWorkoutUUID == w.id }) {
-                if enrich(match, with: w, in: context) { changed = true }
+                var did = enrich(match, with: w, in: context)
+                if let profile, match.originValue == .healthKitImported,
+                   applyIntensity(to: match, samples: match.orderedHRSamples.map { ($0.t, $0.bpm) },
+                                  profile: profile) { did = true }
+                if did { enriched += 1 } else { unchanged += 1 }
                 continue
             }
             if let match = existing.first(where: {
@@ -1269,7 +1344,7 @@ public enum WorkoutRepository {
                 abs(($0.end ?? $0.start).timeIntervalSince(w.end)) < 10
             }) {
                 match.healthKitWorkoutUUID = w.id
-                changed = true
+                matched += 1
                 continue
             }
             let c = CardioWorkout(type: w.type, start: w.start, end: w.end,
@@ -1292,10 +1367,22 @@ public enum WorkoutRepository {
                 context.insert(RouteSample(t: route.t, lat: route.lat, lon: route.lon,
                                            elevation: route.elevation, cardio: c))
             }
+            if let profile {
+                let summary = CardioMinuteAccumulator.summarize(
+                    duration: max(0, w.end.timeIntervalSince(w.start)),
+                    samples: w.hrSamples, profile: profile)
+                c.intensityProfile = profile
+                c.effectiveRestingHR = profile.restingHR
+                c.effectiveMaximumHR = profile.maximumHR
+                c.heartRateMaximumSourceRaw = profile.maximumHRSource.rawValue
+                c.intensitySummary = summary
+                c.cardioAlgorithmVersion = summary.algorithmVersion
+                c.trainingZonePolicy = CardioIntensityPolicy.trainingZonePolicy
+            }
             existing.append(c)
             inserted += 1
         }
-        return (inserted, changed)
+        return (inserted, enriched, matched, unchanged, rejected)
     }
 
     /// Fills only missing fields on the row that already owns this UUID.

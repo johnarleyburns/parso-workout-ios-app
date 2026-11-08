@@ -5,10 +5,20 @@ public struct CardioImportReport: Equatable, Sendable {
     public var inserted: Int
     public var removed: Int
     public var changed: Bool
-    public init(inserted: Int, removed: Int, changed: Bool = false) {
+    /// Existing rows enriched or intensity-backfilled.
+    public var enriched: Int
+    public var unchanged: Int
+    public var rejected: Int
+    public var failed: Int
+    public init(inserted: Int, removed: Int, changed: Bool = false,
+                enriched: Int = 0, unchanged: Int = 0, rejected: Int = 0, failed: Int = 0) {
         self.inserted = inserted
         self.removed = removed
         self.changed = changed
+        self.enriched = enriched
+        self.unchanged = unchanged
+        self.rejected = rejected
+        self.failed = failed
     }
     /// True when stored history changed, so projections must be refreshed.
     public var changedHistory: Bool { inserted > 0 || removed > 0 || changed }

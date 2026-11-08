@@ -131,7 +131,10 @@ public struct TrainingEvent: Sendable, Equatable, Identifiable {
     public var isHard: Bool {
         switch kind {
         case .strength(let details):
-            guard let d = details else { return false }
+            // No per-exercise detail means we have no evidence the session was
+            // light; a completed strength session is assumed hard by default,
+            // same as `.unknown` below.
+            guard let d = details else { return true }
             return d.totalHardSets >= 6 || d.exercises.contains { ($0.maxRPE ?? 0) >= 8 }
         case .aerobic(let d), .intervals(let d):
             return d.intensity == .vigorous

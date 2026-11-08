@@ -6,12 +6,17 @@ import CadenceCore
 /// The suggestion is advisory: it never replaces the user's schedule (NFR-8).
 public enum CoachWatchTodayBridge {
     public static func todayPlan(from decision: CoachDecision, updatedAt: Date = Date()) -> WatchSync.TodayPlan {
-        let candidates = decision.todayPlannedRecommendations.isEmpty
-            ? [decision.primary] : decision.todayPlannedRecommendations
         var seen = Set<String>()
-        let sessions = candidates.compactMap { session -> WatchSync.TodayPlan.Session? in
-            guard seen.insert(session.id).inserted else { return nil }
-            return watchSession(from: session)
+        var sessions = decision.dailyRecommendationSlots.compactMap { slot -> WatchSync.TodayPlan.Session? in
+            guard seen.insert(slot.session.id).inserted,
+                  var session = watchSession(from: slot.session) else { return nil }
+            session.isCompanionRecommendation = slot.isCompanion
+            return session
+        }
+        // No slots: keep a rest-day primary visible; completed modalities stay absent.
+        if sessions.isEmpty, decision.primary.launchPayload.isRestPayload,
+           let rest = watchSession(from: decision.primary) {
+            sessions = [rest]
         }
         return WatchSync.TodayPlan(sessions: sessions, updatedAt: updatedAt)
     }
@@ -49,8 +54,11 @@ public enum CoachWatchTodayBridge {
                                  updatedAt: Date = Date()) -> WatchSync.TodayPlan {
         let base = todayPlan(from: decision, updatedAt: updatedAt)
         guard let plan, let suggested = suggestedStrengthSession(from: plan) else { return base }
-        var sessions = base.sessions.filter { !$0.isStrength }
-        sessions.insert(suggested, at: 0)
+        var sessions = base.sessions
+        guard let index = sessions.firstIndex(where: { $0.isStrength }) else { return base }
+        var replacement = suggested
+        replacement.isCompanionRecommendation = sessions[index].isCompanionRecommendation
+        sessions[index] = replacement
         return WatchSync.TodayPlan(sessions: sessions, updatedAt: updatedAt)
     }
 
@@ -69,5 +77,12 @@ public enum CoachWatchTodayBridge {
         case .recovery, .assessment:
             return nil
         }
+    }
+}
+
+private extension CoachSession.LaunchPayload {
+    var isRestPayload: Bool {
+        if case .rest = self { return true }
+        return false
     }
 }

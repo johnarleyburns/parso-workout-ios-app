@@ -178,12 +178,17 @@ public enum WatchSync {
             /// and the citations behind it, shown with "The science ›" on the watch (HARD RULE).
             public var adviceNote: String?
             public var adviceCitationIDs: [String]
+            /// True when this row is the optional/companion modality rather than the coach's primary pick.
+            /// Additive; absent in older contexts, where it defaults to false.
+            public var isCompanionRecommendation: Bool = false
 
             public init(id: String, kind: Kind, label: String,
                         exerciseNames: [String] = [], repLadder: [Int] = [],
                         cardioType: String? = nil, durationMinutes: Int? = nil,
                         zone: Int? = nil, planPayload: WatchPlanPayload? = nil,
-                        adviceNote: String? = nil, adviceCitationIDs: [String] = []) {
+                        adviceNote: String? = nil, adviceCitationIDs: [String] = [],
+                        isCompanionRecommendation: Bool = false) {
+                self.isCompanionRecommendation = isCompanionRecommendation
                 self.id = id
                 self.kind = kind
                 self.label = label
@@ -285,6 +290,7 @@ public enum WatchSync {
                         dict["adviceNote"] = advice
                         dict["adviceCitationIDs"] = session.adviceCitationIDs
                     }
+                    if session.isCompanionRecommendation { dict["isCompanionRecommendation"] = true }
                     if let payload = session.planPayload {
                         let propertyList = payload.propertyList
                         if !propertyList.isEmpty { dict[WatchPlanPayload.transportKey] = propertyList }
@@ -317,7 +323,8 @@ public enum WatchSync {
                     zone: row["zone"] as? Int,
                     planPayload: (row[WatchPlanPayload.transportKey] as? [String: Any]).flatMap(WatchPlanPayload.init(propertyList:)),
                     adviceNote: row["adviceNote"] as? String,
-                    adviceCitationIDs: row["adviceCitationIDs"] as? [String] ?? []
+                    adviceCitationIDs: row["adviceCitationIDs"] as? [String] ?? [],
+                    isCompanionRecommendation: row["isCompanionRecommendation"] as? Bool ?? false
                 )
             }
         }

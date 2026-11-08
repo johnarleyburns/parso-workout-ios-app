@@ -142,7 +142,7 @@ Optional contribution:
 - Contribute to development — $9.99, one-time consumable
 The contribution is processed by Apple, unlocks nothing, and only adds a
 Supporter badge to Home after a successful purchase.
-Privacy Policy: https://parso.guru/cladiron_privacy
+Privacy Policy: https://johnarleyburns.github.io/parso-workout-ios-app/
 Terms (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 ```
 
@@ -236,7 +236,8 @@ Rationale:
 
 - Marketing URL: `https://www.parso.guru`
 - Support URL: `https://github.com/johnarleyburns/parso-workout-ios-app/issues`
-- Privacy Policy URL: `https://parso.guru/cladiron_privacy`
+- Privacy Policy URL: `https://johnarleyburns.github.io/parso-workout-ios-app/` (published from
+  this repo's `gh-pages` branch; migrated off `parso.guru/cladiron_privacy`)
 - Source URL: `https://github.com/johnarleyburns/parso-workout-ios-app`
 - Apple App Review Guidelines: `https://developer.apple.com/app-store/review/guidelines/`
 - Apple screenshot specifications: `https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/`

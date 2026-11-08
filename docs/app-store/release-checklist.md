@@ -60,7 +60,10 @@ Use this checklist for the first public App Store v1 submission.
   (required — the archive embeds a watchOS app).
 - Set App Privacy to `Data Not Collected`.
 - Confirm the privacy policy URL is live and accurate:
-  `https://parso.guru/cladiron_privacy`.
+  `https://johnarleyburns.github.io/parso-workout-ios-app/` (published from this repo's
+  `gh-pages` branch; migrated off `parso.guru/cladiron_privacy`). The refreshed policy now
+  discloses microphone/speech-recognition voice logging — re-check App Privacy answers in App
+  Store Connect still match.
 - Add review notes from `docs/app-store/metadata.md`.
 - Confirm no demo account is required.
 

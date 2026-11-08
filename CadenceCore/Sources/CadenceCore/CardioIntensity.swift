@@ -259,7 +259,9 @@ public enum CardioIntensityClassifier {
             case ..<CardioIntensityPolicy.nearMaximalHRR: relative = .veryHard
             default: relative = .nearMaximal
             }
-            let guideline: GuidelineIntensity = fraction < CardioIntensityPolicy.lightHRR
+            // Zone 2 (30–<40% HRR) counts as moderate, matching the percent-max
+            // fallback; only Zone 1 is below moderate.
+            let guideline: GuidelineIntensity = fraction < CardioIntensityPolicy.veryLightHRR
                 ? .belowModerate : fraction < CardioIntensityPolicy.moderateHRR ? .moderate : .vigorous
             return IntensityClassification(
                 heartRate: heartRate, hrrFraction: fraction,

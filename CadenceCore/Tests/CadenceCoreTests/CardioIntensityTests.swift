@@ -34,7 +34,7 @@ final class CardioIntensityTests: XCTestCase {
     func testHRRBoundariesAndGuidelineCredit() {
         let cases: [(Double, RelativeIntensity, GuidelineIntensity, TrainingZone)] = [
             (101, .veryLight, .belowModerate, .z1),
-            (107, .light, .belowModerate, .z2),
+            (107, .light, .moderate, .z2),
             (119, .moderate, .moderate, .z3),
             (150, .vigorous, .vigorous, .z4),
             (198, .nearMaximal, .vigorous, .z5)
@@ -46,6 +46,17 @@ final class CardioIntensityTests: XCTestCase {
             XCTAssertEqual(result.trainingZone, zone, "\(bpm) BPM")
             XCTAssertEqual(result.method, .heartRateReserve)
         }
+    }
+
+    func testZ2AndZ3HRRTimeBothEarnCardioMinutes() {
+        // 8 min Z2 (107 bpm) + 4 min Z3 (119 bpm) must credit 12 minutes.
+        let summary = CardioMinuteAccumulator.summarize(
+            duration: 720,
+            samples: [HRSamplePoint(t: 0, bpm: 107), HRSamplePoint(t: 480, bpm: 119)],
+            profile: profile)
+        XCTAssertEqual(summary.moderateDuration, 720, accuracy: 0.001)
+        XCTAssertEqual(summary.belowModerateDuration, 0, accuracy: 0.001)
+        XCTAssertEqual(summary.moderateEquivalentMinutes, 12, accuracy: 0.001)
     }
 
     func testNoEasyFractionalCredit() {

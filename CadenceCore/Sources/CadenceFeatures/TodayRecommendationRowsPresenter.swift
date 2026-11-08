@@ -31,10 +31,14 @@ public struct TodayRecommendationRow: Equatable, Sendable, Identifiable {
 
 public enum TodayRecommendationRowsPresenter {
     public static func rows(slots: [DailyRecommendationSlot], allowsTwoADays: Bool) -> [TodayRecommendationRow] {
-        var seen = Set<DailyRecommendationModality>()
         return DailyRecommendationModality.allCases.compactMap { modality in
-            guard seen.insert(modality).inserted,
-                  let slot = slots.first(where: { $0.modality == modality }) else { return nil }
+            // The slot's label alone is not sufficient: a stale or malformed
+            // snapshot must never put a cardio session in the Strength row (or
+            // vice versa). Keep the modality boundary at the rendering and
+            // routing point as a final safety check.
+            guard let slot = slots.first(where: {
+                $0.modality == modality && session($0.session, matches: modality)
+            }) else { return nil }
             let badge: TodayRecommendationBadge = !slot.isCompanion
                 ? .recommended
                 : (allowsTwoADays ? .alsoPlannedToday : .optionalToday)
@@ -47,6 +51,16 @@ public enum TodayRecommendationRowsPresenter {
                 durationText: session.durationMinutes.map { String(localized: "\($0) min") },
                 rationale: session.subtitle,
                 citationIds: session.citationIds)
+        }
+    }
+
+    private static func session(_ session: CoachSession,
+                                matches modality: DailyRecommendationModality) -> Bool {
+        switch modality {
+        case .strength:
+            session.kind == .strength
+        case .cardio:
+            session.isAerobic
         }
     }
 }

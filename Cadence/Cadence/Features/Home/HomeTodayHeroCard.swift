@@ -159,7 +159,10 @@ struct HomeTodayHeroCard: View {
 
     private var exerciseRows: some View {
         let lines = exercises.map { TodayHero.Line(name: $0.name, detail: $0.detail) }
-        let disclosure = TodayExerciseDisclosure(lines: lines, capacity: max(exerciseCapacity, 3))
+        // This card has a fixed height. Three rows are the most that fit while
+        // preserving the actions and rationale below them; anything else is
+        // deliberately disclosed through the full-plan affordance.
+        let disclosure = TodayExerciseDisclosure(lines: lines, capacity: min(exerciseCapacity, 3))
         return VStack(spacing: 0) {
             ForEach(Array(disclosure.visible.enumerated()), id: \.offset) { _, exercise in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {

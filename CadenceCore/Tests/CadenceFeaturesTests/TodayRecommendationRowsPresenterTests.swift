@@ -52,4 +52,17 @@ final class TodayRecommendationRowsPresenterTests: XCTestCase {
         if case .planEditor = CoachRouter.destination(for: rows[0].session) {} else { XCTFail("strength routes to editor") }
         XCTAssertEqual(CoachRouter.destination(for: rows[1].session), .outdoorCardio(.walk))
     }
+
+    func testStrengthRowRejectsACardioSessionEvenWhenSlotIsLabelledStrength() {
+        let malformed = [
+            DailyRecommendationSlot(modality: .strength, session: cardio, isCompanion: false),
+            DailyRecommendationSlot(modality: .cardio, session: cardio, isCompanion: true)
+        ]
+
+        let rows = TodayRecommendationRowsPresenter.rows(slots: malformed, allowsTwoADays: false)
+
+        XCTAssertEqual(rows.map(\.modality), [.cardio])
+        XCTAssertEqual(rows.first?.session.id, cardio.id)
+        XCTAssertFalse(rows.contains { $0.modality == .strength && $0.session.isAerobic })
+    }
 }

@@ -64,7 +64,7 @@ extension HomeView {
     }
 
     func generateTodaySuggestion(_ request: SuggestedWorkoutRequest, earlyKey: String,
-                                 scheduledStamps: [String]) {
+                                 scheduledStamps: [String], replaceImmediately: Bool = false) {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
@@ -100,11 +100,35 @@ extension HomeView {
                 guard suggestedWorkoutTask != nil,
                       suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
-                applyOrHoldTodaySuggestion(payload)
+                if replaceImmediately {
+                    todaySuggestedPlan = payload.makePlan()
+                    todaySuggestionIsStartupFallback = false
+                    pendingSuggestedWorkoutPlan = nil
+                } else {
+                    applyOrHoldTodaySuggestion(payload)
+                }
                 todaySuggestionRenderedKey = earlyKey
             }
         }
         suggestedWorkoutTask = task
+    }
+
+    /// "Suggest Another": replaces Today's strength suggestion with a different
+    /// workout by excluding the exercises of the one currently shown.
+    func suggestAnotherTodayStrength() {
+        guard let shown = todaySuggestedPlan else { return }
+        let names = Set(shown.exercises.map(\.name))
+        Task {
+            guard let snapshot = await loadTodaySuggestionLaunchSnapshot(),
+                  let request = snapshot.request else { return }
+            let different = SuggestedWorkoutRequest(
+                input: request.input.excludingCandidates(named: names),
+                unit: request.unit, warmupMinutes: request.warmupMinutes,
+                cooldownMinutes: request.cooldownMinutes)
+            generateTodaySuggestion(different, earlyKey: snapshot.earlyKey,
+                                    scheduledStamps: snapshot.scheduledStamps,
+                                    replaceImmediately: true)
+        }
     }
 
     func openTodaySuggestion() {

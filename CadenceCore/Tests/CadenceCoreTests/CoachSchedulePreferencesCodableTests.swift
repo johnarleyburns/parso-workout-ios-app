@@ -60,7 +60,7 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
         } else {
             XCTFail("Expected rolling rest preference")
         }
-        XCTAssertFalse(prefs.allowsTwoADays)
+        XCTAssertTrue(prefs.allowsTwoADays, "retired setting is always on")
         XCTAssertEqual(prefs.sameDayCardioTiming, .afterStrength)
         XCTAssertEqual(prefs.dailyStepTarget, 12_000,
                        "Existing dailyStepTarget should survive")

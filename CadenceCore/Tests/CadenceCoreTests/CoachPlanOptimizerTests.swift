@@ -382,9 +382,9 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: cardioOnlyPlan,
             schedulePreferences: preferences(twoADays: false),
             candidates: [genericStrengthSession()])
-        XCTAssertEqual(noTwoADays.plannedStrengthSessions.count, 1)
+        XCTAssertFalse(noTwoADays.plannedStrengthSessions.isEmpty)
         XCTAssertTrue(noTwoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
-                      "Coach self-schedules the free day today rather than doubling up on the cardio day")
+                      "Coach self-schedules the free day today")
 
         let fixedRestPlan = weeklyPlan(now: now, days: [
             (1, [.strength]),
@@ -448,8 +448,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: cardioTodayPlan,
             schedulePreferences: preferences(twoADays: false),
             candidates: [genericStrengthSession()])
-        XCTAssertTrue(noTwoADays.plannedStrengthSessions.isEmpty,
-                      "Ad-hoc today slot must not create a two-a-day when the user disallows them")
+        XCTAssertFalse(noTwoADays.plannedStrengthSessions.isEmpty,
+                       "Two-a-days are always allowed; the legacy opt-out is ignored")
 
         let twoADays = CoachPlanOptimizer.optimize(
             trainingFacts: facts,

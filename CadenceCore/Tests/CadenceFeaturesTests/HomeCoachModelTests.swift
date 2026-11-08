@@ -77,7 +77,7 @@ final class HomeCoachModelTests: XCTestCase {
     func testChangingSchedulePreferencesChangesSignature() {
         let token = UUID()
         let a = sig(token: token, schedule: .default)
-        let b = sig(token: token, schedule: CoachSchedulePreferences.default.withTwoADays(true))
+        let b = sig(token: token, schedule: CoachSchedulePreferences.default.withRestPreference(.rolling(everyNDays: 5)))
         XCTAssertNotEqual(a, b)
     }
 

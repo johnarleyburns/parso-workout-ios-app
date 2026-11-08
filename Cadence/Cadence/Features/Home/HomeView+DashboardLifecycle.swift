@@ -140,6 +140,7 @@ extension HomeView {
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
                 guard displayRestoreComplete else { return }
                 await prepareTodaySuggestion()
+                await prepareTodayCardio()
             }
             .onChange(of: todaySuggestedPlan?.id) { _, _ in
                 // Watch Suggest mirrors the phone's generated Today plan.

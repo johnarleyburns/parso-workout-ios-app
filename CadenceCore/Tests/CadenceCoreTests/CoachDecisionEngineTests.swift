@@ -92,7 +92,6 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
         XCTAssertEqual(decision.dailyRecommendationSlots.map(\.modality), [.strength, .cardio])
         XCTAssertEqual(decision.dailyRecommendationSlots.filter { !$0.isCompanion }.count <= 1, true)
-        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty)
         for slot in decision.dailyRecommendationSlots {
             XCTAssertNotNil(decision.scoreBreakdowns[slot.session.id],
                             "Slot sessions must come from the scored candidates")
@@ -1147,14 +1146,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         }
     }
 
-    func testTwoADayOffByDefault() throws {
+    func testTwoADayAlwaysOn() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         // Default prefs (allowsTwoADays = false)
         let decision = CoachDecisionEngine.run(facts)
 
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
-                       "Without two-a-day opt-in, recommendations should be empty")
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 2,
+                       "Strength and cardio are always both suggested")
     }
 
     // MARK: - Step health nudge

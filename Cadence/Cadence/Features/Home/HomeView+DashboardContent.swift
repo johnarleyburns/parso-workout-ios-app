@@ -44,12 +44,6 @@ extension HomeView {
             onStart: { launchSuggestedCardio($0) },
             onSuggestAnother: { suggestAnotherTodayCardio($0) },
             onShowNewer: { showNewerTodayCardio() })
-        HomeWeekRingsCard(
-            dashboard: dashboard,
-            summary: ThisWeekWorkoutsPresenter.summary(
-                planned: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems).count,
-                done: cachedWeekStrengthEntries.count + cachedWeekCardioEntries.count),
-            isStrengthLoading: !coachSnapshotReady)
     }
 
     private var todayHeroCard: some View {

@@ -36,14 +36,34 @@ extension HomeView {
             .sensoryFeedback(.success, trigger: close.title)
             .accessibilityIdentifier("week.closeMoment")
         }
-        todayHeroCard
-        HomeTodayCardioCard(
-            suggestion: todayCardio,
-            isCalculating: todayCardioCalculating,
-            hasNewer: pendingTodayCardio != nil,
-            onStart: { launchSuggestedCardio($0) },
-            onSuggestAnother: { suggestAnotherTodayCardio($0) },
-            onShowNewer: { showNewerTodayCardio() })
+        let dualRows = dualRecommendationRows
+        if dualRows.isEmpty {
+            todayHeroCard
+            HomeTodayCardioCard(
+                suggestion: todayCardio,
+                isCalculating: todayCardioCalculating,
+                hasNewer: pendingTodayCardio != nil,
+                onStart: { launchSuggestedCardio($0) },
+                onSuggestAnother: { suggestAnotherTodayCardio($0) },
+                onShowNewer: { showNewerTodayCardio() })
+        } else {
+            HomeTodayRecommendationsCard(rows: dualRows, onStart: { launchDecision($0) })
+        }
+    }
+
+    /// Rows for the compact dual card; empty keeps the existing hero. Only the
+    /// normal generated recommendation is replaced: loading, in-progress,
+    /// scheduled, recovery/pain, and completed-day states keep the hero.
+    private var dualRecommendationRows: [TodayRecommendationRow] {
+        let activity = cachedTodayHeroActivity
+        guard coachSnapshotReady, activity.isLoaded, activity.completedWorkoutCount >= 2, resumeSession == nil,
+              activity.todayScheduled == nil, activity.remainingScheduledToday == 0,
+              activity.daySummary() == nil,
+              coachDecision.primary.kind != .recovery, coachDecision.primary.kind != .rest
+        else { return [] }
+        return TodayRecommendationRowsPresenter.rows(
+            slots: coachDecision.dailyRecommendationSlots,
+            allowsTwoADays: settings.coachSchedulePreferences.allowsTwoADays)
     }
 
     private var todayHeroCard: some View {

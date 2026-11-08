@@ -153,7 +153,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         // If the launched workout is a strength session, it should include
         // whole-body coverage. A non-strength primary is fine — the planner
         // covers abs/calves later in the week.
-        if primary.kind == .strength || !launchedExercises.isEmpty {
+        if primary.kind == .strength {
             XCTAssertTrue(hasAbWork, "Launched strength should include an ab movement")
             XCTAssertTrue(hasCalfWork, "Launched strength should include a calf movement")
         }

@@ -5,8 +5,8 @@ import CadenceCore
 import CadenceFeatures
 
 struct WatchRootView: View {
-    @Environment(WatchWorkoutManager.self) private var watchManager
-    @Environment(AppSettings.self) private var watchAppSettings
+    @Environment(WatchWorkoutManager.self) var watchManager
+    @Environment(AppSettings.self) var watchAppSettings
     @Environment(\.modelContext) private var context
     /// Only unfinished Watch sessions: the launcher needs one resumable row,
     /// not the whole training log fetched on the main actor at launch and
@@ -25,7 +25,7 @@ struct WatchRootView: View {
     @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
     @State private var activeCardioSpec: WorkoutConfigurationSpec?
     @State private var activeIntervalSession: ActiveIntervalSession?
-    @State private var startingPlanned = false
+    @State private var plannedStrengthSession: WatchSync.TodayPlan.Session?
     @State private var resumingSession: WorkoutSession?
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
@@ -104,13 +104,15 @@ struct WatchRootView: View {
             return
         }
         if style == .todaysPlan {
-            if watchManager.todayPlan?.sessions.contains(where: \.isStrength) == true {
-                startingPlanned = true
+            switch WatchTodayRecommendations.startDecision(for: watchManager.todayPlan) {
+            case .launch(let row):
+                startRecommendation(row)
                 return
-            }
-            if let cardio = watchManager.todayPlan?.sessions.first(where: { !$0.isStrength }) {
-                startPlannedCardio(cardio)
+            case .choose:
+                // Both are planned: Today shows both rows; the user picks one deliberately.
                 return
+            case .none:
+                break
             }
         }
         startingQuickLift = true
@@ -124,7 +126,10 @@ struct WatchRootView: View {
             TabView {
                 launcherList
                 WatchWeekView(summary: watchManager.weekSummary, overlays: watchManager.weekLocalOverlays, currentWeekKey: WatchWorkoutManager.currentWeekKey())
-                WatchMyWorkoutsView(plan: watchManager.todayPlan, cardioHistoryRevision: watchManager.cardioHistoryRevision, distanceUnit: watchAppSettings.distanceUnit)
+                WatchMyWorkoutsView(plan: watchManager.todayPlan,
+                                    pendingCardioCompletions: watchManager.pendingCardioCompletions,
+                                    cardioHistoryRevision: watchManager.cardioHistoryRevision,
+                                    distanceUnit: watchAppSettings.distanceUnit)
             }
             .tabViewStyle(.page)
             .navigationTitle("Cladiron")
@@ -140,7 +145,10 @@ struct WatchRootView: View {
                         .accessibilityIdentifier("watch.settings")
                 }
             }
-            .navigationDestination(isPresented: $startingPlanned) { plannedStrengthDestination }
+            .navigationDestination(isPresented: Binding(get: { plannedStrengthSession != nil },
+                                                        set: { if !$0 { plannedStrengthSession = nil } })) {
+                plannedStrengthDestination
+            }
             .navigationDestination(item: $resumingSession) { session in WatchStrengthView(resuming: session) }
             .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthStartView() }
             .navigationDestination(isPresented: $showingCardio) {
@@ -173,10 +181,11 @@ struct WatchRootView: View {
             WatchSessionOwnershipCard(verdict: sessionOwnership)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
+            // A workout explicitly sent from the phone takes precedence over coaching content.
+            WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
             heroCard
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
-            WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
             // Two tiles in one row: plain Buttons with their own destinations, because a List row
             // with two NavigationLinks activates as one (tapping Lift opened Cardio).
             HStack(spacing: 6) {
@@ -197,40 +206,32 @@ struct WatchRootView: View {
         .listStyle(.plain)
     }
 
-    private var sessionOwnership: WatchSessionOwnership.Verdict {
-        watchManager.sessionOwnership(hasResumableStrength: resumableStrengthSession != nil)
-    }
 
-    private var needsHealthAccess: Bool { !watchManager.workoutShareAuthorized && !watchManager.isActive }
-
-    private var hero: WatchTodayHero {
-        let resume = resumableStrengthSession.map { session in
-            WatchTodayHeroBuilder.ResumeInput(
-                title: session.title.isEmpty ? String(localized: "Workout") : session.title,
-                startedAt: session.date,
-                exercises: Self.loggedPerExercise(session),
-                plannedSets: Dictionary(session.plannedPrescriptions.map {
-                    ($0.exerciseName, $0.sets.filter { $0.kind != .warmup }.count) }, uniquingKeysWith: { a, _ in a }))
+    private func startRecommendation(_ row: WatchTodayRecommendations.Row) {
+        switch row.modality {
+        case .strength: plannedStrengthSession = row.session
+        case .cardio: startPlannedCardio(row.session)
         }
-        return WatchTodayHeroBuilder.make(
-            resume: resume,
-            plan: watchManager.todayPlan,
-            synced: watchManager.lastPhoneSyncAt != nil)
-    }
-
-    private static func loggedPerExercise(_ session: WorkoutSession) -> [(name: String, sets: Int)] {
-        var order: [String] = []
-        var counts: [String: Int] = [:]
-        for set in session.orderedSets where !set.isWarmup {
-            let name = set.exercise?.name ?? ""
-            if counts[name] == nil { order.append(name) }
-            counts[name, default: 0] += 1
-        }
-        return order.map { ($0, counts[$0] ?? 0) }
     }
 
     @ViewBuilder
     private var heroCard: some View {
+        let rows = WatchTodayRecommendations.visibleRows(for: watchManager.todayPlan,
+                                                         hasResume: resumableStrengthSession != nil)
+        if rows.isEmpty {
+            heroContent
+        } else {
+            VStack(spacing: 6) {
+                ForEach(rows) { row in WatchRecommendationRow(row: row) { startRecommendation(row) } }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("watch.todayHero")
+        }
+    }
+
+
+    @ViewBuilder
+    private var heroContent: some View {
         switch hero {
         case .resume(let title, let detail, let startedAt):
             heroContainer(colors: [Color(red: 0.35, green: 0.23, blue: 0.06), Color(red: 0.12, green: 0.08, blue: 0.02)]) {
@@ -254,7 +255,7 @@ struct WatchRootView: View {
                     (Text("\(exercises.count) exercises") + Text(verbatim: " · ~") + Text("\(minutes) min")).font(.caption2).foregroundStyle(.secondary)
                 }
                 if let advice { WatchCoachLineView(line: advice) }
-                Button { startingPlanned = true } label: { Label("Start", systemImage: "play.fill") }
+                Button { plannedStrengthSession = watchManager.todayPlan?.sessions.first(where: \.isStrength) } label: { Label("Start", systemImage: "play.fill") }
                     .buttonStyle(WatchPillStyle(kind: .primary))
                     .handGestureShortcut(.primaryAction)
                     .accessibilityIdentifier("watch.startPlanned")
@@ -314,7 +315,7 @@ struct WatchRootView: View {
 
     @ViewBuilder
     private var plannedStrengthDestination: some View {
-        if let session = watchManager.todayPlan?.sessions.first(where: \.isStrength) {
+        if let session = plannedStrengthSession {
             WatchStrengthView(
                 title: session.label.isEmpty ? "Strength" : session.label,
                 plannedExerciseNames: session.exerciseNames,
@@ -323,7 +324,7 @@ struct WatchRootView: View {
         }
     }
 
-    private var resumableStrengthSession: WorkoutSession? {
+    var resumableStrengthSession: WorkoutSession? {
         resumableSessions.first(where: \.isResumable)
     }
 
@@ -391,10 +392,4 @@ struct WatchRootView: View {
         activeCardioSpec = spec
     }
 
-    private func intervalSetupModel(kind: String) -> IntervalSetupModel {
-        let isHIITOrBoxing = kind.lowercased() == "hiit" || kind.lowercased() == "boxing"
-        let syncedWarmup = isHIITOrBoxing ? nil : (watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.warmupMinutes * 60)
-        let syncedCooldown = isHIITOrBoxing ? nil : (watchManager.lastPhoneSyncAt == nil ? nil : watchAppSettings.cooldownMinutes * 60)
-        return IntervalSetupModel(kind: kind, warmupSeconds: syncedWarmup, cooldownSeconds: syncedCooldown)
-    }
 }

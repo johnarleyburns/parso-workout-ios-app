@@ -30,7 +30,10 @@ private struct SessionInlineEditorSheet: View {
 }
 extension SessionView {
     func startWatchIfNeeded() {
-        guard !isManualLog, model.watchAvailable else { return }
+        // A saved session can be opened for editing, but that must never be
+        // interpreted as consent to start an HKWorkoutSession on the Watch.
+        // Only the session currently owned by `ActiveWorkout` is live.
+        guard isActiveSession, !isManualLog, model.watchAvailable else { return }
         if case .connected = model.hrm.state, model.hrm.source == .bluetooth { return }
 
         // Preflight uses the final session ID. Reopening this view must retain that
@@ -221,7 +224,8 @@ extension SessionView {
             tint: .teal,
             idPrefix: "cooldown",
             soundsEnabled: settings.workoutSounds,
-            onFinish: finishCooldown)
+            onFinish: finishCooldown,
+            liveMetric: AnyView(SessionLiveHRBand(sessionID: session.id, showsEmptyState: true)))
     }
 
     @ViewBuilder

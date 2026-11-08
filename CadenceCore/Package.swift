@@ -37,6 +37,11 @@ let package = Package(
                 .product(
                     name: "FreeExerciseDBPlusPlus",
                     package: "free-exercise-db-plusplus"
+                ),
+                // Garmin FIT codec boundary (GarminFITBridge only).
+                .product(
+                    name: "FreeExerciseDBPlusPlusFIT",
+                    package: "free-exercise-db-plusplus"
                 )
             ],
             resources: [

@@ -35,12 +35,11 @@ final class WatchCardioMinutesSummaryTests: XCTestCase {
         assertMatchesAccumulator(samples, duration: 720, profile: maxOnlyProfile)
     }
 
-    func testLongGapEarnsNoInventedCredit() {
+    func testLongGapCarriesForwardTheLastKnownHeartRate() {
         let samples = [HRSamplePoint(t: 0, bpm: 130), HRSamplePoint(t: 600, bpm: 130)]
         let summary = WatchCardioMinutesSummary.make(hrSamples: samples, sessionDuration: 660, profile: hrrProfile)
-        // First sample earns 120 s (cap), last earns the 60 s left in the session; the gap stays unclassified.
-        XCTAssertEqual(summary?.vigorousMinutes ?? -1, 3, accuracy: 0.0001)
-        XCTAssertEqual(summary?.totalMinutes ?? -1, 3, accuracy: 0.0001)
+        XCTAssertEqual(summary?.vigorousMinutes ?? -1, 11, accuracy: 0.0001)
+        XCTAssertEqual(summary?.totalMinutes ?? -1, 11, accuracy: 0.0001)
         assertMatchesAccumulator(samples, duration: 660, profile: hrrProfile)
     }
 

@@ -34,7 +34,7 @@ final class CardioIntensityTests: XCTestCase {
     func testHRRBoundariesAndGuidelineCredit() {
         let cases: [(Double, RelativeIntensity, GuidelineIntensity, TrainingZone)] = [
             (101, .veryLight, .belowModerate, .z1),
-            (107, .light, .belowModerate, .z2),
+            (107, .light, .moderate, .z2),
             (119, .moderate, .moderate, .z3),
             (150, .vigorous, .vigorous, .z4),
             (198, .nearMaximal, .vigorous, .z5)
@@ -48,23 +48,34 @@ final class CardioIntensityTests: XCTestCase {
         }
     }
 
+    func testZ2AndZ3HRRTimeBothEarnCardioMinutes() {
+        // 8 min Z2 (107 bpm) + 4 min Z3 (119 bpm) must credit 12 minutes.
+        let summary = CardioMinuteAccumulator.summarize(
+            duration: 720,
+            samples: [HRSamplePoint(t: 0, bpm: 107), HRSamplePoint(t: 480, bpm: 119)],
+            profile: profile)
+        XCTAssertEqual(summary.moderateDuration, 720, accuracy: 0.001)
+        XCTAssertEqual(summary.belowModerateDuration, 0, accuracy: 0.001)
+        XCTAssertEqual(summary.moderateEquivalentMinutes, 12, accuracy: 0.001)
+    }
+
     func testNoEasyFractionalCredit() {
         let summary = CardioMinuteAccumulator.summarize(
             duration: 600,
             samples: [HRSamplePoint(t: 0, bpm: 90), HRSamplePoint(t: 300, bpm: 150)],
             profile: profile)
-        XCTAssertEqual(summary.belowModerateDuration, 120, accuracy: 0.001)
-        XCTAssertEqual(summary.vigorousDuration, 120, accuracy: 0.001)
-        XCTAssertEqual(summary.moderateEquivalentMinutes, 4, accuracy: 0.001)
+        XCTAssertEqual(summary.belowModerateDuration, 300, accuracy: 0.001)
+        XCTAssertEqual(summary.vigorousDuration, 300, accuracy: 0.001)
+        XCTAssertEqual(summary.moderateEquivalentMinutes, 10, accuracy: 0.001)
     }
 
-    func testLongHRGapIsUnclassifiedRatherThanInterpolated() {
+    func testLongHRGapCarriesPreviousReadingForward() {
         let summary = CardioMinuteAccumulator.summarize(
             duration: 600,
             samples: [HRSamplePoint(t: 0, bpm: 150), HRSamplePoint(t: 301, bpm: 150)],
             profile: profile)
-        XCTAssertEqual(summary.classifiedDuration, 240, accuracy: 0.001)
-        XCTAssertEqual(summary.unclassifiedDuration, 360, accuracy: 0.001)
+        XCTAssertEqual(summary.classifiedDuration, 600, accuracy: 0.001)
+        XCTAssertEqual(summary.unclassifiedDuration, 0, accuracy: 0.001)
     }
 
     func testMissingInputsRemainUnclassified() {
@@ -84,8 +95,8 @@ final class CardioIntensityTests: XCTestCase {
         let weekly = WeeklyCardioAggregator.summarize(
             [workout], since: Date(timeIntervalSince1970: 0), profile: profile)
         XCTAssertEqual(weekly.actualMinutes, 10, accuracy: 0.001)
-        XCTAssertEqual(weekly.vigorousMinutes, 4, accuracy: 0.001)
-        XCTAssertEqual(weekly.moderateEquivalentMinutes, 8, accuracy: 0.001)
+        XCTAssertEqual(weekly.vigorousMinutes, 10, accuracy: 0.001)
+        XCTAssertEqual(weekly.moderateEquivalentMinutes, 20, accuracy: 0.001)
     }
 
     func testWeeklyAggregatorRecomputesStoredSummaryForZ2WithCurrentProfile() {

@@ -83,7 +83,7 @@ struct Cadence_Watch_App_Watch_AppTests {
         #expect(callbackReturned)
     }
 
-    @Test func pollingRefreshDoesNotDoubleCountHeartRateAggregate() async {
+    @Test func pollingRefreshContributesToSavedHeartRateAggregate() async {
         await MainActor.run {
             let manager = WatchWorkoutManager(uiTestMode: true)
             #expect(manager.startWorkout(type: "run"))
@@ -94,7 +94,8 @@ struct Cadence_Watch_App_Watch_AppTests {
             manager.applyPolledHeartRate(124)
 
             #expect(manager.currentBPM == 124)
-            #expect(manager.liveSummary().avgHR == 120)
+            #expect(manager.liveSummary().avgHR == 368.0 / 3.0)
+            #expect(manager.liveSummary().maxHR == 124)
             manager.stopWorkout(save: false)
             #expect(!manager.isHeartRatePollingForTesting)
         }

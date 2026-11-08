@@ -2,7 +2,7 @@ import Foundation
 import CadenceCore
 
 public struct TodayHero: Equatable, Sendable {
-    public enum Kind: Equatable, Sendable { case suggested, scheduled, inProgress, doneToday, restDay, needsHistory, loading }
+    public enum Kind: Equatable, Sendable { case suggested, scheduled, inProgress, doneToday, restDay, needsHistory, starter, loading }
     public struct Line: Equatable, Sendable {
         public let name: String
         public let detail: String
@@ -100,6 +100,7 @@ public enum TodayHeroPresenter {
 
     public static func hero(inProgress: TodayHero?, scheduled: TodayHero?, suggested: TodayHero?,
                             fallbackRecommendation: TodayHero? = nil,
+                            starter: TodayHero? = nil,
                             completedWorkoutCount: Int, completedToday: DaySummary? = nil,
                             remainingScheduledToday: Int = 0,
                             recommendationReady: Bool = true,
@@ -109,6 +110,12 @@ public enum TodayHeroPresenter {
         if let completedToday, remainingScheduledToday == 0 {
             return TodayHero(kind: .doneToday, title: completedToday.title,
                              summary: completedToday, computedAt: computedAt)
+        }
+        if completedWorkoutCount == 0 {
+            if let starter { return starter.with(kind: .starter, computedAt: computedAt) }
+            return TodayHero(kind: .loading,
+                             title: String(localized: "Preparing a starter workout…", bundle: .module),
+                             computedAt: computedAt)
         }
         if completedWorkoutCount < 2 {
             return TodayHero(kind: .needsHistory,

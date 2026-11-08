@@ -18,6 +18,10 @@ public struct CoachDecision: Sendable, Identifiable {
     /// When today's plan includes both strength and cardio, both appear here.
     /// Completed session kinds are filtered out. Empty when plan is complete.
     public let todayPlannedRecommendations: [CoachSession]
+    /// Up to one safe, uncompleted strength and one cardio suggestion, chosen
+    /// from the already-scored candidates. Independent of `allowsTwoADays`:
+    /// this is presentation availability, not a request to train twice.
+    public let dailyRecommendationSlots: [DailyRecommendationSlot]
 
     public init(id: String, generatedAt: Date, primary: CoachSession,
                 alternatives: [CoachSession] = [], deferred: [DeferredCandidate] = [],
@@ -27,7 +31,8 @@ public struct CoachDecision: Sendable, Identifiable {
                 planAdherence: PlanAdherence = .planAhead,
                 todayCompletedMatches: [CoachSession] = [],
                 scoreBreakdowns: [String: SessionScoreBreakdown] = [:],
-                todayPlannedRecommendations: [CoachSession] = []) {
+                todayPlannedRecommendations: [CoachSession] = [],
+                dailyRecommendationSlots: [DailyRecommendationSlot] = []) {
         self.id = id
         self.generatedAt = generatedAt
         self.primary = primary
@@ -42,6 +47,25 @@ public struct CoachDecision: Sendable, Identifiable {
         self.todayCompletedMatches = todayCompletedMatches
         self.scoreBreakdowns = scoreBreakdowns
         self.todayPlannedRecommendations = todayPlannedRecommendations
+        self.dailyRecommendationSlots = dailyRecommendationSlots
+    }
+}
+
+public enum DailyRecommendationModality: String, Sendable, Equatable, CaseIterable {
+    case strength
+    case cardio
+}
+
+public struct DailyRecommendationSlot: Sendable, Equatable, Identifiable {
+    public let modality: DailyRecommendationModality
+    public let session: CoachSession
+    public let isCompanion: Bool
+    public var id: DailyRecommendationModality { modality }
+
+    public init(modality: DailyRecommendationModality, session: CoachSession, isCompanion: Bool) {
+        self.modality = modality
+        self.session = session
+        self.isCompanion = isCompanion
     }
 }
 
@@ -388,7 +412,9 @@ public enum CoachDecisionEngine {
             planAdherence: planState,
             todayCompletedMatches: todayMatches,
             scoreBreakdowns: breakdownMap,
-            todayPlannedRecommendations: todayRecommendations
+            todayPlannedRecommendations: todayRecommendations,
+            dailyRecommendationSlots: buildDailyRecommendationSlots(
+                scored: scored, todayCompleted: todayCompleted, primary: effectivePrimary)
         )
     }
 
@@ -495,7 +521,10 @@ public enum CoachDecisionEngine {
 
         return TodayPlanStatus(
             strengthPlannedAtStart: facts.hasStrengthVolumeDeficit(tracked: schedulePreferences.trackedMuscleGroups),
-            cardioPlannedAtStart: creditBeforeToday < 150.0,
+            // The two-a-day card uses the weekly target rather than the minimum:
+            // keep offering the paired recommendation until 300 moderate-equivalent
+            // minutes have already been banked before today.
+            cardioPlannedAtStart: creditBeforeToday < 300.0,
             strengthCompleted: todayCompleted.contains(where: \.isStrength),
             cardioCompleted: todayCompleted.contains(where: \.isAerobic)
         )
@@ -809,9 +838,9 @@ public enum CoachDecisionEngine {
     }
 
     /// Builds the list of today's planned-but-uncompleted recommendations.
-    /// Only populates when the user has enabled two-a-days AND both strength and
-    /// cardio are needed. Single-type plans let the scored primary carry the
-    /// recommendation alone.
+    /// Only populates when the user has enabled two-a-days, both modalities are
+    /// needed, and neither has been completed today. Candidate selection remains
+    /// recovery/eligibility filtered by the scored list above.
     private static func buildTodayRecommendations(
         scored: [(session: CoachSession, breakdown: SessionScoreBreakdown)],
         todayCompleted: [TrainingEvent],
@@ -825,9 +854,9 @@ public enum CoachDecisionEngine {
                                         facts: facts,
                                         schedulePreferences: schedulePreferences)
 
-        // Only build when both are needed (a two-a-day) and at least one remains.
+        // A dual list is an up-front plan, never a partial-completion reminder.
         guard todayPlan.wasTwoADayAtStart else { return [] }
-        guard !todayPlan.strengthCompleted || !todayPlan.cardioCompleted else { return [] }
+        guard !todayPlan.strengthCompleted, !todayPlan.cardioCompleted else { return [] }
 
         let bestStrength = scored.first { $0.session.kind == .strength }?.session
         let bestCardio = scored.first { $0.session.isAerobic }?.session
@@ -845,6 +874,31 @@ public enum CoachDecisionEngine {
         }
 
         return recommendations
+    }
+
+    /// Picks at most one uncompleted eligible strength and one aerobic candidate
+    /// from `scored` (ordering preserved). Not gated by `allowsTwoADays`.
+    private static func buildDailyRecommendationSlots(
+        scored: [(session: CoachSession, breakdown: SessionScoreBreakdown)],
+        todayCompleted: [TrainingEvent],
+        primary: CoachSession) -> [DailyRecommendationSlot] {
+        let primaryModality: DailyRecommendationModality? = {
+            if primary.kind == .strength { return .strength }
+            if primary.isAerobic { return .cardio }
+            return nil
+        }()
+        var slots: [DailyRecommendationSlot] = []
+        if !todayCompleted.contains(where: { $0.isStrength }),
+           let s = scored.first(where: { $0.session.kind == .strength })?.session {
+            slots.append(DailyRecommendationSlot(modality: .strength, session: s,
+                                                 isCompanion: primaryModality != .strength))
+        }
+        if !todayCompleted.contains(where: { $0.isAerobic }),
+           let c = scored.first(where: { $0.session.isAerobic })?.session {
+            slots.append(DailyRecommendationSlot(modality: .cardio, session: c,
+                                                 isCompanion: primaryModality != .cardio))
+        }
+        return slots
     }
 
     private static func formatRelative(_ date: Date, _ now: Date) -> String {

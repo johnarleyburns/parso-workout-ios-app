@@ -77,6 +77,7 @@ struct WatchStrengthStartView: View {
 
 private struct WatchCustomStrengthSetupView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
+    @Environment(AppSettings.self) private var watchSettings
     @Query(sort: \Person.updatedAt, order: .reverse) private var people: [Person]
 
     @AppStorage("watch.strength.lastRepPattern") private var lastRepPattern = WatchRepPattern.fallback.id
@@ -223,7 +224,10 @@ private struct WatchCustomStrengthSetupView: View {
             recentPartners: watchManager.recentPartnerNames + recentLocalPartnerNames
         )
         selectedRepPatternID = defaults.repPattern.id
-        selectedRestSeconds = defaults.restSeconds
+        // Rest is a workout preference shared from the phone. The old Watch-only
+        // "last custom rest" value silently shadowed it (commonly 90 seconds),
+        // so a phone setting of 30 seconds never reached a custom Watch workout.
+        selectedRestSeconds = WatchRestOptions.normalized(watchSettings.restSeconds)
         selectedPartnerNames = defaults.selectedPartners
         didLoadDefaults = true
     }

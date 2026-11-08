@@ -36,13 +36,34 @@ extension HomeView {
             .sensoryFeedback(.success, trigger: close.title)
             .accessibilityIdentifier("week.closeMoment")
         }
-        todayHeroCard
-        HomeWeekRingsCard(
-            dashboard: dashboard,
-            summary: ThisWeekWorkoutsPresenter.summary(
-                planned: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems).count,
-                done: cachedWeekStrengthEntries.count + cachedWeekCardioEntries.count),
-            isStrengthLoading: !coachSnapshotReady)
+        let dualRows = dualRecommendationRows
+        if dualRows.isEmpty {
+            todayHeroCard
+            HomeTodayCardioCard(
+                suggestion: todayCardio,
+                isCalculating: todayCardioCalculating,
+                hasNewer: pendingTodayCardio != nil,
+                onStart: { launchSuggestedCardio($0) },
+                onSuggestAnother: { suggestAnotherTodayCardio($0) },
+                onShowNewer: { showNewerTodayCardio() })
+        } else {
+            HomeTodayRecommendationsCard(rows: dualRows, onStart: { launchDecision($0) })
+        }
+    }
+
+    /// Rows for the compact dual card; empty keeps the existing hero. Only the
+    /// normal generated recommendation is replaced: loading, in-progress,
+    /// scheduled, recovery/pain, and completed-day states keep the hero.
+    private var dualRecommendationRows: [TodayRecommendationRow] {
+        let activity = cachedTodayHeroActivity
+        guard coachSnapshotReady, activity.isLoaded, activity.completedWorkoutCount >= 2, resumeSession == nil,
+              activity.todayScheduled == nil, activity.remainingScheduledToday == 0,
+              activity.daySummary() == nil,
+              coachDecision.primary.kind != .recovery, coachDecision.primary.kind != .rest
+        else { return [] }
+        return TodayRecommendationRowsPresenter.rows(
+            slots: coachDecision.dailyRecommendationSlots,
+            allowsTwoADays: settings.coachSchedulePreferences.allowsTwoADays)
     }
 
     private var todayHeroCard: some View {
@@ -63,28 +84,45 @@ extension HomeView {
         // Until history has projected, only a restored recommendation may
         // render; otherwise the hero stays "loading" (never a false recovery
         // or onboarding state).
+        // A recommendation that was rendered from the same-day display cache
+        // is a promise to the person looking at Home. Hydration can update
+        // internal Coach state, but must not silently exchange its modality or
+        // workout beneath them. A later interaction or a new day may choose a
+        // new recommendation deliberately.
+        let pinnedRecommendation = restoredRecommendation
         let recommendationReady = activity.isLoaded
-            ? (coachSnapshotReady || restoredRecommendation != nil)
-            : restoredRecommendation != nil
-        let coachRecommendsStrength = coachSnapshotReady
+            ? (coachSnapshotReady || restoredRecommendation != nil || todaySuggestedPlan != nil)
+            : (restoredRecommendation != nil || todaySuggestedPlan != nil)
+        let coachRecommendsStrength = pinnedRecommendation?.primaryIsStrength ?? (coachSnapshotReady
             ? coachDecision.primary.kind == .strength
-            : (restoredRecommendation?.primaryIsStrength ?? false)
-        let suggested = coachRecommendsStrength ? todaySuggestedPlan.map { plan in
-            TodayHero(kind: .suggested, title: plan.title,
-                      estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
-                      exercises: heroLines(plan), reason: reason,
-                      citationIDs: SuggestedWorkoutPresenter.citationIDs)
-        } : nil
-        // The personalized generator is intentionally asynchronous and may
-        // briefly have no result while the Home card is already rendering.
-        // Falling straight through to "Recovery day" made the same Today
-        // recommendation appear to flip between strength and recovery based on
-        // launch timing. The already-computed Coach decision is the stable
-        // fallback until the personalized plan arrives (or if generation has
-        // no launchable catalog result).
-        let coachFallback = coachSnapshotReady
+            : false)
+        // The personalized generator is intentionally asynchronous. Its compact
+        // decision is a fallback only; a complete generated plan always wins.
+        let coachFallback = pinnedRecommendation?.makeHero() ?? (coachSnapshotReady
             ? TodayHeroPresenter.recommendation(coachDecision)
-            : restoredRecommendation?.makeHero()
+            : nil)
+        // A generated plan is the source of truth for both this hero and the
+        // plan opened by Start.  Never substitute the compact one-exercise
+        // coach fallback while a full plan is already available.
+        let pairedPlan = (todaySuggestionIsStartupFallback || restoredRecommendation?.primaryIsStrength == true || coachRecommendsStrength)
+            ? todaySuggestedPlan.map(TodaySuggestedPlanPayload.init)
+            : nil
+        let suggested = TodayStartupPresentation.hero(
+            plan: pairedPlan,
+            coachFallback: coachRecommendsStrength ? coachFallback : nil,
+            reason: reason).map { hero in
+                TodayHero(kind: hero.kind, title: hero.title,
+                          estimatedMinutes: todaySuggestedPlan.flatMap { activity.suggestedDurationMinutes(plan: $0) },
+                          exercises: hero.exercises, reason: hero.reason,
+                          citationIDs: hero.citationIDs)
+            }
+        let starter = todaySuggestedPlan.map { plan in
+            TodayHero(kind: .starter, title: plan.title,
+                      estimatedMinutes: activity.suggestedDurationMinutes(plan: plan),
+                      exercises: heroLines(plan),
+                      reason: String(localized: "A general starter workout to get your first session going. It personalizes once you've logged a couple of workouts."),
+                      citationIDs: SuggestedWorkoutPresenter.citationIDs)
+        }
         let scheduled = activity.todayScheduled?.makeHero()
         let inProgress = activeSession.map { session -> TodayHero in
             let progress = InProgressWorkoutPresenter.progress(session: session)
@@ -96,6 +134,7 @@ extension HomeView {
         let hero = TodayHeroPresenter.hero(inProgress: inProgress, scheduled: scheduled,
                                            suggested: suggested,
                                            fallbackRecommendation: coachFallback,
+                                           starter: starter,
                                            // Unloaded history must not read as "no history".
                                            completedWorkoutCount: activity.isLoaded ? activity.completedWorkoutCount : max(2, activity.completedWorkoutCount),
                                            completedToday: activity.daySummary(),
@@ -107,12 +146,16 @@ extension HomeView {
         case .doneToday: String(localized: "Done for today")
         case .needsHistory: String(localized: "Build your history")
         case .restDay: String(localized: "Recovery day")
-        case .suggested: String(localized: "Suggested for you")
+        case .suggested: todaySuggestionIsStartupFallback
+            ? String(localized: "Starter strength workout")
+            : String(localized: "Suggested Strength for You")
+        case .starter: String(localized: "Starter workout")
         case .loading: String(localized: "Loading")
         }
-        return HomeTodayHeroCard(title: hero.title, tag: tag,
+        let showingSuggestedPlan = todaySuggestedPlan != nil && (coachRecommendsStrength || hero.kind == .starter)
+        let heroCard = HomeTodayHeroCard(title: hero.title, tag: tag,
                                  estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
-                                 rationale: hero.kind == .suggested && coachRecommendsStrength && suggested != nil
+                                 rationale: showingSuggestedPlan
                                     ? todaySuggestedPlan?.recommendationRationale
                                     : hero.reason.map { SuggestedWorkoutRationale(whyWorkout: $0, exercises: []) },
                                  citationIDs: hero.citationIDs,
@@ -127,21 +170,40 @@ extension HomeView {
                                          active.present()
                                      } else if activity.todayScheduled != nil, startTodayScheduledWorkout() {
                                          // Started the scheduled plan.
-                                     } else if coachRecommendsStrength && todaySuggestedPlan != nil {
+                                     } else if showingSuggestedPlan {
                                          openTodaySuggestion()
                                      } else {
                                          launchDecision(coachDecision.primary)
                                      }
                                  },
-                                 onShowAllExercises: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
-                                 onEdit: { if coachRecommendsStrength { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
+                                 onShowAllExercises: { if showingSuggestedPlan { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
+                                 onEdit: { if showingSuggestedPlan { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
                                  onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
                                  onViewSummary: {
-                                     if let row = workoutsTodayRows.first(where: { $0.modality == .strength }) {
-                                         openTodayWorkout(row)
-                                     }
+                                     path.append(HomeRoute.history)
                                  },
                                  onAddSomething: { selectWorkoutPresented = true })
+        return VStack(alignment: .leading, spacing: 8) {
+            heroCard
+            if let pending = pendingSuggestedWorkoutPlan,
+               hero.kind == .suggested || hero.kind == .starter || hero.kind == .restDay {
+                Button("Show newer suggested workout…") {
+                    todaySuggestedPlan = pending
+                    todaySuggestionIsStartupFallback = false
+                    pendingSuggestedWorkoutPlan = nil
+                }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(CadenceTheme.link)
+                .accessibilityIdentifier("home.hero.newSuggestionBanner")
+            }
+            if showingSuggestedPlan, hero.kind == .suggested || hero.kind == .starter {
+                Button("Suggest Another") { suggestAnotherTodayStrength() }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(CadenceTheme.link)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("home.hero.another")
+            }
+        }
     }
 
     var dashboardWeekContent: some View {
@@ -158,7 +220,11 @@ extension HomeView {
             weeklyVolumeKgByPerformer: cachedWeeklyVolumeKgByPerformer,
             weeklyVolumePerformers: cachedWeeklyVolumePerformers,
             totalVolumeKg: weeklyVolumeKg,
-            isVolumeLoading: !(coachSnapshotReady && dashboardActivityReady),
+            // The restored recommendation already carries last-known weekly
+            // sets. Render those rows immediately and replace their values
+            // when the full projection lands; never block the Sets surface on
+            // unrelated coach/HealthKit work.
+            isVolumeLoading: false,
             unit: settings.unit,
             onOpenWorkout: openWeekWorkout,
             onOpenPlanned: { path.append(HomeRoute.plannedWorkoutDetail($0)) },

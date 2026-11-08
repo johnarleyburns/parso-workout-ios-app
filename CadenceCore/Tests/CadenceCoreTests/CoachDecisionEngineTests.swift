@@ -83,6 +83,46 @@ final class CoachDecisionEngineTests: XCTestCase {
                        "With 0 strength and aerobic met, primary should be strength. Got: \(decision.primary.kind)")
     }
 
+    // MARK: - Daily recommendation slots
+
+    func testDailySlotsBothModalitiesWithoutTwoADays() throws {
+        let now = testNow
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
+        let prefs = CoachSchedulePreferences(allowsTwoADays: false)
+        let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
+        XCTAssertEqual(decision.dailyRecommendationSlots.map(\.modality), [.strength, .cardio])
+        XCTAssertEqual(decision.dailyRecommendationSlots.filter { !$0.isCompanion }.count <= 1, true)
+        for slot in decision.dailyRecommendationSlots {
+            XCTAssertNotNil(decision.scoreBreakdowns[slot.session.id],
+                            "Slot sessions must come from the scored candidates")
+        }
+    }
+
+    func testDailySlotsFilterCompletedModality() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let strength = try makeStrengthEvent(context: ctx, name: "Bench Press",
+                                             primaryMuscles: ["chest"],
+                                             date: now.addingTimeInterval(-2 * 3600))
+        let cardio = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-3600),
+                                     duration: 1800, avgHR: 140)
+        let onlyStrength = CoachDecisionEngine.run(
+            CoachFacts.make(from: [strength], goal: .strength, experience: .intermediate, now: now))
+        XCTAssertFalse(onlyStrength.dailyRecommendationSlots.contains { $0.modality == .strength })
+        let onlyCardio = CoachDecisionEngine.run(
+            CoachFacts.make(from: [cardio], goal: .strength, experience: .intermediate, now: now))
+        XCTAssertFalse(onlyCardio.dailyRecommendationSlots.contains { $0.modality == .cardio })
+        let both = CoachDecisionEngine.run(
+            CoachFacts.make(from: [strength, cardio], goal: .strength, experience: .intermediate, now: now))
+        XCTAssertTrue(both.dailyRecommendationSlots.isEmpty)
+    }
+
+    func testDailySlotsEmptyOnPainConcern() throws {
+        let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: testNow)
+        let decision = CoachDecisionEngine.run(facts, hasPainConcern: true)
+        XCTAssertTrue(decision.dailyRecommendationSlots.isEmpty)
+    }
+
     // MARK: - Pain concern
 
     func testPainConcernBlocksHardTraining() throws {
@@ -992,7 +1032,7 @@ final class CoachDecisionEngineTests: XCTestCase {
                       "Should include a cardio recommendation")
     }
 
-    func testTwoADayAfterCardioCompleteShowsOnlyStrength() throws {
+    func testTwoADayAfterCardioCompleteDoesNotShowPartialDualList() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1004,16 +1044,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
-        // Cardio done, strength still needed → one recommendation remains
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 1,
-                       "After cardio, only strength should remain")
-        XCTAssertEqual(decision.todayPlannedRecommendations.first?.kind, .strength,
-                       "Remaining should be strength")
+        // Partial completion is not a dual-list state.
+        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty,
+                      "After cardio, the dual list should not show a strength-only remainder")
         XCTAssertEqual(decision.planAdherence, .planAhead,
                        "Plan should not be complete — strength still needed")
     }
 
-    func testTwoADayAfterStrengthCompleteShowsOnlyCardio() throws {
+    func testTwoADayAfterStrengthCompleteDoesNotShowPartialDualList() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1025,11 +1063,9 @@ final class CoachDecisionEngineTests: XCTestCase {
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
-        // Strength done, cardio still needed → one recommendation remains
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 1,
-                       "After strength, only cardio should remain")
-        XCTAssertTrue(decision.todayPlannedRecommendations.first?.isAerobic ?? false,
-                      "Remaining should be cardio")
+        // Partial completion is not a dual-list state.
+        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty,
+                      "After strength, the dual list should not show a cardio-only remainder")
         XCTAssertEqual(decision.planAdherence, .planAhead,
                        "Plan should not be complete — cardio still needed")
     }
@@ -1060,10 +1096,8 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         XCTAssertEqual(afterFacts.weeklyBalance.strengthDays, 2,
                        "The morning strength workout is the second logged strength day")
-        XCTAssertEqual(afterDecision.todayPlannedRecommendations.count, 1,
-                       "Cardio should remain planned after only strength is complete")
-        XCTAssertTrue(afterDecision.todayPlannedRecommendations.first?.isAerobic ?? false,
-                      "The remaining planned workout should be cardio")
+        XCTAssertTrue(afterDecision.todayPlannedRecommendations.isEmpty,
+                      "A partially completed two-a-day must not retain a one-item dual list")
         XCTAssertTrue(afterDecision.primary.isAerobic,
                       "The card's single Start action should launch the remaining cardio workout")
         XCTAssertEqual(afterDecision.planAdherence, .planAhead,
@@ -1112,14 +1146,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         }
     }
 
-    func testTwoADayOffByDefault() throws {
+    func testTwoADayAlwaysOn() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         // Default prefs (allowsTwoADays = false)
         let decision = CoachDecisionEngine.run(facts)
 
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
-                       "Without two-a-day opt-in, recommendations should be empty")
+        XCTAssertEqual(decision.todayPlannedRecommendations.count, 2,
+                       "Strength and cardio are always both suggested")
     }
 
     // MARK: - Step health nudge

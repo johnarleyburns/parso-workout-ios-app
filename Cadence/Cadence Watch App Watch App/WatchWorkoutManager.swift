@@ -155,6 +155,7 @@ final class WatchWorkoutManager: NSObject {
     /// Durable deduplicated HR series (callbacks, polls, BLE); cleared only at workout end/discard/cardio start.
     var hrRecorder = WatchHeartRateSampleRecorder()
     var elapsedTracker = ElapsedTimeTracker()
+    var strengthPause = StrengthPauseProvenance()
     var watchAppSettings: AppSettings? {
         didSet {
             if let pendingApplicationContext {
@@ -277,14 +278,18 @@ final class WatchWorkoutManager: NSObject {
             }
             return
         }
+        // Read the durable cardio pause record before clearing it below: the
+        // HealthKit session's wall clock includes manual pauses.
+        let completedCardioDuration = cardioSessionStart == nil ? nil : cardioElapsed
         clearPersistedWorkoutMetadata()
         endStrengthInactivityTracking()
         endCardioInactivityTracking()
         if save {
-            elapsed = effectiveElapsed
+            elapsed = completedCardioDuration ?? effectiveElapsed
             let avg: Double? = hrCount > 0 ? (accumulatedHR / Double(hrCount)) : nil
             savedSummary = SavedWorkoutSummary(duration: elapsed, avgHR: avg, maxHR: maxHeartRate,
-                                               distanceMeters: distanceMeters, hrSamples: currentHRSamplesForSummary)
+                                               distanceMeters: distanceMeters,
+                                               hrSamples: hrRecorder.finalSamples(duration: elapsed))
         }
         let b = builder; let s = session
         hrPollTimer?.invalidate(); hrPollTimer = nil
@@ -304,6 +309,7 @@ final class WatchWorkoutManager: NSObject {
         heartRateEnabled = true; gpsEnabled = false
         elapsed = 0; avgHeartRate = nil; maxHeartRate = nil; distanceMeters = 0
         elapsedTracker.reset()
+        strengthPause.clear()
         if let b {
             b.endCollection(withEnd: endDate) { _, _ in save ? b.finishWorkout(completion: {_,_ in}) : b.discardWorkout() }
         }
@@ -332,28 +338,22 @@ final class WatchWorkoutManager: NSObject {
     func togglePause() {
         guard let s = session else { return }
         if toggleCardioPauseIfTracked(s) { return }
+        if workoutType == "strength" { userToggleStrengthPause(origin: .userControl); return }
         if s.state == .running { s.pause(); elapsedTracker.startPause() }
         else if s.state == .paused { s.resume(); elapsedTracker.resume() }
     }
     var isPaused: Bool { session?.state == .paused }
-    var effectiveElapsed: TimeInterval {
-        guard let sessionStart else { return 0 }
-        return elapsedTracker.elapsed(since: sessionStart)
-    }
-    /// Elapsed time of the cardio session the user is running, independent of
-    /// the shared `HKWorkoutSession` start used for strength heart-rate relay.
-    var cardioElapsed: TimeInterval {
-        guard let cardioSessionStart else { return effectiveElapsed }
-        if let record = cardioInactivity.record { return record.activeDuration(endedAt: Date()) } // excludes paused time
-        return max(0, Date().timeIntervalSince(cardioSessionStart))
-    }
 
-    /// A poll refreshes display/relay and records any new HealthKit sample once.
+    /// A poll is a visible physiological reading, so it must be reflected in
+    /// the saved aggregate and sample history as well as the live display.
     func applyPolledHeartRate(_ bpm: Double, sampleEnd: Date? = nil) {
         guard isActive || isMonitoring, hrSource == .appleWatch, bpm > 0 else { return }
         currentBPM = bpm; reconcileWatchStrengthInactivity() // reconcile only; HR is never activity
         reconcileCardioInactivity(); recordCardioHeartRate(bpm, sampleEnd: sampleEnd)
-        recordHeartRateSample(bpm, sampleEnd: sampleEnd)
+        accumulatedHR += bpm
+        hrCount += 1
+        if maxHeartRate == nil || bpm > (maxHeartRate ?? 0) { maxHeartRate = bpm }
+        recordHeartRateSample(bpm, sampleEnd: sampleEnd, replacingDuplicate: true)
         relayReading(bpm, endingAt: sampleEnd)
     }
 
@@ -396,5 +396,4 @@ final class WatchWorkoutManager: NSObject {
 
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
-
 }

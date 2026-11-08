@@ -42,7 +42,8 @@ extension HomeView {
                 onSkip: { secs in
                     WorkoutCues.cancelPendingSounds()
                     finishWarmup(elapsedSeconds: secs, startCue: .single)
-                })
+                },
+                liveMetric: AnyView(SessionLiveHRBand(showsEmptyState: true)))
                 .transition(.identity)
                 .zIndex(1)
         }

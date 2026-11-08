@@ -165,8 +165,6 @@ struct WatchAddConfirmationModifier: ViewModifier {
                     .accessibilityIdentifier("watchAddExercise.confirm.add")
                 Button("Cancel", role: .cancel) { confirmation.cancel() }
                     .accessibilityIdentifier("watchAddExercise.confirm.cancel")
-            } message: { target in
-                Text("Add \(target.name) to this workout?")
             }
             .accessibilityIdentifier("watchAddExercise.confirm")
             .alert(

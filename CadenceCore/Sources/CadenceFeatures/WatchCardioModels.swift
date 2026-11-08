@@ -96,10 +96,11 @@ public enum WatchCardioLivePresenter {
         let elapsedText = String(format: "%d:%02d:%02d", safeElapsed / 3600,
                                  (safeElapsed % 3600) / 60, safeElapsed % 60)
         let validBPM = heartRateEnabled && (bpm ?? 0) > 0 ? bpm : nil
-        let zone = validBPM.map { CardioMath.hrZone(bpm: $0, maxHR: maxHR) }
         let profile = intensityProfile ?? CardioIntensityProfile(
             restingHR: nil, maximumHR: maxHR, maximumHRSource: .unavailable)
         let classification = validBPM.map { CardioIntensityClassifier.classify(heartRate: $0, profile: profile) }
+        // Match the phone precisely: zones come from the shared HRR classifier.
+        let zone = classification?.trainingZone?.rawValue
         let distance = gpsEnabled ? formatDistance(meters: max(0, distanceMeters ?? 0), unit: distanceUnit) : nil
         return WatchCardioLivePresentation(
             elapsedText: elapsedText,

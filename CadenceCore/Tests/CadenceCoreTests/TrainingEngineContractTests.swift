@@ -154,8 +154,9 @@ final class TrainingEngineContractTests: XCTestCase {
             return source.contains("import FreeExerciseDBPlusPlus")
         }
 
+        // The engine bridge, plus the single explicit Garmin FIT codec adapter.
         XCTAssertEqual(
-            importOwners.map(\.lastPathComponent),
-            ["TrainingEngineBridge.swift"])
+            importOwners.map(\.lastPathComponent).sorted(),
+            ["GarminFITBridge.swift", "TrainingEngineBridge.swift"])
     }
 }

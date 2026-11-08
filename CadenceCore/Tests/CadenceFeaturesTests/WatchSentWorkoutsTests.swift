@@ -16,22 +16,20 @@ final class WatchSentWorkoutsTests: XCTestCase {
         XCTAssertEqual(decoded[1].durationMinutes, 30)
     }
 
-    func testMultipleSentWorkoutsAllShowAndStartedOnesDisappear() {
+    func testLatestSentWorkoutSupersedesOlderPendingWorkout() {
         let a = WatchSentWorkouts.strengthSession(title: "A", exercises: [])
         let b = WatchSentWorkouts.cardioSession(title: "B", cardioType: "walk", durationMinutes: 20)
         let sent = WatchSentWorkouts.adding(b, to: WatchSentWorkouts.adding(a, to: []))
-        XCTAssertEqual(WatchSentWorkouts.pending(sent, consumedIDs: []).count, 2)
-        XCTAssertEqual(WatchSentWorkouts.pending(sent, consumedIDs: [a.id]).map(\.id), [b.id])
+        XCTAssertEqual(WatchSentWorkouts.pending(sent, consumedIDs: []).map(\.id), [b.id])
+        XCTAssertTrue(WatchSentWorkouts.pending(sent, consumedIDs: [b.id]).isEmpty)
     }
 
-    func testAddingReplacesSameIDAndCapsList() {
-        var sent: [WatchSync.TodayPlan.Session] = []
-        for i in 0..<(WatchSentWorkouts.limit + 3) {
-            sent = WatchSentWorkouts.adding(WatchSentWorkouts.cardioSession(title: "\(i)", cardioType: "run", durationMinutes: 10), to: sent)
-        }
-        XCTAssertEqual(sent.count, WatchSentWorkouts.limit)
-        let repeated = WatchSentWorkouts.cardioSession(id: UUID(uuidString: sent[0].id)!, title: "new", cardioType: "run", durationMinutes: 5)
-        XCTAssertEqual(WatchSentWorkouts.adding(repeated, to: sent).filter { $0.id == repeated.id }.count, 1)
+    func testSendingSameWorkoutTwiceRetainsOnePendingSession() {
+        let first = WatchSentWorkouts.cardioSession(title: "Run", cardioType: "run", durationMinutes: 20)
+        let secondTap = WatchSentWorkouts.cardioSession(title: "Run", cardioType: "run", durationMinutes: 20)
+        let sent = WatchSentWorkouts.adding(secondTap, to: [first])
+        XCTAssertEqual(sent.count, 1)
+        XCTAssertEqual(sent.first?.id, first.id)
     }
 
     func testIncomingContextCarriesSentWorkoutsOnlyWhenPresent() {

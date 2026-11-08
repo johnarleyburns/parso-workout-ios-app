@@ -99,8 +99,38 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
     /// `TrainingFacts.weeklySetsByMuscle` when this record was built, so Home's
     /// dashboard restores real set counts on cold launch instead of zeros.
     public var weeklySetsByMuscle: [String: Double]
+    /// Additive (v1-compatible): up to two display-only daily recommendation
+    /// rows. `nil`/absent in legacy records, which still restore the single hero.
+    public var dailyRows: [DailyRowDTO]?
 
-    public init(hero: TodayHero, primaryIsStrength: Bool, weeklySetsByMuscle: [String: Double]) {
+    /// Display-only text for one daily recommendation. It carries no workout
+    /// plan or identifiers that could launch anything; Start must wait for the
+    /// matching live `CoachSession`.
+    public struct DailyRowDTO: Codable, Equatable, Sendable, Identifiable {
+        public enum Modality: String, Codable, Equatable, Sendable { case strength, cardio, other }
+        public var modality: Modality
+        public var title: String
+        public var estimatedMinutes: Int?
+        public var exercises: [LineDTO]
+        public var reason: String?
+        public var citationIDs: [String]
+        /// Plain-language companion state (e.g. "Partner session"), if any.
+        public var companionState: String?
+        public var id: String { modality.rawValue }
+
+        public init(modality: Modality, title: String, estimatedMinutes: Int? = nil,
+                    exercises: [LineDTO] = [], reason: String? = nil,
+                    citationIDs: [String] = [], companionState: String? = nil) {
+            self.modality = modality; self.title = title
+            self.estimatedMinutes = estimatedMinutes; self.exercises = exercises
+            self.reason = reason; self.citationIDs = citationIDs
+            self.companionState = companionState
+        }
+    }
+
+    public init(hero: TodayHero, primaryIsStrength: Bool, weeklySetsByMuscle: [String: Double],
+                dailyRows: [DailyRowDTO]? = nil) {
+        self.dailyRows = dailyRows.map { Array($0.prefix(2)) }
         isRest = hero.kind == .restDay
         self.primaryIsStrength = primaryIsStrength
         title = hero.title
@@ -119,11 +149,31 @@ public struct TodayRecommendationPayload: Codable, Equatable, Sendable {
     }
 }
 
+/// Merges restored display rows with live availability. Restored rows are never
+/// actionable; a row becomes actionable only when a live session exists for the
+/// same modality, and rows with no live counterpart are dropped once live.
+public enum TodayDailyRowsPresenter {
+    public struct Row: Equatable, Sendable, Identifiable {
+        public var dto: TodayRecommendationPayload.DailyRowDTO
+        public var isActionable: Bool
+        public var id: String { dto.id }
+    }
+
+    public static func rows(restored: [TodayRecommendationPayload.DailyRowDTO],
+                            live: [TodayRecommendationPayload.DailyRowDTO]?,
+                            liveSessionModalities: Set<TodayRecommendationPayload.DailyRowDTO.Modality>) -> [Row] {
+        guard let live else {
+            return restored.prefix(2).map { Row(dto: $0, isActionable: false) }
+        }
+        return live.prefix(2).map { Row(dto: $0, isActionable: liveSessionModalities.contains($0.modality)) }
+    }
+}
+
 /// Why a durable Today record was or was not used. Carries no workout content,
 /// so it is safe to log for device-QA diagnosis.
 public enum TodayCacheOutcome: String, Equatable, Sendable {
     case noFile, corrupt, schemaRejected, dayRejected
-    case provisionalRestore, stableMatch, stableInvalidation
+    case provisionalRestore, staleProvisionalRestore, stableMatch, stableInvalidation
     case writeFailed, invalidated
 }
 
@@ -219,14 +269,30 @@ public actor TodayRecommendationCacheStore {
     }
 
     /// Display eligibility only: never judges the fingerprint, and never deletes
-    /// a record because startup inputs are still settling. Only unusable records
-    /// (corrupt, unsupported schema, wrong local day) are rejected and cleaned up.
+    /// a record because startup inputs are still settling. A record from today,
+    /// or from exactly the previous calendar day, is displayable provisionally —
+    /// this bridges the overnight gap so the first open of a new day is not
+    /// forced to show a loading state (the caller's reconciliation always
+    /// replaces a stale record once the recompute finishes). Older records,
+    /// corrupt files, and unsupported schemas are rejected and cleaned up.
     public func peekDisplayable() -> (record: TodayProvisionalRecord?, outcome: TodayCacheOutcome) {
         guard let env = loadEnvelope() else { return (nil, loadFailure ?? .noFile) }
         guard env.schemaVersion == Self.schemaVersion else { discard(); return (nil, .schemaRejected) }
-        guard env.dayKey == dayKey() else { discard(); return (nil, .dayRejected) }
+        let today = dayKey()
+        guard env.dayKey == today || env.dayKey == previousDayKey() else {
+            discard(); return (nil, .dayRejected)
+        }
+        let outcome: TodayCacheOutcome = env.dayKey == today ? .provisionalRestore : .staleProvisionalRestore
         return (TodayProvisionalRecord(payload: env.payload, fingerprint: env.fingerprint,
-                                       passiveStamp: env.passiveStamp), .provisionalRestore)
+                                       passiveStamp: env.passiveStamp), outcome)
+    }
+
+    /// Same format as `dayKey()`, for exactly one calendar day before `now()`.
+    private func previousDayKey() -> String {
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: now()) ?? now()
+        let c = calendar.dateComponents([.year, .month, .day], from: yesterday)
+        return String(format: "%04d-%02d-%02d@%@", c.year ?? 0, c.month ?? 0, c.day ?? 0,
+                      calendar.timeZone.identifier)
     }
 
     @discardableResult

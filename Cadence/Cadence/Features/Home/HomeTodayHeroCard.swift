@@ -236,8 +236,9 @@ struct HomeTodayHeroCard: View {
     }
 
     private func doneExerciseRows(_ lines: [TodayHero.Line]) -> some View {
-        VStack(spacing: 0) {
-            ForEach(Array(lines.prefix(2).enumerated()), id: \.offset) { _, line in
+        let disclosure = TodayExerciseDisclosure(lines: lines, capacity: doneExerciseCapacity)
+        return VStack(spacing: 0) {
+            ForEach(Array(disclosure.visible.enumerated()), id: \.offset) { _, line in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(line.name)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -252,12 +253,24 @@ struct HomeTodayHeroCard: View {
                 .padding(.vertical, 4)
                 .overlay(alignment: .bottom) { Divider().opacity(0.35) }
             }
-            if lines.count > 2 {
-                Text("\(lines.count - 2) more…")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            if let summary = disclosure.summaryText {
+                Button(action: onViewSummary) {
+                    Text(summary)
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(CadenceTheme.link)
+                .accessibilityLabel(disclosure.accessibilityLabel ?? summary)
             }
         }
+    }
+
+    /// The completed state has no recommendation rationale or edit controls,
+    /// so it can show substantially more rows than the planning state.
+    private var doneExerciseCapacity: Int {
+        let chrome: CGFloat = typeSize.isAccessibilitySize ? 250 : 190
+        return max(2, Int((heroHeight - chrome) / rowHeight))
     }
 
     private func fact(_ value: String, _ label: String) -> some View {

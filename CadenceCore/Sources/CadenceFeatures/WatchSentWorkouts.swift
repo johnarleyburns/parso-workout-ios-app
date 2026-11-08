@@ -33,12 +33,27 @@ public enum WatchSentWorkouts {
             zone: zone)
     }
 
-    /// Adds (or replaces, by id) a sent workout, newest last, capped at `limit`.
+    /// Replaces any pending send with the workout most recently sent from the phone. Sending the
+    /// same workout twice is deliberately idempotent: retain its existing ID so the Watch shows
+    /// one row rather than treating a second tap as a second planned session.
     public static func adding(_ session: WatchSync.TodayPlan.Session,
                               to existing: [WatchSync.TodayPlan.Session]) -> [WatchSync.TodayPlan.Session] {
-        var result = existing.filter { $0.id != session.id && !$0.isRest }
-        result.append(session)
-        return Array(result.suffix(limit))
+        if let existingMatch = existing.first(where: { sameWorkout($0, session) }) {
+            return [existingMatch]
+        }
+        return [session]
+    }
+
+    private static func sameWorkout(_ lhs: WatchSync.TodayPlan.Session,
+                                    _ rhs: WatchSync.TodayPlan.Session) -> Bool {
+        lhs.kind == rhs.kind &&
+        lhs.label == rhs.label &&
+        lhs.exerciseNames == rhs.exerciseNames &&
+        lhs.repLadder == rhs.repLadder &&
+        lhs.cardioType == rhs.cardioType &&
+        lhs.durationMinutes == rhs.durationMinutes &&
+        lhs.zone == rhs.zone &&
+        lhs.planPayload == rhs.planPayload
     }
 
     /// Sent workouts the user has not started yet.

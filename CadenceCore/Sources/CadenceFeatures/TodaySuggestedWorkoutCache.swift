@@ -239,7 +239,9 @@ public enum TodaySuggestionCacheStorage: Sendable {
 /// Valid only while both the local day key and the semantic fingerprint match.
 /// An actor so concurrent loads for the same key coalesce onto one generation.
 public actor TodaySuggestedWorkoutCacheStore {
-    public static let schemaVersion = 1
+    // v2 invalidates the legacy Today-only recommendation payloads. Persisted
+    // entries now represent the shared "Suggest a workout" presentation.
+    public static let schemaVersion = 2
 
     struct Envelope: Codable {
         var schemaVersion: Int

@@ -60,17 +60,16 @@ struct WorkoutSummaryView: View {
                         performers: summaryVolumePerformers,
                         performerStates: summaryVolumeStates)
                 }
+                if data.kind == .strength, !data.hr.isEmpty { hrChart }
                 if let intensity = data.cardioIntensity {
                     cardioIntensitySection(intensity)
-                } else if onEditCardioMinutes != nil {
-                    editMinutesButton
                 }
                 if let coverage = data.hrCoveragePresentation { hrCoverageRow(coverage) }
                 if data.kind == .strength, let repairSession { HeartRateRepairSection(session: repairSession) }
+                if data.kind == .strength, let repairSession { GarminFITExportButton(session: repairSession) }
                 if data.kind == .strength, !data.exercises.isEmpty { strengthSection }
                 if data.kind == .strength, data.warmupSec > 0 || data.cooldownSec > 0 { warmCoolSection }
                 if let interval = data.interval { intervalSection(interval) }
-                if data.kind == .strength, !data.hr.isEmpty { hrChart }
                 if data.route.count > 1 { routeMap }
             }
             .padding()
@@ -260,7 +259,6 @@ struct WorkoutSummaryView: View {
             }
             Text("Heart-rate reserve classifies each sampled interval; guideline credit is separate from actual minutes.")
                 .font(.caption).foregroundStyle(.secondary)
-            if onEditCardioMinutes != nil { editMinutesButton }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -269,18 +267,14 @@ struct WorkoutSummaryView: View {
     }
 
     private func beginEditingCardioMinutes() {
-        let existing = ManualCardioMinutesSaver.existingMinutes(from: data.cardioIntensity)
+        // History can finish Health/Watch HR repair after this value snapshot was
+        // created. Prefer the live session summary when available so Edit starts
+        // with the totals the user is currently reviewing, not stale zeroes.
+        let currentSummary = repairSession?.intensitySummary ?? data.cardioIntensity
+        let existing = ManualCardioMinutesSaver.existingMinutes(from: currentSummary)
         moderateInput = existing?.moderate ?? 0
         vigorousInput = existing?.vigorous ?? 0
         editingMinutes = true
-    }
-
-    private var editMinutesButton: some View {
-        Button(action: beginEditingCardioMinutes) {
-            Label("Edit cardio minutes", systemImage: "pencil")
-        }
-        .buttonStyle(.bordered)
-        .accessibilityIdentifier("summary.cardio.editMinutes")
     }
 
     private var minutesEditor: some View {

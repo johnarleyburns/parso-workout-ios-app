@@ -25,11 +25,10 @@ final class HRSummaryCoverageTests: XCTestCase {
         XCTAssertEqual(data(count: 5, coverage: cov).hrCoverageState, .none)
     }
 
-    func testSparseIsIncompleteAndDistinctFromZero() {
+    func testSparseSamplesCarryForwardAndRemainDistinctFromZero() {
         let sparse = data(count: 4, unclassified: 600)
-        guard case .incomplete = sparse.hrCoverageState else { return XCTFail() }
-        XCTAssertEqual(sparse.hrCoveragePresentation?.kind, .incomplete)
-        XCTAssertTrue(sparse.hrCoveragePresentation!.accessibilityLabel.contains("unclassified"))
+        XCTAssertEqual(sparse.hrCoverageState, .complete)
+        XCTAssertEqual(sparse.hrCoveragePresentation?.kind, .complete)
         XCTAssertEqual(data(count: 0).hrCoveragePresentation?.kind, .noMeasurements)
         XCTAssertEqual(data(count: 200).hrCoveragePresentation?.kind, .complete)
         XCTAssertEqual(data(count: 3, pending: true).hrCoveragePresentation?.kind, .pending)
@@ -58,11 +57,11 @@ final class WatchStrengthHRCoverageTests: XCTestCase {
         let dense = stride(from: 0.0, to: 1_000, by: 5).map { HRSamplePoint(t: $0, bpm: 130) }
         let sparse = [0, 100, 200, 300].map { HRSamplePoint(t: Double($0), bpm: 130) }
         XCTAssertEqual(present([]).kind, .noMeasurements)
-        XCTAssertEqual(present(sparse).kind, .incomplete)
+        XCTAssertEqual(present(sparse).kind, .complete)
         XCTAssertEqual(present(dense).kind, .complete)
         XCTAssertEqual(present(sparse, pending: true).kind, .pending)
         XCTAssertTrue(present([]).accessibilityLabel.contains("unknown"))
-        XCTAssertTrue(present(sparse).accessibilityLabel.contains("unclassified"))
+        XCTAssertTrue(present(sparse).accessibilityLabel.contains("complete"))
     }
 
     func testDiagnosticsLineIsPrivacySafe() {

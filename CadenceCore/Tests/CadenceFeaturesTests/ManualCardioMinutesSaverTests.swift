@@ -14,6 +14,17 @@ final class ManualCardioMinutesSaverTests: XCTestCase {
                        .init(moderate: 17, vigorous: 11))
     }
 
+    func testExistingAutomaticIntensitySeedsTheEditor() {
+        let automatic = CardioMinuteSummary(
+            actualDuration: 1_800, classifiedDuration: 1_800,
+            unclassifiedDuration: 0, belowModerateDuration: 120,
+            moderateDuration: 960, vigorousDuration: 720, zoneDurations: [:],
+            method: .heartRateReserve, confidence: .high)
+
+        XCTAssertEqual(ManualCardioMinutesSaver.existingMinutes(from: automatic),
+                       .init(moderate: 16, vigorous: 12))
+    }
+
     func testFirstSaveFromNilSummaryPersistsManualOverride() {
         let s = WorkoutSession(title: "Lift", date: Date())
         XCTAssertNil(s.intensitySummary)

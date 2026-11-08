@@ -14,10 +14,16 @@ extension HomeView {
     /// generator. Starting or editing still goes through the normal editor.
     func prepareTodaySuggestion() async {
         guard surface == .today, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
-        // Defer all history/catalog work until the cached hero is on screen
-        // (bounded, so a missing cache cannot stall the suggestion).
-        for _ in 0..<20 where !(coachSnapshotReady || restoredRecommendation != nil) && !Task.isCancelled {
-            try? await Task.sleep(for: .milliseconds(50))
+        // The paired recommendation cache has established that strength is
+        // appropriate, but the plan file may have been purged independently.
+        // Give Home a complete, launchable plan now; a personalized replacement
+        // is held behind the existing explicit confirmation banner.
+        if todaySuggestedPlan == nil, restoredRecommendation?.primaryIsStrength == true {
+            todaySuggestedPlan = TodayStartupPresentation.immediateFallback(
+                style: settings.preferredWorkoutStyle,
+                warmupMinutes: settings.warmupMinutes,
+                cooldownMinutes: settings.cooldownMinutes).makePlan()
+            todaySuggestionIsStartupFallback = true
         }
         await Task.yield()
         guard !Task.isCancelled else { return }
@@ -28,17 +34,13 @@ extension HomeView {
         let earlyKey = snapshot.earlyKey
         // A rendered plan whose key is proven current needs no further work.
         if todaySuggestedPlan != nil, todaySuggestionRenderedKey == earlyKey { return }
-        // A valid same-day durable plan is restored before any generation.
+        // A valid same-day cached result from the shared suggestion service is
+        // restored before generation. A differing key is rejected by the store.
         if let restored = await HomeTodayCache.suggestionStore.restoreEarly(earlyKey: earlyKey) {
             guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
-            if todaySuggestedPlan == nil { todaySuggestedPlan = restored.makePlan() }
+            applyOrHoldTodaySuggestion(restored)
             todaySuggestionRenderedKey = earlyKey
             return
-        }
-        // Cold generation is deferred past launch. Any provisional plan stays
-        // visible until the replacement is published.
-        if !(await HomeTodayCache.suggestionStore.hasSameDayEntry()) {
-            try? await Task.sleep(for: .seconds(1.5))
         }
         guard !Task.isCancelled, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil,
               let request = snapshot.request else { return }
@@ -62,7 +64,7 @@ extension HomeView {
     }
 
     func generateTodaySuggestion(_ request: SuggestedWorkoutRequest, earlyKey: String,
-                                 scheduledStamps: [String]) {
+                                 scheduledStamps: [String], replaceImmediately: Bool = false) {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
@@ -98,11 +100,35 @@ extension HomeView {
                 guard suggestedWorkoutTask != nil,
                       suggestedWorkoutGeneration.accepts(generation) else { return }
                 suggestedWorkoutTask = nil
-                todaySuggestedPlan = payload.makePlan()
+                if replaceImmediately {
+                    todaySuggestedPlan = payload.makePlan()
+                    todaySuggestionIsStartupFallback = false
+                    pendingSuggestedWorkoutPlan = nil
+                } else {
+                    applyOrHoldTodaySuggestion(payload)
+                }
                 todaySuggestionRenderedKey = earlyKey
             }
         }
         suggestedWorkoutTask = task
+    }
+
+    /// "Suggest Another": replaces Today's strength suggestion with a different
+    /// workout by excluding the exercises of the one currently shown.
+    func suggestAnotherTodayStrength() {
+        guard let shown = todaySuggestedPlan else { return }
+        let names = Set(shown.exercises.map(\.name))
+        Task {
+            guard let snapshot = await loadTodaySuggestionLaunchSnapshot(),
+                  let request = snapshot.request else { return }
+            let different = SuggestedWorkoutRequest(
+                input: request.input.excludingCandidates(named: names),
+                unit: request.unit, warmupMinutes: request.warmupMinutes,
+                cooldownMinutes: request.cooldownMinutes)
+            generateTodaySuggestion(different, earlyKey: snapshot.earlyKey,
+                                    scheduledStamps: snapshot.scheduledStamps,
+                                    replaceImmediately: true)
+        }
     }
 
     func openTodaySuggestion() {
@@ -111,7 +137,24 @@ extension HomeView {
             return
         }
         todaySuggestedPlan = nil
+        pendingSuggestedWorkoutPlan = nil
         suggestedWorkoutPlan = plan
+    }
+
+    /// Applies a freshly available Today suggestion immediately if nothing is
+    /// shown yet or the content is unchanged; otherwise holds it behind the
+    /// "Created a new workout" banner. The only place that may assign
+    /// `todaySuggestedPlan` from a computed result.
+    func applyOrHoldTodaySuggestion(_ payload: TodaySuggestedPlanPayload) {
+        let displayed = todaySuggestedPlan.map(TodaySuggestedPlanPayload.init)
+        switch TodaySuggestionReplacementGate.decide(displayed: displayed, freshlyComputed: payload) {
+        case .applyImmediately:
+            todaySuggestedPlan = payload.makePlan()
+            todaySuggestionIsStartupFallback = false
+            pendingSuggestedWorkoutPlan = nil
+        case .holdPending:
+            pendingSuggestedWorkoutPlan = payload.makePlan()
+        }
     }
 }
 

@@ -59,9 +59,9 @@ final class TodayHeroActivityPresenterTests: XCTestCase {
         _ = session(title: "Active", end: nil)
         let all = try context.fetch(FetchDescriptor<WorkoutSession>())
         let snap = TodayHeroActivityPresenter.make(sessions: all, scheduled: [], now: now, calendar: cal)
-        XCTAssertEqual(snap.completedToday?.title, today.title)
-        XCTAssertEqual(snap.completedToday?.setCount, 1)
-        XCTAssertEqual(snap.completedToday?.exercises, [TodayHero.Line(name: "Bench", detail: "1 × 5")])
+        XCTAssertEqual(snap.completedToday.first?.title, today.title)
+        XCTAssertEqual(snap.completedToday.first?.setCount, 1)
+        XCTAssertEqual(snap.completedToday.first?.exercises, [TodayHero.Line(name: "Bench", detail: "1 × 5")])
         // Deleted excluded; the rest (including the active session) have sets.
         XCTAssertEqual(snap.completedWorkoutCount, 3)
     }
@@ -70,8 +70,28 @@ final class TodayHeroActivityPresenterTests: XCTestCase {
         _ = session(end: now, sets: [("Bench", 5, false, true), ("Bench", 8, false, false)])
         let all = try context.fetch(FetchDescriptor<WorkoutSession>())
         let snap = TodayHeroActivityPresenter.make(sessions: all, scheduled: [], now: now, calendar: cal)
-        XCTAssertEqual(snap.completedToday?.setCount, 1)
-        XCTAssertEqual(snap.completedToday?.exercises.first?.detail, "1 × 5")
+        XCTAssertEqual(snap.completedToday.first?.setCount, 1)
+        XCTAssertEqual(snap.completedToday.first?.exercises.first?.detail, "1 × 5")
+    }
+
+    func testDoneTodayIncludesStrengthAndCardio() throws {
+        _ = session(title: "Lift", end: now)
+        let run = CardioWorkout(type: .run, start: now.addingTimeInterval(300),
+                                end: now.addingTimeInterval(1_500), distance: 5_000)
+        context.insert(run)
+
+        let strength = try context.fetch(FetchDescriptor<WorkoutSession>())
+        let cardio = try context.fetch(FetchDescriptor<CardioWorkout>())
+        let snapshot = TodayHeroActivityPresenter.make(
+            sessions: strength, cardio: cardio, scheduled: [], now: now, calendar: cal)
+
+        XCTAssertEqual(snapshot.completedToday.map(\.title), ["Run", "Lift"])
+        let summary = try XCTUnwrap(snapshot.daySummary())
+        XCTAssertEqual(summary.title, "2 workouts complete")
+        XCTAssertEqual(summary.setCount, 1)
+        XCTAssertEqual(summary.durationMinutes, 80)
+        XCTAssertTrue(summary.exercises.contains(TodayHero.Line(name: "Run", detail: "5.0 km · 20 min")))
+        XCTAssertTrue(summary.exercises.contains(TodayHero.Line(name: "Bench", detail: "1 × 5")))
     }
 
     func testScheduledTodayNextAndDeleted() throws {
@@ -104,6 +124,7 @@ final class TodayHeroActivityPresenterTests: XCTestCase {
             inProgress: nil, scheduled: snap.todayScheduled?.makeHero(), suggested: nil,
             completedWorkoutCount: snap.completedWorkoutCount, completedToday: snap.daySummary(),
             remainingScheduledToday: snap.remainingScheduledToday)
-        XCTAssertEqual(hero.kind, .needsHistory)
+        // Day-one install: no starter plan yet means the hero is loading, never recovery.
+        XCTAssertEqual(hero.kind, .loading)
     }
 }

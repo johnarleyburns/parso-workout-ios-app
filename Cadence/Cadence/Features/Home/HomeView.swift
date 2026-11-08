@@ -100,6 +100,11 @@ struct HomeView: View {
     @State var suggestedWorkoutGeneration = SuggestionGenerationGate()
     @State var suggestedCardioTask: Task<Void, Never>?
     @State var suggestedCardio: CardioSuggestion?
+    /// Today's "Suggested Cardio for You": cached first, newer one held pending.
+    @State var todayCardio: CardioSuggestion?
+    @State var pendingTodayCardio: CardioSuggestion?
+    @State var todayCardioInput: CardioSuggestionInput?
+    @State var todayCardioCalculating = false
     /// HIIT protocols skipped with "Suggest another" during this Cardio for You session.
     @State var lastSuggestedCardioInput: CardioSuggestionInput?
     @State var skippedHIITProtocolIDs: Set<String> = []
@@ -107,6 +112,12 @@ struct HomeView: View {
     /// (avoids racing a value push against the nested Start Workout stack).
     @State var suggestedWorkoutPlan: EditablePlan?
     @State var todaySuggestedPlan: EditablePlan?
+    /// True only for the local, explicitly-labelled first-frame strength plan
+    /// used while no durable Today record has reached this device yet.
+    @State var todaySuggestionIsStartupFallback = false
+    /// A freshly computed Today suggestion that differs from `todaySuggestedPlan`
+    /// and awaits the user's explicit "show it". See `TodaySuggestionReplacementGate`.
+    @State var pendingSuggestedWorkoutPlan: EditablePlan?
     /// Early key the rendered Today suggestion was produced under (nil = unproven).
     @State var todaySuggestionRenderedKey: String?
     /// Other Home entry points present directly too: a value push can lose its

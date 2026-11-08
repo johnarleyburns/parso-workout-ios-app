@@ -174,26 +174,7 @@ struct CoachSchedulePreferencesView: View {
                 Text("Fixed rest days are days the Coach will not schedule workouts. You can still start one manually on those days if you want.")
             }
 
-            Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Two-a-days").font(.subheadline.weight(.medium))
-                        Text("Allow strength + cardio on the same day").font(.caption2).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Toggle("", isOn: Binding(get: {
-                        settings.coachSchedulePreferences.allowsTwoADays
-                    }, set: { v in
-                        settings.coachSchedulePreferences = settings.coachSchedulePreferences.withTwoADays(v)
-                    }))
-                }
-                if settings.coachSchedulePreferences.allowsTwoADays,
-                   let concurrentCitation = CitationRegistry.citation(forId: "murlasitsConcurrentSequence2018") {
-                    CitationLink(citation: concurrentCitation, compact: true)
-                }
-            }
-
-            if settings.coachSchedulePreferences.allowsTwoADays {
+            do {
                 Section {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("Cardio timing (same day)").font(.subheadline.weight(.medium))

@@ -163,12 +163,20 @@ final class HealthKitProvider: HealthDataProviding {
         let hrvByDay = await hrv
         let rhrByDay = await rhr
         let sleepByDay = await sleep
+        // Some Health stores expose resting-HR samples but don't return a
+        // statistics collection for them. Fall back to the raw samples so an
+        // existing Apple Health value never becomes a misleading “Unavailable”.
+        let resolvedRHR = rhrByDay.isEmpty
+            ? await dailyAverageFromSamples(.restingHeartRate,
+                                            unit: HKUnit.count().unitDivided(by: .minute()),
+                                            start: windowStart, end: Date())
+            : rhrByDay
 
-        let allDays = Set(hrvByDay.keys).union(rhrByDay.keys).union(sleepByDay.keys)
+        let allDays = Set(hrvByDay.keys).union(resolvedRHR.keys).union(sleepByDay.keys)
         return allDays.sorted().map { day in
             PassiveReadinessSample(date: day,
                                    hrvSDNN: hrvByDay[day],
-                                   restingHR: rhrByDay[day],
+                                   restingHR: resolvedRHR[day],
                                    sleepHours: sleepByDay[day])
         }
     }
@@ -212,6 +220,29 @@ final class HealthKitProvider: HealthDataProviding {
             }
             store.execute(q)
         }
+    }
+
+    /// Raw-sample fallback for quantity types whose statistics collection is
+    /// unavailable despite readable samples. Values are averaged per calendar day.
+    private func dailyAverageFromSamples(_ id: HKQuantityTypeIdentifier, unit: HKUnit,
+                                         start: Date, end: Date) async -> [Date: Double] {
+        guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return [:] }
+        let samples: [HKQuantitySample] = await withCheckedContinuation { cont in
+            let query = HKSampleQuery(sampleType: type,
+                                      predicate: HKQuery.predicateForSamples(withStart: start, end: end),
+                                      limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, values, _ in
+                cont.resume(returning: (values as? [HKQuantitySample]) ?? [])
+            }
+            store.execute(query)
+        }
+        let calendar = Calendar.current
+        var values: [Date: [Double]] = [:]
+        for sample in samples {
+            let value = sample.quantity.doubleValue(for: unit)
+            guard value.isFinite else { continue }
+            values[calendar.startOfDay(for: sample.startDate), default: []].append(value)
+        }
+        return values.mapValues { $0.reduce(0, +) / Double($0.count) }
     }
 
     /// Per-day asleep hours, keyed by start-of-day of the sample's start.

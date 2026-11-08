@@ -259,7 +259,9 @@ public enum CardioIntensityClassifier {
             case ..<CardioIntensityPolicy.nearMaximalHRR: relative = .veryHard
             default: relative = .nearMaximal
             }
-            let guideline: GuidelineIntensity = fraction < CardioIntensityPolicy.lightHRR
+            // Zone 2 (30–<40% HRR) counts as moderate, matching the percent-max
+            // fallback; only Zone 1 is below moderate.
+            let guideline: GuidelineIntensity = fraction < CardioIntensityPolicy.veryLightHRR
                 ? .belowModerate : fraction < CardioIntensityPolicy.moderateHRR ? .moderate : .vigorous
             return IntensityClassification(
                 heartRate: heartRate, hrrFraction: fraction,
@@ -389,11 +391,10 @@ public struct CardioMinuteSummary: Codable, Equatable, Sendable {
     }
 }
 
-/// Integrates the time represented by valid HR samples. Gaps longer than two
-/// minutes are intentionally left unclassified instead of being interpolated.
+/// Integrates valid HR samples by carrying each reading forward to the next
+/// reading (and the final reading to workout end), our best estimate for a
+/// sparse capture.
 public enum CardioMinuteAccumulator {
-    public static let maximumSampleGap: TimeInterval = 120
-
     public static func summarize(duration: TimeInterval, samples: [HRSamplePoint],
                                  profile: CardioIntensityProfile,
                                  zonePolicy: TrainingZonePolicy = CardioIntensityPolicy.trainingZonePolicy)
@@ -414,7 +415,7 @@ public enum CardioMinuteAccumulator {
             let start = min(total, max(0, sample.t))
             if start > cursor { unclassified += start - cursor }
             let next = index + 1 < valid.count ? min(total, max(start, valid[index + 1].t)) : total
-            let representedEnd = min(next, start + maximumSampleGap)
+            let representedEnd = next
             if representedEnd > start {
                 let result = CardioIntensityClassifier.classify(heartRate: sample.bpm,
                                                                  profile: profile,

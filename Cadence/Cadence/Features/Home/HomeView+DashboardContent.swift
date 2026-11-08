@@ -18,7 +18,7 @@ extension HomeView {
                 .accessibilityIdentifier("home.supporterBadge")
             }
         }
-        if surface == .thisWeek,
+        if surface != .today,
            let close = WeekCloseMoment.make(
                workingSets: dashboard.volumeCoverage.completed,
                setTarget: dashboard.volumeCoverage.target,
@@ -41,13 +41,17 @@ extension HomeView {
             todayHeroCard
             HomeTodayCardioCard(
                 suggestion: todayCardio,
+                completedTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
                 isCalculating: todayCardioCalculating,
                 hasNewer: pendingTodayCardio != nil,
                 onStart: { launchSuggestedCardio($0) },
                 onSuggestAnother: { suggestAnotherTodayCardio($0) },
                 onShowNewer: { showNewerTodayCardio() })
         } else {
-            HomeTodayRecommendationsCard(rows: dualRows, onStart: { launchDecision($0) })
+            HomeTodayRecommendationsCard(rows: dualRows,
+                                         completedStrengthTitle: cachedTodayHeroActivity.latestCompletedStrength?.title,
+                                         completedCardioTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
+                                         onStart: { launchDecision($0) })
         }
     }
 
@@ -58,7 +62,6 @@ extension HomeView {
         let activity = cachedTodayHeroActivity
         guard coachSnapshotReady, activity.isLoaded, activity.completedWorkoutCount >= 2, resumeSession == nil,
               activity.todayScheduled == nil, activity.remainingScheduledToday == 0,
-              activity.daySummary() == nil,
               coachDecision.primary.kind != .recovery, coachDecision.primary.kind != .rest
         else { return [] }
         return TodayRecommendationRowsPresenter.rows(
@@ -137,7 +140,7 @@ extension HomeView {
                                            starter: starter,
                                            // Unloaded history must not read as "no history".
                                            completedWorkoutCount: activity.isLoaded ? activity.completedWorkoutCount : max(2, activity.completedWorkoutCount),
-                                           completedToday: activity.daySummary(),
+                                           completedToday: activity.strengthDaySummary(),
                                            remainingScheduledToday: activity.remainingScheduledToday,
                                            recommendationReady: recommendationReady)
         let tag: String = switch hero.kind {
@@ -206,9 +209,10 @@ extension HomeView {
         }
     }
 
-    var dashboardWeekContent: some View {
+    var dashboardStrengthContent: some View {
         HomeWeekDashboardSection(
             dashboard: dashboard,
+            scope: .strength,
             detailSelection: $weeklyDetailSelection,
             muscleMapPanel: $weeklyMuscleMapPanel,
             plannedItems: ThisWeekWorkoutsPresenter.plannedThisWeek(cachedScheduledItems),
@@ -235,20 +239,55 @@ extension HomeView {
             onPlanWorkout: { plan in
                 workoutEditorPlan = plan
             },
+            onSuggestCardio: requestSuggestedCardio,
             onShowHistory: { path.append(HomeRoute.history) })
+    }
+
+    var dashboardCardioContent: some View {
+        HomeWeekDashboardSection(
+            dashboard: dashboard,
+            scope: .cardio,
+            detailSelection: $weeklyDetailSelection,
+            muscleMapPanel: $weeklyMuscleMapPanel,
+            plannedItems: [],
+            inProgressSessions: [],
+            completedEntries: [],
+            muscleHistory: [],
+            muscleHistoryByPerformer: [:],
+            weeklyVolumeByPerformer: [:],
+            weeklyVolumeKgByPerformer: [:],
+            weeklyVolumePerformers: [],
+            totalVolumeKg: 0,
+            unit: settings.unit,
+            onOpenWorkout: { _ in },
+            onOpenPlanned: { _ in },
+            onResumeWorkout: { _ in },
+            onStartWorkout: { _ in },
+            onPlanWorkout: { _ in },
+            onSuggestCardio: requestSuggestedCardio,
+            onShowHistory: { })
     }
 
     @ViewBuilder
     var dashboardBottomContent: some View {
-        HomeCoachSuggestionsSection(
-            suggestions: dashboard.suggestions,
-            focusGroup: dashboard.volume.first(where: { $0.isTracked && $0.sets < 12 })?.group ?? .chest,
-            expanded: $suggestionsExpanded)
-        homeDetailDisclosure(
-            title: homeReadinessTitle,
-            subtitle: homeReadinessSubtitle,
-            expanded: $readinessExpanded,
-            identifier: "home.readiness.show")
-        if readinessExpanded { readinessCard }
+        let visibleSuggestions = dashboard.suggestions.filter {
+            !dismissedObservationKeys.contains($0.sourceClaimKey)
+        }
+        if !visibleSuggestions.isEmpty {
+            HomeCoachSuggestionsSection(
+                suggestions: visibleSuggestions,
+                focusGroup: dashboard.volume.first(where: { $0.isTracked && $0.sets < 12 })?.group ?? .chest,
+                expanded: $suggestionsExpanded,
+                onClearAll: {
+                    var dismissed = dismissedObservationKeys
+                    dismissed.formUnion(visibleSuggestions.map(\.sourceClaimKey))
+                    dismissedObservationKeysRaw = dismissed.sorted().joined(separator: "|")
+                    suggestionsExpanded = false
+                })
+        }
+    }
+
+    private var dismissedObservationKeys: Set<String> {
+        Set(dismissedObservationKeysRaw.split(separator: "|").map(String.init))
     }
 }

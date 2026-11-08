@@ -16,10 +16,10 @@ final class ProgressQuestionSelectionTests: XCTestCase {
         XCTAssertEqual(selection.selected, .intensity)
     }
 
-    func testAlphabeticalIncludesEveryProgressSurface() {
+    func testMyWorkoutsIsTheFirstProgressSurface() {
         XCTAssertEqual(ProgressQuestion.alphabetical.map(\.displayName), [
-            "Consistency", "Effort", "Intensity", "Personal Records",
-            "Strength over time", "Tests", "Workout History"
+            "My Workouts", "Strength over time", "Personal Records",
+            "Consistency", "Intensity", "Effort", "Tests", "Readiness"
         ])
     }
 

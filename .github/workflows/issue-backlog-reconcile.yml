@@ -2,7 +2,8 @@ name: Claude Issue Controller
 run-name: Reconcile one repository-local issue intake
 on:
   issues:
-    types: [labeled, closed]
+    # Every new or reopened issue enters the controller queue automatically.
+    types: [opened, reopened, labeled, closed]
   workflow_run:
     workflows: ["iOS Build & TestFlight", "iOS"]
     types: [completed]
@@ -22,7 +23,7 @@ jobs:
   reconcile:
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && github.actor == 'johnarleyburns' && (github.event.action == 'closed' || github.event.label.name == 'ai-ready' || github.event.label.name == 'retry-ai' || github.event.label.name == 'priority-high' || github.event.label.name == 'qa-failed')) ||
+      (github.event_name == 'issues') ||
       (github.event_name == 'workflow_run' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true') ||
       (github.event_name == 'schedule' && vars.CLAUDE_PIPELINE_AUTO_ENABLED == 'true')
     runs-on: ubuntu-latest

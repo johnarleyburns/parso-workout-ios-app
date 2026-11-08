@@ -5,6 +5,26 @@ import CadenceCore
 
 @MainActor
 final class TodayHeroActivityPresenterTests: XCTestCase {
+
+    func testCardioCompletionDoesNotCreateAStrengthDoneSummary() {
+        let cardio = TodayHeroActivitySnapshot.CompletedWorkout(
+            title: "Easy Cycle", modality: .cardio, setCount: 0, volumeKg: 0,
+            durationMinutes: 30, exercises: [], occurredAt: Date())
+        let snapshot = TodayHeroActivitySnapshot(
+            completedWorkoutCount: 3, completedToday: [cardio], nextScheduled: nil,
+            todayScheduled: nil, remainingScheduledToday: 0, durationSamples: [])
+
+        XCTAssertNil(snapshot.strengthDaySummary())
+        XCTAssertEqual(snapshot.latestCompletedCardio?.title, "Easy Cycle")
+
+        let strengthSuggestion = TodayHero(kind: .suggested, title: "Upper Body")
+        let hero = TodayHeroPresenter.hero(
+            inProgress: nil, scheduled: nil, suggested: strengthSuggestion,
+            completedWorkoutCount: snapshot.completedWorkoutCount,
+            completedToday: snapshot.strengthDaySummary())
+        XCTAssertEqual(hero.kind, .suggested)
+        XCTAssertEqual(hero.title, "Upper Body")
+    }
     private var container: ModelContainer!
     private var context: ModelContext!
     private let cal = Calendar(identifier: .gregorian)

@@ -228,7 +228,9 @@ extension ExercisePickerView {
     }
 
     func exerciseLink(_ ex: ExerciseCatalogEntry) -> some View {
-        NavigationLink(value: ExercisePickerView.ExerciseDetailRoute.exercise(ex.id)) {
+        Button {
+            path.append(ExercisePickerView.ExerciseDetailRoute.exercise(ex.id))
+        } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
@@ -252,6 +254,7 @@ extension ExercisePickerView {
             }
             .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .matchedTransitionSource(id: ex.id, in: searchTransition)
         .accessibilityIdentifier("picker.row.\(ex.name)")
     }

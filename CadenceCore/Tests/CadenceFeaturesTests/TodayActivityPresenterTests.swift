@@ -168,4 +168,18 @@ final class TodayActivityPresenterTests: XCTestCase {
         XCTAssertEqual(result.cardio.count, 1)
         XCTAssertEqual(result.cardio.first?.title, "Run")
     }
+
+    func testHistoryEntriesIncludesRetainedHistoryAndExcludesDeletedWorkouts() {
+        let older = WorkoutSession(title: "Older Strength", date: now.addingTimeInterval(-20 * 86_400))
+        older.endedAt = older.date.addingTimeInterval(3_600)
+        let recent = CardioWorkout(type: .cycle, start: now.addingTimeInterval(-3_600), end: now.addingTimeInterval(-1_800))
+        let deleted = WorkoutSession(title: "Deleted", date: now.addingTimeInterval(-7_200))
+        deleted.endedAt = deleted.date.addingTimeInterval(3_600)
+        deleted.deletedAt = now
+
+        let entries = TodayActivityPresenter.historyEntries(
+            sessions: [older, deleted], cardio: [recent])
+
+        XCTAssertEqual(entries.map(\.title), ["Cycle", "Older Strength"])
+    }
 }

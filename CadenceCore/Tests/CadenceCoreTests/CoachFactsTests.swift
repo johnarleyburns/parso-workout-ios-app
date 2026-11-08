@@ -269,7 +269,7 @@ final class CoachFactsTests: XCTestCase {
         let ctx = try makeContext()
         let now = testNow
         var events: [TrainingEvent] = []
-        for daysAgo in 1...3 {
+        for daysAgo in 0..<3 {
             let date = now.addingTimeInterval(-Double(daysAgo) * 86400)
             let session = try WorkoutRepository.createSession(date: date.addingTimeInterval(-600), in: ctx)
             let squat = try WorkoutRepository.findOrCreateExercise(

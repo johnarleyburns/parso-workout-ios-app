@@ -1,9 +1,13 @@
 import SwiftUI
+import Charts
 import CadenceCore
 import CadenceFeatures
 
+enum HomeWeekDashboardScope { case strength, cardio }
+
 struct HomeWeekDashboardSection: View {
     let dashboard: HomeDashboardState
+    let scope: HomeWeekDashboardScope
     @Binding var detailSelection: WeeklyDetailSelection
     @Binding var muscleMapPanel: MuscleMapPanel
     let plannedItems: [PlannedWorkoutsPresenter.Item]
@@ -22,6 +26,7 @@ struct HomeWeekDashboardSection: View {
     let onResumeWorkout: (WorkoutSession) -> Void
     let onStartWorkout: (WorkoutSession) -> Void
     let onPlanWorkout: (EditablePlan) -> Void
+    let onSuggestCardio: () -> Void
     let onShowHistory: () -> Void
     @State var volumeWarningMessage: String?
     /// A fresh identity on every selection lets SwiftUI present the detail sheet
@@ -50,7 +55,7 @@ struct HomeWeekDashboardSection: View {
 
     var body: some View {
         AdaptiveDashboardColumns {
-            sectionCard {
+            if scope == .strength { sectionCard {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         Text("Muscle coverage").font(.headline).foregroundStyle(.primary)
@@ -58,31 +63,32 @@ struct HomeWeekDashboardSection: View {
                         Text(dashboard.volumeCoverage.displayText)
                             .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                     }
-                    muscleMapSummary
                     fillGapsButton
+                    muscleMapSummary
                 }
-            }
+            } }
             .id(WeeklyDetailMode.muscleMap)
-            sectionCard {
-                disclosureRow(title: String(localized: "My Workouts"), value: dashboard.strength.displayText,
-                              progress: dashboard.strength.normalized,
-                              tint: dashboard.strength.isAtOrAboveTarget ? .green : .yellow,
-                              mode: .strength, identifier: "home.week.strength") {
-                    myWorkoutsList
-                }
-            }
-            .id(WeeklyDetailMode.strength)
-            sectionCard {
-                disclosureRow(title: String(localized: "Cardio"), value: dashboard.cardio.displayText,
-                              progress: dashboard.cardio.normalized,
-                              tint: dashboard.cardio.isAtOrAboveTarget ? .green : .yellow,
-                              mode: .cardio, identifier: "home.week.cardio") {
-                    VStack(alignment: .leading, spacing: 10) {
-                        cardioMinutes
-                        if let dose = dashboard.activityDose { activityDose(dose) }
+            if scope == .cardio { sectionCard {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("Cardio").font(.headline)
+                        Spacer()
+                        Text(dashboard.cardio.displayText)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                     }
+                    ProgressView(value: dashboard.cardio.normalized)
+                        .tint(dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
+                    Button(action: onSuggestCardio) {
+                        Label("Suggest Workout", systemImage: "sparkles")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.teal)
+                    .accessibilityIdentifier("cardio.suggestWorkout")
+                    cardioMinutes
+                    if let dose = dashboard.activityDose { activityDose(dose) }
                 }
-            }
+            } }
             .id(WeeklyDetailMode.cardio)
         }
         .alert("Volume warning", isPresented: Binding(
@@ -112,12 +118,12 @@ struct HomeWeekDashboardSection: View {
         return NavigationLink {
             MuscleGroupQuickStartView(tiers: behind, onStart: onStartWorkout, onPlan: onPlanWorkout)
         } label: {
-            Label("Fill the gaps", systemImage: "plus.circle")
+            Label("Suggest Workout", systemImage: "sparkles")
                 .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
         .tint(CadenceTheme.accent)
-        .accessibilityIdentifier("home.week.fillGaps")
+        .accessibilityIdentifier("strength.suggestWorkout")
     }
 
 
@@ -324,8 +330,24 @@ struct HomeWeekDashboardSection: View {
                 Text("Training zones")
                     .font(.caption.weight(.semibold))
                     .padding(.top, 2)
+                Chart {
+                    ForEach(TrainingZone.allCases, id: \.self) { zone in
+                        let minutes = dashboard.cardioDetail.zoneMinutes[zone] ?? 0
+                        if minutes > 0 {
+                            SectorMark(angle: .value("Minutes", minutes),
+                                       innerRadius: .ratio(0.58),
+                                       angularInset: 2)
+                                .foregroundStyle(zoneColor(zone))
+                                .accessibilityLabel("\(zone.displayName), \(CardioMinutesDisplay.zone(minutes))")
+                        }
+                    }
+                }
+                .chartLegend(.hidden)
+                .frame(height: 150)
+                .accessibilityIdentifier("cardio.trainingZones.chart")
                 ForEach(dashboard.cardioDetail.zoneMinutes.keys.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { zone in
                     HStack {
+                        Circle().fill(zoneColor(zone)).frame(width: 8, height: 8)
                         Text(zone.displayName).font(.caption)
                         Spacer()
                         Text(CardioMinutesDisplay.zone(dashboard.cardioDetail.zoneMinutes[zone] ?? 0))
@@ -342,5 +364,15 @@ struct HomeWeekDashboardSection: View {
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("home.week.cardioMinutes")
+    }
+
+    private func zoneColor(_ zone: TrainingZone) -> Color {
+        switch zone {
+        case .z1: return .blue
+        case .z2: return .green
+        case .z3: return .yellow
+        case .z4: return .orange
+        case .z5: return .red
+        }
     }
 }

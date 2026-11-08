@@ -20,6 +20,7 @@ struct TrainingProgressView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
+    @Query(sort: \ReadinessEntry.date, order: .reverse) private var readinessEntries: [ReadinessEntry]
     @State var path = NavigationPath()
     @State private var questionSelection = ProgressQuestionSelection.persisted()
     @State private var preparedStrengthData: StrengthProgressChartData?
@@ -27,6 +28,7 @@ struct TrainingProgressView: View {
     @State private var preparedFacts: TrainingFacts?
     @State private var selectedStrengthNames = ProgressStrengthSelection.persisted().selectedNames
     @State private var addLiftPlan: EditablePlan?
+    @State private var readinessPresented = false
     private var activeSessions: [WorkoutSession] { sessions.filter { $0.deletedAt == nil } }
     var facts: TrainingFacts? { preparedFacts }
 
@@ -104,6 +106,9 @@ struct TrainingProgressView: View {
                 }
             }
         }
+        .sheet(isPresented: $readinessPresented) {
+            ReadinessCheckInView(existing: todayReadiness)
+        }
         .accessibilityIdentifier("progress")
     }
 
@@ -173,10 +178,44 @@ struct TrainingProgressView: View {
             intensityCard
         case .effort:
             effortCard
+        case .readiness:
+            readinessCard
         case .consistency:
             EmptyView()
         case .workoutHistory:
             EmptyView()
+        }
+    }
+
+    private var todayReadiness: ReadinessEntry? {
+        let calendar = Calendar.current
+        return readinessEntries.first { calendar.isDateInToday($0.date) }
+    }
+
+    private var readinessCard: some View {
+        card(title: "Readiness", subtitle: "Optional check-in for your coach", tint: .orange) {
+            Button {
+                readinessPresented = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: todayReadiness == nil ? "heart.text.square" : "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(todayReadiness == nil ? .orange : .green)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(todayReadiness == nil ? "How are you feeling?" : "Today's readiness")
+                            .font(.headline)
+                        Text(todayReadiness.map { ReadinessCheckInPresenter.summary(for: $0) }
+                             ?? "Optional context for the coach")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.right").foregroundStyle(.tertiary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("progress.readiness")
         }
     }
 

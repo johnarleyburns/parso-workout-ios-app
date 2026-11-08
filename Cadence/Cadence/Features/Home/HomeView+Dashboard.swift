@@ -47,9 +47,6 @@ extension HomeView {
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)
             }
-            .sheet(isPresented: $readinessPresented) {
-                ReadinessCheckInView(existing: todayReadiness)
-            }
             .sheet(isPresented: $recoveryOptionsPresented) {
                 recoveryOptionsSheet
             }
@@ -361,7 +358,7 @@ extension HomeView {
                 .navigationTitle(surface.title)
                 .navigationBarTitleDisplayMode(.large)
                 .onReceive(NotificationCenter.default.publisher(for: .cadenceShowThisWeek)) { _ in
-                    guard surface == .thisWeek else { return }
+                    guard surface != .today else { return }
                     withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo("week.top", anchor: .top) }
                 }
                 .onChange(of: weekScrollTarget) { _, target in
@@ -391,9 +388,17 @@ extension HomeView {
         }
     }
 
+    @ViewBuilder
     private var thisWeekContent: some View {
         VStack(alignment: .leading, spacing: 20) {
-            dashboardWeekContent
+            switch surface {
+            case .strength:
+                dashboardStrengthContent
+            case .cardio:
+                dashboardCardioContent
+            case .today:
+                EmptyView()
+            }
         }
     }
 

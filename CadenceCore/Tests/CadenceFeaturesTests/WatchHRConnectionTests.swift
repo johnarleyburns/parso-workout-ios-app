@@ -171,4 +171,20 @@ final class WatchHRConnectionTests: XCTestCase {
         connection.end()
         XCTAssertFalse(connection.isCapturing(sessionID: identity.phoneSessionID))
     }
+
+    func testReconcileStepIsReachableFromPacketArrivalWithoutTimer() {
+        let id = ids(); var c = started(id)
+        _ = c.receiveSample(requestID: id.requestID, at: t0)
+        // Timer never fired (phone locked); a later packet triggers the pass.
+        let late = t0.addingTimeInterval(60)
+        let step = c.reconcileStep(now: late, externalBPMVisible: true)
+        XCTAssertEqual(step.query, .initialWaitElapsed)
+        XCTAssertTrue(step.clearStaleBPM)
+        // Nothing visible -> nothing to clear; not yet due -> no query.
+        var d = started(id)
+        _ = d.receiveSample(requestID: id.requestID, at: t0)
+        let early = d.reconcileStep(now: t0.addingTimeInterval(1), externalBPMVisible: false)
+        XCTAssertNil(early.query)
+        XCTAssertFalse(early.clearStaleBPM)
+    }
 }

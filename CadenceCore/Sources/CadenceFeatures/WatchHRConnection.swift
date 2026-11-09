@@ -205,6 +205,21 @@ public struct WatchHRConnection: Sendable {
         return beginAttempt(.initialWaitElapsed, now: now)
     }
 
+    /// Outcome of one reconciliation pass.
+    public struct ReconcileStep: Equatable, Sendable {
+        public let query: WatchHRReconcileReason?
+        public let clearStaleBPM: Bool
+    }
+
+    /// Trigger-agnostic reconciliation pass. The wall-clock `Timer` is
+    /// suspended while the phone is locked, so this same pass is also driven
+    /// by the arrival of any background-delivered Watch packet (mirrored HR,
+    /// heartbeat, status). Whoever calls it just applies the result.
+    public mutating func reconcileStep(now: Date, externalBPMVisible: Bool) -> ReconcileStep {
+        let reason = tick(now: now)
+        return ReconcileStep(query: reason, clearStaleBPM: externalBPMVisible && !isSampleFresh(now: now))
+    }
+
     /// Reachability / activation: prompt attempt, still bounded.
     public mutating func reachabilityOrActivation(_ reason: WatchHRReconcileReason, now: Date) -> WatchHRReconcileReason? {
         switch state {

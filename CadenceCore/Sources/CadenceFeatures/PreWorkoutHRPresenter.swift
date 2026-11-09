@@ -62,4 +62,11 @@ public enum PreWorkoutHRPresenter {
     public static func checkEnabled(_ s: PreWorkoutHRState) -> Bool {
         true
     }
+
+    /// One-time Always-On Display tip. watchOS exposes no Always-On flag to
+    /// the paired iPhone, so detection is not attempted: the tip is shown
+    /// once, only after the user requests Watch HR, until dismissed.
+    public static func shouldShowAlwaysOnTip(watchRequested: Bool, hasSeenTip: Bool) -> Bool {
+        watchRequested && !hasSeenTip
+    }
 }

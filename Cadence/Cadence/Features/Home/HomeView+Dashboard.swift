@@ -388,18 +388,4 @@ extension HomeView {
         }
     }
 
-    @ViewBuilder
-    private var thisWeekContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            switch surface {
-            case .strength:
-                dashboardStrengthContent
-            case .cardio:
-                dashboardCardioContent
-            case .today:
-                EmptyView()
-            }
-        }
-    }
-
 }

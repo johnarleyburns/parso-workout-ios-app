@@ -269,6 +269,20 @@ extension HomeView {
     }
 
     @ViewBuilder
+    var thisWeekContent: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            switch surface {
+            case .strength:
+                dashboardStrengthContent
+            case .cardio:
+                dashboardCardioContent
+            case .today:
+                EmptyView()
+            }
+        }
+    }
+
+    @ViewBuilder
     var dashboardBottomContent: some View {
         let visibleSuggestions = dashboard.suggestions.filter {
             !dismissedObservationKeys.contains($0.sourceClaimKey)

@@ -34,6 +34,7 @@ public final class AppSettings {
                         "settings.voiceConfirmationRequired", "settings.voiceLanguage",
                         "settings.smarterVoiceUnderstanding", "settings.raiseToTalk", "settings.restAlertMode",
                         "settings.hasSeenFirstSetCoachMark",
+                        "settings.hasSeenAlwaysOnTip",
                         "settings.coachPreferenceProfile",
                         "settings.coachSchedulePreferences",
                         "settings.coachHidden",
@@ -45,6 +46,7 @@ public final class AppSettings {
             }
         }
         self.hasSeenFirstSetCoachMark = defaults.bool(forKey: "settings.hasSeenFirstSetCoachMark")
+        self.hasSeenAlwaysOnTip = defaults.bool(forKey: "settings.hasSeenAlwaysOnTip")
         self.unit = Self.read(defaults, SettingsKey.unit, MeasurementUnitPreference.self) ?? SettingsDefault.unit
         self.distanceUnit = Self.read(defaults, SettingsKey.distanceUnit, DistanceUnitPreference.self) ?? SettingsDefault.distanceUnit
         self.prRule = Self.read(defaults, SettingsKey.prRule, PRRule.self) ?? SettingsDefault.prRule
@@ -254,6 +256,11 @@ public final class AppSettings {
     /// never blocks logging or changes workout data.
     public var hasSeenFirstSetCoachMark: Bool {
         didSet { defaults.set(hasSeenFirstSetCoachMark, forKey: "settings.hasSeenFirstSetCoachMark") }
+    }
+    /// Whether the one-time Always-On Display tip (shown when a Watch-HR workout
+    /// is requested) has been dismissed. Never shown again once set.
+    public var hasSeenAlwaysOnTip: Bool {
+        didSet { defaults.set(hasSeenAlwaysOnTip, forKey: "settings.hasSeenAlwaysOnTip") }
     }
     public var favoriteRoutineIDs: Set<String> { didSet { defaults.set(Array(favoriteRoutineIDs), forKey: "settings.favoriteRoutineIDs") } }
 

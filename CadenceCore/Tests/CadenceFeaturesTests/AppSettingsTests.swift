@@ -39,6 +39,7 @@ final class AppSettingsTests: XCTestCase {
         a.trainingGoal = .strength
         a.coachHidden = true
         a.hasSeenFirstSetCoachMark = true
+        a.hasSeenAlwaysOnTip = true
 
         let b = AppSettings(defaults: d)
         XCTAssertEqual(b.unit, .pounds)
@@ -47,6 +48,14 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(b.trainingGoal, .strength)
         XCTAssertTrue(b.coachHidden)
         XCTAssertTrue(b.hasSeenFirstSetCoachMark)
+        XCTAssertTrue(b.hasSeenAlwaysOnTip)
+    }
+
+    func testAlwaysOnTipShowsOnlyOnceAfterWatchRequested() {
+        XCTAssertFalse(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: false, hasSeenTip: false))
+        XCTAssertTrue(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: true, hasSeenTip: false))
+        XCTAssertFalse(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: true, hasSeenTip: true))
+        XCTAssertFalse(AppSettings(defaults: freshDefaults()).hasSeenAlwaysOnTip)
     }
 
     func testFavoriteRoutineToggle() {

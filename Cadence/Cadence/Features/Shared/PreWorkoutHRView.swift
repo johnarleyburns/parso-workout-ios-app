@@ -33,6 +33,7 @@ struct PreWorkoutHRView: View {
     @Query private var savedDevices: [HRMDevice]
     @State private var watchSelected = false
     @State private var freshnessTick = Date()
+    @State private var settings = AppSettings()
 
     private var hrm: HeartRateMonitor { model.hrm }
     private var defaultDevice: HRMDevice? { savedDevices.first { $0.isDefault } }
@@ -106,6 +107,23 @@ struct PreWorkoutHRView: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("prehr.watch.instructions")
+                        if PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: watchSelected,
+                                                                      hasSeenTip: settings.hasSeenAlwaysOnTip) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Label("Tip: turn on Always-On Display", systemImage: "lightbulb")
+                                    .font(.caption.weight(.semibold))
+                                Text("Without Always-On Display, your Apple Watch screen goes dark during long rests or when you lower your wrist, so your heart rate disappears from the wrist until you wake it. Heart rate is still recorded. Turn it on in Watch Settings > Display & Brightness > Always On. Cladiron can't detect this setting, so this tip shows once.")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Button("Got it") { settings.hasSeenAlwaysOnTip = true }
+                                    .buttonStyle(.bordered)
+                                    .controlSize(.small)
+                                    .accessibilityIdentifier("prehr.watch.alwaysOnTip.dismiss")
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityElement(children: .contain)
+                            .accessibilityIdentifier("prehr.watch.alwaysOnTip")
+                        }
                         if model.watchHRConnection.identity != nil {
                             Text(model.watchHRStatusText)
                                 .font(.caption.weight(.semibold))

@@ -38,6 +38,36 @@ final class WorkoutLiveActivityCoordinator {
         }
     }
 
+    /// Starts (or keeps) the shared Live Activity for a live phone-recorded cardio session.
+    func startCardio(_ content: PhoneCardioLiveActivityContent) {
+        guard activity == nil else { return }
+        endAllStale()
+        guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+        let state = cardioState(content)
+        do {
+            activity = try Activity.request(attributes: WorkoutLiveActivityAttributes(workoutTitle: content.title),
+                                            content: ActivityContent(state: state,
+                                                                     staleDate: WorkoutLiveActivityPolicy.staleDate(from: Date())))
+        } catch {
+            logger.error("Cardio Live Activity request failed: \(String(describing: error), privacy: .public)")
+        }
+    }
+
+    func updateCardio(_ content: PhoneCardioLiveActivityContent) {
+        guard let activity else { return }
+        let state = cardioState(content)
+        Task { @MainActor [activity] in
+            await activity.update(ActivityContent(state: state,
+                                                  staleDate: WorkoutLiveActivityPolicy.staleDate(from: Date())))
+        }
+    }
+
+    private func cardioState(_ c: PhoneCardioLiveActivityContent) -> WorkoutLiveActivityAttributes.ContentState {
+        .init(status: c.isPaused ? String(localized: "Paused") : String(localized: "Active"),
+              elapsedSeconds: c.elapsedSeconds, isPaused: c.isPaused,
+              cardioSymbol: c.symbol, distanceMeters: c.distanceMeters)
+    }
+
     func update(elapsedSeconds: Int, status: String, isPaused: Bool,
                 restEndsAt: Date? = nil, nextExercise: String? = nil,
                 nextSetSummary: String? = nil, nextSetToken: String? = nil) {
@@ -62,9 +92,10 @@ final class WorkoutLiveActivityCoordinator {
     }
 
     /// Ends all owned activities when no strength workout is active.
-    func reconcile(workoutIsActive: Bool, hasStrengthSession: Bool) {
+    func reconcile(workoutIsActive: Bool, hasStrengthSession: Bool, hasPhoneCardioSession: Bool = false) {
         let action = LiveActivityReconcilePolicy.action(
             workoutIsActive: workoutIsActive, hasStrengthSession: hasStrengthSession,
+            hasPhoneCardioSession: hasPhoneCardioSession,
             ownedActivityCount: Activity<WorkoutLiveActivityAttributes>.activities.count)
         if action == .endAll { endAllStale() }
     }

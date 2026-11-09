@@ -121,8 +121,11 @@ struct RootTabView: View {
                     nextSetToken: active.nextSetToken)
             } else {
                 // Heartbeat backstop: no active workout means no Live Activity.
+                // A live phone cardio session keeps (and refreshes) its own.
+                model.syncPhoneCardioLiveActivity()
                 WorkoutLiveActivityCoordinator.shared.reconcile(
-                    workoutIsActive: active.isActive, hasStrengthSession: active.strengthSession != nil)
+                    workoutIsActive: active.isActive, hasStrengthSession: active.strengthSession != nil,
+                    hasPhoneCardioSession: PhoneCardioLiveActivityContent.isLive(model.phoneCardio.session))
             }
         }
         .onChange(of: active.isActive) { _, isActive in
@@ -135,7 +138,7 @@ struct RootTabView: View {
                     nextExercise: active.nextExercise,
                     nextSetSummary: active.nextSetSummary,
                     nextSetToken: active.nextSetToken)
-            } else {
+            } else if !PhoneCardioLiveActivityContent.isLive(model.phoneCardio.session) {
                 WorkoutLiveActivityCoordinator.shared.end()
             }
         }
@@ -148,7 +151,9 @@ struct RootTabView: View {
             recoverActiveSessionIfNeeded()
             // End any Live Activity orphaned by a previous launch when no
             // workout is running (issue #74).
-            WorkoutLiveActivityCoordinator.shared.reconcile(workoutIsActive: active.isActive)
+            if !PhoneCardioLiveActivityContent.isLive(model.phoneCardio.session) {
+                WorkoutLiveActivityCoordinator.shared.reconcile(workoutIsActive: active.isActive)
+            }
             // Recovery can make the workout active before this view's
             // `.onChange` observer is installed. Reconcile once after launch
             // so a recovered workout always gets its Live Activity.
@@ -159,6 +164,9 @@ struct RootTabView: View {
                     nextExercise: active.nextExercise,
                     nextSetSummary: active.nextSetSummary,
                     nextSetToken: active.nextSetToken)
+            } else if PhoneCardioLiveActivityContent.isLive(model.phoneCardio.session) {
+                // Recovered phone cardio session re-adopts its Live Activity.
+                model.syncPhoneCardioLiveActivity()
             } else {
                 // Launch cleanup: end any activity orphaned by a prior process.
                 WorkoutLiveActivityCoordinator.shared.reconcile(
@@ -177,7 +185,8 @@ struct RootTabView: View {
             // while suspended could lose the async end) on every transition.
             if !active.isActive {
                 WorkoutLiveActivityCoordinator.shared.reconcile(
-                    workoutIsActive: false, hasStrengthSession: false)
+                    workoutIsActive: false, hasStrengthSession: false,
+                    hasPhoneCardioSession: PhoneCardioLiveActivityContent.isLive(model.phoneCardio.session))
             }
             guard phase == .active else { return }
             model.pushSettingsContext(reason: .activation)

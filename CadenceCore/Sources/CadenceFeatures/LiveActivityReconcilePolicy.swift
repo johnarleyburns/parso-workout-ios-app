@@ -16,8 +16,10 @@ public enum LiveActivityReconcilePolicy {
     public static let staleAfter: TimeInterval = 15 * 60
 
     public static func action(workoutIsActive: Bool, hasStrengthSession: Bool,
+                              hasPhoneCardioSession: Bool = false,
                               ownedActivityCount: Int) -> Action? {
         if workoutIsActive && hasStrengthSession { return .update }
+        if hasPhoneCardioSession { return .update }
         return ownedActivityCount > 0 ? .endAll : nil
     }
 

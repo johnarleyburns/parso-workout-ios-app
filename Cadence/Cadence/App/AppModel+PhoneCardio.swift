@@ -39,6 +39,7 @@ extension AppModel: PhoneCardioLifecycleActions {
         phoneCardioLastBPM = nil
         autoEndedCardio = nil
         phoneCardio.attach(session: session)
+        syncPhoneCardioLiveActivity()
         return session.id
     }
 
@@ -47,6 +48,17 @@ extension AppModel: PhoneCardioLifecycleActions {
         guard phoneCardio.session?.id == id else { return }
         phoneCardioContexts[id] = nil
         phoneCardio.detachTerminalSession()
+        WorkoutLiveActivityCoordinator.shared.end()
+    }
+
+    /// Starts/updates the Live Activity while a phone cardio session is live. Teardown is
+    /// explicit (`endPhoneCardio`, `finalizePhoneCardio`) and goes through the idempotent
+    /// `endAllStale`, so a strength Live Activity is never ended from here.
+    func syncPhoneCardioLiveActivity() {
+        guard PhoneCardioLiveActivityContent.isLive(phoneCardio.session), let session = phoneCardio.session else { return }
+        let content = PhoneCardioLiveActivityContent(session: session, now: Date())
+        WorkoutLiveActivityCoordinator.shared.startCardio(content)
+        WorkoutLiveActivityCoordinator.shared.updateCardio(content)
     }
 
     /// Reconcile first; foregrounding/timer ticks are never activity. Called by the root
@@ -54,6 +66,7 @@ extension AppModel: PhoneCardioLifecycleActions {
     func reconcilePhoneCardio() async {
         phoneCardio.actions = self
         await phoneCardio.reconcile(now: Date())
+        syncPhoneCardioLiveActivity()
     }
 
     /// GPS distance progress and HR evidence. Callers pass raw values; the coordinator
@@ -165,6 +178,7 @@ extension AppModel: PhoneCardioLifecycleActions {
         parkedCardio.clear()
         phoneCardioContexts[sessionID] = nil
         if let saved { autoEndedCardio = AutoEndedCardio(sessionID: sessionID, workout: saved, endedAt: endedAt) }
+        WorkoutLiveActivityCoordinator.shared.end()
     }
 }
 

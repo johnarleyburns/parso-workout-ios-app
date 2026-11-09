@@ -3,6 +3,21 @@ import CadenceCore
 import CadenceFeatures
 
 extension HomeView {
+    func supporterBadgeView(_ badge: HomeHeaderPresentation.SupporterBadge) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: badge.systemImage)
+                .font(.caption2.weight(.bold))
+            Text(badge.text)
+                .font(.caption2.weight(.semibold))
+        }
+        .foregroundStyle(CadenceTheme.achievement)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(badge.accessibilityLabel)
+        .accessibilityIdentifier(badge.accessibilityIdentifier)
+    }
+
     @ViewBuilder
     var dashboardTopContent: some View {
         HStack {
@@ -11,11 +26,8 @@ extension HomeView {
                 .foregroundStyle(.secondary)
                 .accessibilityIdentifier("home.headerDate")
             Spacer(minLength: 8)
-            if contributions.store.isSupporter {
-                Label("Supporter", systemImage: "heart.fill")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.pink)
-                .accessibilityIdentifier("home.supporterBadge")
+            if let badge = HomeHeaderPresentation(isSupporter: contributions.store.isSupporter).supporterBadge {
+                supporterBadgeView(badge)
             }
         }
         if surface != .today,

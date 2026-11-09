@@ -1248,6 +1248,16 @@ final class AppModel: NSObject, @unchecked Sendable {
         scheduleWatchReconcile()
     }
 
+    /// Shared reconcile pass. The `Timer` below is suspended while the phone is
+    /// locked, so background-delivered Watch packets (mirrored HR, heartbeats)
+    /// also call this to catch overdue state queries and stale BPM.
+    private func runWatchReconcileStep(now: Date) {
+        let step = watchHRConnection.reconcileStep(now: now, externalBPMVisible: hrm.source == .appleWatch)
+        if let reason = step.query { sendWatchStateQuery(reason) }
+        // A stale external BPM must not stay visible to any consumer.
+        if step.clearStaleBPM { hrm.clearExternalBPM() }
+    }
+
     /// One-shot timer for the next bounded attempt; no continuous polling.
     private func scheduleWatchReconcile() {
         watchReconcileTimer?.invalidate()
@@ -1258,14 +1268,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchReconcileTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let now = Date()
-                if let reason = self.watchHRConnection.tick(now: now) {
-                    self.sendWatchStateQuery(reason)
-                }
-                // A stale external BPM must not stay visible to any consumer.
-                if self.hrm.source == .appleWatch, !self.watchHRConnection.isSampleFresh(now: now) {
-                    self.hrm.clearExternalBPM()
-                }
+                self.runWatchReconcileStep(now: Date())
                 self.scheduleWatchReconcile()
             }
         }
@@ -1685,6 +1688,7 @@ extension AppModel {
         }
 
         if let status = WatchHRLiveStatus(payload: message) {
+            runWatchReconcileStep(now: Date())
             switch watchHRConnection.receiveTransportHeartbeat(requestID: status.requestID, at: Date()) {
             case .accepted:
                 if let end = status.lastRealSampleEnd {
@@ -1755,6 +1759,8 @@ extension AppModel {
     /// Live-display HR from the mirrored workout session. Scoped by session,
     /// request and capture epoch; never touches the durable outbox or recorder.
     func handleMirroredHeartRate(_ chunks: [Data], now: Date = Date()) {
+        // Packet arrival can wake a locked phone; use it to run overdue reconciliation.
+        runWatchReconcileStep(now: now)
         for packet in WatchHRMirrorRouting.decode(chunks) {
             let sessionID = _active?.strengthSession?.id
             let decision = WatchHRMirrorRouting.decide(

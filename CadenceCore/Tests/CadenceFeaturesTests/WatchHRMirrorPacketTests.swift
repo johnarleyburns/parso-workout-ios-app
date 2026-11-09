@@ -47,6 +47,15 @@ final class WatchHRMirrorPacketTests: XCTestCase {
                                                    routeCaptureEpoch: e, now: now), .rejectedRoute)
     }
 
+    func testRoutingAcceptsPacketForActivePhoneCardioSession() {
+        let cardioID = s
+        let active = WatchHRMirrorRouting.activeSessionID(strength: nil, cardio: cardioID)
+        XCTAssertEqual(active, cardioID)
+        XCTAssertEqual(WatchHRMirrorRouting.decide(packet(), activeSessionID: active, activeRequestID: r,
+                                                   routeCaptureEpoch: e, now: now), .accept)
+        XCTAssertEqual(WatchHRMirrorRouting.activeSessionID(strength: UUID(), cardio: cardioID) == cardioID, false)
+    }
+
     @MainActor func testStalePacketDoesNotReviveLiveBPM() {
         let old = packet(end: now.timeIntervalSince1970 - WatchHRRelay.staleAfter - 1)
         XCTAssertEqual(decide(old), .stale)

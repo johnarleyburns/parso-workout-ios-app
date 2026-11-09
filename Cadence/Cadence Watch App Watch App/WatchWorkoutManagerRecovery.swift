@@ -119,19 +119,23 @@ extension WatchWorkoutManager {
 
     private func attachRecoveredWorkout(_ recovered: HKWorkoutSession) {
         guard !isActive, !isMonitoring else { return }
-        guard recovered.state != .ended else {
+        let defaults = UserDefaults.standard
+        let plan = WatchRecoveredSessionPlan(
+            state: Self.planState(recovered.state),
+            persistedMonitoring: defaults.bool(forKey: PersistedWorkoutKey.monitoring),
+            persistedPhoneRequestID: defaults.string(forKey: PersistedWorkoutKey.phoneRequestID))
+        switch plan.action {
+        case .discardEnded:
             clearPersistedWorkoutMetadata()
             return
-        }
-        guard recovered.state != .stopped else {
+        case .endStopped:
             // Stopped but never ended: finish ending it rather than leave it pending.
             recovered.end()
             clearPersistedWorkoutMetadata()
             return
+        case .adopt: break
         }
 
-        let defaults = UserDefaults.standard
-        let monitoring = defaults.bool(forKey: PersistedWorkoutKey.monitoring)
         let recoveredType = defaults.string(forKey: PersistedWorkoutKey.type)
             ?? Self.rawType(for: recovered.workoutConfiguration.activityType)
 
@@ -145,10 +149,10 @@ extension WatchWorkoutManager {
         builder = recoveredBuilder
 
         workoutType = recoveredType
-        phoneRequestID = defaults.string(forKey: PersistedWorkoutKey.phoneRequestID)
+        phoneRequestID = plan.phoneRequestID
         restorePhoneWorkoutSession()
-        isMonitoring = monitoring
-        isActive = !monitoring
+        isMonitoring = plan.isMonitoring
+        isActive = plan.isActive
         heartRateEnabled = true
         gpsEnabled = recovered.workoutConfiguration.locationType == .outdoor
         isOutdoorSession = gpsEnabled
@@ -181,6 +185,16 @@ extension WatchWorkoutManager {
         } else if recovered.state == .paused, workoutType == "strength" {
             // Observational only: label the pause as recovered; never resume here.
             strengthPause.recoveredPaused()
+        }
+    }
+
+    static func planState(_ state: HKWorkoutSessionState) -> WatchRecoveredSessionPlan.SessionState {
+        switch state {
+        case .running: return .running
+        case .paused: return .paused
+        case .stopped: return .stopped
+        case .ended: return .ended
+        default: return .other
         }
     }
 

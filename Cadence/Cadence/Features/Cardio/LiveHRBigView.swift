@@ -62,6 +62,8 @@ struct LiveHRBigView: View {
     var intensityProfile: CardioIntensityProfile? = nil
     /// Accessibility fallback label when no BPM has arrived yet.
     var label: String = String(localized: "Heart Rate")
+    /// Shown (orange) under the BPM when the Watch feed is stale/dropped.
+    var connectionNote: String? = nil
 
     var body: some View {
         VStack(spacing: 6) {
@@ -74,6 +76,13 @@ struct LiveHRBigView: View {
                     .accessibilityIdentifier("\(idPrefix).hr")
             }
             .foregroundStyle(tint)
+
+            if let connectionNote {
+                Label(connectionNote, systemImage: "applewatch.slash")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .accessibilityIdentifier("\(idPrefix).connectionNote")
+            }
 
             if bpm == nil {
                 Text("No heart rate yet")
@@ -109,12 +118,37 @@ struct LiveHRBigView: View {
     }
 
     private var accessibilityText: String {
-        guard let bpm else { return "\(label), no reading yet" }
+        guard let bpm else { return "\(label), no reading yet" + (connectionNote.map { ", \($0)" } ?? "") }
         var text = String(localized: "\(Int(bpm.rounded())) beats per minute, zone \(zone)")
         if let profile = intensityProfile {
             text += ", \(CardioIntensityClassifier.classify(heartRate: bpm, profile: profile).relativeIntensity.displayName.lowercased())"
         }
         if let avgHR { text += ", average \(Int(avgHR.rounded()))" }
+        if let connectionNote { text += ", \(connectionNote)" }
         return text
+    }
+}
+
+/// `LiveHRBigView` plus the Apple Watch reconnect note, re-evaluated every few
+/// seconds so a feed that goes stale is flagged even when no new state arrives.
+struct WatchAwareLiveHRBigView: View {
+    @Environment(AppModel.self) private var model
+    let bpm: Double?
+    let zone: Int
+    let avgHR: Double?
+    let idPrefix: String
+    var intensityProfile: CardioIntensityProfile? = nil
+    var label: String = String(localized: "Heart Rate")
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 5)) { context in
+            LiveHRBigView(
+                bpm: bpm, zone: zone, avgHR: avgHR, idPrefix: idPrefix,
+                intensityProfile: intensityProfile, label: label,
+                connectionNote: LiveHRPresenter.connectionNote(
+                    isAppleWatchSource: model.hrm.source == .appleWatch,
+                    isSampleFresh: model.watchHRConnection.isSampleFresh(now: context.date),
+                    statusText: model.watchHRStatusText))
+        }
     }
 }

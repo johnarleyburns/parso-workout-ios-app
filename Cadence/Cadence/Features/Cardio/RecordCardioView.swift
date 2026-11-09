@@ -173,7 +173,7 @@ struct RecordCardioView: View {
                     metric(String(localized: "Pace"), CardioMath.formatPace(secPerKm: recorder.pace), id: "record.pace")
                 }
             }
-            LiveHRBigView(bpm: recorder.currentBPM, zone: recorder.zone, avgHR: recorder.avgHR,
+            WatchAwareLiveHRBigView(bpm: recorder.currentBPM, zone: recorder.zone, avgHR: recorder.avgHR,
                           idPrefix: "record", intensityProfile: liveIntensityProfile)
 
             if recorder.strapConnected {

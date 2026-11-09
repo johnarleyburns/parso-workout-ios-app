@@ -46,6 +46,13 @@ public enum LiveHRPresenter {
         zoneLine(zone: zone) + avgSuffix(avgHR: avgHR)
     }
 
+    /// Visible reconnect note for the cardio live screens: non-nil whenever
+    /// the Apple Watch is the HR source and its sample is not fresh, so a
+    /// dropped feed never looks like "never started" or a frozen number.
+    public static func connectionNote(isAppleWatchSource: Bool, isSampleFresh: Bool, statusText: String) -> String? {
+        isAppleWatchSource && !isSampleFresh ? statusText : nil
+    }
+
     /// "143" or "—" for the big number.
     public static func bpmText(_ bpm: Double?) -> String {
         guard let bpm else { return "—" }

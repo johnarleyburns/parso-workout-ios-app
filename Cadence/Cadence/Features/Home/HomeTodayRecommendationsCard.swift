@@ -21,7 +21,7 @@ struct HomeTodayRecommendationsCard: View {
     private func section(modality: DailyRecommendationModality,
                          completedTitle: String?) -> some View {
         let row = rows.first { $0.modality == modality }
-        VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: 4) {
             if let completedTitle {
                 completionView(modality: modality, title: completedTitle)
             } else if let row {

@@ -55,41 +55,45 @@ struct HomeWeekDashboardSection: View {
 
     var body: some View {
         AdaptiveDashboardColumns {
-            if scope == .strength { sectionCard {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("Muscle coverage").font(.headline).foregroundStyle(.primary)
-                        Spacer()
-                        Text(dashboard.volumeCoverage.displayText)
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+            if scope == .strength {
+                sectionCard {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Text("Muscle coverage").font(.headline).foregroundStyle(.primary)
+                            Spacer()
+                            Text(dashboard.volumeCoverage.displayText)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                        }
+                        fillGapsButton
+                        muscleMapSummary
                     }
-                    fillGapsButton
-                    muscleMapSummary
                 }
-            } }
-            .id(WeeklyDetailMode.muscleMap)
-            if scope == .cardio { sectionCard {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("Cardio").font(.headline)
-                        Spacer()
-                        Text(dashboard.cardio.displayText)
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                .id(WeeklyDetailMode.muscleMap)
+            }
+            if scope == .cardio {
+                sectionCard {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack {
+                            Text("Cardio").font(.headline)
+                            Spacer()
+                            Text(dashboard.cardio.displayText)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                        }
+                        ProgressView(value: dashboard.cardio.normalized)
+                            .tint(dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
+                        Button(action: onSuggestCardio) {
+                            Label("Suggest Workout", systemImage: "sparkles")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.teal)
+                        .accessibilityIdentifier("cardio.suggestWorkout")
+                        cardioMinutes
+                        if let dose = dashboard.activityDose { activityDose(dose) }
                     }
-                    ProgressView(value: dashboard.cardio.normalized)
-                        .tint(dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
-                    Button(action: onSuggestCardio) {
-                        Label("Suggest Workout", systemImage: "sparkles")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.teal)
-                    .accessibilityIdentifier("cardio.suggestWorkout")
-                    cardioMinutes
-                    if let dose = dashboard.activityDose { activityDose(dose) }
                 }
-            } }
-            .id(WeeklyDetailMode.cardio)
+                .id(WeeklyDetailMode.cardio)
+            }
         }
         .alert("Volume warning", isPresented: Binding(
             get: { volumeWarningMessage != nil },

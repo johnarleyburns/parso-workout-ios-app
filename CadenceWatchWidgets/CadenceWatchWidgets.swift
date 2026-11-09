@@ -50,9 +50,13 @@ struct CadenceWatchWidgetProvider: TimelineProvider {
 struct CadenceWatchSmartStackView: View {
     let entry: CadenceWatchWidgetEntry
 
+    @Environment(\.widgetFamily) private var family
+
     var body: some View {
         Group {
-            if let state = entry.state, let restEndsAt = state.restEndsAt, restEndsAt > entry.date {
+            if family != .accessoryRectangular {
+                complication
+            } else if let state = entry.state, let restEndsAt = state.restEndsAt, restEndsAt > entry.date {
                 rest(state: state, endsAt: restEndsAt)
                     .widgetURL(URL(string: "cladiron://workout"))
             } else if let state = entry.state {
@@ -72,6 +76,25 @@ struct CadenceWatchSmartStackView: View {
             }
         }
         .containerBackground(for: .widget) { Color.black }
+    }
+
+    /// Circular/corner/inline complication: one tap returns to the live workout (or opens the app).
+    @ViewBuilder private var complication: some View {
+        let active: Bool = {
+            if case .active = CadenceWatchComplicationState.current(now: entry.date) { return true }
+            return false
+        }()
+        Group {
+            if family == .accessoryInline {
+                Label(active ? "Workout" : "Cladiron", systemImage: "figure.strengthtraining.traditional")
+            } else {
+                Image(systemName: active ? "figure.run.circle.fill" : "figure.strengthtraining.traditional")
+                    .font(.title3)
+                    .foregroundStyle(active ? accent : .secondary)
+            }
+        }
+        .widgetURL(URL(string: active ? CadenceWatchComplicationState.deepLink : "cladiron://start"))
+        .accessibilityLabel(Text(active ? "Return to workout" : "Open Cladiron"))
     }
 
     private func rest(state: CadenceWatchWidgetState, endsAt: Date) -> some View {
@@ -138,7 +161,7 @@ struct CadenceWatchSmartStackWidget: Widget {
         }
         .configurationDisplayName("Today")
         .description("Today's plan with Start, or your rest and next set during a workout.")
-        .supportedFamilies([.accessoryRectangular])
+        .supportedFamilies([.accessoryRectangular, .accessoryCircular, .accessoryCorner, .accessoryInline])
     }
 }
 

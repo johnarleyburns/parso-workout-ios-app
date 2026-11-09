@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import WatchKit
+import WidgetKit
 import CadenceFeatures
 
 // MARK: - Workouts the iPhone opens on the Watch
@@ -50,6 +51,7 @@ extension WatchWorkoutManager {
         bindPhoneWorkoutSession(phoneWorkoutSessionID, captureEpoch: captureEpoch)
         workoutType = type
         persistWorkoutMetadata(type: type, monitoring: false)
+        publishComplicationState()
         // Readings measured before adoption belong to this launch's session
         // window; relay the newest, then the heartbeat resumes normally.
         if let launchStart = sessionStart,
@@ -98,5 +100,17 @@ extension WatchWorkoutManager {
             awaitingAdoption: phoneLaunchPendingSince != nil && phoneRequestID == nil,
             lastRealSampleAt: lastObservedReading?.isHealthKit == true ? lastObservedReading?.end : nil,
             queryIssuedAt: queryIssuedAt)
+    }
+}
+
+extension WatchWorkoutManager {
+    /// Mirrors "a workout is running" to the complication's App Group store, then reloads it. Written
+    /// synchronously on the same transitions that flip `isActive`, so the widget never lags the app.
+    func publishComplicationState() {
+        let marker = (isActive && !isMonitoring)
+            ? CadenceWatchActiveWorkout(workoutType: workoutType ?? "workout", startedAt: sessionStart ?? Date())
+            : nil
+        CadenceWatchComplicationState.setActive(marker)
+        WidgetCenter.shared.reloadTimelines(ofKind: "CadenceWatchSmartStackWidget")
     }
 }

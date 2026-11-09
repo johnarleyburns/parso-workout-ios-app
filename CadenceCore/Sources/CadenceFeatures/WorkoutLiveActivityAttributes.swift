@@ -15,10 +15,14 @@ public struct WorkoutLiveActivityAttributes: ActivityAttributes {
         public var nextExercise: String?
         public var nextSetSummary: String?
         public var nextSetToken: String?
+        /// Cardio-only (nil for strength). `cardioSymbol` non-nil marks a cardio activity.
+        public var cardioSymbol: String?
+        public var distanceMeters: Double?
 
         public init(status: String, elapsedSeconds: Int, isPaused: Bool = false,
                     restEndsAt: Date? = nil, nextExercise: String? = nil,
-                    nextSetSummary: String? = nil, nextSetToken: String? = nil) {
+                    nextSetSummary: String? = nil, nextSetToken: String? = nil,
+                    cardioSymbol: String? = nil, distanceMeters: Double? = nil) {
             self.status = status
             self.elapsedSeconds = elapsedSeconds
             self.isPaused = isPaused
@@ -26,6 +30,8 @@ public struct WorkoutLiveActivityAttributes: ActivityAttributes {
             self.nextExercise = nextExercise
             self.nextSetSummary = nextSetSummary
             self.nextSetToken = nextSetToken
+            self.cardioSymbol = cardioSymbol
+            self.distanceMeters = distanceMeters
         }
     }
 

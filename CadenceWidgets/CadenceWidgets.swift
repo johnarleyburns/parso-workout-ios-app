@@ -204,12 +204,20 @@ struct CadenceThisWeekWidgetView: View {
     }
 }
 
+/// Elapsed time, plus distance and a paused marker for cardio activities.
+private func cardioSummary(_ state: WorkoutLiveActivityAttributes.ContentState) -> String {
+    var parts = [Format.duration(TimeInterval(state.elapsedSeconds))]
+    if let d = state.distanceMeters { parts.append(Format.distance(d)) }
+    if state.cardioSymbol != nil, state.isPaused { parts.append(String(localized: "Paused")) }
+    return parts.joined(separator: " · ")
+}
+
 struct CadenceWorkoutLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: WorkoutLiveActivityAttributes.self) { context in
             VStack(alignment: .leading, spacing: 8) {
               HStack(spacing: 12) {
-                Image(systemName: context.state.restEndsAt == nil ? "figure.strengthtraining.traditional" : "timer")
+                Image(systemName: context.state.cardioSymbol ?? (context.state.restEndsAt == nil ? "figure.strengthtraining.traditional" : "timer"))
                     .foregroundStyle(.green)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(context.state.restEndsAt == nil ? context.attributes.workoutTitle : String(localized: "Rest"))
@@ -220,7 +228,7 @@ struct CadenceWorkoutLiveActivity: Widget {
                             .font(.title2.weight(.bold)).monospacedDigit()
                             .foregroundStyle(.white)
                     } else {
-                        Text(Format.duration(TimeInterval(context.state.elapsedSeconds)))
+                        Text(cardioSummary(context.state))
                             .font(.caption).foregroundStyle(.white.opacity(0.78))
                     }
                 }
@@ -257,7 +265,11 @@ struct CadenceWorkoutLiveActivity: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Label("Rest", systemImage: "timer").foregroundStyle(.green)
+                    if let symbol = context.state.cardioSymbol {
+                        Label(context.state.status, systemImage: symbol).foregroundStyle(.green)
+                    } else {
+                        Label("Rest", systemImage: "timer").foregroundStyle(.green)
+                    }
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if let end = context.state.restEndsAt {
@@ -266,20 +278,23 @@ struct CadenceWorkoutLiveActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack {
-                        Text(context.state.nextSetSummary ?? context.state.nextExercise ?? context.attributes.workoutTitle)
+                        Text(context.state.cardioSymbol != nil ? cardioSummary(context.state)
+                             : (context.state.nextSetSummary ?? context.state.nextExercise ?? context.attributes.workoutTitle))
                             .lineLimit(1)
                         Spacer()
                         if context.state.restEndsAt != nil {
                             Button(intent: AddRestFromLiveActivityIntent()) { Image(systemName: "plus") }
                             Button(intent: SkipRestFromLiveActivityIntent()) { Image(systemName: "forward.fill") }
                         }
-                        Button(intent: LogPlannedSetFromLiveActivityIntent(token: context.state.nextSetToken)) {
-                            Image(systemName: "checkmark")
+                        if context.state.cardioSymbol == nil {
+                            Button(intent: LogPlannedSetFromLiveActivityIntent(token: context.state.nextSetToken)) {
+                                Image(systemName: "checkmark")
+                            }
                         }
                     }
                 }
             } compactLeading: {
-                Image(systemName: "timer").foregroundStyle(.green)
+                Image(systemName: context.state.cardioSymbol ?? "timer").foregroundStyle(.green)
             } compactTrailing: {
                 if let end = context.state.restEndsAt {
                     Text(timerInterval: Date()...end, countsDown: true).monospacedDigit()
@@ -287,7 +302,7 @@ struct CadenceWorkoutLiveActivity: Widget {
                     Text(Format.duration(TimeInterval(context.state.elapsedSeconds))).monospacedDigit()
                 }
             } minimal: {
-                Image(systemName: "timer").foregroundStyle(.green)
+                Image(systemName: context.state.cardioSymbol ?? "timer").foregroundStyle(.green)
             }
         }
     }

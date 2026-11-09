@@ -24,38 +24,16 @@ struct HistoryView: View {
         HistoryPresenter.entries(sessions: sessions, cardio: cardio, showDeleted: showDeleted)
     }
 
+    private var timelineEntries: [TodayActivityPresenter.Entry] {
+        TodayActivityPresenter.historyEntries(sessions: sessions, cardio: cardio)
+    }
+
     var body: some View {
-        List {
-            Section {
-                if entries.isEmpty {
-                    Text(showDeleted ? "No deleted workouts." : "No workouts yet — start one from Home.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(entries) { entry in
-                    switch entry {
-                    case .strength(let s): strengthRow(s)
-                    case .cardio(let c): cardioRow(c)
-                    }
-                }
-            } header: {
-                HStack {
-                    // The nav title or the Progress tab already says "History".
-                    if showDeleted {
-                        Text("Deleted")
-                    }
-                    Spacer()
-                    if !deletedSessions.isEmpty || !deletedCardio.isEmpty {
-                        Button(showDeleted ? "Back" : "View Deleted") {
-                            withAnimation { showDeleted.toggle() }
-                        }
-                        .font(.caption)
-                        .accessibilityIdentifier("history.toggleDeleted")
-                    }
-                }
-            } footer: {
-                if showDeleted {
-                    Text("Swipe to restore a deleted workout.")
-                }
+        Group {
+            if showDeleted {
+                legacyDeletedList
+            } else {
+                workoutTimeline
             }
         }
         .modifier(HistoryChrome(embedded: embedded))
@@ -77,6 +55,93 @@ struct HistoryView: View {
                 cardioToDelete = nil
             }
         } message: { _ in Text("This removes the cardio workout. You can restore it from View Deleted.") }
+    }
+
+    private var workoutTimeline: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: LayoutMetrics.cardHeadingSpacing) {
+                HStack {
+                    Text("My Workouts").font(.headline)
+                    Spacer()
+                    if !deletedSessions.isEmpty || !deletedCardio.isEmpty {
+                        Button("View Deleted") { withAnimation { showDeleted = true } }
+                            .font(.caption.weight(.semibold))
+                            .accessibilityIdentifier("history.toggleDeleted")
+                    }
+                }
+                if timelineEntries.isEmpty {
+                    Text("No workouts yet — start one from Today.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                } else {
+                    ForEach(timelineEntries) { entry in
+                        HomeWeekWorkoutRow(entry: entry) { open(entry) }
+                            .contextMenu { timelineActions(for: entry) }
+                    }
+                }
+            }
+            .padding(LayoutMetrics.cardPadding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
+            .padding(.horizontal)
+            .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
+        }
+        .accessibilityIdentifier("history.myWorkouts")
+    }
+
+    private var legacyDeletedList: some View {
+        List {
+            Section {
+                if entries.isEmpty {
+                    Text("No deleted workouts.")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(entries) { entry in
+                    switch entry {
+                    case .strength(let s): strengthRow(s)
+                    case .cardio(let c): cardioRow(c)
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Deleted")
+                    Spacer()
+                    Button("Back") { withAnimation { showDeleted = false } }
+                        .font(.caption)
+                        .accessibilityIdentifier("history.toggleDeleted")
+                }
+            } footer: {
+                if showDeleted {
+                    Text("Swipe to restore a deleted workout.")
+                }
+            }
+        }
+    }
+
+    private func open(_ entry: TodayActivityPresenter.Entry) {
+        Haptics.selection()
+        switch WorkoutsTodayPresenter.historyRoute(for: entry) {
+        case .strength(let id): path.append(HistorySummaryRoute.strength(id))
+        case .cardio(let id): path.append(HistorySummaryRoute.cardio(id))
+        }
+    }
+
+    @ViewBuilder
+    private func timelineActions(for entry: TodayActivityPresenter.Entry) -> some View {
+        switch entry.kind {
+        case .strength:
+            if let session = sessions.first(where: { $0.id == entry.sourceId }) {
+                Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
+                Button(role: .destructive) { sessionToDelete = session } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        case .cardio:
+            if let workout = cardio.first(where: { $0.id == entry.sourceId }) {
+                Button(role: .destructive) { cardioToDelete = workout } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 
     // MARK: Rows

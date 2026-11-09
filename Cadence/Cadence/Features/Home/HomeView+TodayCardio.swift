@@ -7,6 +7,7 @@ import CadenceFeatures
 /// an explicit link, Start, and Suggest Another.
 struct HomeTodayCardioCard: View {
     let suggestion: CardioSuggestion?
+    let completedTitle: String?
     let isCalculating: Bool
     let hasNewer: Bool
     let onStart: (CardioSuggestion) -> Void
@@ -18,7 +19,12 @@ struct HomeTodayCardioCard: View {
             Label("Suggested Cardio for You", systemImage: "heart.fill")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(CadenceTheme.accent)
-            if let suggestion {
+            if let completedTitle {
+                Label("Cardio Done for Today", systemImage: "checkmark.circle.fill")
+                    .font(.headline)
+                    .foregroundStyle(CadenceTheme.achievement)
+                Text(completedTitle).font(.subheadline).foregroundStyle(.secondary)
+            } else if let suggestion {
                 Text(suggestion.protocolName.map { "\($0) · \(suggestion.type.displayName)" }
                      ?? suggestion.type.displayName)
                     .font(.title3.weight(.bold))

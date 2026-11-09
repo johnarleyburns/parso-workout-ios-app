@@ -148,9 +148,9 @@ final class CoachScientificValidationTests: XCTestCase {
         comps.hour = 12; comps.minute = 0; comps.second = 0
         let sunday = Calendar.current.date(from: comps)!
 
-        // Create 6 consecutive days (Mon–Sat) of hard strength training
+        // Create 6 consecutive hard days ending today.
         var events: [TrainingEvent] = []
-        for dayOffset in 1...6 {
+        for dayOffset in 0..<6 {
             let date = sunday.addingTimeInterval(-Double(dayOffset) * 86400)
             let ex = try makeStrengthEvent(context: ctx, name: "Day\(dayOffset) Lift",
                                             primaryMuscles: ["quadriceps"],
@@ -175,20 +175,21 @@ final class CoachScientificValidationTests: XCTestCase {
         assertValidCitation("drewFinchInjury2016")
     }
 
-    /// A4: >20 sets for one body part in a week triggers excessive volume warning.
+    /// A4: Volume more than 20% above the high end triggers a warning.
     /// Science: pellandDoseResponse2026 — diminishing returns above certain
     /// weekly volume thresholds.
     func testA4_excessiveWeeklyVolumeTriggersWarning() throws {
         let ctx = try makeContext()
         let now = testNow
 
-        // 4 chest sessions this week, 6 sets each = 24 sets → above threshold
+        // 4 chest sessions this week, 7 sets each = 28 sets, which is more
+        // than 20% above the intermediate chest high end of 22.
         var events: [TrainingEvent] = []
         for dayOffset in 0..<4 {
             let date = now.addingTimeInterval(-Double(dayOffset) * 86400)
             let ex = try makeStrengthEvent(context: ctx, name: "Bench Press",
                                             primaryMuscles: ["chest"],
-                                            date: date, sets: 6, rpe: 8)
+                                            date: date, sets: 7, rpe: 8)
             events.append(ex)
         }
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)

@@ -814,10 +814,12 @@ public enum CoachDecisionEngine {
         }
 
         let setsByPart = facts.weeklyBalance.fractionalSets
-        for (part, sets) in setsByPart where sets > 20 {
+        for (part, sets) in setsByPart {
+            let highEnd = VolumeLandmarks.bands(for: part, experience: facts.experience).mrv
+            guard sets > highEnd * 1.2 else { continue }
             warnings.append(CoachWarning(
                 id: "excessiveWeeklyVolume.\(part.rawValue)",
-                message: String(localized: "\(part.displayName) has \(Int(sets)) sets this week — well above the research-backed starting range. Diminishing returns are likely.", bundle: .module),
+                message: String(localized: "\(part.displayName) has \(Int(sets)) sets this week — more than 20% above the high end of the research-backed starting range. Diminishing returns are likely.", bundle: .module),
                 citationIds: ["pellandDoseResponse2026"]
             ))
         }

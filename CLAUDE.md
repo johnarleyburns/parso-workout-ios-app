@@ -6,6 +6,18 @@ Project memory for Claude Code. This file is the quick, durable context. The cod
 
 This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the SwiftPM package tests only; simulator smoke is a pre-release gate. A push runs no tests.
 
+## Test-driven development (TDD)
+
+**TDD is this repository's required development method.** For every behavior
+change, first write or strengthen the smallest focused automated test that fails
+for the requested behavior; only then implement the production change until that
+test passes. Keep the test at the lowest useful layer (normally a
+`CadenceCore`/`CadenceFeatures` unit test); use the single allowed UI flow only
+when rendering or system integration is the behavior under test. Do not open,
+update, or enable auto-merge for a PR with a known behavior change that lacks
+its failing-to-passing regression, unless automatic coverage is genuinely
+impossible and the PR documents the narrowest reliable manual/device check.
+
 ## Naming
 
 - **Product name (user-visible):** Cladiron — Home title, About, App Store, on-screen copy, README.

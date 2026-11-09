@@ -95,23 +95,18 @@ public enum KnowledgeBase {
                 // but do not create Home-card noise for it.
                 break
             case .approachingMRV:
+                break
+            case .overMRV where sets > bands.mrv * 1.2:
                 out.append(Insight(
                     id: "volume.\(group.rawValue)",
                     kind: .volume, group: group,
                     title: String(localized: "\(name) volume is high", bundle: .module),
-                    message: String(localized: "\(name): \(setsText) sets this week — approaching the high end.", bundle: .module),
-                    detail: String(localized: "\(name) is above Coach's starting range and approaching the high end (~\(Format.sets(bands.mrv)) sets/week). It may still be useful if performance is improving, but watch recovery and session quality before adding more.", bundle: .module),
-                    citation: CitationRegistry.volumeDoseResponse,
-                    severity: .info))
-            case .overMRV:
-                out.append(Insight(
-                    id: "volume.\(group.rawValue)",
-                    kind: .volume, group: group,
-                    title: String(localized: "\(name) volume may be too high", bundle: .module),
-                    message: String(localized: "\(name): \(setsText)/\(Format.sets(bands.mrv)) sets this week · \(Format.sets(sets - bands.mrv)) over the high end.", bundle: .module),
-                    detail: String(localized: "\(name) is above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.", bundle: .module),
+                    message: String(localized: "\(name): \(setsText) sets this week — more than 20% above the high end of \(Format.sets(bands.mrv)) sets.", bundle: .module),
+                    detail: String(localized: "\(name) is more than 20% above Coach's high-end starting point (~\(Format.sets(bands.mrv)) sets/week). More sets have diminishing returns and only help if you recover from them; consider holding or taking a lighter week.", bundle: .module),
                     citation: CitationRegistry.volumeDoseResponse,
                     severity: .attention))
+            case .overMRV:
+                break
             }
         }
         return out
@@ -133,14 +128,7 @@ public enum KnowledgeBase {
                     citation: CitationRegistry.schoenfeld2021,
                     severity: .attention))
             case .flat:
-                out.append(Insight(
-                    id: "trend.\(lift)",
-                    kind: .trend, exercise: lift,
-                    title: String(localized: "\(lift) has stalled", bundle: .module),
-                    message: "\(lift): estimated 1RM is flat versus last week.",
-                    detail: String(localized: "Your estimated 1RM on \(lift) is roughly unchanged. Progressive overload — adding reps within your range, then load — is what drives strength over time; a plateau is the cue to nudge one of them up.", bundle: .module),
-                    citation: CitationRegistry.schoenfeld2021,
-                    severity: .info))
+                break
             case .rising:
                 out.append(Insight(
                     id: "trend.\(lift)",

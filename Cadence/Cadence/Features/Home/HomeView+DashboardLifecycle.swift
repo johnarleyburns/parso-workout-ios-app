@@ -184,15 +184,15 @@ extension HomeView {
 
     /// True once history-derived work may start: Today waits for its finite
     /// display-restore phase (success, no file, corrupt file and read errors all
-    /// finish it); This Week never waits.
+    /// finish it); dedicated weekly tabs never wait.
     var displayRestoreComplete: Bool {
         todayDisplayRestoreState.permitsHydration(isToday: surface == .today)
     }
 
-    /// Applies a Today → This Week ring tap: expand the requested section and
+    /// Applies a Today → weekly-tab ring tap: expand the requested section and
     /// hand the scroll target to the dashboard's `ScrollViewReader`.
     func applyThisWeekSectionIfNeeded() {
-        guard surface == .thisWeek,
+        guard surface != .today,
               let destination = CadencePlatformRequestStore.consumeThisWeekSection() else { return }
         withAnimation(.easeInOut(duration: 0.18)) {
             weeklyDetailSelection.select(destination.detailMode)

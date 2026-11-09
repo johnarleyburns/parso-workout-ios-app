@@ -22,15 +22,17 @@ public struct ScheduledHeroSnapshot: Sendable, Equatable {
 /// Value-only history facts for the Today hero, built off the main actor.
 public struct TodayHeroActivitySnapshot: Sendable, Equatable {
     public struct CompletedWorkout: Sendable, Equatable {
+        public enum Modality: Sendable, Equatable { case strength, cardio }
         public let title: String
+        public let modality: Modality
         public let setCount: Int
         public let volumeKg: Double
         public let durationMinutes: Int?
         public let exercises: [TodayHero.Line]
         public let occurredAt: Date
-        public init(title: String, setCount: Int, volumeKg: Double,
+        public init(title: String, modality: Modality = .strength, setCount: Int, volumeKg: Double,
                     durationMinutes: Int?, exercises: [TodayHero.Line], occurredAt: Date) {
-            self.title = title; self.setCount = setCount; self.volumeKg = volumeKg
+            self.title = title; self.modality = modality; self.setCount = setCount; self.volumeKg = volumeKg
             self.durationMinutes = durationMinutes; self.exercises = exercises; self.occurredAt = occurredAt
         }
     }
@@ -79,6 +81,36 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
         return DaySummary(title: title,
                           setCount: completedToday.reduce(0) { $0 + $1.setCount },
                           volumeKg: completedToday.reduce(0) { $0 + $1.volumeKg },
+                          durationMinutes: duration > 0 ? duration : nil,
+                          nextSessionTitle: nextScheduled?.title,
+                          nextSessionDate: nextScheduled?.date,
+                          exercises: exercises)
+    }
+
+    /// Cardio completion belongs to the cardio surface. It must not turn the
+    /// independent strength recommendation into a generic completed-day hero.
+    public var latestCompletedCardio: CompletedWorkout? {
+        completedToday.first { $0.modality == .cardio }
+    }
+
+    public var latestCompletedStrength: CompletedWorkout? {
+        completedToday.first { $0.modality == .strength }
+    }
+
+    public func strengthDaySummary() -> DaySummary? {
+        summary(completedToday.filter { $0.modality == .strength })
+    }
+
+    private func summary(_ completed: [CompletedWorkout]) -> DaySummary? {
+        guard !completed.isEmpty else { return nil }
+        let duration = completed.compactMap(\.durationMinutes).reduce(0, +)
+        let exercises = completed.flatMap(\.exercises)
+        let title = completed.count == 1
+            ? completed[0].title
+            : String(localized: "\(completed.count) workouts complete", bundle: .module)
+        return DaySummary(title: title,
+                          setCount: completed.reduce(0) { $0 + $1.setCount },
+                          volumeKg: completed.reduce(0) { $0 + $1.volumeKg },
                           durationMinutes: duration > 0 ? duration : nil,
                           nextSessionTitle: nextScheduled?.title,
                           nextSessionDate: nextScheduled?.date,
@@ -156,6 +188,7 @@ public enum TodayHeroActivityPresenter {
         }
         let duration = session.duration
         return .init(title: session.title.isEmpty ? String(localized: "Workout complete", bundle: .module) : session.title,
+                     modality: .strength,
                      setCount: sets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
                      volumeKg: session.totalVolume,
                      durationMinutes: duration > 0 ? Int((duration / 60).rounded()) : nil,
@@ -176,7 +209,7 @@ public enum TodayHeroActivityPresenter {
         let detail = [distance, minutes > 0 ? String(localized: "\(minutes) min", bundle: .module) : nil]
             .compactMap { $0 }
             .joined(separator: " · ")
-        return .init(title: displayTitle, setCount: 0, volumeKg: 0,
+        return .init(title: displayTitle, modality: .cardio, setCount: 0, volumeKg: 0,
                      durationMinutes: minutes > 0 ? minutes : nil,
                      exercises: [TodayHero.Line(name: displayTitle,
                                                 detail: detail.isEmpty ? String(localized: "Complete", bundle: .module) : detail)],

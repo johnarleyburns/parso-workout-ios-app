@@ -64,6 +64,17 @@ public enum TodayActivityPresenter {
         )
     }
 
+    /// Completed workouts across the full retained history, newest first. This
+    /// deliberately uses the same presentation values as the Today and weekly
+    /// timelines so each place a person reviews workouts reads consistently.
+    public static func historyEntries(
+        sessions: [WorkoutSession],
+        cardio: [CardioWorkout]
+    ) -> [Entry] {
+        entries(sessions: sessions, cardio: cardio,
+                since: .distantPast, until: .distantFuture)
+    }
+
     private static func entries(
         sessions: [WorkoutSession],
         cardio: [CardioWorkout],

@@ -14,6 +14,11 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var settings = settingsObject
         List {
+            Section {
+                SupportDevelopmentCard(store: contributions.store)
+            }
+            .accessibilityIdentifier("settings.section.support")
+
             Section("Workout Preferences") {
                 Picker("Weight unit", selection: $settings.unit) {
                     ForEach(MeasurementUnitPreference.allCases) { Text($0.displayName).tag($0) }
@@ -283,8 +288,8 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsSection(String(localized: "Support & About"),
-                              identifier: "settings.section.support") {
+            settingsSection(String(localized: "About"),
+                              identifier: "settings.section.about") {
                 NavigationLink {
                     AboutView()
                 } label: {
@@ -292,14 +297,6 @@ struct SettingsView: View {
                 }
                 .accessibilityIdentifier("settings.about")
 
-                NavigationLink {
-                    ContributionSupportView(store: contributions.store)
-                } label: {
-                    Label(contributions.store.isSupporter ? "Supporter — Thank You" : "Support Cladiron",
-                          systemImage: contributions.store.isSupporter ? "heart.fill" : "heart")
-                        .foregroundStyle(contributions.store.isSupporter ? Color.pink : Color.accentColor)
-                }
-                .accessibilityIdentifier("settings.support")
                 Text("Cladiron is open source and ad-free. A one-time tip is an optional way to support development — never required.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
@@ -345,6 +342,57 @@ struct SettingsView: View {
         case .denied: return String(localized: "Denied")
         case .unavailable: return String(localized: "Unavailable")
         case .notDetermined: return String(localized: "Not connected")
+        }
+    }
+}
+
+struct SupportDevelopmentCard: View {
+    let store: ContributionStore
+
+    var body: some View {
+        let product = store.products.first
+        let state = SupportDevelopmentCardState.make(
+            productPrice: product?.displayPrice,
+            isSupporter: store.isSupporter,
+            purchasingID: store.purchasingID)
+        Button {
+            guard state.canPurchase, let product else { return }
+            Task { await store.purchase(product) }
+        } label: {
+            HStack(spacing: 12) {
+                if state.showsProgress {
+                    ProgressView()
+                } else {
+                    Image(systemName: state.iconName).foregroundStyle(.pink)
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title(state)).font(.headline)
+                    Text(detail(state)).font(.footnote).foregroundStyle(.secondary)
+                }
+                Spacer()
+            }
+        }
+        .disabled(!state.isEnabled)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("settings.support")
+    }
+
+    private func title(_ state: SupportDevelopmentCardState) -> String {
+        state.kind == .supporter
+            ? String(localized: "Thanks for supporting Cladiron")
+            : String(localized: "Support Cladiron")
+    }
+
+    private func detail(_ state: SupportDevelopmentCardState) -> String {
+        switch state.kind {
+        case .purchaseable:
+            return String(localized: "One-time optional \(state.priceText) · every feature is already included")
+        case .purchasing:
+            return String(localized: "Contacting the App Store…")
+        case .unavailable:
+            return String(localized: "The contribution isn't available right now. Every feature is already included; try again later.")
+        case .supporter:
+            return String(localized: "You have the Supporter badge")
         }
     }
 }

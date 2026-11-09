@@ -30,6 +30,10 @@ public struct WatchHRMirrorPacket: Codable, Equatable, Sendable {
 
 /// Pure scoping/freshness decision for a mirror packet.
 public enum WatchHRMirrorRouting {
+    /// The phone workout identity mirrored HR is scoped to: the strength session when
+    /// one is active, otherwise the live phone-cardio session. Never strength-only.
+    public static func activeSessionID(strength: UUID?, cardio: UUID?) -> UUID? { strength ?? cardio }
+
     public enum Decision: Equatable, Sendable {
         case accept
         case rejectedInvalid

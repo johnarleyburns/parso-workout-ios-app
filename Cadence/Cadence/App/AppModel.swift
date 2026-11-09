@@ -1030,8 +1030,10 @@ final class AppModel: NSObject, @unchecked Sendable {
         // message from workout A can never land in workout B.
         // Phone strength preflight starts before the WorkoutSession exists: use
         // the reserved identity the session will be created with.
-        let reservation = (_active?.strengthSession == nil && rawType == "strength") ? reserveWatchPreflight() : nil
-        let phoneSessionID = _active?.strengthSession?.id ?? reservation?.phoneWorkoutSessionID
+        // Phone cardio also reserves up front: its PhoneLiveCardioSession is created later
+        // (beginPhoneCardio) with this same ID so the mirrored channel routes from packet one.
+        let reservation = (_active?.strengthSession == nil && phoneCardio.session == nil) ? reserveWatchPreflight() : nil
+        let phoneSessionID = currentPhoneWorkoutSessionID ?? reservation?.phoneWorkoutSessionID
         // A start inside an already-running strength session has no reservation;
         // it still gets its own epoch so every envelope is identity-complete.
         let captureEpoch = reservation?.captureEpoch ?? UUID()
@@ -1423,7 +1425,7 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     private static let preflightLedgerKey = "watchHR.preflightLedger.v1"
 
-    private var watchPreflightLedger: WatchHRPreflightLedger {
+    var watchPreflightLedger: WatchHRPreflightLedger {
         get {
             UserDefaults.standard.data(forKey: Self.preflightLedgerKey)
                 .flatMap { try? JSONDecoder().decode(WatchHRPreflightLedger.self, from: $0) } ?? WatchHRPreflightLedger()
@@ -1756,13 +1758,18 @@ extension AppModel {
             requestID: requestID, sampleID: sampleID))
     }
 
+    /// Identity of the live phone workout (strength or phone cardio) HR is scoped to.
+    var currentPhoneWorkoutSessionID: UUID? {
+        WatchHRMirrorRouting.activeSessionID(strength: _active?.strengthSession?.id, cardio: phoneCardio.session?.id)
+    }
+
     /// Live-display HR from the mirrored workout session. Scoped by session,
     /// request and capture epoch; never touches the durable outbox or recorder.
     func handleMirroredHeartRate(_ chunks: [Data], now: Date = Date()) {
         // Packet arrival can wake a locked phone; use it to run overdue reconciliation.
         runWatchReconcileStep(now: now)
         for packet in WatchHRMirrorRouting.decode(chunks) {
-            let sessionID = _active?.strengthSession?.id
+            let sessionID = currentPhoneWorkoutSessionID
             let decision = WatchHRMirrorRouting.decide(
                 packet, activeSessionID: sessionID,
                 activeRequestID: watchHRConnection.identity?.requestID,
@@ -1787,7 +1794,7 @@ extension AppModel {
     func promoteDurableWatchHR(_ message: WatchHRMessage, now: Date) {
         guard let newest = WatchHRLivePromotion.newestFreshObservation(
             in: message,
-            activeSessionID: _active?.strengthSession?.id,
+            activeSessionID: currentPhoneWorkoutSessionID,
             activeRequestID: watchHRConnection.identity?.requestID,
             now: now
         ) else { return }

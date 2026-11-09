@@ -33,7 +33,16 @@ extension AppModel: PhoneCardioLifecycleActions {
     func beginPhoneCardio(type: CardioType, route: String, start: Date, profile: CardioSensorProfile,
                           autoPauseEnabled: Bool, context: PhoneCardioContext) -> UUID {
         phoneCardio.actions = self
-        let session = PhoneLiveCardioSession(type: type, route: route, start: start,
+        // Adopt the identity reserved when Watch HR was requested (route already registered).
+        var sessionID = UUID()
+        if let reserved = watchPreflightReservation?.phoneWorkoutSessionID,
+           WatchHeartRateRouteStore().route(for: reserved) != nil {
+            sessionID = reserved
+            var ledger = watchPreflightLedger
+            _ = ledger.adopt(sessionID: reserved, start: start, end: Date())
+            watchPreflightLedger = ledger
+        }
+        let session = PhoneLiveCardioSession(id: sessionID, type: type, route: route, start: start,
                                              sensorProfile: profile, autoPauseEnabled: autoPauseEnabled)
         phoneCardioContexts = [session.id: context]
         phoneCardioLastBPM = nil

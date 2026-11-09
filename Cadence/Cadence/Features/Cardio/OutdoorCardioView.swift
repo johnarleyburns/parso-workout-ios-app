@@ -101,7 +101,7 @@ struct OutdoorCardioView: View {
                     .padding(.horizontal, 4)
                     .accessibilityIdentifier("outdoor.goal")
                 }
-                LiveHRBigView(bpm: recorder?.currentBPM, zone: recorder?.zone ?? 0,
+                WatchAwareLiveHRBigView(bpm: recorder?.currentBPM, zone: recorder?.zone ?? 0,
                               avgHR: recorder?.avgHR, idPrefix: "outdoor",
                               intensityProfile: liveIntensityProfile)
 

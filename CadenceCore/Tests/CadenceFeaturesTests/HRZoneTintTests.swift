@@ -24,6 +24,17 @@ final class HRZoneTintTests: XCTestCase {
         XCTAssertEqual(HRZoneTint.tint(for: -1), .neutral)
     }
 
+    // MARK: - LiveHRPresenter.connectionNote
+
+    func testConnectionNoteShownWhenWatchSampleStale() {
+        XCTAssertEqual(LiveHRPresenter.connectionNote(isAppleWatchSource: true, isSampleFresh: false, statusText: "Reconnecting"), "Reconnecting")
+    }
+
+    func testConnectionNoteNilWhenFreshOrNotWatch() {
+        XCTAssertNil(LiveHRPresenter.connectionNote(isAppleWatchSource: true, isSampleFresh: true, statusText: "Receiving live HR"))
+        XCTAssertNil(LiveHRPresenter.connectionNote(isAppleWatchSource: false, isSampleFresh: false, statusText: "x"))
+    }
+
     // MARK: - LiveHRPresenter
 
     func testSubtitleZones() {

@@ -172,7 +172,7 @@ struct IntervalView: View {
                     .accessibilityIdentifier("interval.countdown")
                 Text("Total left \(Format.duration(runner.overallRemaining))")
                     .font(.headline).opacity(0.85)
-                LiveHRBigView(bpm: model.hrm.currentBPM, zone: liveZone, avgHR: liveAvgHR,
+                WatchAwareLiveHRBigView(bpm: model.hrm.currentBPM, zone: liveZone, avgHR: liveAvgHR,
                               idPrefix: "interval", label: String(localized: "Interval heart rate"))
                 Spacer()
 

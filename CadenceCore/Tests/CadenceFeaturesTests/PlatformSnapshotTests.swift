@@ -34,6 +34,28 @@ final class PlatformSnapshotTests: XCTestCase {
         XCTAssertNil(CadenceWatchWidgetStore.load(defaults: defaults))
     }
 
+    func testComplicationStateIsActiveWhileWorkoutRunsAndIdleOtherwise() {
+        let suite = "cadence.platform.complication.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let now = Date(timeIntervalSince1970: 100_000)
+
+        XCTAssertEqual(CadenceWatchComplicationState.current(defaults: defaults, now: now), .idle)
+
+        let start = now.addingTimeInterval(-600)
+        CadenceWatchComplicationState.setActive(
+            CadenceWatchActiveWorkout(workoutType: "cardio", startedAt: start), defaults: defaults)
+        XCTAssertEqual(CadenceWatchComplicationState.current(defaults: defaults, now: now),
+                       .active(workoutType: "cardio", startedAt: start))
+
+        // A stale marker (crash before clear) is ignored.
+        XCTAssertEqual(CadenceWatchComplicationState.current(
+            defaults: defaults, now: now.addingTimeInterval(CadenceWatchComplicationState.maxAge)), .idle)
+
+        CadenceWatchComplicationState.setActive(nil, defaults: defaults)
+        XCTAssertEqual(CadenceWatchComplicationState.current(defaults: defaults, now: now), .idle)
+    }
+
     func testQuickTalkRequestIsConsumedOnce() {
         let suite = "cadence.platform.quick-talk.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

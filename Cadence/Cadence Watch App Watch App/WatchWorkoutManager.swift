@@ -213,6 +213,7 @@ final class WatchWorkoutManager: NSObject {
         workoutType = rawType
         isActive = true; isMonitoring = false
         persistWorkoutMetadata(type: rawType, monitoring: false)
+        publishComplicationState()
         let activity = Self.activityType(for: rawType)
         if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: resolvedSpec); return true }
         startGeneration &+= 1
@@ -299,7 +300,7 @@ final class WatchWorkoutManager: NSObject {
         builder = nil; session = nil
         ble?.disconnect(); ble = nil; currentBPM = nil
         isActive = false; isMonitoring = false; workoutType = nil; bleState = nil
-        phoneRequestID = nil
+        phoneRequestID = nil; publishComplicationState()
         endPhoneWorkoutJournal()
         sessionStart = nil; cardioSessionStart = nil; cardioOwnsSession = false
         accumulatedHR = 0; hrCount = 0

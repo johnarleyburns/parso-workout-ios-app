@@ -265,3 +265,44 @@ public enum CadenceWatchWidgetStore {
         UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
     }
 }
+
+/// Watch complication (W5): the durable "a workout is running" marker the watch app writes and the
+/// widget extension reads out-of-process. The app clears it the moment the session ends, and the
+/// reader additionally ignores a marker older than `maxAge` so a crash can never leave it stuck.
+public struct CadenceWatchActiveWorkout: Codable, Equatable, Sendable {
+    public let workoutType: String
+    public let startedAt: Date
+    public init(workoutType: String, startedAt: Date) {
+        self.workoutType = workoutType
+        self.startedAt = startedAt
+    }
+}
+
+public enum CadenceWatchComplicationState: Equatable, Sendable {
+    case active(workoutType: String, startedAt: Date)
+    case idle
+
+    public static let maxAge: TimeInterval = 12 * 3600
+    public static let activeKey = "cadence.watchActiveWorkout.v1"
+
+    /// Deep link used by the complication; lands on the live workout via the root routing.
+    public static let deepLink = "cladiron://workout"
+
+    public static func current(defaults: UserDefaults? = nil, now: Date = Date()) -> Self {
+        let store = defaults ?? UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
+        guard let data = store.data(forKey: activeKey),
+              let marker = try? JSONDecoder().decode(CadenceWatchActiveWorkout.self, from: data),
+              marker.startedAt <= now.addingTimeInterval(60),
+              now.timeIntervalSince(marker.startedAt) < maxAge else { return .idle }
+        return .active(workoutType: marker.workoutType, startedAt: marker.startedAt)
+    }
+
+    public static func setActive(_ marker: CadenceWatchActiveWorkout?, defaults: UserDefaults? = nil) {
+        let store = defaults ?? UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
+        if let marker, let data = try? JSONEncoder().encode(marker) {
+            store.set(data, forKey: activeKey)
+        } else {
+            store.removeObject(forKey: activeKey)
+        }
+    }
+}

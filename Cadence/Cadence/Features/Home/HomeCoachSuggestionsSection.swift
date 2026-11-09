@@ -7,6 +7,7 @@ struct HomeCoachSuggestionsSection: View {
     let suggestions: [HomeSuggestion]
     let focusGroup: MuscleGroup
     @Binding var expanded: Bool
+    let onClearAll: () -> Void
 
     /// The heading reserves the thumbnail's width so it cannot slide under the
     /// floating artwork at large Dynamic Type.
@@ -48,9 +49,15 @@ struct HomeCoachSuggestionsSection: View {
         switch block {
         case .heading:
             VStack(alignment: .leading, spacing: 6) {
-                Text("Observations")
-                    .font(.headline)
-                    .padding(.trailing, Self.illustrationSize + Self.illustrationInset)
+                HStack {
+                    Text("Observations").font(.headline)
+                    Spacer(minLength: 8)
+                    Button("Clear all", action: onClearAll)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(CadenceTheme.link)
+                        .accessibilityIdentifier("home.observations.clearAll")
+                }
+                .padding(.trailing, Self.illustrationSize + Self.illustrationInset)
                 if suggestions.isEmpty {
                     Text("No new suggestions right now.")
                         .font(.subheadline)

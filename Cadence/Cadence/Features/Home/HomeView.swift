@@ -7,11 +7,13 @@ import os
 struct HomeView: View {
     enum Surface: Equatable {
         case today
-        case thisWeek
+        case strength
+        case cardio
         var title: String {
             switch self {
             case .today: return String(localized: "Today")
-            case .thisWeek: return String(localized: "This Week")
+            case .strength: return String(localized: "Strength")
+            case .cardio: return String(localized: "Cardio")
             }
         }
     }
@@ -47,7 +49,7 @@ struct HomeView: View {
     private let externalPath: Binding<NavigationPath>?
     let usesExternalNavigation: Bool
 
-    /// Today owns its path; This Week supplies a path from its dedicated root
+    /// Today owns its path; the dedicated Strength and Cardio roots supply one
     /// NavigationStack. Both cases carry only value routes.
     var pathBinding: Binding<NavigationPath> {
         externalPath ?? $ownedPath
@@ -90,6 +92,10 @@ struct HomeView: View {
     @State var showSupport = false
     @State var pendingAddGapsDeficits: [MuscleGroup: Double]?
     @State var suggestionsExpanded = false
+    @AppStorage("home.dismissedObservationKeys.v1") var dismissedObservationKeysRaw = ""
+    // Kept while Home's legacy readiness helpers remain available to routes
+    // outside the Today dashboard; the check-in surface lives in Progress.
+    @State var readinessPresented = false; @State var readinessExpanded = false
     @State var suggestedWorkoutCalculating = false
     @State var suggestedWorkoutFailure: String?
     @State var suggestedCardioCalculating = false
@@ -137,7 +143,6 @@ struct HomeView: View {
     @State var routeDiagnostics: HomeRouteDiagnostics?
     #endif
     @State var confirmCancelPrevious = false
-    @State var readinessPresented = false; @State var readinessExpanded = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     @State var coachSnapshotReady = false; @State var coachInputsSettled = false  // settled: initial HealthKit ingest done
     @State var restoredRecommendation: TodayRecommendationPayload?  // durable hero before hydration

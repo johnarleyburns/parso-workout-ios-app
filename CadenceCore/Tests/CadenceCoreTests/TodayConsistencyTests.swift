@@ -14,12 +14,14 @@ final class TodayConsistencyTests: XCTestCase {
         }
         let facts = CoachFacts.make(from: workouts.map { TrainingEvent.from(cardio: $0) },
                                    goal: .hypertrophy, experience: .intermediate, now: now)
-        XCTAssertEqual(facts.weeklyBalance.consecutiveHardDays, 4)
+        XCTAssertEqual(facts.weeklyBalance.consecutiveHardDays, 0)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: .init(
             restPreference: .rolling(everyNDays: 3),
             allowsTwoADays: true))
         XCTAssertTrue(decision.primary.kind == .strength || decision.primary.isAerobic,
                       "Unmet chosen training targets must outrank hard-streak recovery")
+        XCTAssertNil(decision.warnings.first { $0.id == "consecutiveHardDays" },
+                     "A streak that ended before today must not produce today's recovery note")
     }
 
     func testCardioNotDueOnceActualMinutesAreMetRegardlessOfCardioDays() {
@@ -38,7 +40,7 @@ final class TodayConsistencyTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: schedule)
         XCTAssertEqual(facts.weeklyBalance.strengthDays, 5)
         XCTAssertEqual(facts.weeklyBalance.cardioDays, 4)
-        XCTAssertEqual(facts.weeklyBalance.consecutiveHardDays, 4)
+        XCTAssertEqual(facts.weeklyBalance.consecutiveHardDays, 5)
         XCTAssertEqual(decision.observedFacts.first { $0.kind == .weeklyCardioDays }?.value, "4",
                        "Cardio days are reported as an observation, never against a target")
         XCTAssertNotNil(decision.warnings.first { $0.id == "consecutiveHardDays" })

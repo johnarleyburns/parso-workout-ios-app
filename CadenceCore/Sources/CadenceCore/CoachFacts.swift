@@ -541,19 +541,17 @@ public extension CoachFacts {
             hardDays.insert(Calendar.current.startOfDay(for: event.start))
         }
 
-        var consecutiveHard = 0
-        var maxConsecutive = 0
         let cal = Calendar.current
-        var cursor = cal.startOfDay(for: now.addingTimeInterval(-7 * 86400))
+        // This is a current streak, not the longest streak anywhere in the
+        // lookback window. Recovery notes describe what applies *today* and
+        // must stop as soon as a rest/easy day breaks the run.
         let today = cal.startOfDay(for: now)
-        while cursor <= today {
-            if hardDays.contains(cursor) {
-                consecutiveHard += 1
-                maxConsecutive = max(maxConsecutive, consecutiveHard)
-            } else {
-                consecutiveHard = 0
-            }
-            cursor = cal.date(byAdding: .day, value: 1, to: cursor) ?? cursor
+        var cursor = today
+        var currentHardStreak = 0
+        while hardDays.contains(cursor) {
+            currentHardStreak += 1
+            guard let previous = cal.date(byAdding: .day, value: -1, to: cursor) else { break }
+            cursor = previous
         }
 
         return WeeklyBalance(
@@ -566,7 +564,7 @@ public extension CoachFacts {
             vigorousMinutes: vigorousMinutes,
             moderateEquivalentMinutes: modEquiv,
             hardDays: hardDays.count,
-            consecutiveHardDays: maxConsecutive,
+            consecutiveHardDays: currentHardStreak,
             vo2maxLatest: nil,
             vo2maxProtocol: nil,
             vo2maxTrend: nil,

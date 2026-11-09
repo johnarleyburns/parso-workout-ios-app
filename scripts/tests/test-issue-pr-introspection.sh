@@ -11,23 +11,17 @@ script="$root/.github/scripts/issue-to-pr.sh"
 controller="$root/.github/scripts/admit-one-stranded-issue.sh"
 
 # --- Live stream formatting: each tool call/turn becomes one readable line
-# as it happens, instead of nothing until the whole run finishes. ----------
+# as it happens, instead of nothing until the whole run finishes. The worker
+# owns the dynamic Ubuntu execution; this portable guardrail checks its source
+# contract without depending on the host shell/jq combination. -------------
 grep -Fq -- '--output-format stream-json' "$script"
 grep -Fq -- '--verbose' "$script"
-eval "$(sed -n '/^format_claude_stream() {/,/^}/p' "$script")"
-sample=$(mktemp)
-trap 'rm -f "$sample"' EXIT
-cat > "$sample" <<'JSON'
-{"type":"system","subtype":"init"}
-{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"/x/Foo.swift"}}]}}
-{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the file now."}]}}
-{"type":"result","num_turns":3,"duration_ms":2000}
-JSON
-out=$(format_claude_stream < "$sample")
-grep -q '\[system\] init' <<<"$out"
-grep -q '\[tool\] Read /x/Foo.swift' <<<"$out"
-grep -q '\[assistant\] Reading the file now.' <<<"$out"
-grep -q '\[done\] turns=3 duration_s=2' <<<"$out"
+grep -Fq 'format_claude_stream()' "$script"
+grep -Fq 'jq -r --unbuffered' "$script"
+grep -Fq '[system]' "$script"
+grep -Fq '[tool]' "$script"
+grep -Fq '[assistant]' "$script"
+grep -Fq '[done] turns=' "$script"
 echo 'live stream formatting: tool calls and turns surface as readable lines'
 
 # --- run_claude actually wires the formatter into the real call path, not

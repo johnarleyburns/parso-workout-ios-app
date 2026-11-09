@@ -5,7 +5,7 @@ import CadenceCore
 import CadenceFeatures
 
 struct RootTabView: View {
-    enum Tab: Hashable { case home, thisWeek, progress, settings, search }
+    enum Tab: Hashable { case home, strength, cardio, progress, settings, search }
     @Environment(AppSettings.self) private var settings
     @Environment(AppModel.self) private var model
     @Environment(ActiveWorkoutModel.self) private var active
@@ -208,12 +208,14 @@ struct RootTabView: View {
             showWatchSyncToast(for: state)
         }
         .onReceive(NotificationCenter.default.publisher(for: .cadenceShowThisWeek)) { _ in
-            selection = .thisWeek
+            selection = .strength
         }
         .onOpenURL { url in
             guard url.scheme == "cladiron" else { return }
             if url.host == "this-week" || url.path == "/this-week" {
-                selection = .thisWeek
+                // Preserve existing deep links while taking people to the
+                // first of the two dedicated weekly surfaces.
+                selection = .strength
             } else if url.host == "workout" || url.path == "/workout" {
                 selection = .home
                 CadencePlatformRequestStore.requestStartWorkout()
@@ -234,7 +236,8 @@ struct RootTabView: View {
         if #available(iOS 18.0, *) {
             TabView(selection: $selection) {
                 SwiftUI.Tab("Today", systemImage: "house", value: .home) { HomeView() }
-                SwiftUI.Tab("This Week", systemImage: "calendar", value: .thisWeek) { ThisWeekView() }
+                SwiftUI.Tab("Strength", systemImage: "dumbbell.fill", value: .strength) { StrengthView() }
+                SwiftUI.Tab("Cardio", systemImage: "heart.fill", value: .cardio) { CardioWeekView() }
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
                     AdaptiveProgressRoot()
                 }
@@ -245,7 +248,8 @@ struct RootTabView: View {
         } else {
             TabView(selection: $selection) {
                 HomeView().tabItem { Label("Today", systemImage: "house") }.tag(Tab.home)
-                ThisWeekView().tabItem { Label("This Week", systemImage: "calendar") }.tag(Tab.thisWeek)
+                StrengthView().tabItem { Label("Strength", systemImage: "dumbbell.fill") }.tag(Tab.strength)
+                CardioWeekView().tabItem { Label("Cardio", systemImage: "heart.fill") }.tag(Tab.cardio)
                 AdaptiveProgressRoot().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)
             }
         }

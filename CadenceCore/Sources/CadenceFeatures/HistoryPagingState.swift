@@ -22,6 +22,7 @@ public final class HistoryPagingState {
     public private(set) var hasMore = false
     public private(set) var visibility: HistoryVisibility = .active
     public private(set) var lastError: String?
+    public private(set) var deletedCount = 0
     @ObservationIgnored private var nextCursor: HistoryCursor?
     @ObservationIgnored private let fetcher: any HistoryPageFetching
     @ObservationIgnored private let pageSize: Int
@@ -35,6 +36,25 @@ public final class HistoryPagingState {
     public func reload() {
         entries = []; hasMore = false; nextCursor = nil
         append(cursor: nil)
+    }
+
+    /// Control for the top bar; `nil` when no deleted records exist.
+    public var deletedControl: DeletedHistoryControlState? {
+        DeletedHistoryControlState.make(visibility: visibility, deletedCount: deletedCount)
+    }
+
+    /// Reloads with a fresh deleted count. If nothing is deleted any more while
+    /// in deleted mode, falls back to active mode (never an empty deleted screen).
+    public func reload(deletedCount: Int) {
+        self.deletedCount = deletedCount
+        if deletedCount == 0 { visibility = .active }
+        reload()
+    }
+
+    /// Applies the control's transition (clears old rows/cursor first).
+    public func toggleDeleted() {
+        guard let control = deletedControl else { return }
+        setVisibility(control.nextVisibility)
     }
 
     /// Switching visibility discards loaded rows and cursor.

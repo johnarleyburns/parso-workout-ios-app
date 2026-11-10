@@ -101,6 +101,13 @@ extension WorkoutRepository {
         return try !context.fetch(s).isEmpty || !context.fetch(c).isEmpty
     }
 
+    /// Bounded count of soft-deleted records (count queries, no record fetch).
+    public static func deletedHistoryCount(in context: ModelContext) throws -> Int {
+        let s = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.deletedAt != nil })
+        let c = FetchDescriptor<CardioWorkout>(predicate: #Predicate { $0.deletedAt != nil })
+        return try context.fetchCount(s) + context.fetchCount(c)
+    }
+
     private static func boundedStrength(_ r: HistoryPageRequest, _ ctx: ModelContext) throws -> [WorkoutSession] {
         let deleted = r.visibility == .deleted
         let cursorDate = r.cursor?.date ?? .distantFuture

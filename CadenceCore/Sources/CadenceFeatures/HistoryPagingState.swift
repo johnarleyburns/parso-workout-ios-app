@@ -7,9 +7,14 @@ import CadenceCore
 public enum ProgressDataOwner: Equatable, Sendable {
     case pagedHistory
     case analytics
+    case observations
 
     public static func owner(for question: ProgressQuestion) -> ProgressDataOwner {
-        question == .workoutHistory ? .pagedHistory : .analytics
+        switch question {
+        case .workoutHistory: return .pagedHistory
+        case .observations: return .observations
+        default: return .analytics
+        }
     }
 }
 

@@ -10,6 +10,7 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
     case effort
     case workoutHistory
     case readiness
+    case observations
 
     public var id: String { rawValue }
 
@@ -23,6 +24,7 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
         case .tests: return String(localized: "Tests", bundle: .module)
         case .workoutHistory: return String(localized: "My Workouts", bundle: .module)
         case .readiness: return String(localized: "Readiness", bundle: .module)
+        case .observations: return String(localized: "Observations", bundle: .module)
         }
     }
 
@@ -30,11 +32,12 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
     /// the shared scrolling page. The picker itself is identical either way.
     public var hostsOwnList: Bool { self == .workoutHistory }
 
-    /// My Workouts leads because it is the primary activity record; the rest
-    /// remain stable rather than shifting with localization sort order.
+    /// The sole picker-ordering API: localized alphabetical by displayed label.
     public static var alphabetical: [ProgressQuestion] {
-        [.workoutHistory, .strengthOverTime, .personalRecords, .consistency,
-         .intensity, .effort, .tests, .readiness]
+        allCases.sorted {
+            let order = $0.displayName.localizedStandardCompare($1.displayName)
+            return order == .orderedSame ? $0.rawValue < $1.rawValue : order == .orderedAscending
+        }
     }
 }
 

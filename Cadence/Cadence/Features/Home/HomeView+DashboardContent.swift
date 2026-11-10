@@ -293,27 +293,4 @@ extension HomeView {
             }
         }
     }
-
-    @ViewBuilder
-    var dashboardBottomContent: some View {
-        let visibleSuggestions = dashboard.suggestions.filter {
-            !dismissedObservationKeys.contains($0.sourceClaimKey)
-        }
-        if !visibleSuggestions.isEmpty {
-            HomeCoachSuggestionsSection(
-                suggestions: visibleSuggestions,
-                focusGroup: dashboard.volume.first(where: { $0.isTracked && $0.sets < 12 })?.group ?? .chest,
-                expanded: $suggestionsExpanded,
-                onClearAll: {
-                    var dismissed = dismissedObservationKeys
-                    dismissed.formUnion(visibleSuggestions.map(\.sourceClaimKey))
-                    dismissedObservationKeysRaw = dismissed.sorted().joined(separator: "|")
-                    suggestionsExpanded = false
-                })
-        }
-    }
-
-    private var dismissedObservationKeys: Set<String> {
-        Set(dismissedObservationKeysRaw.split(separator: "|").map(String.init))
-    }
 }

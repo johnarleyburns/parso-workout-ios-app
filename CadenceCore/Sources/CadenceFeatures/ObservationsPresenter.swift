@@ -1,12 +1,12 @@
 import Foundation
 import CadenceCore
 
-/// Render order and visibility for Home's Observations card.
+/// Render order and visibility for the Observations surface (Progress).
 ///
 /// The card deliberately contains observations only. Suggested workouts are an
 /// independent weekly-gap action, so their availability never depends on the
 /// daily Coach decision (including rest and recovery days).
-public enum HomeCoachSectionPresenter {
+public enum ObservationsPresenter {
 
     /// The card's observation blocks, in render order.
     public enum Block: Equatable {
@@ -25,6 +25,9 @@ public enum HomeCoachSectionPresenter {
         case .neutral: return .neutral
         }
     }
+
+    /// True when the surface shows the explicit empty state (no show-more).
+    public static func isEmpty(suggestions: [HomeSuggestion]) -> Bool { suggestions.isEmpty }
 
     public static func blocks(suggestions: [HomeSuggestion], expanded: Bool) -> [Block] {
         var blocks: [Block] = [.heading]

@@ -16,11 +16,37 @@ final class ProgressQuestionSelectionTests: XCTestCase {
         XCTAssertEqual(selection.selected, .intensity)
     }
 
-    func testMyWorkoutsIsTheFirstProgressSurface() {
-        XCTAssertEqual(ProgressQuestion.alphabetical.map(\.displayName), [
-            "My Workouts", "Strength over time", "Personal Records",
-            "Consistency", "Intensity", "Effort", "Tests", "Readiness"
-        ])
+    func testAlphabeticalContainsEveryCaseExactlyOnce() {
+        let list = ProgressQuestion.alphabetical
+        XCTAssertEqual(list.count, ProgressQuestion.allCases.count)
+        XCTAssertEqual(Set(list), Set(ProgressQuestion.allCases))
+        XCTAssertTrue(list.contains(.observations))
+    }
+
+    func testMyWorkoutsImmediatelyPrecedesObservations() throws {
+        let list = ProgressQuestion.alphabetical
+        let i = try XCTUnwrap(list.firstIndex(of: .workoutHistory))
+        XCTAssertEqual(list[i + 1], .observations)
+        XCTAssertEqual(ProgressQuestion.workoutHistory.displayName, "My Workouts")
+        XCTAssertEqual(ProgressQuestion.observations.displayName, "Observations")
+    }
+
+    func testAlphabeticalIsLocalizedLabelSorted() {
+        let names = ProgressQuestion.alphabetical.map(\.displayName)
+        let sorted = names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
+        XCTAssertEqual(names, sorted)
+    }
+
+    func testPersistedRawValuesRestoreSelection() {
+        let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        for (raw, expected) in [("workoutHistory", ProgressQuestion.workoutHistory),
+                                ("observations", .observations),
+                                ("bogus", .strengthOverTime)] {
+            defaults.set(raw, forKey: ProgressQuestionSelection.persistenceKey)
+            XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected, expected)
+        }
     }
 
     func testSelectionPersistsAndDefaultsToStrengthOverTime() {

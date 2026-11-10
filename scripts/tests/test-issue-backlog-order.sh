@@ -9,6 +9,7 @@ grep -Fq -- 'sort_by([if any(.labels[]?.name; . == "priority-high") then 0 elif 
 grep -Fq -- 'A manual retry can be cancelled before it starts.' "$script"
 grep -Fq -- 'select(.status == "completed" and .conclusion == "success")' "$script"
 grep -Fq -- 'select(.status != "completed")' "$script"
+grep -Fq -- 'terminal_failed_release' "$script"
 grep -Fq -- 'generated_pr_blocks_admission()' "$script"
 grep -Fq -- 'terminal non-success validation' "$script"
 
@@ -33,11 +34,33 @@ echo 'issue backlog ordering policy: ok'
 # successful release record. Active runs remain an admission brake.
 settled_successes() { jq '[.[] | select(.status == "completed" and .conclusion == "success")] | length'; }
 active_releases() { jq '[.[] | select(.status != "completed")] | length'; }
+terminal_failed_releases() { jq '[.[] | select(.status == "completed" and .conclusion != "success")] | length'; }
 fixture='[{"status":"completed","conclusion":"success"},{"status":"completed","conclusion":"cancelled"}]'
 [[ "$(settled_successes <<<"$fixture")" == 1 ]]
 [[ "$(active_releases <<<"$fixture")" == 0 ]]
 [[ "$(active_releases <<<'[{"status":"in_progress","conclusion":null}]')" == 1 ]]
 echo 'release admission policy: cancelled retry preserves matching successful release'
+
+# A failed TestFlight release belongs to release repair, just as a failed PR
+# validation belongs to PR maintenance. It cannot hold unrelated issue PRs.
+# A release that is still running, or a SHA with no completed release at all,
+# remains an admission brake.
+release_blocks_admission() {
+  local active successful terminal_failed
+  active=$(active_releases <<<"$1")
+  successful=$(settled_successes <<<"$1")
+  terminal_failed=$(terminal_failed_releases <<<"$1")
+  if (( active > 0 )); then return 0; fi
+  if (( successful == 0 && terminal_failed == 0 )); then return 0; fi
+  return 1
+}
+blocks_release() { release_blocks_admission "$1" && echo yes || echo no; }
+[[ "$(blocks_release '[{"status":"in_progress","conclusion":null}]')" == yes ]]
+[[ "$(blocks_release '[]')" == yes ]]
+[[ "$(blocks_release '[{"status":"completed","conclusion":"failure"}]')" == no ]]
+[[ "$(blocks_release '[{"status":"completed","conclusion":"cancelled"}]')" == no ]]
+[[ "$(blocks_release '[{"status":"completed","conclusion":"success"}]')" == no ]]
+echo 'failed release admission policy: terminal failed releases do not hold the queue'
 
 # A failed/cancelled PR is handed to PR maintenance; it is not a permanent
 # repository-wide admission lock. Pending, missing, and passing PR checks still

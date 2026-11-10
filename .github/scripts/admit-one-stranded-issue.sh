@@ -184,7 +184,7 @@ for issue in $issues; do
   gh issue edit "$issue" --repo "$repo" --add-label intake-running --remove-label retry-ai >/dev/null
   reservation=$(printf '%s\n**Issue intake reservation:** controller-owned, awaiting dispatch confirmation.\n\nAttempt: `%s`' "$marker" "$attempt")
   comment_url=$(gh api --method POST "${api}/issues/${issue}/comments" -f body="$reservation" --jq '.url')
-  response=$(gh api --method POST "${api}/actions/workflows/issue-to-pr.yml/dispatches" -f ref=main -f "inputs[issue_number]=${issue}" -f "inputs[attempt_id]=${attempt}" -f "inputs[base_sha]=${main_sha}" -F return_run_details=true 2>&1) || {
+  response=$(GH_TOKEN="${CLAUDE_WORKFLOW_TOKEN:?CLAUDE_WORKFLOW_TOKEN is required}" gh api --method POST "${api}/actions/workflows/issue-to-pr.yml/dispatches" -f ref=main -f "inputs[issue_number]=${issue}" -f "inputs[attempt_id]=${attempt}" -f "inputs[base_sha]=${main_sha}" -F return_run_details=true 2>&1) || {
     gh issue edit "$issue" --repo "$repo" --add-label intake-blocked --add-label needs-human-review --remove-label intake-running >/dev/null || true
     gh api --method PATCH "$comment_url" -f body="$reservation
 

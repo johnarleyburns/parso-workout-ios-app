@@ -12,14 +12,40 @@ if [[ "$pipeline_enabled" != true ]]; then
   exit 0
 fi
 
-# Never start a second implementation lifecycle while a generated PR is open.
-# The next worker is admitted only after main's release for the current SHA has
-# completed successfully, so it always begins from settled main rather than a
-# pre-merge snapshot that would need rebasing.
-open_generated_pr=$(gh pr list --repo "$repo" --state open --base main --limit 1000 --json number,body \
-  --jq '.[] | select((.body // "") | contains("<!-- claude-issue:")) | .number' | head -1)
+# A generated PR with a running/missing validation, or a passing validation
+# awaiting merge, still serializes admission. A terminal non-success validation
+# does not: PR maintenance owns its bounded repair/escalation, and a failed PR
+# must not hold every unrelated issue hostage while no macOS job is active.
+generated_pr_blocks_admission() {
+  jq -e '
+    (.workflow_runs // []) as $runs
+    | if ($runs | length) == 0 then true
+      elif any($runs[]; .status != "completed") then true
+      elif any($runs[]; .conclusion == "success") then true
+      else false
+      end' >/dev/null
+}
+
+blocking_generated_pr() {
+  local number head runs
+  while IFS= read -r number; do
+    [[ -z "$number" ]] && continue
+    head=$(gh api "${api}/pulls/${number}" --jq '.head.sha')
+    runs=$(gh api "${api}/actions/workflows/pr-validation.yml/runs?head_sha=${head}&event=pull_request&per_page=30")
+    if generated_pr_blocks_admission <<<"$runs"; then
+      printf '%s\n' "$number"
+      return 0
+    fi
+    echo "Generated PR #${number} has terminal non-success validation; PR maintenance owns repair while admission continues." >&2
+  done < <(gh pr list --repo "$repo" --state open --base main --limit 1000 --json number,body \
+    --jq '.[] | select((.body // "") | contains("<!-- claude-issue:")) | .number')
+}
+
+# The next worker still begins from a settled main release. This only removes a
+# failed PR's stale *admission* lock; it never bypasses live macOS capacity.
+open_generated_pr=$(blocking_generated_pr)
 if [[ -n "$open_generated_pr" ]]; then
-  echo "Generated PR #${open_generated_pr} is still open; admission waits for merge and main release."
+  echo "Generated PR #${open_generated_pr} is validating or ready to merge; admission waits for settled main."
   exit 0
 fi
 main_sha=$(gh api "${api}/git/ref/heads/main" --jq '.object.sha')

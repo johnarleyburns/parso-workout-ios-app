@@ -1,4 +1,5 @@
 import Foundation
+import CadenceCore
 import StoreKit
 import Observation
 
@@ -51,7 +52,12 @@ final class ContributionStore {
                     lastError = String(localized: "Couldn't verify the purchase.")
                     return false
                 }
-                markContributed()
+                if ContributionTransactionPolicy.grantsSupporterStatus(
+                    productID: transaction.productID,
+                    contributionProductIDs: Self.productIDs
+                ) {
+                    markContributed()
+                }
                 await transaction.finish()
                 return true
             case .userCancelled, .pending:
@@ -72,10 +78,16 @@ final class ContributionStore {
     }
 
     private func listenForTransactions() -> Task<Void, Never> {
-        Task.detached { [weak self] in
+        let contributionProductIDs = Self.productIDs
+        return Task.detached { [weak self] in
             for await result in Transaction.updates {
                 guard case .verified(let transaction) = result else { continue }
-                await self?.markContributed()
+                if ContributionTransactionPolicy.grantsSupporterStatus(
+                    productID: transaction.productID,
+                    contributionProductIDs: contributionProductIDs
+                ) {
+                    await self?.markContributed()
+                }
                 await transaction.finish()
             }
         }

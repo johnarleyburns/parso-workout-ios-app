@@ -2,8 +2,8 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// Test-results card of `TrainingProgressView`.
-extension TrainingProgressView {
+/// Test-results card of `ProgressAnalyticsView`.
+extension ProgressAnalyticsView {
 
     @ViewBuilder var testResultsCard: some View {
         card(title: String(localized: "Test results"), citation: nil, tint: .blue) {

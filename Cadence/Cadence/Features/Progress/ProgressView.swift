@@ -13,16 +13,97 @@ private struct ProgressPreparedSnapshot: Sendable {
     let strength: StrengthProgressChartData
     let prEvents: [PREvent]
 }
+/// Shell: owns navigation, the question picker, and *which data owner* is
+/// instantiated. My Workouts owns a bounded paged fetch; only analytics routes
+/// hold the all-history queries.
 struct TrainingProgressView: View {
+    @Environment(\.modelContext) private var modelContext
+    @State var path = NavigationPath()
+    @State private var questionSelection = ProgressQuestionSelection.persisted()
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            VStack(spacing: 0) {
+                ProgressQuestionSummaryView<EmptyView>.pickerOnly(selection: $questionSelection)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 8)
+                switch ProgressDataOwner.owner(for: questionSelection.selected) {
+                case .pagedHistory:
+                    HistoryView(path: $path, embedded: true)
+                case .analytics:
+                    ProgressAnalyticsView(path: $path, questionSelection: questionSelection)
+                }
+            }
+            .background { CadenceGlassBackdrop(tint: .blue) }
+            .navigationTitle("Progress")
+            .navigationBarTitleDisplayMode(.large)
+            .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
+            .navigationDestination(for: HistorySummaryRoute.self) { route in
+                historyDestination(route)
+            }
+        }
+        .onChange(of: questionSelection) { _, selection in
+            selection.persist()
+        }
+        .accessibilityIdentifier("progress")
+    }
+
+    @ViewBuilder
+    private func historyDestination(_ route: HistorySummaryRoute) -> some View {
+        switch route {
+        case .strength(let id):
+            if let session = session(id) {
+                WorkoutSummaryView(data: .from(session: session),
+                                   onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) },
+                                   repairSession: session,
+                                   onEditCardioMinutes: { mod, vig in
+                                       try ManualCardioMinutesSaver.save(
+                                           session: session, moderate: mod, vigorous: vig,
+                                           persist: { try modelContext.save() }).get()
+                                   })
+            } else {
+                MissingWorkoutRouteView()
+            }
+        case .strengthFocused(let id, let exerciseID):
+            if let session = session(id) {
+                SessionView(session: session, initiallyExpandedExerciseID: exerciseID)
+            } else {
+                MissingWorkoutRouteView()
+            }
+        case .cardio(let id):
+            if let workout = cardioWorkout(id) {
+                CardioDetailView(workout: workout)
+            } else {
+                MissingWorkoutRouteView()
+            }
+        }
+    }
+
+    private func session(_ id: UUID) -> WorkoutSession? {
+        var d = FetchDescriptor<WorkoutSession>(predicate: #Predicate { $0.id == id })
+        d.fetchLimit = 1
+        return try? modelContext.fetch(d).first
+    }
+
+    private func cardioWorkout(_ id: UUID) -> CardioWorkout? {
+        var d = FetchDescriptor<CardioWorkout>(predicate: #Predicate { $0.id == id })
+        d.fetchLimit = 1
+        return try? modelContext.fetch(d).first
+    }
+}
+
+/// Analytics data owner: holds the all-history queries; never instantiated
+/// while My Workouts is selected.
+struct ProgressAnalyticsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(ActiveWorkoutModel.self) private var active
     @Environment(AppSettings.self) var settings
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
-    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
     @Query(sort: \Assessment.date, order: .forward) private var allAssessments: [Assessment]
     @Query(sort: \ReadinessEntry.date, order: .reverse) private var readinessEntries: [ReadinessEntry]
-    @State var path = NavigationPath()
-    @State private var questionSelection = ProgressQuestionSelection.persisted()
+    @Binding var path: NavigationPath
+    let questionSelection: ProgressQuestionSelection
     @State private var preparedStrengthData: StrengthProgressChartData?
     @State private var preparedPREvents: [PREvent] = []
     @State private var preparedFacts: TrainingFacts?
@@ -38,63 +119,15 @@ struct TrainingProgressView: View {
                                                  deletedAt: $0.deletedAt) }
     }
     var body: some View {
-        NavigationStack(path: $path) {
-            VStack(spacing: 0) {
-                ProgressQuestionSummaryView<EmptyView>.pickerOnly(selection: $questionSelection)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
-                if questionSelection.selected.hostsOwnList {
-                    HistoryView(path: $path, embedded: true)
-                } else {
-                    ScrollView {
-                        ProgressQuestionContentView(selection: questionSelection,
-                                                    sessions: activeSessions,
-                                                    detailContent: { progressQuestionContent(for: $0) })
-                            .padding(.horizontal)
-                            .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
-                    }
-                }
-            }
-            .background { CadenceGlassBackdrop(tint: .blue) }
-            .navigationTitle("Progress")
-            .navigationBarTitleDisplayMode(.large)
-            .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
-            .navigationDestination(for: HistorySummaryRoute.self) { route in
-                switch route {
-                case .strength(let id):
-                    if let session = sessions.first(where: { $0.id == id }) {
-                        WorkoutSummaryView(data: .from(session: session),
-                                           onEdit: { path.append(HistorySummaryRoute.strengthFocused(id, nil)) },
-                                           repairSession: session,
-                    onEditCardioMinutes: { mod, vig in
-                        try ManualCardioMinutesSaver.save(
-                            session: session, moderate: mod, vigorous: vig,
-                            persist: { try modelContext.save() }).get()
-                    })
-                    } else {
-                        MissingWorkoutRouteView()
-                    }
-                case .strengthFocused(let id, let exerciseID):
-                    if let session = sessions.first(where: { $0.id == id }) {
-                        SessionView(session: session, initiallyExpandedExerciseID: exerciseID)
-                    } else {
-                        MissingWorkoutRouteView()
-                    }
-                case .cardio(let id):
-                    if let workout = cardio.first(where: { $0.id == id }) {
-                        CardioDetailView(workout: workout)
-                    } else {
-                        MissingWorkoutRouteView()
-                    }
-                }
-            }
+        ScrollView {
+            ProgressQuestionContentView(selection: questionSelection,
+                                        sessions: activeSessions,
+                                        detailContent: { progressQuestionContent(for: $0) })
+                .padding(.horizontal)
+                .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
         }
         .task(id: progressSignature) {
             await prepareProgressData()
-        }
-        .onChange(of: questionSelection) { _, selection in
-            selection.persist()
         }
         .onChange(of: selectedStrengthNames) { _, names in
             ProgressStrengthSelection(selectedNames: names).persist()
@@ -109,7 +142,6 @@ struct TrainingProgressView: View {
         .sheet(isPresented: $readinessPresented) {
             ReadinessCheckInView(existing: todayReadiness)
         }
-        .accessibilityIdentifier("progress")
     }
 
     private func prepareProgressData() async {

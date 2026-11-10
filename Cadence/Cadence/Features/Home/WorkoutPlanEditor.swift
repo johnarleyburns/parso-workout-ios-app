@@ -24,6 +24,7 @@ enum ExercisePickerIntent: Identifiable {
 
 struct WorkoutPlanEditor: View {
     @State var plan: EditablePlan
+    var suggestedStrength: SuggestedStrengthEditorHooks? = nil
     let onStart: (EditablePlan) -> Void
     /// Supplied only when this plan came from the suggested-workout chooser.
     /// Real report: excluding an exercise from a suggested workout left it
@@ -86,7 +87,9 @@ struct WorkoutPlanEditor: View {
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
          allowsSchedule: Bool = true,
          onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil,
+         suggestedStrength: SuggestedStrengthEditorHooks? = nil,
          onStart: @escaping (EditablePlan) -> Void) {
+        self.suggestedStrength = suggestedStrength
         self._plan = State(initialValue: plan)
         self.onStart = onStart
         self.onExcludeAndRegenerate = onExcludeAndRegenerate
@@ -107,7 +110,9 @@ struct WorkoutPlanEditor: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                if allowsStart {
+                if suggestedStrength != nil {
+                    suggestedStrengthActions
+                } else if allowsStart {
                     startButton
                     sendToWatchButton
                     if allowsSchedule { scheduleButton }
@@ -153,6 +158,7 @@ struct WorkoutPlanEditor: View {
                                          performers: planVolumePerformers,
                                          performerStates: planVolumePerformerStates)
 
+                suggestedStrengthCancel
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }
@@ -304,7 +310,11 @@ struct WorkoutPlanEditor: View {
     private func schedule(plan: EditablePlan, for date: Date) throws {
         _ = try ScheduledWorkoutStore.schedule(plan: plan, for: date, in: modelContext)
         NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
-        dismiss()
+        if let hooks = suggestedStrength {
+            hooks.onScheduled()
+        } else {
+            dismiss()
+        }
     }
 
     /// Regenerates the whole suggested plan from scratch now that `exercise`

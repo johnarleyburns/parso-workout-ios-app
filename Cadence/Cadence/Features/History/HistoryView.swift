@@ -16,6 +16,7 @@ struct HistoryView: View {
     @State private var showDeleted = false
     @State private var paging: HistoryPagingState?
     @State private var hasDeleted = false
+    @State private var showExport = false
 
     private var entries: [WorkoutHistoryEntry] { paging?.entries ?? [] }
 
@@ -39,6 +40,23 @@ struct HistoryView: View {
             }
         }
         .modifier(HistoryChrome(embedded: embedded))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Export") { showExport = true }
+                    .accessibilityIdentifier("history.export")
+                    .accessibilityHint("Exports your complete workout archive")
+            }
+        }
+        .sheet(isPresented: $showExport) {
+            NavigationStack {
+                ExportView(mode: .exportOnly)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showExport = false }
+                        }
+                    }
+            }
+        }
         .task {
             if paging == nil { paging = HistoryPagingState(fetcher: WorkoutHistoryPageFetcher(context: context)) }
             refresh()

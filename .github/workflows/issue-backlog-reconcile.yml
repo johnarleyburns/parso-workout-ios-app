@@ -31,7 +31,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+      # Default token: label/reopen/comment writes this job makes on itself
+      # are then attributed to github-actions[bot], not johnarleyburns, so
+      # they don't re-satisfy the `issues` actor check above and requeue this
+      # same workflow. CLAUDE_WORKFLOW_TOKEN is still used for the one call
+      # that needs actions:write (dispatching issue-to-pr.yml).
+      GH_TOKEN: ${{ github.token }}
+      CLAUDE_WORKFLOW_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       CLAUDE_PIPELINE_AUTO_ENABLED: ${{ vars.CLAUDE_PIPELINE_AUTO_ENABLED }}
     steps:
       - uses: actions/checkout@v7
@@ -39,5 +45,5 @@ jobs:
           ref: main
           persist-credentials: false
       - run: |
-          test -n "$GH_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
+          test -n "$CLAUDE_WORKFLOW_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
           bash .github/scripts/admit-one-stranded-issue.sh

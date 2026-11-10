@@ -13,10 +13,10 @@ struct HistoryView: View {
 
     @State private var sessionToDelete: WorkoutSession?
     @State private var cardioToDelete: CardioWorkout?
-    @State private var showDeleted = false
     @State private var paging: HistoryPagingState?
-    @State private var hasDeleted = false
     @State private var showExport = false
+
+    private var showDeleted: Bool { paging?.visibility == .deleted }
 
     private var entries: [WorkoutHistoryEntry] { paging?.entries ?? [] }
 
@@ -41,6 +41,13 @@ struct HistoryView: View {
         }
         .modifier(HistoryChrome(embedded: embedded))
         .toolbar {
+            if let control = paging?.deletedControl {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(control.title) { withAnimation { paging?.toggleDeleted() } }
+                        .accessibilityIdentifier("history.toggleDeleted")
+                        .accessibilityHint("Switches between active and deleted workouts")
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button("Export") { showExport = true }
                     .accessibilityIdentifier("history.export")
@@ -63,9 +70,6 @@ struct HistoryView: View {
         }
         // Any save (new, restored, soft-deleted record) resets to the first page.
         .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in refresh() }
-        .onChange(of: showDeleted) { _, deleted in
-            paging?.setVisibility(deleted ? .deleted : .active)
-        }
         .confirmationDialog("Delete this workout?",
                             isPresented: Binding(get: { sessionToDelete != nil },
                                                  set: { if !$0 { sessionToDelete = nil } }),
@@ -74,7 +78,7 @@ struct HistoryView: View {
                 try? WorkoutRepository.softDeleteSession(session, in: context)
                 sessionToDelete = nil
             }
-        } message: { _ in Text("This removes the session. You can restore it from View Deleted.") }
+        } message: { _ in Text("This removes the session. You can restore it from Show Deleted.") }
         .confirmationDialog("Delete this cardio workout?",
                             isPresented: Binding(get: { cardioToDelete != nil },
                                                  set: { if !$0 { cardioToDelete = nil } }),
@@ -83,7 +87,7 @@ struct HistoryView: View {
                 try? WorkoutRepository.softDeleteCardio(c, in: context)
                 cardioToDelete = nil
             }
-        } message: { _ in Text("This removes the cardio workout. You can restore it from View Deleted.") }
+        } message: { _ in Text("This removes the cardio workout. You can restore it from Show Deleted.") }
     }
 
     private var workoutTimeline: some View {
@@ -92,11 +96,6 @@ struct HistoryView: View {
                 HStack {
                     Text("My Workouts").font(.headline)
                     Spacer()
-                    if hasDeleted {
-                        Button("View Deleted") { withAnimation { showDeleted = true } }
-                            .font(.caption.weight(.semibold))
-                            .accessibilityIdentifier("history.toggleDeleted")
-                    }
                 }
                 if timelineEntries.isEmpty {
                     Text("No workouts yet — start one from Today.")
@@ -133,13 +132,7 @@ struct HistoryView: View {
                 }
                 showMoreButton
             } header: {
-                HStack {
-                    Text("Deleted")
-                    Spacer()
-                    Button("Back") { withAnimation { showDeleted = false } }
-                        .font(.caption)
-                        .accessibilityIdentifier("history.toggleDeleted")
-                }
+                Text("Deleted")
             } footer: {
                 if showDeleted {
                     Text("Swipe to restore a deleted workout.")
@@ -160,9 +153,7 @@ struct HistoryView: View {
     }
 
     private func refresh() {
-        paging?.reload()
-        hasDeleted = (try? WorkoutRepository.hasDeletedHistory(in: context)) ?? false
-        if !hasDeleted && showDeleted { showDeleted = false }
+        paging?.reload(deletedCount: (try? WorkoutRepository.deletedHistoryCount(in: context)) ?? 0)
     }
 
     private func open(_ entry: TodayActivityPresenter.Entry) {

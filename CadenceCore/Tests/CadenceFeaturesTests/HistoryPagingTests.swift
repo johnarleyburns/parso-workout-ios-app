@@ -137,4 +137,55 @@ final class HistoryPagingTests: XCTestCase {
         let r = HistoryPageRequest()
         XCTAssertEqual(r.fetchLimit, HistoryPageRequest.pageSize + 1)
     }
+
+    // MARK: Deleted control (#615)
+
+    func testControlStateTransitions() {
+        XCTAssertNil(DeletedHistoryControlState.make(visibility: .active, deletedCount: 0))
+        XCTAssertNil(DeletedHistoryControlState.make(visibility: .deleted, deletedCount: 0))
+        let a = DeletedHistoryControlState.make(visibility: .active, deletedCount: 2)
+        XCTAssertEqual(a?.title, "Show Deleted"); XCTAssertEqual(a?.nextVisibility, .deleted)
+        let d = DeletedHistoryControlState.make(visibility: .deleted, deletedCount: 1)
+        XCTAssertEqual(d?.title, "Back to Workouts"); XCTAssertEqual(d?.nextVisibility, .active)
+    }
+
+    func testDeletedCountCountsBothKindsAndSoftDeleteMakesControlAvailable() throws {
+        let c = try ctx(); try seed(c, strength: 3, cardio: 2)
+        let f = WorkoutHistoryPageFetcher(context: c)
+        let s = HistoryPagingState(fetcher: f)
+        s.reload(deletedCount: try WorkoutRepository.deletedHistoryCount(in: c))
+        XCTAssertNil(s.deletedControl)
+        let w = try c.fetch(FetchDescriptor<CardioWorkout>()).first!
+        try WorkoutRepository.softDeleteCardio(w, in: c)
+        s.reload(deletedCount: try WorkoutRepository.deletedHistoryCount(in: c))
+        XCTAssertEqual(s.deletedControl?.title, "Show Deleted")
+        s.toggleDeleted()
+        XCTAssertEqual(s.visibility, .deleted)
+        XCTAssertEqual(s.entries.count, 1)
+        XCTAssertEqual(s.deletedControl?.title, "Back to Workouts")
+    }
+
+    func testRestoringFinalDeletedReturnsToActive() throws {
+        let c = try ctx(); try seed(c, strength: 2, cardio: 0, deleted: 1)
+        let s = HistoryPagingState(fetcher: WorkoutHistoryPageFetcher(context: c))
+        s.reload(deletedCount: try WorkoutRepository.deletedHistoryCount(in: c))
+        s.toggleDeleted()
+        XCTAssertEqual(s.entries.count, 1)
+        let dead = try c.fetch(FetchDescriptor<WorkoutSession>()).first { $0.deletedAt != nil }!
+        dead.deletedAt = nil; try c.save()
+        s.reload(deletedCount: try WorkoutRepository.deletedHistoryCount(in: c))
+        XCTAssertEqual(s.visibility, .active)
+        XCTAssertNil(s.deletedControl)
+        XCTAssertEqual(s.entries.count, 2)
+    }
+
+    func testModeTransitionRequestsFirstPageWithNoCursor() {
+        let f = Fake()
+        let s = HistoryPagingState(fetcher: f)
+        s.reload(deletedCount: 3)
+        s.toggleDeleted()
+        XCTAssertEqual(f.requests.last?.visibility, .deleted)
+        XCTAssertNil(f.requests.last?.cursor)
+        XCTAssertTrue(s.entries.isEmpty)
+    }
 }

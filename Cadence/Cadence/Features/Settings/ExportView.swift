@@ -14,14 +14,14 @@ import os
 /// URL. Restore reads a file via `.fileImporter` (magic-byte sniff: `.json.gz`,
 /// `.gz`, plain `.json`, or standards-based `.fit`) and merges off-main.
 struct ExportView: View {
+    var mode: ArchiveFlowMode = .exportOnly
+    private var presentation: ArchiveFlowPresentation { .init(mode: mode) }
+
     @Environment(\.modelContext) private var context
     @Environment(\.cadenceModelContainer) private var container
     @Environment(AppSettings.self) private var settings
 
-    enum Fmt: String, CaseIterable, Identifiable {
-        case json = "JSON", csv = "CSV", fit = "FIT"
-        var id: String { rawValue }
-    }
+    typealias Fmt = ArchiveExportFormat
     @State private var format: Fmt = .json
     @State private var summary: ExportSummary?
     @State private var exportURL: URL?
@@ -39,6 +39,7 @@ struct ExportView: View {
 
     var body: some View {
         Form {
+            if presentation.showsExportControls {
             Section {
                 Picker("Format", selection: $format) {
                     ForEach(Fmt.allCases) { Text($0.rawValue).tag($0) }
@@ -86,6 +87,9 @@ struct ExportView: View {
                      : "A complete backup: strength history, cardio (with heart-rate and route data), fitness-test results, and all your preferences — including what the Coach has learned. The JSON backup is compressed (.json.gz) and importing it into a fresh install restores everything, as if nothing happened. CSV opens in any spreadsheet (strength sets only).")
             }
 
+            }
+
+            if presentation.showsRestoreControls {
             Section {
                 Button {
                     isImporting = true
@@ -109,15 +113,16 @@ struct ExportView: View {
             }
 
             GarminFITImportSection { rebuild() }
+            }
         }
-        .navigationTitle("Export")
+        .navigationTitle(presentation.navigationTitle)
         .navigationBarTitleDisplayMode(.inline)
         .fileImporter(isPresented: $isImporting,
                       allowedContentTypes: importContentTypes,
                       allowsMultipleSelection: false) { result in
             handleImport(result)
         }
-        .task { rebuildIfNeeded() }
+        .task { if presentation.showsExportControls { rebuildIfNeeded() } }
     }
 
     private var importContentTypes: [UTType] {
@@ -213,12 +218,7 @@ struct ExportView: View {
             }
             if Task.isCancelled { return }
 
-            let payload: CadenceExport
-            switch fmt {
-            case .json: payload = export
-            case .csv: payload = CadenceExport(sessions: export.sessions)
-            case .fit: payload = CadenceExport(sessions: [], cardio: export.cardio)
-            }
+            let payload = fmt.payload(from: export)
 
             if payload.sessions.isEmpty && payload.cardio.isEmpty && payload.assessments.isEmpty {
                 await MainActor.run {
@@ -320,7 +320,7 @@ struct ExportView: View {
                         export.preferences != nil ? String(localized: "Your preferences were restored too.") : nil
                     ].compactMap { $0 }.joined(separator: " ")
                     self.isRestoring = false
-                    self.rebuild()
+                    if self.presentation.showsExportControls { self.rebuild() }
                 }
             } catch {
                 await MainActor.run {

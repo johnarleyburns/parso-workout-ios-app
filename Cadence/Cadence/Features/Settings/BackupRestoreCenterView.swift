@@ -104,15 +104,15 @@ struct BackupRestoreCenterView: View {
             }
 
             Section("Full Cladiron archive") {
-                Text("JSON is the lossless backup for a new device. FIT is for cardio/activity exchange; it intentionally does not contain strength sets or preferences.")
+                Text("JSON is the lossless backup for a new device; export it from Progress › My Workouts. FIT is for cardio/activity exchange; it intentionally does not contain strength sets or preferences.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 NavigationLink {
-                    ExportView()
+                    ExportView(mode: .restoreOnly)
                 } label: {
-                    Label("Export or restore JSON, FIT, or CSV", systemImage: "square.and.arrow.up")
+                    Label("Restore or Import", systemImage: "square.and.arrow.down")
                 }
-                .accessibilityIdentifier("backupCenter.openExport")
+                .accessibilityIdentifier("backupCenter.openRestore")
             }
 
             Section {

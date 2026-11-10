@@ -10,18 +10,20 @@ struct HistoryView: View {
 
     @Environment(\.modelContext) private var context
     @Environment(ActiveWorkoutModel.self) private var active
-    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
-    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardio: [CardioWorkout]
 
     @State private var sessionToDelete: WorkoutSession?
     @State private var cardioToDelete: CardioWorkout?
     @State private var showDeleted = false
+    @State private var paging: HistoryPagingState?
+    @State private var hasDeleted = false
 
-    private var deletedSessions: [WorkoutSession] { sessions.filter { $0.deletedAt != nil } }
-    private var deletedCardio: [CardioWorkout] { cardio.filter { $0.deletedAt != nil } }
+    private var entries: [WorkoutHistoryEntry] { paging?.entries ?? [] }
 
-    private var entries: [WorkoutHistoryEntry] {
-        HistoryPresenter.entries(sessions: sessions, cardio: cardio, showDeleted: showDeleted)
+    private var sessions: [WorkoutSession] {
+        entries.compactMap { if case .strength(let s) = $0 { s } else { nil } }
+    }
+    private var cardio: [CardioWorkout] {
+        entries.compactMap { if case .cardio(let c) = $0 { c } else { nil } }
     }
 
     private var timelineEntries: [TodayActivityPresenter.Entry] {
@@ -37,6 +39,15 @@ struct HistoryView: View {
             }
         }
         .modifier(HistoryChrome(embedded: embedded))
+        .task {
+            if paging == nil { paging = HistoryPagingState(fetcher: WorkoutHistoryPageFetcher(context: context)) }
+            refresh()
+        }
+        // Any save (new, restored, soft-deleted record) resets to the first page.
+        .onReceive(NotificationCenter.default.publisher(for: ModelContext.didSave)) { _ in refresh() }
+        .onChange(of: showDeleted) { _, deleted in
+            paging?.setVisibility(deleted ? .deleted : .active)
+        }
         .confirmationDialog("Delete this workout?",
                             isPresented: Binding(get: { sessionToDelete != nil },
                                                  set: { if !$0 { sessionToDelete = nil } }),
@@ -63,7 +74,7 @@ struct HistoryView: View {
                 HStack {
                     Text("My Workouts").font(.headline)
                     Spacer()
-                    if !deletedSessions.isEmpty || !deletedCardio.isEmpty {
+                    if hasDeleted {
                         Button("View Deleted") { withAnimation { showDeleted = true } }
                             .font(.caption.weight(.semibold))
                             .accessibilityIdentifier("history.toggleDeleted")
@@ -77,6 +88,7 @@ struct HistoryView: View {
                         HomeWeekWorkoutRow(entry: entry) { open(entry) }
                             .contextMenu { timelineActions(for: entry) }
                     }
+                    showMoreButton
                 }
             }
             .padding(LayoutMetrics.cardPadding)
@@ -101,6 +113,7 @@ struct HistoryView: View {
                     case .cardio(let c): cardioRow(c)
                     }
                 }
+                showMoreButton
             } header: {
                 HStack {
                     Text("Deleted")
@@ -115,6 +128,23 @@ struct HistoryView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder private var showMoreButton: some View {
+        if paging?.hasMore == true {
+            Button { Haptics.selection(); paging?.loadMore() } label: {
+                Text("Show \(HistoryPageRequest.pageSize) more")
+                    .frame(maxWidth: .infinity, minHeight: 44)
+            }
+            .buttonStyle(.bordered)
+            .accessibilityIdentifier("history.showMore")
+        }
+    }
+
+    private func refresh() {
+        paging?.reload()
+        hasDeleted = (try? WorkoutRepository.hasDeletedHistory(in: context)) ?? false
+        if !hasDeleted && showDeleted { showDeleted = false }
     }
 
     private func open(_ entry: TodayActivityPresenter.Entry) {

@@ -347,7 +347,6 @@ extension HomeView {
                         Color.clear.frame(height: 0).id("week.top")
                         if surface == .today {
                             dashboardTopContent
-                            dashboardBottomContent
                         } else {
                             thisWeekContent
                         }

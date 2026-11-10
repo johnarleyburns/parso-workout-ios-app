@@ -128,7 +128,7 @@ final class HistoryPagingTests: XCTestCase {
 
     func testProgressRoutePolicy() {
         XCTAssertEqual(ProgressDataOwner.owner(for: .workoutHistory), .pagedHistory)
-        for q in ProgressQuestion.alphabetical where q != .workoutHistory {
+        for q in ProgressQuestion.alphabetical where q != .workoutHistory && q != .observations {
             XCTAssertEqual(ProgressDataOwner.owner(for: q), .analytics)
         }
     }

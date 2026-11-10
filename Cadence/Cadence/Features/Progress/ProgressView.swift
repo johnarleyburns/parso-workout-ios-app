@@ -4,8 +4,7 @@ import Charts
 import CadenceCore
 import CadenceFeatures
 private struct ProgressSessionSignature: Equatable {
-    let id: UUID
-    let date: Date
+    let id: UUID; let date: Date
     let updatedAt: Date
     let deletedAt: Date?
 }
@@ -31,6 +30,8 @@ struct TrainingProgressView: View {
                 switch ProgressDataOwner.owner(for: questionSelection.selected) {
                 case .pagedHistory:
                     HistoryView(path: $path, embedded: true)
+                case .observations:
+                    ProgressObservationsView()
                 case .analytics:
                     ProgressAnalyticsView(path: $path, questionSelection: questionSelection)
                 }
@@ -214,7 +215,7 @@ struct ProgressAnalyticsView: View {
             readinessCard
         case .consistency:
             EmptyView()
-        case .workoutHistory:
+        case .workoutHistory, .observations:
             EmptyView()
         }
     }

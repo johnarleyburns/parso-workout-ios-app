@@ -73,7 +73,7 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
             ConsistencyHeatmapView(sessions: sessions)
         case .strengthOverTime, .tests, .personalRecords, .intensity, .effort, .readiness:
             detailContent(selection.selected)
-        case .workoutHistory:
+        case .workoutHistory, .observations:
             EmptyView()
         }
     }
@@ -91,7 +91,7 @@ struct ProgressQuestionContentView<DetailContent: View>: View {
             ConsistencyHeatmapView(sessions: sessions)
         case .strengthOverTime, .tests, .personalRecords, .intensity, .effort, .readiness:
             detailContent(selection.selected)
-        case .workoutHistory:
+        case .workoutHistory, .observations:
             EmptyView()
         }
     }

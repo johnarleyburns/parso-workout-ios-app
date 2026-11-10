@@ -91,8 +91,6 @@ struct HomeView: View {
     @State var showAlternatives = false
     @State var showSupport = false
     @State var pendingAddGapsDeficits: [MuscleGroup: Double]?
-    @State var suggestionsExpanded = false
-    @AppStorage("home.dismissedObservationKeys.v1") var dismissedObservationKeysRaw = ""
     // Kept while Home's legacy readiness helpers remain available to routes
     // outside the Today dashboard; the check-in surface lives in Progress.
     @State var readinessPresented = false; @State var readinessExpanded = false

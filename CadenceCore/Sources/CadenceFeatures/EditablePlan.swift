@@ -5,7 +5,7 @@ import CadenceCore
 /// Moved out of `Features/Home/WorkoutPlanEditor.swift` (test-pyramid Phase 3);
 /// the four `from(...)` mappers are pure and were ideal unit-test material. The
 /// SwiftUI editor view stays in the app.
-public struct EditablePlan: Hashable, Identifiable {
+public struct EditablePlan: Hashable, Identifiable, Sendable {
     public var id = UUID()
     public var title: String = "Workout"
     public var warmupMinutes: Int
@@ -325,7 +325,7 @@ public struct EditablePlan: Hashable, Identifiable {
     }
 }
 
-public struct EditableExercise: Identifiable, Hashable {
+public struct EditableExercise: Identifiable, Hashable, Sendable {
     public var id = UUID()
     public var name: String
     public var sets: [EditableSet]
@@ -351,7 +351,7 @@ public struct EditableExercise: Identifiable, Hashable {
 
 /// One performer's set plan inside an editable exercise. `performerID == nil`
 /// is the owner ("Me"), always first.
-public struct EditablePerformerPlan: Identifiable, Hashable {
+public struct EditablePerformerPlan: Identifiable, Hashable, Sendable {
     public let id: UUID
     public var performerID: UUID?
     public var name: String
@@ -367,7 +367,7 @@ public struct EditablePerformerPlan: Identifiable, Hashable {
     }
 }
 
-public struct EditableSet: Identifiable, Hashable {
+public struct EditableSet: Identifiable, Hashable, Sendable {
     public let id: UUID
     public var targetReps: Int
     public var targetWeight: Double?

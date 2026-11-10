@@ -248,6 +248,7 @@ extension HomeView {
         }
         suggestedWorkoutCalculating = true
         let snapshot = request.snapshot
+        suggestedStrengthRequest = snapshot.request
         let task = Task {
             let option = await Task.detached(priority: .userInitiated) {
                 CoachSuggestionService.generate(from: snapshot)

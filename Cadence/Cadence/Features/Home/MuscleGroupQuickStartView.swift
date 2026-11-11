@@ -3,10 +3,9 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-/// Quick-start that targets the muscle groups you haven't trained this week (feedback
-/// batch 8 — tapping the Home "muscle groups" tile). It first lists your **past
-/// workouts** ranked by how many of the missing groups they cover (tap → reuse it),
-/// then offers a fresh session built from catalog **suggestions** that fill the gaps.
+/// Muscle-coverage suggestion (Home "muscle groups" tile): offers a fresh session
+/// built from catalog suggestions that fill this week's gaps and hands it back as a
+/// transient `EditablePlan`. It never reads or writes `PlanningDraft`.
 struct MuscleGroupQuickStartView: View {
     let tiers: HomeDashboardPresenter.GapTiers
     private var missing: [MuscleGroup] { tiers.all }
@@ -23,25 +22,17 @@ struct MuscleGroupQuickStartView: View {
 
     @Query(filter: #Predicate<ExerciseSuggestionExclusion> { $0.isActive }) private var exclusions: [ExerciseSuggestionExclusion]
 
-    /// Computed once per history change, not on every body pass. Ranking walks
-    /// every set of every past session, and the list used to evaluate it twice
-    /// per render (the `isEmpty` check and the `ForEach`).
-    @State private var ranked: [(session: WorkoutSession, covered: [MuscleGroup])] = []
     /// Already exclusion-filtered; computed off the main actor in `.task`.
     @State private var allowedSuggestions: [ExerciseTemplate] = []
 
     var body: some View {
         NavigationStack {
             List {
-                Section {
-                    if missing.isEmpty {
+                if allowedSuggestions.isEmpty {
+                    Section {
                         Text("You've hit every muscle group this week 💪")
                             .font(.subheadline).foregroundStyle(.secondary)
                             .accessibilityIdentifier("groupQuick.missing")
-                    } else {
-                        tierRow(String(localized: "Missing: "), tiers.missing, id: "groupQuick.missing")
-                        tierRow(String(localized: "Below minimum: "), tiers.belowMinimum, id: "groupQuick.belowMinimum")
-                        tierRow(String(localized: "Below recommended: "), tiers.belowRecommended, id: "groupQuick.belowRecommended")
                     }
                 }
 
@@ -67,30 +58,8 @@ struct MuscleGroupQuickStartView: View {
                         .accessibilityIdentifier("groupQuick.buildStart")
                     }
                 }
-
-                if !ranked.isEmpty {
-                    Section("Repeat a past workout") {
-                        ForEach(ranked.prefix(5), id: \.session.id) { item in
-                            Button {
-                                reuse(item.session)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(item.session.title.isEmpty ? String(localized: "Workout") : item.session.title)
-                                        .font(.headline)
-                                    Text(item.session.date.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    Text(item.session.exercisesInOrder.map(\.name).joined(separator: ", "))
-                                        .font(.subheadline).foregroundStyle(.secondary)
-                                    Text(String(localized: "Covers: ") + item.covered.map(\.displayName).joined(separator: ", "))
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                            .accessibilityIdentifier("groupQuick.past")
-                        }
-                    }
-                }
             }
-            .navigationTitle("Fill the Gaps")
+            .navigationTitle("Strength Workout")
             .navigationBarTitleDisplayMode(.inline)
             .task(id: sessions.count) { await refresh() }
             .task(id: exclusions.count) { await refresh() }
@@ -104,27 +73,12 @@ struct MuscleGroupQuickStartView: View {
         let lastWorkoutIDs = RecentSuggestionExclusion.candidateIDs(
             sessions: sessions, candidates: ExerciseLibrary.starter.map { SuggestedExerciseCandidate(template: $0) })
         let keys = Set(exclusions.map(\.exerciseKey)).union(lastWorkoutIDs)
-        ranked = WorkoutRepository.workoutsByMissingCoverage(sessions, missing: missing)
         let picks = await Task.detached(priority: .userInitiated) {
             ExerciseLibrary.suggestions(forMissing: missing, limit: max(6, missing.count)) {
                 SuggestedExerciseFilter.allows($0, keys: keys)
             }
         }.value
         allowedSuggestions = picks
-    }
-
-    @ViewBuilder
-    private func tierRow(_ label: String, _ groups: [MuscleGroup], id: String) -> some View {
-        if !groups.isEmpty {
-            Text(label + groups.map(\.displayName).joined(separator: ", "))
-                .font(.subheadline).foregroundStyle(.secondary)
-                .accessibilityIdentifier(id)
-        }
-    }
-
-    private func reuse(_ past: WorkoutSession) {
-        guard let s = try? WorkoutRepository.reuseSession(from: past, in: context) else { return }
-        startAfterDismiss(s)
     }
 
     private func buildFromSuggestions() {
@@ -142,19 +96,6 @@ struct MuscleGroupQuickStartView: View {
         Task { @MainActor in
             await Task.yield()
             onPlan(plan)
-        }
-    }
-
-    /// The destination is inside a NavigationStack. Starting the root
-    /// full-screen cover in the same transaction as dismissing this destination
-    /// can leave the new session active but the cover unapplied; Home then only
-    /// shows it after a later navigation. Defer the start one main-actor turn.
-    private func startAfterDismiss(_ session: WorkoutSession) {
-        Haptics.selection()
-        dismiss()
-        Task { @MainActor in
-            await Task.yield()
-            onStart(session)
         }
     }
 }

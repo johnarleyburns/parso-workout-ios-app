@@ -1,6 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Strength this week" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Strength this week"
+          }
+        }
+      }
+    },
     "%@ %lld of %lld" : {
       "localizations" : {
         "de" : {

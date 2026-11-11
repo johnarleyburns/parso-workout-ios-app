@@ -69325,6 +69325,16 @@
       },
       "comment" : "UI text shown in: Record Cardio (Cadence/Cadence/Features/Cardio/RecordCardioView.swift)"
     },
+    "Strength this week" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Strength this week"
+          }
+        }
+      }
+    },
     "Strength" : {
       "localizations" : {
         "de" : {

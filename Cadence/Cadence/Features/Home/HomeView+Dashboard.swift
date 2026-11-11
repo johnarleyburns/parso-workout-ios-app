@@ -172,7 +172,8 @@ extension HomeView {
                 NavigationStack {
                     WeightsStartView(
                         onEditorStart: { plan in weightsStartPresented = false; handleEditorStart(plan) },
-                        onSuggestedWorkout: { requestSuggestedWorkout($0) })
+                        onSuggestedWorkout: { requestSuggestedWorkout($0) },
+                        dashboard: dashboard)
                 }
             }
             // "Suggest a workout" shortcut from Start Workout → Strength → Pick

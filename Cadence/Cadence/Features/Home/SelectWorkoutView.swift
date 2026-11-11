@@ -13,6 +13,8 @@ struct SelectWorkoutView: View {
     let onScheduleCardio: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var recentCardioTypes: [WorkoutType] = []
+    /// Home's cached weekly cardio credit, forwarded to the Cardio picker.
+    let weeklyCardioCredit: CardioWeeklyCreditDisplay
     var onFillGaps: (() -> Void)? = nil
     var onSuggestCardio: (() -> Void)? = nil
     var inline = false
@@ -29,6 +31,7 @@ struct SelectWorkoutView: View {
                     onScheduleCardio: onScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes,
+                    weeklyCardioCredit: weeklyCardioCredit,
                     onFillGaps: onFillGaps,
                     onSuggestCardio: onSuggestCardio)
             } label: {
@@ -54,6 +57,7 @@ struct SelectWorkoutView: View {
                     onScheduleCardio: onScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes,
+                    weeklyCardioCredit: weeklyCardioCredit,
                     onFillGaps: onFillGaps,
                     onSuggestCardio: onSuggestCardio)
                     .toolbar {

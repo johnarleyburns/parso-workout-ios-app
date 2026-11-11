@@ -26,6 +26,7 @@ concurrency:
 jobs:
   verify-reservation:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     outputs:
       valid: ${{ steps.verify.outputs.valid }}
     env:
@@ -95,6 +96,7 @@ jobs:
     needs: [verify-reservation, implement]
     if: always() && needs.verify-reservation.outputs.valid == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       ISSUE: ${{ inputs.issue_number }}

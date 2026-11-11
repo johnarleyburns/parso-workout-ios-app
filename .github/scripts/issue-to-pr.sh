@@ -47,15 +47,41 @@ format_claude_stream() {
 }
 
 heartbeat_pid=''
+claude_pid_file='/tmp/claude-issue-logs/claude.pid'
+: > "$claude_pid_file"
+# How long the stream log may go without a new line before we treat the
+# `claude` process as hung rather than merely busy with one long tool call
+# (a full build/test can legitimately produce no stream-json event for
+# several minutes). 2026-11-10: issue #619's run sat with its event counter
+# frozen at 83 for 4+ hours before a human noticed and cancelled it - the old
+# heartbeat only measured "is the heartbeat subshell alive", which is always
+# true, so it could never detect this. This kills the stuck process itself
+# instead of just reporting on it, so the job fails through its normal path
+# (finalize-issue-intake.sh already labels/comments correctly on any failed
+# or cancelled `implement` job) well before the 120-minute job timeout.
+stall_limit_minutes="${CLAUDE_STALL_MINUTES:-25}"
 start_heartbeat() {
   (
     heartbeat_comment_id=''
     minute=0
+    last_count=0
+    last_change_epoch=$(date +%s)
+    killed=false
     while true; do
       sleep 60
       minute=$((minute + 1))
       events=$( [[ -f "$stream_log" ]] && wc -l < "$stream_log" || echo 0 )
-      msg="still running — minute ${minute}, ${events} stream events so far. [Run](${run_url})"
+      now=$(date +%s)
+      if (( events > last_count )); then
+        last_count=$events
+        last_change_epoch=$now
+      fi
+      stalled_minutes=$(( (now - last_change_epoch) / 60 ))
+      if [[ "$killed" == true ]]; then
+        msg="killed after ${stall_limit_minutes}m with no new output (${events} stream events total). [Run](${run_url})"
+      else
+        msg="last new output ${stalled_minutes}m ago, ${events} stream events so far (minute ${minute} overall). [Run](${run_url})"
+      fi
       echo "[heartbeat] $(date -u +%H:%M:%S) ${msg}"
       if (( minute % 5 == 0 )); then
         if [[ -z "$heartbeat_comment_id" ]]; then
@@ -66,6 +92,15 @@ start_heartbeat() {
           gh api --method PATCH "repos/${repo}/issues/comments/${heartbeat_comment_id}" \
             -f body="<!-- claude-progress-heartbeat -->
 **Still working:** ${msg}" >/dev/null 2>&1 || true
+        fi
+      fi
+      if [[ "$killed" == false ]] && (( stalled_minutes >= stall_limit_minutes )); then
+        pid=$(cat "$claude_pid_file" 2>/dev/null || true)
+        if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+          echo "[heartbeat] no new output for ${stalled_minutes}m; killing claude pid ${pid} and its direct children"
+          pkill -9 -P "$pid" 2>/dev/null || true
+          kill -9 "$pid" 2>/dev/null || true
+          killed=true
         fi
       fi
     done
@@ -94,9 +129,17 @@ retry_git_network() {
 CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-1000}"
 [[ "$CLAUDE_MAX_TURNS" =~ ^[1-9][0-9]*$ ]] && (( CLAUDE_MAX_TURNS <= 1000 )) || { echo 'CLAUDE_MAX_TURNS must be an integer from 1 to 1000.' >&2; exit 64; }
 run_claude() {
+  # Run claude as the backgrounded command itself (not the last stage of a
+  # pipe) so its own PID - not tee's or format_claude_stream's - is what
+  # start_heartbeat's watchdog can find and kill via $claude_pid_file.
   env -u GH_TOKEN -u GITHUB_TOKEN claude -p "$1" --model sonnet --permission-mode bypassPermissions \
     --max-turns "$CLAUDE_MAX_TURNS" --output-format stream-json --verbose \
-  | tee -a "$stream_log" | format_claude_stream
+    > >(tee -a "$stream_log" | format_claude_stream) &
+  local pid=$! rc=0
+  echo "$pid" > "$claude_pid_file"
+  wait "$pid" || rc=$?
+  : > "$claude_pid_file"
+  return "$rc"
 }
 
 issue_json=$(gh issue view "$ISSUE" --json title,body,author,state,labels)

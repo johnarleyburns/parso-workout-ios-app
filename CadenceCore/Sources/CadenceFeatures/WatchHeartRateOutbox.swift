@@ -209,7 +209,7 @@ public final class WatchHeartRateOutbox {
         guard var s = state, transport.isActivated else { return }
         sealPending(&s)
         state = s
-        persist()
+        guard persist() else { return }
         diagnostics.retryCount += 1
         Self.log.info("retry: \(reason, privacy: .public), unacknowledged chunks \(s.batches.count)")
         deliver()

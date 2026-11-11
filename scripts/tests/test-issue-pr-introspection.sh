@@ -57,3 +57,30 @@ grep -Fq 'claude-progress-heartbeat' "$controller"
 grep -Fq 'possibly-stuck' "$controller"
 grep -Fq 'check_stall_and_warn "$active"' "$controller"
 echo 'controller stall detection: a silent reservation holder is flagged, not just waited on'
+
+# --- In-process watchdog: the heartbeat kills a genuinely stalled `claude`
+# itself (tracking real stream-log growth, not just "is the heartbeat
+# subshell alive" - which is always true) instead of only reporting on it.
+# 2026-11-10, issue #619: a run sat with its event counter frozen at 83 for
+# 4+ hours because nothing compared progress across ticks. -----------------
+grep -Fq 'claude_pid_file=' "$script"
+grep -Fq 'stall_limit_minutes=' "$script"
+grep -Eq 'last_count|last_change_epoch' "$script"
+grep -Fq 'pkill -9 -P "$pid"' "$script"
+grep -Fq 'kill -9 "$pid"' "$script"
+grep -Fq 'last new output' "$script"
+echo 'in-process watchdog: a stalled claude process is killed, not just narrated'
+
+# --- run_claude backgrounds claude itself (not tee/format_claude_stream) so
+# $claude_pid_file names the process the watchdog actually needs to kill. --
+grep -Fq 'echo "$pid" > "$claude_pid_file"' <<<"$run_claude_body"
+grep -Eq '> >\(tee -a "\$stream_log" \| format_claude_stream\) &' <<<"$run_claude_body"
+echo 'run_claude: backgrounds claude directly so its own pid is recorded'
+
+# --- The controller's stall warning reads the watchdog's own "last new
+# output Nm ago" number instead of the heartbeat comment's timestamp (which
+# the heartbeat rewrites every 5 minutes regardless of real progress, so it
+# can never go stale - the exact reason issue #619 went undetected). -------
+grep -Fq "last new output [0-9]+m ago" "$controller"
+! grep -Fq 'updated_at' "$controller"
+echo 'controller stall detection: reads real progress, not comment recency'

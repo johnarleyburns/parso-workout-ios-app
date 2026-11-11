@@ -384,6 +384,7 @@ jobs:
     needs: [core-tests, testflight-build]
     if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
       pull-requests: write

@@ -1,0 +1,101 @@
+name: Zombie CI Run Watchdog
+# GitHub Actions has repeatedly (incidents 2026-11-04, 2026-11-09, 2026-11-11)
+# left a job's status stuck at "in_progress"/"queued" for tens of minutes
+# after every one of its steps already finished — the run/job never gets
+# flipped to "completed" even though the work is actually done. That silently
+# blocks anything waiting on the run (a dependent job, a concurrency group, a
+# human watching) with nothing to show for it.
+#
+# This sweeps for that exact signature and cancels the affected run so it
+# reaches a terminal state. It deliberately never reruns anything itself:
+# some of these jobs produce real side effects (e.g. an uploaded TestFlight
+# build) by the time their status wedges, and guessing at a safe rerun here
+# risks duplicating that work. Recovery is left to this repo's existing
+# reconcilers (pr-maintenance.yml / issue-backlog-reconcile.yml /
+# release-repair.yml), which already sweep every few minutes and already
+# contain the repo-specific safe-rerun/escalate logic for a cancelled or
+# failed run.
+on:
+  schedule:
+    - cron: '4,19,34,49 * * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: zombie-run-watchdog
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      ZOMBIE_GRACE_MINUTES: '10'
+    steps:
+      - name: Find and cancel zombie runs
+        run: |
+          python3 -I - <<'PY'
+          import json, os, subprocess
+          from datetime import datetime, timezone
+
+          repo = os.environ["REPO"]
+          grace = int(os.environ["ZOMBIE_GRACE_MINUTES"])
+          now = datetime.now(timezone.utc)
+
+          def gh_api(path):
+              out = subprocess.run(["gh", "api", path], capture_output=True, text=True, check=True)
+              return json.loads(out.stdout)
+
+          def parse(ts):
+              return datetime.fromisoformat(ts.replace("Z", "+00:00"))
+
+          summary_lines = []
+          for status in ("in_progress", "queued"):
+              data = gh_api(f"repos/{repo}/actions/runs?status={status}&per_page=100")
+              for run in data.get("workflow_runs", []):
+                  run_id = run["id"]
+                  jobs = gh_api(f"repos/{repo}/actions/runs/{run_id}/jobs").get("jobs", [])
+                  pending = [j for j in jobs if j["status"] != "completed"]
+                  if not pending:
+                      continue
+
+                  has_active_step = False
+                  zombie_ages = []
+                  for job in pending:
+                      steps = job.get("steps") or []
+                      if not steps:
+                          # Hasn't started yet (e.g. waiting on a `needs:`
+                          # dependency) -- nothing to lose, not a zombie signal
+                          # by itself, but doesn't disqualify the run either.
+                          continue
+                      if any(s["status"] != "completed" for s in steps):
+                          has_active_step = True
+                          break
+                      ends = [parse(s["completed_at"]) for s in steps if s.get("completed_at")]
+                      if ends:
+                          zombie_ages.append((now - max(ends)).total_seconds() / 60)
+
+                  if has_active_step or not zombie_ages:
+                      continue  # genuine work still progressing somewhere in this run
+
+                  age = min(zombie_ages)  # the most-recently-finished zombie job
+                  if age >= grace:
+                      print(f"::warning::Run {run_id}: steps finished {age:.0f}m ago but "
+                            f"status is still '{status}' -- cancelling as a zombie.")
+                      subprocess.run(["gh", "api", "-X", "POST",
+                                      f"repos/{repo}/actions/runs/{run_id}/cancel"])
+                      summary_lines.append(
+                          f"- Cancelled zombie run [{run_id}](https://github.com/{repo}/actions/runs/{run_id}) "
+                          f"(steps done {age:.0f}m ago, GitHub never marked it completed)"
+                      )
+
+          summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
+          if summary_lines and summary_path:
+              with open(summary_path, "a") as f:
+                  f.write("\n".join(summary_lines) + "\n")
+          PY

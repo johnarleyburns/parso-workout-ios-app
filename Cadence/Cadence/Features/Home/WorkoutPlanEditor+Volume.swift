@@ -3,12 +3,75 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
+/// Presentation hooks supplied ONLY by the suggested-strength preview sheet.
+/// When nil (every other editor flow) the editor's actions and dismissal are
+/// unchanged. The plan passed to each closure is the user's current edit.
+struct SuggestedStrengthEditorHooks {
+    var isRegenerating: Bool
+    var message: String?
+    var onStart: (EditablePlan) -> Void
+    var onScheduled: () -> Void
+    var onSuggestAnother: (EditablePlan) -> Void
+    var onCancel: () -> Void
+}
+
 extension WorkoutPlanEditor {
     var startButton: some View {
         CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill") {
             saveAndStart()
         }
         .accessibilityIdentifier("editor.start")
+    }
+
+    /// Start / Schedule / Suggest another, in that order. Cancel is rendered
+    /// last, below all plan content, by the editor body.
+    @ViewBuilder var suggestedStrengthActions: some View {
+        if let hooks = suggestedStrength {
+            CadenceActionButton(title: String(localized: "Start this Workout"), systemImage: "play.fill") {
+                saveAndStart()
+            }
+            .disabled(hooks.isRegenerating)
+            .accessibilityIdentifier(SuggestedStrengthActionContract.startIdentifier)
+            CadenceActionButton(title: String(localized: "Schedule this Workout"),
+                                systemImage: "calendar.badge.plus",
+                                emphasis: .secondary) {
+                if isEditing {
+                    originalPlan = plan
+                    isEditing = false
+                }
+                schedulePresented = true
+            }
+            .disabled(hooks.isRegenerating)
+            .accessibilityIdentifier(SuggestedStrengthActionContract.scheduleIdentifier)
+            CadenceActionButton(title: String(localized: "Suggest another"),
+                                systemImage: "arrow.triangle.2.circlepath",
+                                emphasis: .secondary) {
+                hooks.onSuggestAnother(plan)
+            }
+            .disabled(hooks.isRegenerating)
+            .accessibilityIdentifier(SuggestedStrengthActionContract.anotherIdentifier)
+            if hooks.isRegenerating {
+                ProgressView(String(localized: "Finding another workout\u{2026}"))
+                    .accessibilityIdentifier("suggestedStrength.loading")
+            }
+            if let message = hooks.message {
+                Text(message)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("suggestedStrength.message")
+            }
+        }
+    }
+
+    /// Text-only, visually secondary, below all plan content.
+    @ViewBuilder var suggestedStrengthCancel: some View {
+        if let hooks = suggestedStrength {
+            Button(String(localized: "Cancel")) { hooks.onCancel() }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .accessibilityIdentifier(SuggestedStrengthActionContract.cancelIdentifier)
+        }
     }
 
     var sendToWatchButton: some View {

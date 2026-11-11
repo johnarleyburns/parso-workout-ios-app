@@ -231,21 +231,30 @@ extension HomeView {
                         })
                 }
             }
-            .sheet(item: $suggestedWorkoutPlan) { plan in
+            .sheet(item: $suggestedWorkoutPlan, onDismiss: {
+                // Swipe-to-dismiss: Start/Schedule/Cancel already cleared the state.
+                // Skip when "Suggest another" merely swapped the item.
+                if suggestedWorkoutPlan == nil { handleSuggestedStrength(.interactiveDismiss) }
+            }) { plan in
                 NavigationStack {
                     // Workout for You is an editable draft by definition: the
                     // user asked the coach to prepare a workout, so the first
                     // screen must expose edit controls before Start or
                     // Schedule can be chosen.
-                    WorkoutPlanEditor(plan: plan, startInEditMode: true) { startedPlan in
-                        suggestedWorkoutPlan = nil
-                        Task { @MainActor in
-                            await Task.yield()
-                            handleEditorStart(startedPlan)
-                        }
+                    WorkoutPlanEditor(
+                        plan: plan, startInEditMode: true,
+                        suggestedStrength: suggestedStrengthHooks(for: plan)) { startedPlan in
+                        suggestedStrengthPreview.editedPlan = startedPlan
+                        handleSuggestedStrength(.start)
                     }
+                    .id(plan.id)
                 }
                 .accessibilityIdentifier("suggestedWorkout.plan")
+                .onAppear {
+                    if suggestedStrengthPreview.plan?.id != plan.id {
+                        suggestedStrengthPreview = SuggestedStrengthPreviewState(plan: plan)
+                    }
+                }
             }
             .sheet(item: $workoutEditorPlan) { plan in
                 NavigationStack {

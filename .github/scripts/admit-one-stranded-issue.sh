@@ -89,23 +89,32 @@ done < <(gh issue list --repo "$repo" --state closed --label qa-failed --limit 1
   --jq '.[] | select(.author.login == "johnarleyburns") | .number')
 
 # The implementation worker posts a pinned <!-- claude-progress-heartbeat -->
-# comment every 5 minutes while it runs. No prior way existed to tell a merely
-# slow run from a genuinely stuck one short of the 360-minute job timeout; a
-# stale heartbeat while the reservation is still held is that signal.
+# comment every 5 minutes while it runs, and (since the 2026-11-10 fix for
+# issue #619) that comment's own text now carries "last new output Nm ago" -
+# computed by issue-to-pr.sh's in-process watchdog, which also kills the
+# stalled `claude` process itself once that number crosses its own threshold.
+# This function is now just a WARN-ONLY secondary signal for a human to see:
+# it must never cancel runs or touch intake-running itself (two independent
+# systems racing to manage the same run/labels is exactly the kind of bug
+# behind several same-day fix(ci) patches this week). Previously this parsed
+# the *comment's* `updated_at`, which the heartbeat rewrites every 5 minutes
+# unconditionally regardless of real progress, so it could never go stale and
+# this check could never fire - confirmed empirically on issue #619, hung 4+
+# hours with no possibly-stuck label. Reading the number the watchdog itself
+# already computed fixes that at the source instead of reconstructing it here.
 check_stall_and_warn() {
-  local issue="$1" stale_minutes=20 hb hb_time hb_epoch now_epoch
+  local issue="$1" stale_minutes=20 hb stalled
   hb=$(gh api --paginate "${api}/issues/${issue}/comments?per_page=100" \
-    --jq '[.[] | select(.body | startswith("<!-- claude-progress-heartbeat -->"))] | last // empty')
+    --jq '[.[] | select(.body | startswith("<!-- claude-progress-heartbeat -->"))] | last // empty | .body // empty')
   [[ -n "$hb" ]] || return 0
-  hb_time=$(jq -r '.updated_at' <<<"$hb")
-  hb_epoch=$(date -u -d "$hb_time" +%s 2>/dev/null || date -u -jf '%Y-%m-%dT%H:%M:%SZ' "$hb_time" +%s 2>/dev/null) || return 0
-  now_epoch=$(date -u +%s)
-  if (( (now_epoch - hb_epoch) / 60 > stale_minutes )); then
+  stalled=$(grep -oE 'last new output [0-9]+m ago' <<<"$hb" | grep -oE '[0-9]+' || true)
+  [[ -n "$stalled" ]] || return 0
+  if (( stalled > stale_minutes )); then
     if ! gh issue view "$issue" --repo "$repo" --json labels --jq '.labels[].name' | grep -Fxq 'possibly-stuck'; then
       ensure_label possibly-stuck D93F0B 'No progress heartbeat recently while a worker holds the intake reservation'
       gh issue edit "$issue" --repo "$repo" --add-label possibly-stuck >/dev/null
       gh issue comment "$issue" --repo "$repo" --body "<!-- claude-possibly-stuck -->
-**Possibly stuck:** no progress heartbeat for over ${stale_minutes} minutes while this issue still holds the repository's intake reservation. The run may be hung; consider cancelling its workflow run and letting the controller re-admit (removing \`intake-running\`), or inspect the run directly." >/dev/null
+**Possibly stuck:** no new output for over ${stale_minutes} minutes while this issue still holds the repository's intake reservation (the run's own watchdog will kill it automatically past its own threshold if this continues). Consider cancelling its workflow run and letting the controller re-admit (removing \`intake-running\`), or inspect the run directly." >/dev/null
     fi
   fi
 }

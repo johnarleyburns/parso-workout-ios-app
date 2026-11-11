@@ -36,6 +36,20 @@ jobs:
       # they don't re-satisfy the `issues` actor check above and requeue this
       # same workflow. CLAUDE_WORKFLOW_TOKEN is still used for the one call
       # that needs actions:write (dispatching issue-to-pr.yml).
+      #
+      # 2026-11-10 follow-up: a burst of several overlapping reconcile runs
+      # within seconds of each other was still observed hours after this
+      # fix landed. Audited every label/comment-writing call site in
+      # admit-one-stranded-issue.sh (the only caller) - all already use this
+      # bot token, not CLAUDE_WORKFLOW_TOKEN, so no second leak was found.
+      # The likely remaining cause is legitimate, disjoint triggers (several
+      # `workflow_run` completions, the cron sweep, and a genuine human edit)
+      # landing in the same few seconds and each separately passing this
+      # `if:`, not a bug in this check - left as-is rather than dropping the
+      # `issues:` trigger, which regresses the tested qa-failed/opened/
+      # reopened fast-path (see test-issue-pr-policy.sh). Needs a dedicated
+      # look at actual run metadata next time it happens, not a blunt trigger
+      # removal.
       GH_TOKEN: ${{ github.token }}
       CLAUDE_WORKFLOW_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       CLAUDE_PIPELINE_AUTO_ENABLED: ${{ vars.CLAUDE_PIPELINE_AUTO_ENABLED }}

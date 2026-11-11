@@ -48,7 +48,14 @@ jobs:
     needs: verify-reservation
     if: needs.verify-reservation.outputs.valid == 'true'
     runs-on: xcode-27
-    timeout-minutes: 360
+    # Historical runs: 25-60 min. 360 min meant a hung run (2026-11-10, issue
+    # #619) could hold the repo's single intake reservation for 6 hours with
+    # nothing else able to be admitted. The in-process watchdog in
+    # issue-to-pr.sh now kills a stalled `claude` after ~25 min of no new
+    # output, so this is a backstop for a hang the watchdog can't see (e.g.
+    # inside the build/validate phase, which doesn't write to its stream log)
+    # - not the primary recovery path.
+    timeout-minutes: 120
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
       ISSUE: ${{ inputs.issue_number }}

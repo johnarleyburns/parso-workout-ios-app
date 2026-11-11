@@ -6,6 +6,10 @@ import CadenceFeatures
 struct WeightsStartView: View {
     let onEditorStart: (EditablePlan) -> Void
     let onSuggestedWorkout: (SuggestedWorkoutModality) -> Void
+    /// Existing immutable weekly projection; never recomputed here.
+    var dashboard: HomeDashboardState? = nil
+
+    @State private var muscleMapPanel: MuscleMapPanel = .front
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(AppSettings.self) private var settings
@@ -38,6 +42,24 @@ struct WeightsStartView: View {
                 .accessibilityLabel("Suggest a Workout")
             } footer: {
                 Text("Build a plan from this week's muscle-group gaps, then review and edit it.")
+            }
+
+            if let dashboard {
+                Section {
+                    HStack {
+                        Text("Muscle coverage").font(.headline)
+                            .accessibilityAddTraits(.isHeader)
+                        Spacer()
+                        Text(dashboard.volumeCoverage.displayText)
+                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    .listRowBackground(Color.clear)
+                    HomeMuscleMapView(dashboard: dashboard, volumeRows: nil,
+                                      selectedPanel: $muscleMapPanel,
+                                      onSelect: { _ in }, onOpenCardio: { })
+                        .listRowBackground(Color.clear)
+                }
+                .accessibilityIdentifier("weights.muscleCoverage")
             }
 
             Section {
@@ -107,7 +129,7 @@ struct WeightsStartView: View {
                 Text("Connect a Bluetooth chest strap before the workout starts.")
             }
         }
-        .navigationTitle("Strength")
+        .navigationTitle(Text("Strength this week"))
         .navigationBarTitleDisplayMode(.inline)
     }
 

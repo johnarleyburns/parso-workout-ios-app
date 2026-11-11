@@ -23,28 +23,26 @@ struct WatchWCHeartRateTransport: WatchHeartRateTransport {
     }
 }
 
-/// Persists the outbox so process death or suspension never erases readings.
-struct WatchHeartRateDefaultsStore: WatchHeartRateOutboxStore {
-    static let key = "watch.hrOutbox.v1"
-    func load() -> WatchHeartRateOutboxState? {
-        UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(WatchHeartRateOutboxState.self, from: $0) }
-    }
-    func save(_ state: WatchHeartRateOutboxState) throws {
-        UserDefaults.standard.set(try JSONEncoder().encode(state), forKey: Self.key)
-    }
-    func clear() { UserDefaults.standard.removeObject(forKey: Self.key) }
+/// Read-only view of the retired UserDefaults journals (migration source only).
+struct WatchOutboxDefaultsLegacyReader: WatchOutboxLegacyReader {
+    func data(forKey key: String) -> Data? { UserDefaults.standard.data(forKey: key) }
 }
 
-/// Separate persisted journal for Watch-started completion chunks.
-struct WatchStrengthCompletionDefaultsStore: WatchHeartRateOutboxStore {
-    static let key = "watch.strengthCompletionOutbox.v1"
-    func load() -> WatchHeartRateOutboxState? {
-        UserDefaults.standard.data(forKey: Self.key).flatMap { try? JSONDecoder().decode(WatchHeartRateOutboxState.self, from: $0) }
+/// File-backed outbox journals (Application Support), one per delivery path.
+enum WatchOutboxStores {
+    private static func make(file: String, legacyKey: String) -> FileWatchHeartRateOutboxStore {
+        let fs = WatchOutboxDirectoryFileSystem.applicationSupport()
+            ?? WatchOutboxDirectoryFileSystem(directory: FileManager.default.temporaryDirectory)
+        return FileWatchHeartRateOutboxStore(fileSystem: fs, legacy: WatchOutboxDefaultsLegacyReader(),
+                                             fileName: file, legacyKey: legacyKey)
     }
-    func save(_ state: WatchHeartRateOutboxState) throws {
-        UserDefaults.standard.set(try JSONEncoder().encode(state), forKey: Self.key)
+    static func heartRate() -> FileWatchHeartRateOutboxStore {
+        make(file: FileWatchHeartRateOutboxStore.heartRateFileName, legacyKey: FileWatchHeartRateOutboxStore.heartRateLegacyKey)
     }
-    func clear() { UserDefaults.standard.removeObject(forKey: Self.key) }
+    static func strengthCompletion() -> FileWatchHeartRateOutboxStore {
+        make(file: FileWatchHeartRateOutboxStore.strengthCompletionFileName,
+             legacyKey: FileWatchHeartRateOutboxStore.strengthCompletionLegacyKey)
+    }
 }
 
 extension WatchWorkoutManager {

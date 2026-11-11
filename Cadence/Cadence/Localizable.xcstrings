@@ -88558,6 +88558,36 @@
         }
       },
       "comment" : "UI text shown in: Inline Set Editor (Cadence/Cadence/Features/Train/InlineSetEditorView.swift)"
+    },
+    "Strength Workout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strength Workout"
+          }
+        }
+      }
+    },
+    "Draft workout" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Draft workout"
+          }
+        }
+      }
+    },
+    "Continue draft" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continue draft"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

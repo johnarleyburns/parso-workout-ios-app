@@ -12,7 +12,16 @@ struct WeightsStartView: View {
     @State private var muscleMapPanel: MuscleMapPanel = .front
 
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
+    @Query(filter: #Predicate<PlanningDraft> { $0.deletedAt == nil },
+           sort: \PlanningDraft.updatedAt, order: .reverse) private var drafts: [PlanningDraft]
     @Environment(AppSettings.self) private var settings
+
+    /// Read-only view of the existing manual Find draft; rendering never creates one.
+    private var draftState: StrengthDraftSectionPresenter.State {
+        guard let draft = drafts.first, let plan = try? PlanningDraftCodec.decode(draft) else { return .empty }
+        return StrengthDraftSectionPresenter.state(
+            for: PlanningDraftSummary(id: draft.id, title: plan.title, exerciseCount: plan.exercises.count))
+    }
 
     private var previous: [WorkoutSession] {
         Array(sessions.lazy.filter { $0.hasSets }.prefix(20))
@@ -128,9 +137,36 @@ struct WeightsStartView: View {
             } footer: {
                 Text("Connect a Bluetooth chest strap before the workout starts.")
             }
+
+            draftWorkoutSection
         }
         .navigationTitle(Text("Strength this week"))
         .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private var draftWorkoutSection: some View {
+        Section("Draft workout") {
+            switch draftState {
+            case .empty:
+                Text(StrengthDraftSectionPresenter.emptyMessage)
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .accessibilityIdentifier(StrengthDraftSectionPresenter.emptyIdentifier)
+            case let .summary(title, count):
+                NavigationLink {
+                    WorkoutDraftView()
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(title.isEmpty ? String(localized: "Workout") : title).font(.headline)
+                        Text(PlanningDraftSummary.countText(count))
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text("Continue draft").font(.subheadline.weight(.semibold))
+                    }
+                }
+                .accessibilityIdentifier(StrengthDraftSectionPresenter.continueIdentifier)
+            }
+        }
+        .accessibilityIdentifier(StrengthDraftSectionPresenter.sectionIdentifier)
     }
 
     private func libraryRow(_ plan: WorkoutPlan) -> some View {

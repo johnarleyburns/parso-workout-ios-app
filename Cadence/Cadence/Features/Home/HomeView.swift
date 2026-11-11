@@ -115,6 +115,11 @@ struct HomeView: View {
     /// Generated strength plan, shown as a sheet item after the chooser dismisses
     /// (avoids racing a value push against the nested Start Workout stack).
     @State var suggestedWorkoutPlan: EditablePlan?
+    /// Reducer state for the dismissible Strength suggestion preview sheet.
+    @State var suggestedStrengthPreview = SuggestedStrengthPreviewState(plan: nil)
+    /// Value-only request behind the displayed Strength suggestion, reused for "Suggest another".
+    @State var suggestedStrengthRequest: CoachSuggestionRequest?
+    @State var suggestedStrengthAlternativeTask: Task<Void, Never>?
     @State var todaySuggestedPlan: EditablePlan?
     /// True only for the local, explicitly-labelled first-frame strength plan
     /// used while no durable Today record has reached this device yet.

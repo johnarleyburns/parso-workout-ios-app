@@ -13,6 +13,8 @@ struct StartWorkoutView: View {
     let onScheduleCardio: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     let recentCardioTypes: [WorkoutType]
+    /// Home's cached weekly cardio credit, shown at the top of the Cardio picker.
+    let weeklyCardioCredit: CardioWeeklyCreditDisplay
     var onFillGaps: (() -> Void)? = nil
     var onSuggestCardio: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
@@ -42,7 +44,8 @@ struct StartWorkoutView: View {
                                 onSelect: onStartCardio,
                                 onSchedule: onScheduleCardio,
                                 onOtherCardio: onOtherCardio,
-                                onSuggestCardio: onSuggestCardio)
+                                onSuggestCardio: onSuggestCardio,
+                                weeklyCredit: weeklyCardioCredit)
                         } label: {
                             startActionLabel("Cardio", symbol: "figure.run", tint: .blue)
                         }
@@ -189,171 +192,6 @@ struct PickWorkoutView: View {
         .foregroundStyle(.primary)
         .padding(.horizontal, 4)
         .cadenceActionLabel()
-    }
-}
-
-enum CardioPickerMode: Equatable {
-    case start
-    case schedule
-}
-
-/// Shared cardio choice surface. Start mode has no schedule controls on the
-/// cardio tiles; scheduling is a separate intent reached by the bottom action.
-struct CardioPickerView: View {
-    let mode: CardioPickerMode
-    let recentCardioTypes: [WorkoutType]
-    let onSelect: (WorkoutType) -> Void
-    let onSchedule: (WorkoutType) -> Void
-    let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
-    var onSuggestCardio: (() -> Void)? = nil
-    @State private var expanded = false
-    @Environment(\.dismiss) private var dismiss
-    @Environment(AppSettings.self) private var settings
-
-    private let cardioTypes: [WorkoutType] = [
-        .run, .walk, .cycle, .rowing, .swim, .elliptical, .stairClimber,
-        .hiit, .boxing, .other
-    ]
-    private let columns = [GridItem(.flexible(), spacing: 12),
-                           GridItem(.flexible(), spacing: 12),
-                           GridItem(.flexible(), spacing: 12)]
-
-    private var initialTypes: [WorkoutType] {
-        CardioStartChoicesPresenter.initial(recent: recentCardioTypes,
-                                            all: cardioTypes.filter { $0 != .other })
-    }
-
-    private var additionalTypes: [WorkoutType] {
-        CardioStartChoicesPresenter.remaining(initial: initialTypes, all: cardioTypes)
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                if mode == .start, let onSuggestCardio {
-                    Button {
-                        onSuggestCardio()
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "wand.and.stars").font(.headline)
-                            Text("Suggest Cardio").font(.headline)
-                            Spacer()
-                            Image(systemName: "chevron.right").font(.subheadline).opacity(0.8)
-                        }
-                        .foregroundStyle(.primary)
-                        .padding(.horizontal, 4)
-                        .cadenceActionLabel()
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("pickCardio.suggestCardio")
-                    .accessibilityHint("Suggests one cardio session from your history and weekly goal, with the science behind it. You review it before starting.")
-                    excludedTypesNote
-                }
-
-                LazyVGrid(columns: columns, spacing: 12) {
-                    ForEach(initialTypes) { type in cardioChoice(type) }
-                }
-
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
-                } label: {
-                    HStack {
-                        Text(expanded ? "Show less" : "Show more…")
-                        Spacer()
-                        Image(systemName: expanded ? "chevron.up" : "chevron.down")
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.tint)
-                    .frame(maxWidth: .infinity,
-                           minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("cardioPicker.showMore")
-                .accessibilityValue(expanded ? "Expanded" : "Collapsed")
-
-                if expanded {
-                    LazyVGrid(columns: columns, spacing: 12) {
-                        ForEach(additionalTypes.filter { $0 != .other }) { type in
-                            cardioChoice(type)
-                        }
-                        otherCardioChoice
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-                }
-
-            }
-            .padding(CGFloat(LayoutMetrics.pagePadding))
-        }
-        .navigationTitle(mode == .start ? "Pick Cardio" : "Schedule Cardio")
-        .navigationBarTitleDisplayMode(.inline)
-        .accessibilityIdentifier(mode == .start ? "cardioPicker" : "cardioPicker.scheduleMode")
-    }
-
-    /// Transparency: lists modalities hidden from suggestions and lets the user undo.
-    @ViewBuilder
-    private var excludedTypesNote: some View {
-        let excluded = settings.excludedCardioTypes.sorted { $0.rawValue < $1.rawValue }
-        let excludedProtocols = settings.excludedHIITProtocolIDs.compactMap(HIITProtocol.find(id:))
-        if !excluded.isEmpty || !excludedProtocols.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Never suggested (you can still pick them below):")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                ForEach(excluded, id: \.self) { type in
-                    HStack {
-                        Text(type.displayName).font(.footnote)
-                        Spacer()
-                        Button("Allow again") { settings.setCardioTypeExcluded(type, false) }
-                            .font(.footnote)
-                            .accessibilityLabel("Allow \(type.displayName) in suggestions again")
-                    }
-                }
-                ForEach(excludedProtocols) { hiit in
-                    HStack {
-                        Text(hiit.name).font(.footnote)
-                        Spacer()
-                        Button("Allow again") { settings.setHIITProtocolExcluded(hiit.id, false) }
-                            .font(.footnote)
-                            .accessibilityLabel("Allow \(hiit.name) in suggestions again")
-                    }
-                }
-            }
-            .accessibilityIdentifier("pickCardio.excludedTypes")
-        }
-    }
-
-    private func cardioChoice(_ type: WorkoutType) -> some View {
-        Button {
-            dismiss()
-            if mode == .start { onSelect(type) } else { onSchedule(type) }
-        } label: {
-            WorkoutHero(type: type, compact: true)
-        }
-        .buttonStyle(.plain)
-        .tapHaptic()
-        .accessibilityIdentifier("cardioPicker.\(mode == .start ? "start" : "schedule").\(type.rawValue)")
-        .accessibilityLabel(mode == .start ? "Start \(type.displayName)" : "Schedule \(type.displayName)")
-    }
-
-    @ViewBuilder
-    private var otherCardioChoice: some View {
-        if mode == .start {
-            NavigationLink { OtherCardioEntryView(onStart: onOtherCardio) } label: {
-                WorkoutHero(type: .other, compact: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("cardioPicker.start.other")
-        } else {
-            Button {
-                dismiss()
-                onSchedule(.other)
-            } label: {
-                WorkoutHero(type: .other, compact: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("cardioPicker.schedule.other")
-        }
     }
 }
 

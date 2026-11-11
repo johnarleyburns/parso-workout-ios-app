@@ -69,6 +69,7 @@ extension HomeView {
                         startOtherCardio(description: description, gps: gps)
                     },
                     recentCardioTypes: recentCardioTypes,
+                    weeklyCardioCredit: CardioWeeklyCreditPresenter.make(detail: dashboard.cardioDetail),
                     onFillGaps: openFillGapsFromStartWorkout,
                     onSuggestCardio: { requestSuggestedWorkout(.cardio) })
             }
@@ -162,7 +163,8 @@ extension HomeView {
                         onSelect: { type in cardioPickerPresented = false; start(type) },
                         onSchedule: { type in cardioPickerPresented = false; scheduleCardioType = type },
                         onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
-                        onSuggestCardio: { requestSuggestedWorkout(.cardio) })
+                        onSuggestCardio: { requestSuggestedWorkout(.cardio) },
+                        weeklyCredit: CardioWeeklyCreditPresenter.make(detail: dashboard.cardioDetail))
                 }
             }
             // Volume tile (batch 8) → strength start (Quick Start / Warm-Up / Reuse / presets).

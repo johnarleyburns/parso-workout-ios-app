@@ -22,6 +22,16 @@ enum CadenceTheme {
     static let cardBackground = Color(.secondarySystemBackground)
     static let heroFill = accent.opacity(0.12)
     static let heroStroke = accent.opacity(0.25)
+
+    /// The shared weekly red/yellow/green scale (`WeeklySetTintRole`). System
+    /// colors keep their dark-mode and Increase Contrast variants.
+    static func weeklyTint(_ role: WeeklySetTintRole) -> Color {
+        switch role {
+        case .red: .red
+        case .yellow: .yellow
+        case .green: .green
+        }
+    }
 }
 
 enum CadenceCardRole {

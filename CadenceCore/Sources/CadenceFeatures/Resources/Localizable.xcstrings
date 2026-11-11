@@ -2228,6 +2228,65 @@
       },
       "comment" : "UI text shown in: Home Dashboard Presenter (CadenceCore/Sources/CadenceFeatures/HomeDashboardPresenter.swift)"
     },
+    "%lld of %lld minutes credit" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld von %lld Minuten angerechnet"
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld minutes credit"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld of %lld minutes credit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld de %lld minutos contabilizados"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld minutes comptabilisées sur %lld"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld van %lld minuten meegeteld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "%lld de %lld minutos contabilizados"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "已计入 %lld 分钟，目标 %lld 分钟"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "已計入 %lld 分鐘，目標 %lld 分鐘"
+          }
+        }
+      },
+      "comment" : "VoiceOver value shown in: Cardio Weekly Credit Presenter (CadenceCore/Sources/CadenceFeatures/CardioWeeklyCreditPresenter.swift)"
+    },
     "%lld of %lld sets" : {
       "localizations" : {
         "de" : {
@@ -4628,6 +4687,59 @@
         }
       },
       "comment" : "UI text shown in: Coach Hero Presenter (CadenceCore/Sources/CadenceFeatures/CoachHeroPresenter.swift)"
+    },
+    "Cardio this week" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio diese Woche"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio this week"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio esta semana"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio cette semaine"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio deze week"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cardio nesta semana"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "本周有氧"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "本週有氧"
+          }
+        }
+      },
+      "comment" : "VoiceOver label shown in: Cardio Weekly Credit Presenter (CadenceCore/Sources/CadenceFeatures/CardioWeeklyCreditPresenter.swift)"
     },
     "Checking today's plan…" : {
       "localizations" : {

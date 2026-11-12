@@ -378,12 +378,19 @@ public final class WatchStrengthFlowModel {
     /// adds it to the current workout exactly like a built-in search result.
     @discardableResult
     public func createAndAddExercise(named name: String, muscleGroups: Set<MuscleGroup>) -> WatchExerciseAddResult {
+        createAndAddExercise(named: name, attribution: .init(primary: muscleGroups))
+    }
+
+    @discardableResult
+    public func createAndAddExercise(named name: String,
+                                     attribution: WatchCustomExerciseMuscleAttribution) -> WatchExerciseAddResult {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !muscleGroups.isEmpty,
+        guard !trimmed.isEmpty, attribution.hasPrimaryMuscle,
               let exercise = try? WorkoutRepository.findOrCreateExercise(
                 named: trimmed,
-                category: WatchCustomExerciseDefinition.category(for: muscleGroups),
-                primaryMuscles: WatchCustomExerciseDefinition.primaryMuscles(for: muscleGroups),
+                category: WatchCustomExerciseDefinition.category(for: attribution.primary),
+                primaryMuscles: attribution.primaryIDs,
+                secondaryMuscles: attribution.secondaryIDs,
                 in: context
               ) else { return .unavailable(name: trimmed) }
         exerciseCache[exercise.name] = exercise

@@ -6,7 +6,7 @@ import CadenceFeatures
 /// Create & Add form for a custom exercise (explicit creation, never implicit).
 struct WatchCustomExerciseForm: View {
     @Binding var name: String
-    @Binding var groups: Set<MuscleGroup>
+    @Binding var attribution: WatchCustomExerciseMuscleAttribution
     let feedback: String?
     let onCreate: () -> Void
     let onBack: () -> Void
@@ -17,26 +17,8 @@ struct WatchCustomExerciseForm: View {
                 TextField("Exercise name", text: $name)
                     .accessibilityIdentifier("watchCustom.name")
 
-                Text("Muscle groups")
-                    .font(.caption.bold())
-                    .foregroundStyle(.secondary)
-
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
-                    ForEach(MuscleGroup.canonicalOrder) { group in
-                        Button {
-                            WatchHaptics.tap()
-                            if groups.contains(group) { groups.remove(group) } else { groups.insert(group) }
-                        } label: {
-                            Text(group.displayName)
-                                .font(.caption2.bold())
-                                .frame(maxWidth: .infinity, minHeight: 28)
-                                .background(groups.contains(group) ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("\(group.displayName) \(groups.contains(group) ? "selected" : "not selected")")
-                        .accessibilityIdentifier("watchCustom.muscleGroup.\(group.rawValue)")
-                    }
-                }
+                muscleSection(title: "Primary Muscles", role: .primary, idPrefix: "primaryMuscleGroup")
+                muscleSection(title: "Secondary Muscles", role: .secondary, idPrefix: "secondaryMuscleGroup")
 
                 if let feedback {
                     Text(feedback)
@@ -51,7 +33,7 @@ struct WatchCustomExerciseForm: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
-                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || groups.isEmpty)
+                .disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !attribution.hasPrimaryMuscle)
                 .accessibilityIdentifier("watchCustom.create")
 
                 Button("Back") {
@@ -63,6 +45,36 @@ struct WatchCustomExerciseForm: View {
                 .accessibilityIdentifier("watchCustom.back")
             }
             .padding()
+        }
+    }
+}
+
+extension WatchCustomExerciseForm {
+    @ViewBuilder
+    fileprivate func muscleSection(title: LocalizedStringKey,
+                                   role: WatchCustomExerciseMuscleAttribution.Role,
+                                   idPrefix: String) -> some View {
+        let roleName = role == .primary ? "primary" : "secondary"
+        Text(title)
+            .font(.caption.bold())
+            .foregroundStyle(.secondary)
+
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
+            ForEach(WatchCustomExerciseMuscleAttribution.availableGroups) { group in
+                let selected = attribution.contains(group, as: role)
+                Button {
+                    WatchHaptics.tap()
+                    attribution.toggle(group, as: role)
+                } label: {
+                    Text(group.displayName)
+                        .font(.caption2.bold())
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                        .background(selected ? Color.green.opacity(0.35) : Color.white.opacity(0.1), in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(group.displayName), \(roleName) \(selected ? "selected" : "not selected")")
+                .accessibilityIdentifier("watchCustom.\(idPrefix).\(group.rawValue)")
+            }
         }
     }
 }

@@ -225,6 +225,27 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.session?.plannedExerciseNames, ["Cable Twist"])
     }
 
+    func testCreateAndAddCustomExercisePersistsPrimaryAndSecondaryMuscles() {
+        let model = makeModel()
+        model.start(createSession: true)
+        XCTAssertEqual(
+            model.createAndAddExercise(
+                named: "Ring Push-up",
+                attribution: .init(primary: [.chest, .triceps], secondary: [.shoulders, .abdominals])),
+            .added(name: "Ring Push-up"))
+        let exercise = try! WorkoutRepository.findOrCreateExercise(named: "Ring Push-up", in: context)
+        XCTAssertEqual(exercise.primaryMuscles, ["chest", "triceps"])
+        XCTAssertEqual(exercise.secondaryMuscles, ["shoulders", "abdominals"])
+    }
+
+    func testCreateAndAddCustomExerciseRejectsSecondaryOnly() {
+        let model = makeModel()
+        model.start(createSession: true)
+        XCTAssertEqual(
+            model.createAndAddExercise(named: "Ghost", attribution: .init(secondary: [.shoulders])),
+            .unavailable(name: "Ghost"))
+    }
+
     func testAddPresenter_outcomesNeedNoClockAndSearchGenerationRejectsStale() {
         let added = WatchExerciseAddPresenter.outcome(for: .added(name: "Squat"))
         XCTAssertEqual(added.message, "Added Squat")

@@ -1,5 +1,6 @@
 import XCTest
 import CadenceCore
+import SwiftData
 @testable import CadenceFeatures
 
 /// Phase D (field-test-fixes): true today-list presenter for "What you did."
@@ -181,5 +182,35 @@ final class TodayActivityPresenterTests: XCTestCase {
             sessions: [older, deleted], cardio: [recent])
 
         XCTAssertEqual(entries.map(\.title), ["Cycle", "Older Strength"])
+    }
+
+    private func makeMultiExerciseSession(orders: [Int]) throws -> WorkoutSession {
+        let ctx = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
+        let session = WorkoutSession(title: "Multi", date: now.addingTimeInterval(-7_200))
+        session.endedAt = session.date.addingTimeInterval(3_600)
+        ctx.insert(session)
+        let a = Exercise(name: "A"), b = Exercise(name: "B"), c = Exercise(name: "C")
+        [a, b, c].forEach { ctx.insert($0) }
+        // Appearance by order value: A, B, A, C
+        let seq = [a, b, a, c]
+        for (i, e) in seq.enumerated() {
+            ctx.insert(SetEntry(weight: 50, reps: 5, order: orders[i], session: session, exercise: e))
+        }
+        return session
+    }
+
+    func testHistoryEntryDetailAndValueUnchangedForMultiExerciseSession() throws {
+        let session = try makeMultiExerciseSession(orders: [0, 1, 2, 3])
+        let entries = TodayActivityPresenter.historyEntries(sessions: [session], cardio: [])
+        XCTAssertEqual(entries.first?.detail, "A, B, C")
+        XCTAssertTrue(entries.first?.value.hasPrefix("4 sets · ") ?? false,
+                      entries.first?.value ?? "nil")
+    }
+
+    func testHistoryEntrySetCountIgnoresSetOrderField() throws {
+        let session = try makeMultiExerciseSession(orders: [30, 10, 20, 0])
+        let entries = TodayActivityPresenter.historyEntries(sessions: [session], cardio: [])
+        XCTAssertTrue(entries.first?.value.hasPrefix("4 sets · ") ?? false)
+        XCTAssertEqual(entries.first?.detail, "C, B, A")
     }
 }

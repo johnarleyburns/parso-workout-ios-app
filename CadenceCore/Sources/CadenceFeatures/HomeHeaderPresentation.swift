@@ -11,6 +11,8 @@ public struct HomeHeaderPresentation: Equatable, Sendable {
         public let systemImage: String
         public let tint: Tint
         public let accessibilityIdentifier: String
+        public let horizontalPadding: Double = 10
+        public let verticalPadding: Double = 6
     }
 
     public let supporterBadge: SupporterBadge?
@@ -21,5 +23,13 @@ public struct HomeHeaderPresentation: Equatable, Sendable {
                              systemImage: "heart.fill", tint: .achievement,
                              accessibilityIdentifier: "home.supporterBadge")
             : nil
+    }
+}
+
+public enum TodayHeaderTrailingItem: Equatable, Sendable { case supporterBadge, settings }
+
+public extension HomeHeaderPresentation {
+    var trailingItems: [TodayHeaderTrailingItem] {
+        supporterBadge == nil ? [.settings] : [.supporterBadge, .settings]
     }
 }

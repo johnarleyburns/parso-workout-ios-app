@@ -29,6 +29,7 @@ public struct SupportDevelopmentCardState: Equatable, Sendable {
 
 /// Ordered Settings section identifiers; support is always first.
 public enum SettingsSectionOrder {
+    public static let supportCardCount = 1
     public static let identifiers: [String] = [
         "settings.section.support",
         "settings.section.preferences",

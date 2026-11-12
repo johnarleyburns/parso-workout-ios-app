@@ -48,7 +48,7 @@ extension HomeWeekDashboardSection {
             ForEach(inProgressSessions, id: \.id) { session in
                 Button { onResumeWorkout(session) } label: {
                     myWorkoutRow(title: session.title.isEmpty ? String(localized: "Strength session") : session.title,
-                                 detail: String(localized: "\(session.orderedSets.count) sets logged"),
+                                 detail: String(localized: "\(session.setsCount) sets logged"),
                                  badge: "IN PROGRESS", badgeTint: .orange)
                 }
                 .buttonStyle(.plain)

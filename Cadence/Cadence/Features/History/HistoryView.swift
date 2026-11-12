@@ -198,7 +198,7 @@ struct HistoryView: View {
                         }
                         Text(session.date.formatted(date: .abbreviated, time: .shortened))
                             .font(.caption).foregroundStyle(.secondary)
-                        Text("\(session.orderedSets.count) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
+                        Text("\(session.setsCount) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
                             .font(.caption2).foregroundStyle(.tertiary)
                     }
                 }

@@ -382,7 +382,7 @@ extension HomeView {
                 Image(systemName: "figure.strengthtraining.traditional").font(.title2)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Resume \(session.title.isEmpty ? "Workout" : session.title)").font(.headline)
-                    Text("\(session.orderedSets.count) sets logged").font(.caption).foregroundStyle(.secondary)
+                    Text("\(session.setsCount) sets logged").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right").foregroundStyle(.secondary)

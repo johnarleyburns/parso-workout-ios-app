@@ -25,7 +25,7 @@ struct PreviousWorkoutsView: View {
                         VStack(alignment: .leading, spacing: 3) {
                             Text(session.title.isEmpty ? String(localized: "Previous Workout") : session.title)
                                 .font(.headline)
-                            Text("\(session.date.formatted(date: .abbreviated, time: .omitted)) · \(session.exercisesInOrder.count) exercises · \(session.orderedSets.count) sets")
+                            Text("\(session.date.formatted(date: .abbreviated, time: .omitted)) · \(session.distinctExerciseCount) exercises · \(session.setsCount) sets")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }

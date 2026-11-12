@@ -108,7 +108,7 @@ struct WeightsStartView: View {
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.title.isEmpty ? String(localized: "Workout") : s.title).font(.headline)
-                            Text("\(s.date.formatted(date: .abbreviated, time: .omitted)) · \(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")
+                            Text("\(s.date.formatted(date: .abbreviated, time: .omitted)) · \(s.distinctExerciseCount) exercises · \(s.setsCount) sets")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)

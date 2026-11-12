@@ -803,6 +803,16 @@ public final class WorkoutSession {
         !(sets ?? []).isEmpty
     }
 
+    /// Count of logged sets without sorting. Use instead of `orderedSets.count`
+    /// wherever only the count is needed (mirrors `hasSets`'s guidance above).
+    public var setsCount: Int { (sets ?? []).count }
+
+    /// Count of distinct exercises without sorting into appearance order. Use
+    /// instead of `exercisesInOrder.count` wherever only the count is needed.
+    public var distinctExerciseCount: Int {
+        Set((sets ?? []).compactMap { $0.exercise?.id }).count
+    }
+
     /// Wall-clock duration from start to finalize (field-testing §02). Falls
     /// back to the span between first and last logged set when `endedAt` is
     /// absent (legacy sessions), else zero.

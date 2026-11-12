@@ -199,7 +199,7 @@ struct PreviousWorkoutPicker: View {
                             Text(s.title.isEmpty ? String(localized: "Workout") : s.title)
                             Text(s.date.formatted(date: .abbreviated, time: .omitted))
                                 .font(.caption).foregroundStyle(.secondary)
-                            Text("\(s.exercisesInOrder.count) exercises · \(s.orderedSets.count) sets")
+                            Text("\(s.distinctExerciseCount) exercises · \(s.setsCount) sets")
                                 .font(.caption2).foregroundStyle(.tertiary)
                         }
                     }

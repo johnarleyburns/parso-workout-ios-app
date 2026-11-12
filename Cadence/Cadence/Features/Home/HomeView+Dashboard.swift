@@ -135,7 +135,7 @@ extension HomeView {
                     .accessibilityIdentifier("workoutConflict.notNow")
             } message: {
                 Text(active.liveWorkout.active.map { descriptor in
-                    let sets = active.strengthSession?.orderedSets.count ?? 0
+                    let sets = active.strengthSession?.setsCount ?? 0
                     return sets > 0
                         ? String(localized: "\(descriptor.name) is active with \(sets) logged sets. Resume it or cancel it before starting another workout.")
                         : String(localized: "\(descriptor.name) is active. Resume it or cancel it before starting another workout.")
@@ -152,7 +152,7 @@ extension HomeView {
                 .accessibilityIdentifier("workoutConflict.confirmCancel")
                 Button("Keep Workout", role: .cancel) { }
             } message: {
-                Text("This removes the in-progress workout and its \(active.strengthSession?.orderedSets.count ?? 0) logged sets from your active workout. The record is kept in history and can be restored there.")
+                Text("This removes the in-progress workout and its \(active.strengthSession?.setsCount ?? 0) logged sets from your active workout. The record is kept in history and can be restored there.")
             }
             // Cardio-min tile (batch 8) → the Start picker filtered to cardio types.
             .sheet(isPresented: $cardioPickerPresented, onDismiss: presentPendingSuggestedWorkout) {

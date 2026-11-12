@@ -350,14 +350,14 @@ struct SupportDevelopmentCard: View {
     let store: ContributionStore
 
     var body: some View {
-        let product = store.products.first
+        let product = store.product
         let state = SupportDevelopmentCardState.make(
             productPrice: product?.displayPrice,
             isSupporter: store.isSupporter,
             purchasingID: store.purchasingID)
         Button {
-            guard state.canPurchase, let product else { return }
-            Task { await store.purchase(product) }
+            guard state.canPurchase else { return }
+            Task { _ = try? await store.purchase() }
         } label: {
             HStack(spacing: 12) {
                 if state.showsProgress {

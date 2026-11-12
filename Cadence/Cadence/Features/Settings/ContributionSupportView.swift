@@ -29,9 +29,9 @@ struct ContributionSupportView: View {
                 }
             }
 
-            if !store.products.isEmpty {
+            if let product = store.product {
                 Section("Contribute to development") {
-                    ForEach(store.products, id: \.id) { purchaseRow($0) }
+                    purchaseRow(product)
                 }
             } else {
                 Section {
@@ -61,7 +61,7 @@ struct ContributionSupportView: View {
     @ViewBuilder
     private func purchaseRow(_ product: Product) -> some View {
         Button {
-            Task { await store.purchase(product) }
+            Task { _ = try? await store.purchase() }
         } label: {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {

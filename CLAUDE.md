@@ -41,7 +41,7 @@ Current direction, so you don't design against the wrong target:
   history, and export are free forever. Trainer mode, client sharing, Pro,
   trials, paywalls, and two-Apple-ID sharing are retired non-goals.
 - **Supporter contribution** — the only purchase is the optional $9.99
-  `guru.parso.cladiron.tip.generous` consumable, which unlocks nothing and adds
+  `guru.parso.workout.support.dev` consumable, which unlocks nothing and adds
   a Supporter badge.
 - **Persistence unchanged** — SwiftData + CloudKit, as shipped. The spec follows
   the app here rather than the reverse.
@@ -58,7 +58,7 @@ When a phase ships, update the sections below — not the spec.
 
 The complete app is **free forever** — logging, history, Progress, Tests, export,
 coaching, planning, and execution are never gated. StoreKit 2 contains one
-optional consumable, `guru.parso.cladiron.tip.generous`, priced at $9.99. A
+optional consumable, `guru.parso.workout.support.dev`, priced at $9.99. A
 successful contribution records Supporter status locally and displays a
 Supporter badge; it unlocks nothing. There are no subscriptions, trials,
 entitlements, paywalls, or Pro targets.

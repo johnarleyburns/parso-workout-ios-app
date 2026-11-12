@@ -6,6 +6,10 @@ Project memory for Claude Code. This file is the quick, durable context. The cod
 
 This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the SwiftPM package tests only; simulator smoke is a pre-release gate. A push runs no tests.
 
+## GitHub CLI only
+
+Always use the `gh` CLI directly for every GitHub interaction (issues, PRs, comments, reviews, checks, runs, labels). Do not try any other GitHub integration or tool first on the assumption it might work here — it doesn't, and attempting it before falling back to `gh` wastes turns and time for no benefit.
+
 ## Test-driven development (TDD)
 
 **TDD is this repository's required development method.** For every behavior

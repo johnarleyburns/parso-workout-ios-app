@@ -88,4 +88,28 @@ final class WatchWeekRingsTests: XCTestCase {
             context: context, applyingTo: WatchSync.Preferences())
         XCTAssertEqual(incoming.weekSummary, summary)
     }
+
+    func testMeasuredStrengthOverlayAddsSetsAndModerateEquivalentMinutes() {
+        let id = UUID(), date = Date(timeIntervalSince1970: 1_800_000_000)
+        let baseline = WatchSync.WeekSummary(sets: 10, setsMinimum: 40, setsTarget: 120,
+                                             cardioMinutes: 20, updatedAt: date)
+        let overlay = WatchWeekLocalOverlay(id: id, weekKey: "2026-11-09", kind: .strength,
+                                            sets: 4, moderateEquivalentMinutes: 12.5, completedAt: date)
+        let rings = WatchWeekRings.rings(baseline: baseline, overlays: [overlay], currentWeekKey: "2026-11-09")
+        XCTAssertEqual(rings.first { $0.kind == .strength }?.value ?? -1, 14, accuracy: 0.001)
+        XCTAssertEqual(rings.first { $0.kind == .cardio }?.value ?? -1, 32.5, accuracy: 0.001)
+    }
+
+    func testSameStrengthCompletionIDReplacesInsteadOfDoubleCounting() {
+        let id = UUID(), date = Date(timeIntervalSince1970: 1_800_000_000)
+        let defaults = UserDefaults(suiteName: "ring-\(UUID().uuidString)")!
+        let store = WatchWeekLocalOverlayStore(defaults: defaults)
+        for _ in 0..<2 {
+            store.record(WatchWeekLocalOverlay(id: id, weekKey: "w", kind: .strength, sets: 4,
+                                               moderateEquivalentMinutes: 12.5, completedAt: date))
+        }
+        let rings = WatchWeekRings.rings(baseline: nil, overlays: store.overlays(forWeekKey: "w"), currentWeekKey: "w")
+        XCTAssertEqual(rings.first { $0.kind == .strength }?.value ?? -1, 4, accuracy: 0.001)
+        XCTAssertEqual(rings.first { $0.kind == .cardio }?.value ?? -1, 12.5, accuracy: 0.001)
+    }
 }

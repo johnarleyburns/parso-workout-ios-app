@@ -181,7 +181,7 @@ struct PreviousWorkoutPicker: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
 
     var candidates: [WorkoutSession] {
-        sessions.filter { $0.id != excluding.id && $0.hasSets }
+        PreviousWorkoutPickerPolicy.candidates(sessions: sessions, excluding: excluding)
     }
 
     var body: some View {

@@ -11,6 +11,29 @@ final class FakeHRStore: WatchHeartRateOutboxStore {
     func clear() { saved = nil }
 }
 
+final class ThrowingHRStore: WatchHeartRateOutboxStore {
+    struct Boom: Error {}
+    var saved: WatchHeartRateOutboxState?
+    var failSaves = false
+    var events: [String] = []
+    func load() -> WatchHeartRateOutboxState? { saved }
+    func save(_ state: WatchHeartRateOutboxState) throws {
+        if failSaves { throw Boom() }
+        saved = state; events.append("save")
+    }
+    func clear() { saved = nil }
+}
+
+final class RecordingHRTransport: WatchHeartRateTransport {
+    var isActivated = true
+    var isReachable = true
+    var immediate: [WatchHRMessage] = []
+    var durable: [WatchHRMessage] = []
+    weak var store: ThrowingHRStore?
+    func sendImmediate(_ message: WatchHRMessage) { store?.events.append("immediate"); immediate.append(message) }
+    func transferUserInfo(_ message: WatchHRMessage) { store?.events.append("durable"); durable.append(message) }
+}
+
 final class FakeHRTransport: WatchHeartRateTransport {
     var isActivated = true
     var isReachable = true
@@ -67,6 +90,57 @@ struct WatchHeartRateDeliveryTests {
                     if self.failPersist { return false }
                     self.persisted[id, default: []] += obs; return true })
         }
+    }
+
+    func makeThrowing(activated: Bool = true) -> (WatchHeartRateOutbox, ThrowingHRStore, RecordingHRTransport) {
+        let store = ThrowingHRStore(), transport = RecordingHRTransport()
+        transport.store = store
+        transport.isActivated = activated
+        let outbox = WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 })
+        outbox.bind(phoneWorkoutSessionID: session, watchRequestID: request, captureEpoch: testEpoch)
+        return (outbox, store, transport)
+    }
+
+    @Test func retryDoesNotSendImmediateOrDurableMessagesWhenResealCannotPersist() {
+        let (outbox, store, transport) = makeThrowing(activated: false)
+        outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
+        transport.isActivated = true
+        store.failSaves = true
+        outbox.retry(reason: "test")
+        #expect(transport.immediate.isEmpty)
+        #expect(transport.durable.isEmpty)
+        #expect(outbox.unacknowledgedCount == 1)
+        #expect(outbox.failedRecoverably)
+    }
+
+    @Test func retryAfterTransientPersistenceFailureCommitsBeforeAnyTransportCall() {
+        let (outbox, store, transport) = makeThrowing(activated: false)
+        outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
+        transport.isActivated = true
+        store.failSaves = true
+        outbox.retry(reason: "first")
+        #expect(transport.immediate.isEmpty && transport.durable.isEmpty)
+        store.failSaves = false
+        store.events.removeAll()
+        outbox.retry(reason: "second")
+        let firstTransport = store.events.firstIndex { $0 == "immediate" || $0 == "durable" }!
+        #expect(store.events[..<firstTransport].contains("save"))
+        #expect(transport.durable.count == 1)
+        #expect(transport.durable[0].observations.count == 1)
+        #expect(transport.durable[0].observations[0].bpm == 120)
+    }
+
+    @Test func retryOfAlreadyBatchedStateDoesNotMutateDurableQueuedAtAfterSaveFailure() {
+        let (outbox, store, transport) = makeThrowing(activated: false)
+        outbox.record(bpm: 120, sampleEnd: t0, source: .watchHealthKit)
+        transport.isActivated = true
+        store.failSaves = true
+        outbox.retry(reason: "fail")
+        #expect(transport.durable.isEmpty && transport.immediate.isEmpty)
+        #expect(outbox.state?.batches.allSatisfy { $0.durableQueuedAt == nil } ?? true)
+        store.failSaves = false
+        outbox.retry(reason: "ok")
+        #expect(transport.durable.count == 1)
     }
 
     @Test func samplePersistedBeforeAnyTransportAttempt() {

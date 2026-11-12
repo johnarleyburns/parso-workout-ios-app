@@ -825,9 +825,15 @@ public final class WorkoutSession {
 
     /// Distinct exercises in this session, in first-appearance order.
     public var exercisesInOrder: [Exercise] {
+        Self.distinctExercises(inOrder: orderedSets)
+    }
+
+    /// Distinct exercises from an already-ordered set list, in first-appearance
+    /// order. Lets a caller that already holds `orderedSets` avoid sorting twice.
+    public static func distinctExercises(inOrder sets: [SetEntry]) -> [Exercise] {
         var seen = Set<UUID>()
         var result: [Exercise] = []
-        for set in orderedSets {
+        for set in sets {
             guard let ex = set.exercise else { continue }
             if seen.insert(ex.id).inserted { result.append(ex) }
         }

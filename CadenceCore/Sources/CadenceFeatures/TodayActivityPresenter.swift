@@ -89,10 +89,11 @@ public enum TodayActivityPresenter {
                 && s.date >= since && s.date < until
             }
             .map { s -> Entry in
-                let exercises = s.exercisesInOrder.map(\.name)
+                let ordered = s.orderedSets
+                let exercises = WorkoutSession.distinctExercises(inOrder: ordered).map(\.name)
                 let detail = exercises.isEmpty ? nil : exercises.joined(separator: ", ")
                 let duration = Self.formatDuration(s.duration)
-                let setCount = s.orderedSets.count
+                let setCount = ordered.count
                 let value = setCount > 0 ? String(localized: "\(setCount) sets", bundle: .module) + " · " + duration : duration
                 return Entry(
                     id: s.id, kind: .strength,

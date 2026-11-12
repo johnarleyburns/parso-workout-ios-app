@@ -58,4 +58,29 @@ final class WorkoutSessionAccessorTests: XCTestCase {
         XCTAssertEqual(session.distinctExerciseCount, session.exercisesInOrder.count)
         XCTAssertEqual(session.setsCount, 2)
     }
+
+    func testDistinctExercisesInOrderMatchesExercisesInOrderProperty() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession()
+        ctx.insert(session)
+        let a = exercise("A", ctx), b = exercise("B", ctx), c = exercise("C", ctx)
+        add(3, a, to: session, ctx); add(1, b, to: session, ctx)
+        add(0, a, to: session, ctx); add(2, c, to: session, ctx)
+        XCTAssertEqual(WorkoutSession.distinctExercises(inOrder: session.orderedSets),
+                       session.exercisesInOrder)
+    }
+
+    func testDistinctExercisesStaticHelperWithEmptyInput() {
+        XCTAssertEqual(WorkoutSession.distinctExercises(inOrder: []), [])
+    }
+
+    func testDistinctExercisesStaticHelperPreservesFirstAppearanceOrder() throws {
+        let ctx = try makeContext()
+        let session = WorkoutSession()
+        ctx.insert(session)
+        let a = exercise("A", ctx), b = exercise("B", ctx), c = exercise("C", ctx)
+        for (o, e) in [b, a, b, c, a].enumerated() { add(o, e, to: session, ctx) }
+        XCTAssertEqual(WorkoutSession.distinctExercises(inOrder: session.orderedSets).map(\.name),
+                       ["B", "A", "C"])
+    }
 }

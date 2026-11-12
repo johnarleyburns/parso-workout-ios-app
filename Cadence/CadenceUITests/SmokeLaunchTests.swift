@@ -48,6 +48,14 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Tests is still exposed as a primary tab")
         XCTAssertFalse(app.buttons["tab.plan"].exists,
                        "Retired Plan is still exposed as a primary tab")
+        // The Find tab is declared with the system search role; it must still
+        // reach the same searchable exercise catalog.
+        if app.tabBars.buttons["Find"].exists {
+            app.tabBars.buttons["Find"].tap()
+            XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 10),
+                          "Find tab did not present the searchable catalog")
+            if app.tabBars.buttons["Today"].exists { app.tabBars.buttons["Today"].tap() }
+        }
 
         // The iPad delivery check intentionally covers only regular-width
         // Home/settings surfaces. The full end-to-end flow below remains

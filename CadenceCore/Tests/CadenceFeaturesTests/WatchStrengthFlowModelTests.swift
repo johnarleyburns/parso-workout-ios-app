@@ -1233,6 +1233,90 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(empty.currentWeight, m.currentWeight)
         XCTAssertEqual(empty.currentReps, m.currentReps)
     }
+    // MARK: - Completion attribution (all end paths)
+
+    @MainActor
+    private func completionOutbox() -> WatchStrengthCompletionOutbox {
+        let store = FakeHRStore(), transport = FakeHRTransport()
+        transport.store = store
+        return WatchStrengthCompletionOutbox(outbox: WatchHeartRateOutbox(
+            store: store, transport: transport, clock: { 1_800_000_100 }))
+    }
+
+    @MainActor
+    private func loggedModel() -> WatchStrengthFlowModel {
+        let m = makeModel()
+        m.start()
+        m.addExercise(named: "Bench Press")
+        m.startLogSet(for: m.exerciseList[0].exercise)
+        m.currentWeight = 80; m.currentReps = 5
+        _ = m.logSet()
+        return m
+    }
+
+    private var hrProfile: CardioIntensityProfile {
+        CardioIntensityProfile(restingHR: 60, maximumHR: 180, maximumHRSource: .userEntered)
+    }
+
+    @MainActor
+    private func assertCoordinatorPath(_ end: (WatchStrengthFlowModel) -> Void) throws {
+        let m = loggedModel()
+        let samples = (0..<20).map { HRSamplePoint(t: Double($0) * 15, bpm: 140) }
+        end(m)
+        var recorded: [WatchWeekLocalOverlay] = []
+        var sent = 0
+        let result = WatchStrengthCompletionCoordinator.complete(
+            model: m, samples: samples, profile: hrProfile, outbox: completionOutbox(),
+            weekKey: { _ in "wk" },
+            recordOverlay: { recorded.append($0); XCTAssertEqual(sent, 0, "overlay before transfer") },
+            send: { _ in sent += 1 })
+        let attribution = try XCTUnwrap(result)
+        XCTAssertEqual(sent, 1)
+        XCTAssertEqual(m.recordedHeartRate, samples)
+        XCTAssertEqual(attribution.hrSamples, samples)
+        XCTAssertEqual(recorded.count, 1)
+        XCTAssertEqual(recorded[0].id.uuidString, m.session?.completionID)
+        XCTAssertEqual(recorded[0].sets, Double(m.session?.completedOwnerWorkingSetCount ?? -1))
+        XCTAssertEqual(recorded[0].sets, 1)
+        XCTAssertEqual(recorded[0].completedAt, m.session?.endedAt)
+        XCTAssertGreaterThan(recorded[0].moderateEquivalentMinutes, 0)
+        XCTAssertEqual(attribution.cardioSummary,
+                       CardioMinuteAccumulator.summarize(duration: m.durationSeconds, samples: samples, profile: hrProfile))
+        // Retry keeps the same completion identity (store replaces by ID).
+        let again = WatchStrengthCompletionCoordinator.complete(
+            model: m, samples: samples, profile: hrProfile, outbox: completionOutbox(),
+            weekKey: { _ in "wk" }, recordOverlay: { recorded.append($0) }, send: { _ in })
+        XCTAssertEqual(again?.overlay.id, recorded[0].id)
+    }
+
+    @MainActor func testCompletionCoordinator_cooldownCompletionPath() throws {
+        try assertCoordinatorPath { $0.completeCooldown() }
+    }
+
+    @MainActor func testCompletionCoordinator_zeroCooldownDirectSummaryPath() throws {
+        try assertCoordinatorPath { $0.skipCooldown() }
+    }
+
+    @MainActor func testCompletionCoordinator_inactivityResumedSessionPath() throws {
+        try assertCoordinatorPath { m in
+            // Inactivity finalization resumes a persisted session in a fresh model.
+            let session = m.session!
+            session.endedAt = Date()
+            try? context.save()
+            m.start(resuming: session)
+        }
+    }
+
+    @MainActor func testCompletionCoordinator_noSamplesCreditsSetsOnly() throws {
+        let m = loggedModel()
+        m.skipCooldown()
+        var recorded: [WatchWeekLocalOverlay] = []
+        WatchStrengthCompletionCoordinator.complete(
+            model: m, samples: [], profile: hrProfile, outbox: completionOutbox(),
+            weekKey: { _ in "wk" }, recordOverlay: { recorded.append($0) }, send: { _ in })
+        XCTAssertEqual(recorded.first?.sets, 1)
+        XCTAssertEqual(recorded.first?.moderateEquivalentMinutes, 0)
+    }
 }
 
 final class WatchAddConfirmationTests: XCTestCase {

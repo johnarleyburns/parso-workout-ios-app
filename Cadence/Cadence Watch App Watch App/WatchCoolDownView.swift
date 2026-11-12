@@ -28,9 +28,9 @@ struct WatchCoolDownView: View {
                     Button("Skip") {
                         WatchHaptics.success()
                         model.cooldownTimerModel.skip()
-                        model.recordHeartRate(watchManager.finalizeStrengthHRCapture().samples)
+                        let samples = watchManager.finalizeStrengthHRCapture().samples
                         model.skipCooldown()
-                        sendEndSession()
+                        watchManager.completeStrengthWorkout(model: model, capture: samples)
                     }
                     .foregroundStyle(.white)
                     .accessibilityIdentifier("watchCooldown.skip")
@@ -48,28 +48,6 @@ struct WatchCoolDownView: View {
         let total = max(0, Int(interval))
         return String(format: "%d:%02d", total / 60, total % 60)
     }
-
-    private func sendEndSession() {
-        guard let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
-        recordStrengthCompletionOverlay(model: model, watchManager: watchManager)
-        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
-        WCSession.default.transferUserInfo(payload)
-        watchManager.strengthCompletionOutbox.flush()
-    }
-}
-
-/// Records the Watch-local completion overlay before transport, using the same
-/// stable `completion_id` the `end_session` payload carries and the same
-/// completed-owner-working-set source the phone summary uses, so a disconnected
-/// or retrying state shows the identical contribution.
-@MainActor
-private func recordStrengthCompletionOverlay(model: WatchStrengthFlowModel, watchManager: WatchWorkoutManager) {
-    guard let session = model.session,
-          let completionID = session.completionID.flatMap(UUID.init(uuidString:)) else { return }
-    watchManager.recordStrengthCompletionOverlay(
-        completionID: completionID,
-        ownerWorkingSetCount: session.completedOwnerWorkingSetCount,
-        endedAt: session.endedAt ?? Date())
 }
 
 @MainActor
@@ -89,22 +67,11 @@ private final class WatchCooldownTimerController {
                 if model.cooldownTimerModel.remaining <= 0 {
                     self.timer?.invalidate()
                     self.timer = nil
-                    if let watchManager = self.watchManager {
-                        model.recordHeartRate(watchManager.finalizeStrengthHRCapture().samples)
-                    }
+                    let samples = self.watchManager?.finalizeStrengthHRCapture().samples
                     model.completeCooldown()
-                    self.sendEndSession(model)
+                    self.watchManager?.completeStrengthWorkout(model: model, capture: samples)
                 }
             }
         }
-    }
-
-    private func sendEndSession(_ model: WatchStrengthFlowModel) {
-        guard let watchManager,
-              let payload = model.endSessionPayload(completionOutbox: watchManager.strengthCompletionOutbox) else { return }
-        recordStrengthCompletionOverlay(model: model, watchManager: watchManager)
-        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
-        WCSession.default.transferUserInfo(payload)
-        watchManager.strengthCompletionOutbox.flush()
     }
 }

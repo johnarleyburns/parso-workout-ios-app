@@ -91,14 +91,7 @@ extension WatchWorkoutManager {
             if let session = try? context.fetch(descriptor).first {
                 let model = WatchStrengthFlowModel(context: context)
                 model.start(resuming: session)
-                if let capture { model.recordHeartRate(capture.samples) }
-                if var payload = model.endSessionPayload(completionOutbox: strengthCompletionOutbox) {
-                    payload["end_reason"] = StrengthEndReason.inactivity.rawValue
-                    if WCSession.isSupported(), WCSession.default.activationState == .activated {
-                        WCSession.default.transferUserInfo(payload)
-                        strengthCompletionOutbox.flush()
-                    }
-                }
+                completeStrengthWorkout(model: model, capture: capture?.samples ?? [], endReason: .inactivity)
             }
         }
 

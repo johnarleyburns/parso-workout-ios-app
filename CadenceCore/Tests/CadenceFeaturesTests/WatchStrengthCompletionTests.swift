@@ -130,3 +130,64 @@ final class WatchStrengthCompletionTests: XCTestCase {
         XCTAssertEqual(WatchStrengthHeartRate.decode(WatchStrengthHeartRate.encode(samples)), samples)
     }
 }
+
+/// Issue #627: completion sealing honors the aggregate retention bound.
+@MainActor
+final class WatchCompletionBoundTests: XCTestCase {
+    private let max = WatchHeartRateOutbox.maximumRetainedObservations
+
+    private func obs(_ t: Double, _ bpm: Double) -> WatchHRObservation {
+        WatchHRObservation(observationID: UUID(), source: .watchHealthKit, sampleEnd: t, bpm: bpm)
+    }
+
+    private func seeded(pending: Int, sealed: Int) -> (WatchHeartRateOutbox, FakeHRStore, FakeHRTransport) {
+        var s = WatchHeartRateOutboxState(phoneWorkoutSessionID: UUID(), watchRequestID: UUID(), captureEpoch: UUID())
+        s.pending = (0..<pending).map { obs(Double($0 + 1), 100) }
+        if sealed > 0 {
+            s.batches = [.init(deliveryID: UUID(), sequence: 1,
+                               observations: (0..<sealed).map { obs(Double(1_000_000 + $0), 100) }, durableQueuedAt: nil)]
+            s.nextSequence = 2
+        }
+        let store = FakeHRStore(); store.saved = s
+        let transport = FakeHRTransport()
+        return (WatchHeartRateOutbox(store: store, transport: transport, clock: { 1_800_000_100 }), store, transport)
+    }
+
+    func testSealCompletionNeverExceedsMaximumRetainedObservations() {
+        let (outbox, _, _) = seeded(pending: max - 10, sealed: 0)
+        let before = outbox.state!.pending
+        let points = (0..<100).map { (bpm: 120.0, sampleEnd: 2_000_000.0 + Double($0)) }
+        XCTAssertNotNil(outbox.sealCompletion(points))
+        XCTAssertLessThanOrEqual(outbox.unacknowledgedCount, max)
+        let kept = Set(outbox.state!.batches.flatMap(\.observations).map(\.observationID))
+        XCTAssertTrue(before.allSatisfy { kept.contains($0.observationID) })
+    }
+
+    func testSealCompletionUsesDeterministicCompactionBeforeRejectingNewPoints() {
+        let (outbox, _, _) = seeded(pending: max - 2, sealed: 0)
+        let points = [(100.0, 10.0 + 2_000_000), (150.0, 11.0 + 2_000_000), (140.0, 12.0 + 2_000_000), (110.0, 13.0 + 2_000_000)]
+            .map { (bpm: $0.0, sampleEnd: $0.1) }
+        XCTAssertNotNil(outbox.sealCompletion(points.reversed()))
+        let tail = outbox.state!.batches.flatMap(\.observations).filter { $0.sampleEnd >= 2_000_000 }
+        XCTAssertEqual(tail.map(\.bpm), [150, 140])
+        XCTAssertEqual(tail.map(\.sampleEnd), [2_000_011, 2_000_012])
+    }
+
+    func testSealCompletionReportsFailureWithoutDeliveryWhenBoundCannotBeMet() {
+        let (outbox, store, transport) = seeded(pending: 0, sealed: max)
+        let before = outbox.state!
+        XCTAssertNil(outbox.sealCompletion([(bpm: 120, sampleEnd: 2_000_000)]))
+        XCTAssertTrue(outbox.failedRecoverably)
+        XCTAssertEqual(outbox.state, before)
+        XCTAssertEqual(store.saved, before)
+        XCTAssertTrue(transport.durable.isEmpty && transport.immediate.isEmpty)
+    }
+
+    func testCompletionSeenKeysRemainBoundedWithRetainedObservations() {
+        let (outbox, _, _) = seeded(pending: 0, sealed: 0)
+        let points = (0..<(max + 500)).map { (bpm: 90.0 + Double($0 % 50), sampleEnd: 1_000.0 + Double($0)) }
+        XCTAssertNotNil(outbox.sealCompletion(points))
+        XCTAssertLessThanOrEqual(outbox.unacknowledgedCount, max)
+        XCTAssertLessThanOrEqual(outbox.state!.seenKeys.count, outbox.unacknowledgedCount)
+    }
+}

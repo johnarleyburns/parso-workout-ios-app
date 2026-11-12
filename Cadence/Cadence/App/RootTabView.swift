@@ -233,7 +233,7 @@ struct RootTabView: View {
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
                     AdaptiveProgressRoot()
                 }
-                SwiftUI.Tab("Find", systemImage: "magnifyingglass", value: .search) { FindExercisesView() }
+                SwiftUI.Tab("Find", systemImage: "magnifyingglass", value: .search, role: .search) { FindExercisesView() }
             }
             .modifier(MinimizeTabBarOnScrollDown())
             .modifier(LiveWorkoutTabAccessory(active: active))

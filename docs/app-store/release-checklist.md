@@ -71,7 +71,7 @@ Use this checklist for the first public App Store v1 submission.
 
 - Ensure the Paid Applications agreement, banking, and tax forms are active.
 - Create one consumable IAP (unlock nothing):
-  - `guru.parso.cladiron.tip.generous` - Contribute to development - $9.99
+  - `guru.parso.workout.support.dev` - Contribute to development - $9.99
 - Add the English localization matching `Cadence/Cadence.storekit`.
 - Add a review screenshot for the Support Cladiron screen.
 - Add IAP review notes: the contribution is optional, all app features remain

@@ -70619,6 +70619,26 @@
       },
       "comment" : "UI text shown in: Settings (Cadence/Cadence/Features/Settings/SettingsView.swift)"
     },
+    "Contribute to Development" : {
+      "comment" : "Supporter card (SupporterSurfacePresentation)",
+      "extractionState" : "manual"
+    },
+    "A one-time, optional $9.99 — every feature is already free" : {
+      "comment" : "Supporter card (SupporterSurfacePresentation)",
+      "extractionState" : "manual"
+    },
+    "Thanks for supporting %@" : {
+      "comment" : "Supporter card (SupporterSurfacePresentation)",
+      "extractionState" : "manual"
+    },
+    "Thank you for supporting %@!" : {
+      "comment" : "Supporter card (SupporterSurfacePresentation)",
+      "extractionState" : "manual"
+    },
+    "Purchase failed: %@" : {
+      "comment" : "Supporter card (SupporterSurfacePresentation)",
+      "extractionState" : "manual"
+    },
     "Support Cladiron" : {
       "localizations" : {
         "de" : {

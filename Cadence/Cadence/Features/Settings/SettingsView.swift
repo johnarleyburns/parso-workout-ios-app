@@ -348,51 +348,43 @@ struct SettingsView: View {
 
 struct SupportDevelopmentCard: View {
     let store: ContributionStore
+    @State private var purchase = SupporterPurchaseState()
 
     var body: some View {
-        let product = store.product
-        let state = SupportDevelopmentCardState.make(
-            productPrice: product?.displayPrice,
-            isSupporter: store.isSupporter,
-            purchasingID: store.purchasingID)
-        Button {
-            guard state.canPurchase else { return }
-            Task { _ = try? await store.purchase() }
-        } label: {
-            HStack(spacing: 12) {
-                if state.showsProgress {
-                    ProgressView()
-                } else {
-                    Image(systemName: state.iconName).foregroundStyle(.pink)
+        let p = SupporterSurfacePresentation(
+            isSupporter: store.isSupporter, result: purchase.result, productName: "Cladiron")
+        VStack(alignment: .leading, spacing: 10) {
+            Button {
+                guard purchase.begin() else { return }
+                Task {
+                    do {
+                        let ok = try await store.purchase()
+                        purchase.finish(ok ? .verifiedSuccess : .cancelledOrPending)
+                    } catch {
+                        purchase.finish(.failure(message: error.localizedDescription))
+                    }
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(title(state)).font(.headline)
-                    Text(detail(state)).font(.footnote).foregroundStyle(.secondary)
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "heart.fill").foregroundStyle(.pink)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(p.settingsTitle).font(.headline)
+                        Text(p.settingsDetail).font(.footnote).foregroundStyle(.secondary)
+                    }
+                    Spacer()
                 }
-                Spacer()
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!p.isPurchaseEnabled)
+            .accessibilityElement(children: .combine)
+            .accessibilityIdentifier(SupporterAccessibility.card)
+            if let message = p.resultMessage {
+                Divider()
+                Text(message).font(.footnote).foregroundStyle(.secondary)
+                    .accessibilityIdentifier("settings.support.result")
             }
         }
-        .disabled(!state.isEnabled)
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("settings.support")
-    }
-
-    private func title(_ state: SupportDevelopmentCardState) -> String {
-        state.kind == .supporter
-            ? String(localized: "Thanks for supporting Cladiron")
-            : String(localized: "Support Cladiron")
-    }
-
-    private func detail(_ state: SupportDevelopmentCardState) -> String {
-        switch state.kind {
-        case .purchaseable:
-            return String(localized: "One-time optional \(state.priceText) · every feature is already included")
-        case .purchasing:
-            return String(localized: "Contacting the App Store…")
-        case .unavailable:
-            return String(localized: "The contribution isn't available right now. Every feature is already included; try again later.")
-        case .supporter:
-            return String(localized: "You have the Supporter badge")
-        }
+        .padding(.vertical, 4)
     }
 }

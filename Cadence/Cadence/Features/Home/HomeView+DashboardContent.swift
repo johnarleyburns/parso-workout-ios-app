@@ -11,8 +11,8 @@ extension HomeView {
                 .font(.caption2.weight(.semibold))
         }
         .foregroundStyle(CadenceTheme.achievement)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
+        .padding(.horizontal, badge.horizontalPadding)
+        .padding(.vertical, badge.verticalPadding)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(badge.accessibilityLabel)
         .accessibilityIdentifier(badge.accessibilityIdentifier)

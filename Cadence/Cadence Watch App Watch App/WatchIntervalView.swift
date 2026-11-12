@@ -183,20 +183,20 @@ struct WatchIntervalView: View {
     // MARK: - Summary
 
     private var summaryView: some View {
-        VStack(spacing: 8) {
-            Spacer()
+        ScrollView {
+          VStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28))
                 .foregroundStyle(.green)
             Text("Complete")
                 .font(.headline)
 
-            let sum = watchManager.savedSummary
-            if let s = sum {
-                summaryRow(String(localized: "Duration"), formatTime(s.duration))
-                if let avg = s.avgHR {
-                    summaryRow(String(localized: "Avg HR"), "\(Int(avg))")
-                }
+            if let s = watchManager.savedSummary {
+                WatchCardioCompletionSummaryContent(
+                    summary: s,
+                    profile: watchAppSettings.resolvedCardioIntensityProfile,
+                    durationLabel: String(localized: "Duration")
+                ) { EmptyView() }
             }
 
             Button("Save workout") {
@@ -217,21 +217,9 @@ struct WatchIntervalView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
             .accessibilityLabel("Discard workout")
-            Spacer()
+          }
+          .padding(.vertical, 8)
         }
-    }
-
-    private func summaryRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            Spacer()
-            Text(value)
-                .font(.caption.bold())
-                .monospacedDigit()
-        }
-        .padding(.horizontal, 20)
     }
 
     // MARK: Color mapping

@@ -18,17 +18,17 @@ struct WatchCardioSummaryView: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
 
-            summaryRow(String(localized: "Total"), formatTime(summary.duration))
-            WatchHeartRateSection(
-                hrSamples: summary.hrSamples,
-                intensityProfile: watchSettings.resolvedCardioIntensityProfile,
-                sessionDuration: summary.duration)
-                .padding(.horizontal, 20)
-            if summary.distanceMeters > 0 {
-                summaryRow(String(localized: "Distance"), isSwim ? String(format: "%.0f m", summary.distanceMeters) : metrics.formatDistance())
-            }
-            if let laps = lapText {
-                summaryRow(String(localized: "Laps"), laps)
+            WatchCardioCompletionSummaryContent(
+                summary: summary,
+                profile: watchSettings.resolvedCardioIntensityProfile,
+                durationLabel: String(localized: "Total")
+            ) {
+                if summary.distanceMeters > 0 {
+                    summaryRow(String(localized: "Distance"), isSwim ? String(format: "%.0f m", summary.distanceMeters) : metrics.formatDistance())
+                }
+                if let laps = lapText {
+                    summaryRow(String(localized: "Laps"), laps)
+                }
             }
 
             Button("Save") { onSave() }
@@ -56,10 +56,5 @@ struct WatchCardioSummaryView: View {
                 .monospacedDigit()
         }
         .padding(.horizontal, 20)
-    }
-
-    private func formatTime(_ interval: TimeInterval) -> String {
-        let total = max(0, Int(interval))
-        return String(format: "%d:%02d:%02d", total / 3600, (total % 3600) / 60, total % 60)
     }
 }

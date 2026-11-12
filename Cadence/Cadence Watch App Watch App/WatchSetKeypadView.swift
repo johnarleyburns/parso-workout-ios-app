@@ -146,10 +146,10 @@ struct WatchSetKeypadView: View {
         let isWeight = focus == .weight && !card.isNonWeighted
         let amount = isWeight ? weightStep : 1
         let label = isWeight ? "Weight" : "Reps"
-        HStack(spacing: 6) {
+        HStack(spacing: WatchSetCardAdjustmentLayout.horizontalSpacing) {
             Button { adjustFocusedValue(by: -amount) } label: {
                 Text("−\(stepText(amount))")
-                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .frame(maxWidth: .infinity, minHeight: WatchSetCardAdjustmentLayout.controlMinHeight)
             }
             .accessibilityLabel("Subtract \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
             .accessibilityIdentifier(isWeight ? "watchWeight.minus" : "watchReps.minus")
@@ -163,7 +163,7 @@ struct WatchSetKeypadView: View {
 
             Button { adjustFocusedValue(by: amount) } label: {
                 Text("+\(stepText(amount))")
-                    .frame(maxWidth: .infinity, minHeight: 36)
+                    .frame(maxWidth: .infinity, minHeight: WatchSetCardAdjustmentLayout.controlMinHeight)
             }
             .accessibilityLabel("Add \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
             .accessibilityIdentifier(isWeight ? "watchWeight.plus" : "watchReps.plus")

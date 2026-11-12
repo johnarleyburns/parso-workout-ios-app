@@ -54,6 +54,10 @@ public enum WatchHeartRateRecordOutcome: Equatable, Sendable {
 /// keeping the higher BPM (extrema and coverage kept, nothing invented). If
 /// every retained observation is already sealed, new ones are refused loudly
 /// (`failedRecoverably`) rather than dropping unacknowledged data.
+/// The same bound covers `sealCompletion`: pending + sealed observations never
+/// exceed `maximumRetainedObservations`; an over-limit completion is compacted
+/// the same way (new input only), else refused with state unchanged. Completion
+/// adds one dedupe key per retained observation, so those keys are bounded by it.
 @MainActor
 public final class WatchHeartRateOutbox {
     public static let maximumBatchSize = 30
@@ -177,13 +181,44 @@ public final class WatchHeartRateOutbox {
         guard var s = state, !bindingRefused else { return nil }
         state = nil
         defer { state = s }
+        // Decide on a local candidate list first so a refusal leaves `s` untouched.
+        var candidates: [(bpm: Double, sampleEnd: TimeInterval, key: String)] = []
+        var candidateKeys: Set<String> = []
         for p in points {
             guard p.bpm.isFinite, p.bpm >= Self.minimumBPM, p.bpm <= Self.maximumBPM,
                   p.sampleEnd.isFinite, p.sampleEnd > 0 else { continue }
             let key = Self.key(source: .watchHealthKit, sampleEnd: p.sampleEnd, bpm: p.bpm, sampleID: nil)
-            guard s.seenKeys.insert(key).inserted else { continue }
+            guard !s.seenKeys.contains(key), candidateKeys.insert(key).inserted else { continue }
+            candidates.append((p.bpm, p.sampleEnd, key))
+        }
+        // Deterministic order: by sample time, then BPM.
+        candidates.sort { $0.sampleEnd != $1.sampleEnd ? $0.sampleEnd < $1.sampleEnd : $0.bpm < $1.bpm }
+        let retained = s.pending.count + s.batches.reduce(0) { $0 + $1.observations.count }
+        let capacity = max(0, Self.maximumRetainedObservations - retained)
+        if !candidates.isEmpty {
+            // Same policy as `compactPending`: merge adjacent pairs keeping the higher BPM.
+            // Only the new, unsealed input is compacted; accepted data is never dropped.
+            while candidates.count > capacity, candidates.count >= 2 {
+                var out: [(bpm: Double, sampleEnd: TimeInterval, key: String)] = []
+                var i = 0
+                while i < candidates.count {
+                    if i + 1 < candidates.count {
+                        out.append(candidates[i].bpm >= candidates[i + 1].bpm ? candidates[i] : candidates[i + 1])
+                    } else { out.append(candidates[i]) }
+                    i += 2
+                }
+                candidates = out
+            }
+            guard candidates.count <= capacity else {
+                failedRecoverably = true
+                Self.log.error("outbox full, completion refused")
+                return nil
+            }
+        }
+        for c in candidates {
+            s.seenKeys.insert(c.key)
             s.pending.append(WatchHRObservation(observationID: makeUUID(), source: .watchHealthKit,
-                                                sampleEnd: p.sampleEnd, bpm: p.bpm))
+                                                sampleEnd: c.sampleEnd, bpm: c.bpm))
         }
         s.finalizeRequested = true
         sealPending(&s)

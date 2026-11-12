@@ -23,7 +23,7 @@ struct WatchAddExerciseView: View {
     @State private var searchTask: Task<Void, Never>?
     @State private var showingCustomExercise = false
     @State private var customName = ""
-    @State private var customGroups: Set<MuscleGroup> = []
+    @State private var customAttribution = WatchCustomExerciseMuscleAttribution()
     @State private var showingAllGroups = false
     /// Newest search; older searches may not install results.
     @State private var searchGeneration = 0
@@ -39,9 +39,9 @@ struct WatchAddExerciseView: View {
     var body: some View {
         Group {
             if showingCustomExercise {
-                WatchCustomExerciseForm(name: $customName, groups: $customGroups,
+                WatchCustomExerciseForm(name: $customName, attribution: $customAttribution,
                                         feedback: feedback,
-                                        onCreate: { report(model.createAndAddExercise(named: customName, muscleGroups: customGroups)) },
+                                        onCreate: { report(model.createAndAddExercise(named: customName, attribution: customAttribution)) },
                                         onBack: { showingCustomExercise = false })
             } else if let selectedEntry {
                 WatchAddExercisePreview(entry: selectedEntry, feedback: feedback,

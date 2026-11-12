@@ -29,3 +29,45 @@ public enum WatchCustomExerciseDefinition {
         }
     }
 }
+
+/// Primary/secondary muscle roles for a custom exercise created on the watch.
+/// Uses the full shared catalog; a muscle holds at most one role.
+public struct WatchCustomExerciseMuscleAttribution: Equatable, Sendable {
+    public enum Role: Sendable { case primary, secondary }
+
+    public static var availableGroups: [MuscleGroup] { MuscleGroup.canonicalOrder }
+
+    public private(set) var primary: Set<MuscleGroup>
+    public private(set) var secondary: Set<MuscleGroup>
+
+    public init(primary: Set<MuscleGroup> = [], secondary: Set<MuscleGroup> = []) {
+        self.primary = primary
+        self.secondary = secondary.subtracting(primary)
+    }
+
+    /// The most recently chosen role wins; the other role loses the group.
+    public mutating func select(_ group: MuscleGroup, as role: Role) {
+        switch role {
+        case .primary: secondary.remove(group); primary.insert(group)
+        case .secondary: primary.remove(group); secondary.insert(group)
+        }
+    }
+
+    /// Tap behavior: tapping a selected chip clears it, otherwise it takes the role.
+    public mutating func toggle(_ group: MuscleGroup, as role: Role) {
+        switch role {
+        case .primary:
+            if primary.contains(group) { primary.remove(group) } else { select(group, as: .primary) }
+        case .secondary:
+            if secondary.contains(group) { secondary.remove(group) } else { select(group, as: .secondary) }
+        }
+    }
+
+    public func contains(_ group: MuscleGroup, as role: Role) -> Bool {
+        role == .primary ? primary.contains(group) : secondary.contains(group)
+    }
+
+    public var hasPrimaryMuscle: Bool { !primary.isEmpty }
+    public var primaryIDs: [String] { MuscleGroup.sorted(primary).map(\.rawValue) }
+    public var secondaryIDs: [String] { MuscleGroup.sorted(secondary).map(\.rawValue) }
+}

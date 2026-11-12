@@ -47,6 +47,7 @@ trace_tmp=$(mktemp -d "${RUNNER_TEMP:-/tmp}/testflight-trace.XXXXXX")
 trap 'rm -rf "$trace_tmp"' EXIT
 prs_file="$trace_tmp/prs"
 issues_file="$trace_tmp/issues"
+release_issues_file="$trace_tmp/release-issues"
 while IFS= read -r commit; do
   [[ -n "$commit" ]] || continue
   while IFS= read -r pr; do [[ -n "$pr" ]] && printf '%s\n' "$pr" >> "$prs_file"; done < <(
@@ -72,6 +73,13 @@ while IFS= read -r pr; do
   marker_issue=$(gh api "repos/$repo/pulls/$pr" --jq '.body // ""' \
     | sed -n 's/.*<!-- claude-issue:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
   [[ -z "$marker_issue" ]] || printf '%s\t%s\n' "$marker_issue" 'Claude-generated issue' >> "$issues_file"
+  release_run=$(gh api "repos/$repo/pulls/$pr" --jq '.body // ""' \
+    | sed -n 's/.*<!-- release-repair:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
+  if [[ -n "$release_run" ]]; then
+    gh issue list --repo "$repo" --state open --search "in:title Release repair needs human action for run #${release_run}" \
+      --json number,title --jq '.[] | select(.title == "Release repair needs human action for run #'"$release_run"'") | .number' \
+      | while IFS= read -r repair_issue; do [[ -n "$repair_issue" ]] && printf '%s\t%s\n' "$repair_issue" "$release_run" >> "$release_issues_file"; done
+  fi
 done < "$prs_file"
 sort -t $'\t' -k1,1n -u "$issues_file" -o "$issues_file" 2>/dev/null || : > "$issues_file"
 issue_count=$(wc -l < "$issues_file" | tr -d ' ')
@@ -120,5 +128,18 @@ while IFS=$'\t' read -r issue _title; do
   gh issue edit "$issue" --repo "$repo" --add-label testflight-uploaded --add-label testflight-processing \
     --remove-label ready-for-qa --remove-label qa-failed >/dev/null
 done < "$issues_file"
+
+# A release-repair PR is paired with a generated human-review issue, not a
+# product issue. Once its replacement binary is accepted by TestFlight, close
+# that operational issue and remove the stale escalation label.
+sort -t $'\t' -k1,1n -u "$release_issues_file" -o "$release_issues_file" 2>/dev/null || : > "$release_issues_file"
+while IFS=$'\t' read -r repair_issue failed_run; do
+  [[ -n "$repair_issue" && -n "$failed_run" ]] || continue
+  repair_marker="<!-- release-repair-resolved:${failed_run}:${build} -->"
+  gh issue comment "$repair_issue" --repo "$repo" --body "$repair_marker
+Replacement TestFlight build **$version ($build)** was accepted after repair of failed run #$failed_run. Closing this operational escalation." >/dev/null
+  gh issue edit "$repair_issue" --repo "$repo" --remove-label needs-human-review >/dev/null
+  gh issue close "$repair_issue" --repo "$repo" --reason completed >/dev/null
+done < "$release_issues_file"
 
 echo "Recorded TestFlight upload $bundle $version ($build) for $issue_count associated issue(s)."

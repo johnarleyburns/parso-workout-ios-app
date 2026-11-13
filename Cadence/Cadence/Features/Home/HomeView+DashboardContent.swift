@@ -68,6 +68,7 @@ extension HomeView {
                                          completedCardioTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
                                          onStart: { launchDecision($0) })
         }
+        readinessCard
     }
 
     /// Rows for the compact dual card; empty keeps the existing hero. Only the

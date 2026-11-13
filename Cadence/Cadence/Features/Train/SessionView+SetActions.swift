@@ -40,8 +40,15 @@ extension SessionView {
             refreshLiveVolume()
         }
         setLoggedRevision &+= 1
+        // Celebration-kind cues (PR vs. plain set-logged) are gated through
+        // CuePolicy/CelebrationCuePlayer so Settings → Celebrations (Off/Quiet/
+        // Full) actually controls what fires here, instead of calling Haptics
+        // unconditionally.
+        let cuePlayer = CelebrationCuePlayer(celebrationStyle: settings.celebrationStyle)
         if isPR {
-            Haptics.prAchieved()
+            if let kind = cuePlayer.decide(for: .loggedSet(isPersonalBest: true))?.kind {
+                Haptics.play(kind)
+            }
             UIAccessibility.post(notification: .announcement,
                                  argument: String(localized: "New best, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)"))
             let sample = SetSample(weight: weightKg, reps: reps, date: when, isWarmup: isWarmup)
@@ -66,7 +73,9 @@ extension SessionView {
                               kind: PRKind(rule: settings.prRule), value: metric,
                               reps: reps, weightKg: weightKg, previous: priorPR)
         } else {
-            Haptics.setLogged()
+            if let kind = cuePlayer.decide(for: .loggedSet(isPersonalBest: false))?.kind {
+                Haptics.play(kind)
+            }
             let performerText = person.map { " for \($0.name)" } ?? ""
             UIAccessibility.post(notification: .announcement,
                                  argument: String(localized: "Set logged, \(exercise.name), \(Format.weight(weightKg, unit: settings.unit)) for \(reps)\(performerText)"))

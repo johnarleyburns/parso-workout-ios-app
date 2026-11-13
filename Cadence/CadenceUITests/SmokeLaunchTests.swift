@@ -399,6 +399,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Personalized generation landed on the generic missing-workout warning page")
         XCTAssertFalse(app.navigationBars["View Suggested Workout"].exists,
                        "The retired suggested-workout chooser is still reachable")
+        // Suggested-strength path has its own Cancel; the toolbar one must not duplicate it.
+        XCTAssertFalse(app.buttons["editor.cancel"].exists,
+                       "Suggested-strength editor shows a redundant toolbar Cancel")
         let editableExercises = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exercise."))
         XCTAssertGreaterThan(editableExercises.count, 0,

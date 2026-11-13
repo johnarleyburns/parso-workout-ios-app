@@ -172,7 +172,7 @@ extension HomeView {
         }
         let showingSuggestedPlan = todaySuggestedPlan != nil && (coachRecommendsStrength || hero.kind == .starter)
         let heroCard = HomeTodayHeroCard(title: hero.title, tag: tag,
-                                 estimatedMinutes: hero.estimatedMinutes, exercises: hero.exercises.map { (name: $0.name, detail: $0.detail) }, reason: hero.reason,
+                                 estimatedMinutes: hero.estimatedMinutes, reason: hero.reason,
                                  rationale: showingSuggestedPlan
                                     ? todaySuggestedPlan?.recommendationRationale
                                     : hero.reason.map { SuggestedWorkoutRationale(whyWorkout: $0, exercises: []) },
@@ -194,8 +194,6 @@ extension HomeView {
                                          launchDecision(coachDecision.primary)
                                      }
                                  },
-                                 onShowAllExercises: { if showingSuggestedPlan { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
-                                 onEdit: { if showingSuggestedPlan { openTodaySuggestion() } else { launchDecision(coachDecision.primary) } },
                                  onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
                                  onViewSummary: {
                                      path.append(HomeRoute.history)

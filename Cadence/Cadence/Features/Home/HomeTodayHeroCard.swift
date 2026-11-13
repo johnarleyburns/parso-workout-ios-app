@@ -3,24 +3,18 @@ import CadenceCore
 import CadenceFeatures
 
 struct HomeTodayHeroCard: View {
-    @Environment(\.todayHeroHeight) private var heroHeight
     let title: String
     let tag: String
     let estimatedMinutes: Int?
-    let exercises: [(name: String, detail: String)]
     let reason: String?
     let rationale: SuggestedWorkoutRationale?
     let citationIDs: [String]
     let summary: DaySummary?
     let unit: MeasurementUnitPreference
     let onStart: () -> Void
-    let onShowAllExercises: () -> Void
-    let onEdit: () -> Void
     let onChooseAnother: () -> Void
     let onViewSummary: () -> Void
     let onAddSomething: () -> Void
-    @Environment(\.dynamicTypeSize) private var typeSize
-    @ScaledMetric(relativeTo: .body) private var rowHeight: CGFloat = 32
     @State private var rationalePresented = false
     @State private var durationInfoPresented = false
 
@@ -66,18 +60,12 @@ struct HomeTodayHeroCard: View {
                             .truncationMode(.tail)
                     }
 
-                    if !exercises.isEmpty {
-                        exerciseRows
-                    }
-
                     if let reason {
                         VStack(alignment: .leading, spacing: 4) {
-                            // Workouts without exercise rows (e.g. cardio) have the
-                            // room, so show the full explanation instead of 2 lines.
                             Text(reason)
-                                .font(exercises.isEmpty ? .subheadline : .caption)
+                                .font(.caption)
                                 .foregroundStyle(.secondary)
-                                .lineLimit(tag == String(localized: "Recovery day") || exercises.isEmpty ? nil : 2)
+                                .lineLimit(2)
                                 .truncationMode(.tail)
                             if !citationIDs.isEmpty {
                                 CoachSourcesLink(
@@ -91,9 +79,6 @@ struct HomeTodayHeroCard: View {
                     }
 
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .clipped()
-                .layoutPriority(-1)
 
                 if let rationale {
                     Button {
@@ -134,10 +119,7 @@ struct HomeTodayHeroCard: View {
                     .controlSize(.large)
                     .accessibilityIdentifier("home.hero.start")
 
-                    HStack(spacing: 18) {
-                        Button("Edit plan", action: onEdit)
-                        Button("Choose another", action: onChooseAnother)
-                    }
+                    Button("Choose another", action: onChooseAnother)
                     .font(.subheadline.weight(.semibold))
                     .frame(maxWidth: .infinity)
                     .buttonStyle(.plain)
@@ -146,51 +128,8 @@ struct HomeTodayHeroCard: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: heroHeight - 24, alignment: .topLeading)
         .cadenceCard(.hero)
         .accessibilityIdentifier("home.hero")
-    }
-
-    /// Rows that fit in the hero after the header, title, actions and reason.
-    private var exerciseCapacity: Int {
-        let chrome: CGFloat = typeSize.isAccessibilitySize ? 330 : 270
-        return max(2, Int((heroHeight - chrome) / rowHeight))
-    }
-
-    private var exerciseRows: some View {
-        let lines = exercises.map { TodayHero.Line(name: $0.name, detail: $0.detail) }
-        // This card has a fixed height. Three rows are the most that fit while
-        // preserving the actions and rationale below them; anything else is
-        // deliberately disclosed through the full-plan affordance.
-        let disclosure = TodayExerciseDisclosure(lines: lines, capacity: min(exerciseCapacity, 3))
-        return VStack(spacing: 0) {
-            ForEach(Array(disclosure.visible.enumerated()), id: \.offset) { _, exercise in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(exercise.name)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                    Text(exercise.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .padding(.vertical, 5)
-                .overlay(alignment: .bottom) { Divider().opacity(0.35) }
-            }
-            if let summary = disclosure.summaryText {
-                Button(action: onShowAllExercises) {
-                    Text(summary)
-                        .font(.caption.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(CadenceTheme.link)
-                .accessibilityLabel(disclosure.accessibilityLabel ?? summary)
-                .accessibilityIdentifier("home.hero.moreExercises")
-            }
-        }
     }
 
     private func doneSummary(_ summary: DaySummary) -> some View {
@@ -210,13 +149,7 @@ struct HomeTodayHeroCard: View {
                         .foregroundStyle(CadenceTheme.achievement)
                         .font(.subheadline.weight(.semibold))
                 }
-                if !summary.exercises.isEmpty {
-                    doneExerciseRows(summary.exercises)
-                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .clipped()
-            .layoutPriority(-1)
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Done for today. \(summary.setCount) sets, \(WorkoutMath.tonnageLabel(volumeKg: summary.volumeKg, unit: unit)).")
 
@@ -238,43 +171,6 @@ struct HomeTodayHeroCard: View {
         .accessibilityIdentifier("home.hero.done")
     }
 
-    private func doneExerciseRows(_ lines: [TodayHero.Line]) -> some View {
-        let disclosure = TodayExerciseDisclosure(lines: lines, capacity: doneExerciseCapacity)
-        return VStack(spacing: 0) {
-            ForEach(Array(disclosure.visible.enumerated()), id: \.offset) { _, line in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(line.name)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                    Text(line.detail)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                        .fixedSize(horizontal: true, vertical: false)
-                }
-                .padding(.vertical, 4)
-                .overlay(alignment: .bottom) { Divider().opacity(0.35) }
-            }
-            if let summary = disclosure.summaryText {
-                Button(action: onViewSummary) {
-                    Text(summary)
-                        .font(.caption.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(CadenceTheme.link)
-                .accessibilityLabel(disclosure.accessibilityLabel ?? summary)
-            }
-        }
-    }
-
-    /// The completed state has no recommendation rationale or edit controls,
-    /// so it can show substantially more rows than the planning state.
-    private var doneExerciseCapacity: Int {
-        let chrome: CGFloat = typeSize.isAccessibilitySize ? 250 : 190
-        return max(2, Int((heroHeight - chrome) / rowHeight))
-    }
 
     private func fact(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {

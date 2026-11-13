@@ -103,12 +103,6 @@ final class TodayRecoveryTests: XCTestCase {
         }
     }
 
-    func testHeroAllocationDependsOnlyOnViewport() {
-        XCTAssertEqual(TodayHeroLayout.height(viewportHeight: 760), 380)
-        XCTAssertEqual(TodayHeroLayout.height(viewportHeight: 500), 320)
-        XCTAssertEqual(TodayHeroLayout.height(viewportHeight: 1200), 440)
-    }
-
     @MainActor
     func testPersistedExclusionFiltersRecoveryAndAllowingRestoresIt() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))

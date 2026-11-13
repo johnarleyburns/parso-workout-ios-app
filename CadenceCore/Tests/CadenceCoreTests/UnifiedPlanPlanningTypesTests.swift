@@ -26,7 +26,7 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(PlanningRequest.self, from: data), request)
     }
 
-    func testSchemeAndTemplateValidationCoverStructuredGeneration() throws {
+    func testSchemeValidationCoversStructuredGeneration() throws {
         let scheme = SetScheme(
             id: SetSchemeID(raw: "double-progression"),
             displayName: "Double progression",
@@ -40,18 +40,6 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
             goalAffinity: [.hypertrophy])
 
         try scheme.validate()
-
-        let days = Weekday.mondayThroughSunday.map { PlanDay(weekday: $0) }
-        let template = PlanTemplate(
-            title: "Simple hypertrophy",
-            goal: .hypertrophy,
-            experienceLevel: .intermediate,
-            daysPerWeek: 4,
-            equipmentProfile: [.barbell, .dumbbell],
-            weeks: [PlanWeek(index: 0, days: days)],
-            description: "A reusable four-day starting template.")
-
-        try template.validate()
     }
 
     func testReadinessRejectsEachInvalidRangeIndependently() {

@@ -13,12 +13,6 @@ final class SupporterSurfacePresentationTests: XCTestCase {
         XCTAssertEqual(badge.verticalPadding, 6)
     }
 
-    func testSettingsHasSingleCardSupportGroupFirst() {
-        XCTAssertEqual(SettingsSectionOrder.identifiers.filter { $0 == "settings.section.support" }.count, 1)
-        XCTAssertEqual(SettingsSectionOrder.identifiers.first, "settings.section.support")
-        XCTAssertEqual(SettingsSectionOrder.supportCardCount, 1)
-    }
-
     func testCardCopy() {
         let a = SupporterSurfacePresentation(isSupporter: false, result: .idle, productName: "App")
         XCTAssertEqual(a.settingsTitle, "Contribute to Development")

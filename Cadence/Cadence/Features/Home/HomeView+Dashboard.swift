@@ -234,6 +234,29 @@ extension HomeView {
                         })
                 }
             }
+            .sheet(isPresented: $todayCardioReviewPresented) {
+                if let suggestion = todayCardio {
+                    NavigationStack {
+                        SuggestedCardioPreviewView(
+                            suggestion: suggestion,
+                            onStart: { selected in
+                                todayCardioReviewPresented = false
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    launchSuggestedCardio(selected)
+                                }
+                            },
+                            onSchedule: { selected in
+                                todayCardioReviewPresented = false
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
+                                }
+                            },
+                            onSuggestAnother: { suggestAnotherTodayCardio($0) })
+                    }
+                }
+            }
             .sheet(item: $suggestedWorkoutPlan, onDismiss: {
                 // Swipe-to-dismiss: Start/Schedule/Cancel already cleared the state.
                 // Skip when "Suggest another" merely swapped the item.

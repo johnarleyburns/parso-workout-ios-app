@@ -10,8 +10,8 @@ struct HomeTodayCardioCard: View {
     let completedTitle: String?
     let isCalculating: Bool
     let hasNewer: Bool
-    let onStart: (CardioSuggestion) -> Void
-    let onSuggestAnother: (CardioSuggestion) -> Void
+    /// Opens the review sheet (rationale, citations, Suggest Another); never launches directly.
+    let onStart: () -> Void
     let onShowNewer: () -> Void
 
     var body: some View {
@@ -31,35 +31,19 @@ struct HomeTodayCardioCard: View {
                 Text("\(suggestion.durationMinutes) min · \(suggestion.intensity.displayName)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Text(suggestion.rationale)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(3)
-                if !suggestion.citationIDs.isEmpty {
-                    CoachSourcesLink(
-                        citationIds: suggestion.citationIDs,
-                        contexts: Dictionary(suggestion.citationIDs.map { ($0, String(localized: "How this cardio suggestion is selected")) },
-                                             uniquingKeysWith: { first, _ in first }),
-                        identifier: "home.cardio.science")
-                }
                 if hasNewer {
                     Button("Show newer suggested workout…", action: onShowNewer)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(CadenceTheme.link)
                         .accessibilityIdentifier("home.cardio.showNewer")
                 }
-                Button { onStart(suggestion) } label: {
+                Button(action: onStart) {
                     Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .tint(CadenceTheme.accent)
                 .controlSize(.large)
                 .accessibilityIdentifier("home.cardio.start")
-                Button("Suggest Another") { onSuggestAnother(suggestion) }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(CadenceTheme.link)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("home.cardio.another")
             } else if isCalculating {
                 HStack(spacing: 8) {
                     ProgressView()

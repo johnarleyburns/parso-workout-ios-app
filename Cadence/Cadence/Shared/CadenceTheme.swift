@@ -55,38 +55,3 @@ extension View {
             }
     }
 }
-
-struct CadenceProgressRing: View {
-    let value: Double
-    let total: Double
-    let tint: Color
-    let label: String
-
-    private var progress: Double {
-        guard total > 0 else { return 0 }
-        return min(1, max(0, value / total))
-    }
-
-    var body: some View {
-        VStack(spacing: 4) {
-            ZStack {
-                Circle().stroke(tint.opacity(0.18), lineWidth: 7)
-                Circle().trim(from: 0, to: progress)
-                    .stroke(tint, style: StrokeStyle(lineWidth: 7, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text(Format.number(value))
-                    .font(.caption.weight(.bold))
-                    .monospacedDigit()
-            }
-            .frame(width: 58, height: 58)
-            .accessibilityLabel("\(label), \(Format.number(value)) of \(Format.number(total))")
-            Text(label).font(.caption2).foregroundStyle(.secondary)
-        }
-    }
-}
-
-private extension Format {
-    static func number(_ value: Double) -> String {
-        String(Int(value.rounded()))
-    }
-}

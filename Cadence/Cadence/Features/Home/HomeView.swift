@@ -31,6 +31,7 @@ struct HomeView: View {
     @Environment(ActiveWorkoutModel.self) var active
     @Environment(ContributionCoordinator.self) var contributions
     @Environment(\.scenePhase) var scenePhase
+    @Environment(\.rootTabSelection) var rootTabSelection
     @Environment(\.cadenceModelContainer) var cadenceModelContainer
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) var cardio: [CardioWorkout]

@@ -11,6 +11,17 @@ final class WeeklyIntentPresenterTests: XCTestCase {
         XCTAssertEqual(d.strengthRing.normalizedProgress, 0.5)
     }
 
+    func testConcentricRingsKeepStrengthAndCardioProgressIndependent() {
+        let display = WeeklyIntentPresenter.make(
+            strength: progress(24, 48, "24 of 48 sets"),
+            cardio: progress(90, 150, "90 of 150 min credit"))
+
+        XCTAssertEqual(display.strengthRing.normalizedProgress, 0.5)
+        XCTAssertEqual(display.cardioRing.normalizedProgress, 0.6)
+        XCTAssertEqual(display.strengthRing.valueText, "24 of 48 sets")
+        XCTAssertEqual(display.cardioRing.valueText, "90 of 150 min credit")
+    }
+
     func testRingsClampAtFullWithoutExceeding100Percent() {
         let d = WeeklyIntentPresenter.make(strength: progress(20, 12, "20 of 12 sets"), cardio: progress(0, 150))
         XCTAssertEqual(d.strengthRing.normalizedProgress, 1.0)

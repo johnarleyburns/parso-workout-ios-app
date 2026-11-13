@@ -57,13 +57,19 @@ extension PhoneWorkoutMirror: HKWorkoutSessionDelegate {
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,
                                     didReceiveDataFromRemoteWorkoutSession data: [Data]) {
-        // NOTE: no identity/generation guard here yet — data is still
-        // forwarded unconditionally. `lifecycle.shouldForwardData(generation:)`
-        // is already proven correct in isolation (see
-        // WorkoutMirrorLifecycleTests); wiring it into this call site to
-        // reject stale-session data is a separate, stacked follow-up PR so
-        // this one stays a pure internal refactor with no behavior change.
-        Task { @MainActor [weak self] in self?.onData?(data) }
+        // Guard against stale data from a superseded mirrored session: only
+        // forward it while `lifecycle` is still `.mirrored` at the
+        // generation this `session` was attached with.
+        // `shouldForwardData(generation:)` is already proven correct in
+        // isolation (see WorkoutMirrorLifecycleTests); this is just wiring
+        // it into the one remaining unguarded call site.
+        Task { @MainActor [weak self] in
+            guard let self,
+                  self.session === workoutSession,
+                  self.lifecycle.shouldForwardData(generation: self.currentGeneration)
+            else { return }
+            self.onData?(data)
+        }
     }
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession,

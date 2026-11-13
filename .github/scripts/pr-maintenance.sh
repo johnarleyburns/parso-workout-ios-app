@@ -169,7 +169,18 @@ process_pr() {
   [[ $(jq -r '.head.repo.full_name' <<<"$pr") == "$repo" ]] || { echo "PR #$n: fork, ignored"; return 0; }
   ref=$(jq -r .head.ref <<<"$pr"); head=$(jq -r .head.sha <<<"$pr")
   issue=$(jq -r '.body // ""' <<<"$pr" | grep -o '<!-- claude-issue:[0-9]\+ -->' | head -1 | grep -o '[0-9]\+')
-  [[ -n "$issue" && "$ref" =~ ^claude/issue-${issue}-[0-9]+$ ]] || { echo "PR #$n: not a Claude PR, ignored"; return 0; }
+  if [[ -n "$issue" && "$ref" =~ ^claude/issue-${issue}-[0-9]+$ ]]; then
+    : # Ordinary issue implementation PR.
+  elif [[ $(jq -r '.user.login' <<<"$pr") == "$owner" ]]; then
+    # Ad-hoc PR (not an issue-worker branch), opened directly against main by
+    # the trusted owner. Same-repo (checked above) and same author as every
+    # other PR this script manages; give it the same reconcile treatment
+    # instead of leaving it permanently unmanaged.
+    issue="$n"
+  else
+    echo "PR #$n: not a Claude PR, ignored"
+    return 0
+  fi
   draft=$(jq -r .draft <<<"$pr")
   ms=$(jq -r '.mergeable_state // "unknown"' <<<"$pr")
   mergeable=$(jq -r '.mergeable' <<<"$pr")

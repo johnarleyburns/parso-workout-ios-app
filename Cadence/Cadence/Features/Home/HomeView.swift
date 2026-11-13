@@ -105,6 +105,7 @@ struct HomeView: View {
     @State var suggestedWorkoutGeneration = SuggestionGenerationGate()
     @State var suggestedCardioTask: Task<Void, Never>?
     @State var suggestedCardio: CardioSuggestion?
+    @State var todayCardioReviewPresented = false
     /// Today's "Suggested Cardio for You": cached first, newer one held pending.
     @State var todayCardio: CardioSuggestion?
     @State var pendingTodayCardio: CardioSuggestion?
@@ -394,7 +395,5 @@ struct HomeView: View {
         active.strengthSession ?? ActiveSessionRecovery.candidate(in: sessions)
     }
     var todayStrength: (hasStrength: Bool, exerciseNames: [String]) { TodayLogHelper.completedStrength(sessions: sessions) }
-    var weeklyVolumeKg: Double {
-        cachedWeeklyVolumeKg
-    }
+    var weeklyVolumeKg: Double { cachedWeeklyVolumeKg }
 }

@@ -48,6 +48,29 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Tests is still exposed as a primary tab")
         XCTAssertFalse(app.buttons["tab.plan"].exists,
                        "Retired Plan is still exposed as a primary tab")
+        // The Find tab is declared with the system search role; it must still
+        // reach the same searchable exercise catalog.
+        if app.tabBars.buttons["Find"].exists {
+            app.tabBars.buttons["Find"].tap()
+            XCTAssertTrue(app.searchFields.firstMatch.waitForExistence(timeout: 10),
+                          "Find tab did not present the searchable catalog")
+            if app.tabBars.buttons["Today"].exists { app.tabBars.buttons["Today"].tap() }
+        }
+
+        // Weekly-intent rings route to their tabs.
+        let strengthRing = app.buttons["home.weeklyIntent.strengthRing"]
+        if strengthRing.waitForExistence(timeout: 5) {
+            strengthRing.tap()
+            XCTAssertTrue(app.tabBars.buttons["Strength"].isSelected,
+                          "Strength ring did not select the Strength tab")
+            app.tabBars.buttons["Today"].tap()
+            let cardioRing = app.buttons["home.weeklyIntent.cardioRing"]
+            XCTAssertTrue(cardioRing.waitForExistence(timeout: 5))
+            cardioRing.tap()
+            XCTAssertTrue(app.tabBars.buttons["Cardio"].isSelected,
+                          "Cardio ring did not select the Cardio tab")
+            app.tabBars.buttons["Today"].tap()
+        }
 
         // The iPad delivery check intentionally covers only regular-width
         // Home/settings surfaces. The full end-to-end flow below remains
@@ -376,6 +399,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
                        "Personalized generation landed on the generic missing-workout warning page")
         XCTAssertFalse(app.navigationBars["View Suggested Workout"].exists,
                        "The retired suggested-workout chooser is still reachable")
+        // Suggested-strength path has its own Cancel; the toolbar one must not duplicate it.
+        XCTAssertFalse(app.buttons["editor.cancel"].exists,
+                       "Suggested-strength editor shows a redundant toolbar Cancel")
         let editableExercises = app.descendants(matching: .any)
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", "editor.exercise."))
         XCTAssertGreaterThan(editableExercises.count, 0,

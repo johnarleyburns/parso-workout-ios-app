@@ -12,71 +12,8 @@ struct PlannedWorkoutRowInput: Sendable {
     let status: ScheduledWorkoutStatus
 }
 
-struct HomePlannedWorkoutsSection: View {
-    let records: [ScheduledWorkout]
-    let onOpenAll: () -> Void
-    let onStart: (ScheduledWorkout) -> Void
-
-    private var items: [PlannedWorkoutsPresenter.Item] { records.map(Self.item) }
-    private var today: [PlannedWorkoutsPresenter.Item] { PlannedWorkoutsPresenter.today(items) }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: LayoutMetrics.cardHeadingSpacing) {
-            Text("Planned Workouts").font(.headline)
-            if today.isEmpty {
-                Text("No workouts planned for today.")
-                    .font(.subheadline).foregroundStyle(.secondary)
-            } else {
-                ForEach(today) { item in
-                    if let record = records.first(where: { $0.id == item.id }) {
-                        plannedRow(item, record: record)
-                    }
-                }
-            }
-            if PlannedWorkoutsPresenter.showsMore(items) {
-                Divider().padding(.top, 4)
-                Button(action: onOpenAll) {
-                    HStack {
-                        Text("Show more…")
-                        Spacer()
-                        Image(systemName: "chevron.right").font(.caption)
-                    }
-                    .foregroundStyle(.tint)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("home.planned.showMore")
-            }
-        }
-        .padding(LayoutMetrics.cardPadding)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .teal)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("home.plannedWorkouts")
-    }
-
-    private func plannedRow(_ item: PlannedWorkoutsPresenter.Item,
-                            record: ScheduledWorkout) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Image(systemName: "calendar").font(.caption).foregroundStyle(.teal)
-                    .frame(width: 22, height: 22)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(item.title).font(.subheadline.weight(.medium))
-                    Text(item.detail).font(.caption2).foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text(item.status == .started ? "IN PROGRESS" : "SCHEDULED")
-                    .font(.caption2.weight(.bold)).foregroundStyle(.teal)
-            }
-            CadenceActionButton(title: item.status == .started ? String(localized: "Resume Workout") : String(localized: "Start This Workout"),
-                                systemImage: item.status == .started ? "arrow.clockwise" : "play.fill",
-                                action: { onStart(record) })
-                .accessibilityIdentifier("home.planned.start.\(record.id.uuidString)")
-        }
-        .padding(.vertical, 6)
-    }
-
+/// Namespace for the planned-workout row mapping helpers used by Today.
+enum HomePlannedWorkoutsSection {
     nonisolated static func rowInput(_ record: ScheduledWorkout) -> PlannedWorkoutRowInput {
         PlannedWorkoutRowInput(id: record.id,
                                date: record.scheduledDate,
@@ -110,6 +47,15 @@ struct HomePlannedWorkoutsSection: View {
 
     nonisolated static func item(_ record: ScheduledWorkout) -> PlannedWorkoutsPresenter.Item {
         item(rowInput(record))
+    }
+
+    /// Flattens a scheduled workout into `ScheduledWorkoutWatchBridge`'s pure,
+    /// SwiftData-free input shape (issue: surface manually scheduled workouts
+    /// on Watch Today).
+    nonisolated static func watchBridgeInput(_ record: ScheduledWorkout) -> ScheduledWorkoutWatchBridge.Input {
+        ScheduledWorkoutWatchBridge.Input(id: record.id, date: record.scheduledDate, title: record.title,
+                                          payloadData: record.payloadData, payloadVersion: record.payloadVersion,
+                                          status: record.status)
     }
 }
 

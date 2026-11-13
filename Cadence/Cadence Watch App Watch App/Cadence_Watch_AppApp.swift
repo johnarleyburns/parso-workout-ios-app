@@ -89,55 +89,84 @@ struct CadenceWatchApp: App {
 /// default-store files and leaves the app usable even when persistence is broken.
 @MainActor
 final class WatchStoreBootstrap: ObservableObject {
-    enum State { case ready, recovered(URL), degraded(Error) }
-    @Published private(set) var state: State = .ready
+    typealias Policy = WatchStoreBootstrapPolicy<ModelContainer>
+    @Published private(set) var result: Policy.Result = Policy.Result(container: nil, state: .idle)
     @Published private(set) var container: ModelContainer?
     private var retryInProgress = false
     private var catalogPreparationStarted = false
     private static let logger = Logger(subsystem: "com.cladiron.app", category: "WatchStoreBootstrap")
 
     var isRecovery: Bool {
-        if case .degraded = state { return true }
+        if result.state == .degraded { return true }
         return container == nil
     }
 
     var recoveryMessage: String? {
-        if case .recovered(let url) = state {
-            return String(localized: "Previous Watch data was recovered to \(url.lastPathComponent).")
-        }
-        return nil
+        guard result.state == .recovered else { return nil }
+        let url = result.quarantinedAt ?? FileManager.default.temporaryDirectory
+        return String(localized: "Previous Watch data was recovered to \(url.lastPathComponent).")
     }
 
     init(arguments: [String]) {
         let inMemory = arguments.contains("-uiTest")
-        do {
-            let fresh = try CadenceStore.makeModelContainer(inMemory: inMemory, cloudKitEnabled: false, includesWatchCardioHistory: true)
-            container = fresh
-            if inMemory { seed(fresh, arguments: arguments) }
-        } catch {
-            let quarantine: URL?
+        guard !inMemory else {
+            // UI-test fast path, intentionally kept separate from the
+            // WatchStoreBootstrapPolicy wiring below: it opens the in-memory
+            // store first (which only seeds here, under `-uiTest`) and falls
+            // back through the same recovery shape production uses.
             do {
-                quarantine = try Self.quarantineStore()
-            } catch {
-                Self.logger.error("Store quarantine failed: \(error.localizedDescription, privacy: .public)")
-                quarantine = nil
-            }
-            do {
-                let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
+                let fresh = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
                 container = fresh
-                state = .recovered(quarantine ?? FileManager.default.temporaryDirectory)
-                if inMemory { seed(fresh, arguments: arguments) }
-            } catch let retryError {
+                result = Policy.Result(container: fresh, state: .ready)
+                seed(fresh, arguments: arguments)
+            } catch {
+                let quarantine: URL?
                 do {
-                    container = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
-                    state = .degraded(retryError)
+                    quarantine = try Self.quarantineStore()
                 } catch {
-                    // Keep the recovery surface alive even if the platform cannot
-                    // create an in-memory host; no workout UI is presented.
-                    container = nil
+                    Self.logger.error("Store quarantine failed: \(error.localizedDescription, privacy: .public)")
+                    quarantine = nil
+                }
+                do {
+                    let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
+                    container = fresh
+                    result = Policy.Result(container: fresh, state: .recovered, quarantinedAt: quarantine)
+                    seed(fresh, arguments: arguments)
+                } catch {
+                    do {
+                        let fresh = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
+                        container = fresh
+                        result = Policy.Result(container: fresh, state: .degraded)
+                    } catch {
+                        // Keep the recovery surface alive even if the platform cannot
+                        // create an in-memory host; no workout UI is presented.
+                        container = nil
+                        result = Policy.Result(container: nil, state: .degraded)
+                    }
                 }
             }
+            return
         }
+
+        // Real launch: delegate the open/quarantine/retry/fall-back-to-memory
+        // state machine entirely to the already-tested, generic policy.
+        // `seed` is a deliberate no-op here — real users get data via
+        // CloudKit sync, never local starter-library seeding (mirrors the
+        // iPhone app's CadenceApp.swift, which defers that same seed work so
+        // CloudKit restore is never blocked).
+        let policy = Policy(
+            createPersistent: {
+                try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
+            },
+            createInMemory: {
+                try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
+            },
+            quarantine: { try Self.quarantineStore() },
+            seed: { _ in }
+        )
+        let outcome = policy.open()
+        container = outcome.container
+        result = outcome
     }
 
     func retry() {
@@ -148,10 +177,10 @@ final class WatchStoreBootstrap: ObservableObject {
             let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
             container = fresh
             catalogPreparationStarted = false
-            state = .ready
+            result = Policy.Result(container: fresh, state: .ready)
         } catch {
             Self.logger.error("Store retry failed: \(error.localizedDescription, privacy: .public)")
-            state = .degraded(error)
+            result = Policy.Result(container: container, state: .degraded)
         }
     }
 

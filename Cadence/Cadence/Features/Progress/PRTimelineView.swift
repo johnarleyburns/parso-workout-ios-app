@@ -11,6 +11,10 @@ struct PRTimelineView: View {
     @Environment(AppSettings.self) private var settings
     let events: [PREvent]
     @State private var selectedExerciseName: String?
+    /// Rendered share-card URLs, reused across renders. A reference type so filling it
+    /// during `body` doesn't mutate view state mid-update. PR events are immutable, so
+    /// entries are keyed by event id + unit (the card text depends on the unit).
+    @State private var shareCardCache = ShareCardURLCache()
     private var rows: [PRTimelinePresenter.Row] {
         PRTimelinePresenter.rows(events: events, unit: settings.unit)
     }
@@ -121,6 +125,14 @@ struct PRTimelineView: View {
     }
 
     @MainActor private func shareURL(for event: PREvent) -> URL? {
-        ShareCardRenderer.render(event: event, unit: settings.unit)
+        let key = "\(event.id.uuidString)-\(String(describing: settings.unit))"
+        if let cached = shareCardCache.urls[key] { return cached }
+        guard let url = ShareCardRenderer.render(event: event, unit: settings.unit) else { return nil }
+        shareCardCache.urls[key] = url
+        return url
     }
+}
+
+@MainActor private final class ShareCardURLCache {
+    var urls: [String: URL] = [:]
 }

@@ -30,6 +30,9 @@ extension HomeView {
                 supporterBadgeView(badge)
             }
         }
+        WeeklyIntentRingsCard(
+            display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
+            tabSelection: rootTabSelection)
         if surface != .today,
            let close = WeekCloseMoment.make(
                workingSets: dashboard.volumeCoverage.completed,

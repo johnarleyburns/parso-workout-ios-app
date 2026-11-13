@@ -31,6 +31,7 @@ struct HomeView: View {
     @Environment(ActiveWorkoutModel.self) var active
     @Environment(ContributionCoordinator.self) var contributions
     @Environment(\.scenePhase) var scenePhase
+    @Environment(\.rootTabSelection) var rootTabSelection
     @Environment(\.cadenceModelContainer) var cadenceModelContainer
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) var cardio: [CardioWorkout]
@@ -301,7 +302,7 @@ struct HomeView: View {
 
         // No hidden weekly plan is rebuilt here. The Watch Today hero mirrors the
         // phone's advisory suggestion; the Watch still lets the user start anything.
-        model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(from: snapshot.decision, suggestedStrength: todaySuggestedPlan))
+        model.updateWatchTodayPlan(watchTodayPlan(from: snapshot.decision, suggestedStrength: todaySuggestedPlan))
         let todayScheduled = PlannedWorkoutsPresenter.today(
             scheduledWorkouts.map(HomePlannedWorkoutsSection.item))
         CadencePlatformSnapshotStore.save(CadenceTodaySnapshot(

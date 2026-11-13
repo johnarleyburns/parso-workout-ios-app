@@ -194,6 +194,12 @@ struct WorkoutPlanEditor: View {
                 }
                 .accessibilityIdentifier("editor.edit")
             }
+            ToolbarItem(placement: .cancellationAction) {
+                if !isEditing, suggestedStrength == nil {
+                    Button("Cancel") { dismiss() }
+                        .accessibilityIdentifier("editor.cancel")
+                }
+            }
         }
         .safeAreaInset(edge: .bottom) {
             if isEditing {

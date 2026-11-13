@@ -103,6 +103,7 @@ struct IntervalView: View {
         guard preStartTask == nil else { return }
         cues.spokenEnabled = settings.spokenCues
         cues.isBoxing = saveType == .boxing
+        cues.celebrationStyle = settings.celebrationStyle
         preStartTask = Task { @MainActor in
             for second in stride(from: 3, through: 1, by: -1) {
                 preStartSecond = second
@@ -129,6 +130,7 @@ struct IntervalView: View {
         lastHRSecond = Int(parkedRunner.elapsed)
         cues.spokenEnabled = settings.spokenCues
         cues.isBoxing = saveType == .boxing
+        cues.celebrationStyle = settings.celebrationStyle
         preStartSecond = nil
         preStartTask = Task {} // marks the pre-start as already consumed
         let scheduler = IntervalCueScheduler(runner: runner, cues: cues)
@@ -227,7 +229,11 @@ struct IntervalView: View {
         } message: {
             Text("This will advance to the next phase.")
         }
-        .onAppear { cues.spokenEnabled = settings.spokenCues; cues.isBoxing = saveType == .boxing }
+        .onAppear {
+            cues.spokenEnabled = settings.spokenCues
+            cues.isBoxing = saveType == .boxing
+            cues.celebrationStyle = settings.celebrationStyle
+        }
         .onReceive(tick) { _ in advance() }
         .onChange(of: runner.currentPhaseID) { _, _ in
             if let kind = runner.phaseKind { cues.phaseChanged(to: kind, label: runner.phaseLabel) }

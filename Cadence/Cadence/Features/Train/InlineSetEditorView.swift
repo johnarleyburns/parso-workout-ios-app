@@ -5,6 +5,7 @@ import CadenceFeatures
 /// Full-screen add/edit set entry. The filename is retained to avoid changing
 /// the Xcode project graph; the old inline implementation is no longer used.
 struct InlineSetEditorView: View {
+    @Environment(AppSettings.self) private var settings
     let config: InlineEditorConfig
     let wouldBePR: ((Double, Int) -> Bool)?
     let onSave: (SetDraft) -> Void
@@ -275,7 +276,17 @@ struct InlineSetEditorView: View {
     }
 
     private var footer: some View {
-        Button(action: { guard let result = draft.submit() else { return }; Haptics.setLogged(); onSave(SetDraft(weightString: config.nonWeighted ? "0" : weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID)) }) {
+        Button(action: {
+            guard let result = draft.submit() else { return }
+            // Gate through CuePolicy (via CelebrationCuePlayer) so Settings →
+            // Celebrations controls this manual-log haptic the same way as the
+            // primary set-logging path in SessionView+SetActions.
+            if let kind = CelebrationCuePlayer(celebrationStyle: settings.celebrationStyle)
+                .decide(for: .loggedSet(isPersonalBest: isPR))?.kind {
+                Haptics.play(kind)
+            }
+            onSave(SetDraft(weightString: config.nonWeighted ? "0" : weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID))
+        }) {
             Text("Log Set").frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)

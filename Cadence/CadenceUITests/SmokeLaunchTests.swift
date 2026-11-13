@@ -57,6 +57,21 @@ final class SmokeLaunchTests: CadenceUITestCase {
             if app.tabBars.buttons["Today"].exists { app.tabBars.buttons["Today"].tap() }
         }
 
+        // Weekly-intent rings route to their tabs.
+        let strengthRing = app.buttons["home.weeklyIntent.strengthRing"]
+        if strengthRing.waitForExistence(timeout: 5) {
+            strengthRing.tap()
+            XCTAssertTrue(app.tabBars.buttons["Strength"].isSelected,
+                          "Strength ring did not select the Strength tab")
+            app.tabBars.buttons["Today"].tap()
+            let cardioRing = app.buttons["home.weeklyIntent.cardioRing"]
+            XCTAssertTrue(cardioRing.waitForExistence(timeout: 5))
+            cardioRing.tap()
+            XCTAssertTrue(app.tabBars.buttons["Cardio"].isSelected,
+                          "Cardio ring did not select the Cardio tab")
+            app.tabBars.buttons["Today"].tap()
+        }
+
         // The iPad delivery check intentionally covers only regular-width
         // Home/settings surfaces. The full end-to-end flow below remains
         // the single iPhone smoke path.

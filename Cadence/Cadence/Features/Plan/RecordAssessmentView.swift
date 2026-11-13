@@ -198,7 +198,13 @@ struct RecordAssessmentView: View {
         try? context.save()
         let backup = HealthBackupEncoder.assessmentPayload(for: assessment)
         Task { _ = await model.healthBackup.enqueueAndDrain(.assessment(backup)) }
-        Haptics.prAchieved()
+        // Gated through CuePolicy (via CelebrationCuePlayer) like the other
+        // celebration call sites, so Settings → Celebrations controls the
+        // assessment-recorded haptic too.
+        if let kind = CelebrationCuePlayer(celebrationStyle: settings.celebrationStyle)
+            .decide(for: .loggedSet(isPersonalBest: true))?.kind {
+            Haptics.play(kind)
+        }
         dismiss()
     }
 }

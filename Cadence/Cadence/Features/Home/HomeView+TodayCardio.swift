@@ -51,7 +51,7 @@ struct HomeTodayCardioCard: View {
                 Button { onStart(suggestion) } label: {
                     Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
+                .buttonStyle(.bordered)
                 .tint(CadenceTheme.accent)
                 .controlSize(.large)
                 .accessibilityIdentifier("home.cardio.start")

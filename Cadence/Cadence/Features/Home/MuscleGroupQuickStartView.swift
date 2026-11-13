@@ -48,6 +48,9 @@ struct MuscleGroupQuickStartView: View {
                                     .font(.caption).foregroundStyle(.secondary)
                             }
                         }
+                        CoachSourcesLink(
+                            citationIds: CitationRegistry.strengthVolumePool.citationIds,
+                            identifier: "groupQuick.science")
                         Button {
                             buildFromSuggestions()
                         } label: {

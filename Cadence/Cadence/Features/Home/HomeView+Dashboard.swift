@@ -47,6 +47,9 @@ extension HomeView {
             .sheet(isPresented: $logPickerPresented) {
                 LogWorkoutPicker(onSaved: workoutSaved)
             }
+            .sheet(isPresented: $readinessPresented) {
+                ReadinessCheckInView(existing: todayReadiness)
+            }
             .sheet(isPresented: $recoveryOptionsPresented) {
                 recoveryOptionsSheet
             }

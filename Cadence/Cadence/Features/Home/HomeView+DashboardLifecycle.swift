@@ -145,7 +145,7 @@ extension HomeView {
             .onChange(of: todaySuggestedPlan?.id) { _, _ in
                 // Watch Suggest mirrors the phone's generated Today plan.
                 guard coachSnapshotReady, let plan = todaySuggestedPlan else { return }
-                model.updateWatchTodayPlan(CoachWatchTodayBridge.todayPlan(
+                model.updateWatchTodayPlan(watchTodayPlan(
                     from: coachDecision, suggestedStrength: plan))
             }
             .modifier(WatchCoachRefreshModifier(action: refreshWatchCoachSuggestion))
@@ -198,6 +198,16 @@ extension HomeView {
             weeklyDetailSelection.select(destination.detailMode)
         }
         weekScrollTarget = destination.detailMode
+    }
+
+    /// The coach's advisory Watch Today projection with any workout the user
+    /// scheduled for today for themselves layered on top (NFR-8: a scheduled
+    /// session wins a same-modality tie; a different-modality coach suggestion
+    /// still shows as a second row rather than being suppressed).
+    func watchTodayPlan(from decision: CoachDecision, suggestedStrength: EditablePlan?) -> WatchSync.TodayPlan {
+        let base = CoachWatchTodayBridge.todayPlan(from: decision, suggestedStrength: suggestedStrength)
+        let inputs = scheduledWorkouts.map(HomePlannedWorkoutsSection.watchBridgeInput)
+        return ScheduledWorkoutWatchBridge.merge(scheduledSessions: ScheduledWorkoutWatchBridge.todaySessions(inputs), into: base)
     }
 }
 

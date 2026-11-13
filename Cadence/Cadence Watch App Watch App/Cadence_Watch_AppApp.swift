@@ -89,7 +89,7 @@ struct CadenceWatchApp: App {
 /// default-store files and leaves the app usable even when persistence is broken.
 @MainActor
 final class WatchStoreBootstrap: ObservableObject {
-    private typealias Policy = WatchStoreBootstrapPolicy<ModelContainer>
+    typealias Policy = WatchStoreBootstrapPolicy<ModelContainer>
     @Published private(set) var result: Policy.Result = Policy.Result(container: nil, state: .idle)
     @Published private(set) var container: ModelContainer?
     private var retryInProgress = false

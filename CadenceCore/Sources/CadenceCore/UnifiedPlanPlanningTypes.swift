@@ -12,60 +12,6 @@ public enum PlanAssistance: String, Codable, Sendable, Hashable {
     case autoregulated
 }
 
-public enum TemplateAuthor: Codable, Equatable, Sendable {
-    case builtIn
-    case user
-    case trainer(TrainerRef)
-}
-
-public struct PlanTemplate: Codable, Equatable, Sendable, Identifiable {
-    public let id: TemplateID
-    public var title: String
-    public var author: TemplateAuthor
-    public var goal: TrainingGoal
-    public var experienceLevel: ExperienceLevel
-    public var daysPerWeek: Int
-    public var equipmentProfile: [Equipment]
-    public var weeks: [PlanWeek]
-    public var setSchemes: [SetScheme]
-    public var description: String
-    public var evidenceNotes: String?
-    public var rationale: EngineRationale?
-
-    public init(id: TemplateID = TemplateID(), title: String,
-                author: TemplateAuthor = .user, goal: TrainingGoal = .hypertrophy,
-                experienceLevel: ExperienceLevel = .intermediate,
-                daysPerWeek: Int, equipmentProfile: [Equipment] = [],
-                weeks: [PlanWeek], setSchemes: [SetScheme] = [], description: String,
-                evidenceNotes: String? = nil, rationale: EngineRationale? = nil) {
-        self.id = id
-        self.title = title
-        self.author = author
-        self.goal = goal
-        self.experienceLevel = experienceLevel
-        self.daysPerWeek = daysPerWeek
-        self.equipmentProfile = equipmentProfile
-        self.weeks = weeks
-        self.setSchemes = setSchemes
-        self.description = description
-        self.evidenceNotes = evidenceNotes
-        self.rationale = rationale
-    }
-
-    public func validate() throws {
-        guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              (1...7).contains(daysPerWeek), !weeks.isEmpty else {
-            throw UnifiedPlanValidationError.invalidTemplate
-        }
-        for week in weeks { try week.validate() }
-        for scheme in setSchemes { try scheme.validate() }
-        guard Set(setSchemes.map(\.id)).count == setSchemes.count else {
-            throw UnifiedPlanValidationError.duplicateSetSchemeID
-        }
-    }
-}
-
 public enum SchemeKind: Codable, Equatable, Sendable {
     case straightSets
     case doubleProgressionRange

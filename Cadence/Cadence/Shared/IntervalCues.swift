@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import CadenceCore
+import CadenceFeatures
 
 /// Non-visual interval cues (field-testing §06/round 4): haptics + bundled bell
 /// sounds on every transition, a 30-second warning bell, and optional spoken
@@ -15,6 +16,12 @@ final class IntervalCues {
     var spokenEnabled = false
     /// When true, use the bundled MP3 bells (boxing). When false, use soft system beeps.
     var isBoxing = false
+    /// Mirrors `AppSettings.celebrationStyle` (set by the owning view, same
+    /// pattern as `spokenEnabled`/`isBoxing`). Gates the sound/speech
+    /// accompaniment on the workout-complete cue in `completed()` through
+    /// `CuePolicy`/`CelebrationCuePlayer`: `.full` plays it, `.quiet` and
+    /// `.off` keep only the haptic (and `.off` suppresses the haptic too).
+    var celebrationStyle: CelebrationStyle = .full
     private let synth: AVSpeechSynthesizer = {
         let s = AVSpeechSynthesizer()
         // Route speech through the app's `.mixWithOthers` session so spoken cues
@@ -98,14 +105,20 @@ final class IntervalCues {
     }
 
     func completed() {
-        if isBoxing {
-            play(bell)
-        } else {
-            activateSession()
-            TonePlayer.playAlert()
+        // Gated through CuePolicy (via CelebrationCuePlayer): `.off` suppresses
+        // this celebration cue entirely; `.quiet` keeps the haptic but drops
+        // the bell/beep + spoken "Workout complete"; `.full` plays both.
+        guard let decision = CelebrationCuePlayer(celebrationStyle: celebrationStyle).decide(for: .dayCompleted) else { return }
+        if decision.playsSound {
+            if isBoxing {
+                play(bell)
+            } else {
+                activateSession()
+                TonePlayer.playAlert()
+            }
         }
-        Haptics.play(.dayClosed)
-        if spokenEnabled { speak(String(localized: "Workout complete")) }
+        Haptics.play(decision.kind)
+        if decision.playsSound, spokenEnabled { speak(String(localized: "Workout complete")) }
     }
 
     private func speak(_ text: String) {

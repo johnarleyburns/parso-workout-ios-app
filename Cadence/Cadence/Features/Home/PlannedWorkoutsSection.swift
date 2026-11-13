@@ -48,6 +48,15 @@ enum HomePlannedWorkoutsSection {
     nonisolated static func item(_ record: ScheduledWorkout) -> PlannedWorkoutsPresenter.Item {
         item(rowInput(record))
     }
+
+    /// Flattens a scheduled workout into `ScheduledWorkoutWatchBridge`'s pure,
+    /// SwiftData-free input shape (issue: surface manually scheduled workouts
+    /// on Watch Today).
+    nonisolated static func watchBridgeInput(_ record: ScheduledWorkout) -> ScheduledWorkoutWatchBridge.Input {
+        ScheduledWorkoutWatchBridge.Input(id: record.id, date: record.scheduledDate, title: record.title,
+                                          payloadData: record.payloadData, payloadVersion: record.payloadVersion,
+                                          status: record.status)
+    }
 }
 
 struct PlannedWorkoutsListView: View {

@@ -109,7 +109,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because the package suite can be lengthy; `git push` needs little time because pre-push runs no tests.
 
 ## Conventions
-- Small, focused commits; one feature per branch; push to main when verified.
+- Small, focused commits; one feature per branch; land every change via a PR with auto-merge enabled — never push to `main` directly (branch protection requires a PR plus the `validate` status check; a bare `git push origin main` is rejected by GitHub with `GH013`).
 - Reference spec IDs in commits/PRs (e.g. "FR-1 strength logging", "FR-3 steps").
 - Build the `CadenceCore` package first.
 - Accessibility is not optional: VoiceOver labels + Dynamic Type on every new view (NFR-2).
@@ -218,8 +218,15 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
 
 ## Post-task checklist (MANDATORY — NEVER skip after completing a task)
 Once the work is verified (green build + tests), execute these steps in order.
-**This checklist is NOT optional.** Every task MUST end with a commit, merge,
-and push unless the user explicitly says otherwise.
+**This checklist is NOT optional.** Every task MUST end with a commit, PR, and
+auto-merge unless the user explicitly says otherwise.
+
+**Always open a PR — never push to `main` directly.** Branch protection on
+`main` requires a pull request plus the `validate` status check; a bare
+`git push origin main` is rejected by GitHub itself (`GH013`, "Changes must be
+made through a pull request" — confirmed by a direct push attempt on
+2026-11-13). There is no local-merge-then-push shortcut for any task, no
+matter how small.
 
 1. **Audit plan vs implementation** — re-read the plan (if one exists) and check
    every acceptance criterion, data-model change, and UI requirement against
@@ -231,12 +238,13 @@ and push unless the user explicitly says otherwise.
 4. **Stage + commit** all changes with a concise, conventional-commit message
    (e.g. `feat: coach why-this-today + preference learning`). Include changed
    files and new files. Never commit before verifying.
-5. **Merge to `main`** if not already there (`git checkout main && git merge --ff-only <branch>`).
-   If already on `main`, commit directly to `main`.
-6. **Push** (`git push origin main`).
-7. **Monitor CI** — check `git log --oneline -1` to confirm the push SHA, then
-   use `gh run list --branch main --limit 1` to watch the workflow.
-8. **Report the commit SHA and CI status** to the user.
+5. **Push the branch** (`git push -u origin <branch>`), then `gh pr create` into `main`.
+6. **Enable auto-merge** (`gh pr merge <PR> --auto --squash --delete-branch`) —
+   do this without asking first. It only lands once the required checks pass,
+   and the owner can always stop a PR by disabling automerge or saying so
+   before it's opened.
+7. **Monitor CI** on the PR (`gh pr checks <PR>`, or `gh run list --branch <branch> --limit 1`).
+8. **Report the PR URL and CI status** to the user.
 
 ## Automatic TestFlight crash intake
 

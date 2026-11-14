@@ -169,6 +169,7 @@ struct HomeView: View {
     // Value-only weekly cardio/dose, published by the background projection.
     @State var cachedWeeklyCardio: WeeklyCardioSummary = .empty
     @State var cachedWeeklyActivityDose: WeeklyActivitySummary?
+    @State var weeklyIntent: HomeWeeklyIntentSnapshot?
     @State var dashboardActivityReady = false
     var dashboard: HomeDashboardState {
         if let cachedDashboard { return cachedDashboard }
@@ -186,9 +187,9 @@ struct HomeView: View {
                                            goal: settings.trainingGoal,
                                            experience: settings.experienceLevel,
                                            userAge: settings.userAge,
-                                           liveVolumeDelta: liveVolumeDelta, weeklyCardio: cachedWeeklyCardio,
+                                           liveVolumeDelta: liveVolumeDelta, weeklyCardio: weeklyIntent?.weeklyCardioSummary ?? cachedWeeklyCardio,
                                            activityDose: cachedWeeklyActivityDose,
-                                           restoredWeeklySetsByMuscle: coachSnapshotReady ? nil : restoredRecommendation?.weeklySetsByMuscle)
+                                           restoredWeeklySetsByMuscle: weeklyIntent?.setsByMuscle ?? (coachSnapshotReady ? nil : restoredRecommendation?.weeklySetsByMuscle))
     }
 
     func savePlatformSnapshot(for dashboard: HomeDashboardState) {

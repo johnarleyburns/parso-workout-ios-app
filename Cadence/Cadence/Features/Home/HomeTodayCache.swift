@@ -12,6 +12,12 @@ import CadenceFeatures
 ///   skip the coach pipeline entirely.
 /// The ownership boundary lives in `TodayRecommendationCoordinator`: calls
 /// from `.thisWeek` cannot write, restore-and-discard, or invalidate.
+/// Independent, fingerprint-free disk cache of the weekly rings snapshot.
+@MainActor
+enum HomeWeeklyIntentCache {
+    static let store = HomeWeeklyIntentCacheStore(fileURL: HomeWeeklyIntentCacheStore.defaultFileURL())
+}
+
 @MainActor
 enum HomeTodayCache {
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "TodayCache")
@@ -159,6 +165,9 @@ extension HomeView {
         // call todayFingerprint, coachSignature, makeDashboard,
         // refreshCoachSnapshot, HealthKit, Watch sync, or any SwiftData API.
         guard surface == .today else { return }
+        if weeklyIntent == nil, let restored = await HomeWeeklyIntentCache.store.peek() {
+            weeklyIntent = restored
+        }
         if restoredRecommendation == nil,
            let record = await HomeTodayCache.coordinator.restoreProvisional(surface: .today) {
             restoredRecommendation = record.payload

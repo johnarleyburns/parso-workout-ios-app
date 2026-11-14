@@ -538,4 +538,25 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty,
                       "Storing an empty roster must not leave undecodable data behind")
     }
+
+    func testSessionsAndCardioSinceAreDateBoundedAndExcludeDeleted() throws {
+        let ctx = try makeContext()
+        let weekStart = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        let before = try WorkoutRepository.createSession(title: "old", date: weekStart.addingTimeInterval(-86_400), in: ctx)
+        let boundary = try WorkoutRepository.createSession(title: "b", date: weekStart, in: ctx)
+        let after = try WorkoutRepository.createSession(title: "n", date: weekStart.addingTimeInterval(86_400), in: ctx)
+        let deleted = try WorkoutRepository.createSession(title: "d", date: weekStart.addingTimeInterval(1), in: ctx)
+        try WorkoutRepository.softDeleteSession(deleted, in: ctx)
+        let ids = Set(try WorkoutRepository.sessions(since: weekStart, in: ctx).map(\.id))
+        XCTAssertEqual(ids, Set([boundary.id, after.id]))
+        XCTAssertFalse(ids.contains(before.id))
+
+        let cOld = try WorkoutRepository.saveLoggedCardio(type: .run, start: weekStart.addingTimeInterval(-60), durationSeconds: 600, in: ctx)
+        let cNew = try WorkoutRepository.saveLoggedCardio(type: .run, start: weekStart, durationSeconds: 600, in: ctx)
+        let cDel = try WorkoutRepository.saveLoggedCardio(type: .run, start: weekStart.addingTimeInterval(10), durationSeconds: 600, in: ctx)
+        try WorkoutRepository.softDeleteCardio(cDel, in: ctx)
+        let cids = Set(try WorkoutRepository.cardio(since: weekStart, in: ctx).map(\.id))
+        XCTAssertEqual(cids, Set([cNew.id]))
+        XCTAssertFalse(cids.contains(cOld.id))
+    }
 }

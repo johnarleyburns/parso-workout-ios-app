@@ -132,6 +132,7 @@ extension HomeView {
                 // Let the first interactive frame render before walking the
                 // historical SwiftData relationships for these compact rows.
                 await Task.yield()
+                await refreshWeeklyIntentSnapshot()
                 await refreshHomeActivitySnapshot()
             }
             .task(id: HomeTodaySuggestionTaskIdentity(

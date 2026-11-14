@@ -1459,6 +1459,14 @@ public enum WorkoutRepository {
         ))
     }
 
+    /// See `sessions(since:in:)` — same rationale, for cardio.
+    public static func cardio(since date: Date, in context: ModelContext) throws -> [CardioWorkout] {
+        try context.fetch(FetchDescriptor<CardioWorkout>(
+            predicate: #Predicate { $0.deletedAt == nil && $0.start >= date },
+            sortBy: [SortDescriptor(\.start, order: .reverse)]
+        ))
+    }
+
     /// One-time migration: backfill `importedWorkoutKind` for existing .other
     /// CardioWorkout rows that were imported before the recovery-aware redesign.
     /// Without original HKWorkoutActivityType metadata, cannot backfill with

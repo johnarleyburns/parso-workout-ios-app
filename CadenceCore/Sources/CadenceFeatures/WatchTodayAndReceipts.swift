@@ -152,3 +152,32 @@ public enum WatchCardioTileOrder {
 private extension Array {
     var nonEmpty: Self? { isEmpty ? nil : self }
 }
+
+/// Home-surface layout/action policy for the watch Today screen, derived from the domain hero.
+public enum WatchTodayHomePresentation: Equatable, Sendable {
+    case standard
+    case ready(synced: Bool)
+    case rest
+
+    public init(hero: WatchTodayHero) {
+        switch hero {
+        case .unplanned(let synced): self = .ready(synced: synced)
+        case .restDay: self = .rest
+        case .resume, .planned, .plannedCardio: self = .standard
+        }
+    }
+
+    /// The ready card carries its own Strength / Cardio actions.
+    public var showsEmbeddedStartActions: Bool {
+        if case .ready = self { return true }
+        return false
+    }
+
+    /// The generic Lift / Cardio tile row.
+    public var showsQuickStartTiles: Bool { self == .standard }
+
+    public var syncReminder: String? {
+        if case .ready(synced: false) = self { return "Sync your iPhone plan when convenient." }
+        return nil
+    }
+}

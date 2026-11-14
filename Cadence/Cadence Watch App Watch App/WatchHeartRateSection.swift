@@ -12,6 +12,8 @@ struct WatchHeartRateSection: View {
     let intensityProfile: CardioIntensityProfile
     /// Real session length; unmeasured time stays unclassified rather than shrinking the session.
     let sessionDuration: TimeInterval
+    /// Persisted credit for historical views; never recomputed under a changed profile.
+    var storedSummary: CardioMinuteSummary?
 
     /// Chart banding only; the minute rows below come solely from `CardioMinuteAccumulator`.
     private var zoneMaxHR: Double {
@@ -66,7 +68,7 @@ struct WatchHeartRateSection: View {
                 if let max = presentation.maximumBPM {
                     row(String(localized: "Max HR"), "\(Int(max.rounded()))")
                 }
-                let summary = WatchStrengthHRCoverage.summary(
+                let summary = storedSummary ?? WatchStrengthHRCoverage.summary(
                     samples: hrSamples, duration: sessionDuration, profile: intensityProfile)
                 if let minutes = WatchCardioMinutesSummary.make(summary: summary) {
                     row(String(localized: "Below moderate"), CardioMinutesDisplay.zone(minutes.belowModerateMinutes))

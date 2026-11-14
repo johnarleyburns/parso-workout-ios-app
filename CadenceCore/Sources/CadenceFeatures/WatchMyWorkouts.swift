@@ -27,6 +27,8 @@ public struct WatchMyWorkoutRow: Equatable, Sendable, Identifiable {
     public let distanceMeters: Double?
     /// Already-presentable "Imported from …" text, imported cardio rows only.
     public let originLabel: String?
+    /// Cardio rows only: a rich history summary exists (phone mirror or pending local completion).
+    public var hasRichSummary: Bool = false
 
     /// Strength rows show a set count; planned and cardio rows never show "0 sets".
     public var showsSetCount: Bool { source.isStrength }
@@ -72,8 +74,10 @@ public enum WatchMyWorkouts {
         public let end: Date?
         public let distanceMeters: Double?
         public let importLabel: String?
+        public let hasRichSummary: Bool
         public init(id: UUID, title: String, type: String, start: Date, end: Date? = nil,
-                    distanceMeters: Double? = nil, importLabel: String? = nil) {
+                    distanceMeters: Double? = nil, importLabel: String? = nil, hasRichSummary: Bool = false) {
+            self.hasRichSummary = hasRichSummary
             self.id = id; self.title = title; self.type = type; self.start = start; self.end = end
             self.distanceMeters = distanceMeters; self.importLabel = importLabel
         }
@@ -96,13 +100,15 @@ public enum WatchMyWorkouts {
                               date: $0.date, exerciseNames: [], setCount: $0.setCount, isCardio: false,
                               cardioType: nil, durationSeconds: nil, distanceMeters: nil, originLabel: nil)
         }
-        let cardioRows = cardio.map { item in
-            WatchMyWorkoutRow(id: "cardio-\(item.id.uuidString)", source: .cardio(item.id), status: .completed,
+        let cardioRows = cardio.map { item -> WatchMyWorkoutRow in
+            var row = WatchMyWorkoutRow(id: "cardio-\(item.id.uuidString)", source: .cardio(item.id), status: .completed,
                               title: item.title.isEmpty ? "Cardio" : item.title,
                               date: item.start, exerciseNames: [], setCount: 0, isCardio: true,
                               cardioType: item.type,
                               durationSeconds: item.end.map { max(0, $0.timeIntervalSince(item.start)) },
                               distanceMeters: item.distanceMeters, originLabel: item.importLabel)
+            row.hasRichSummary = item.hasRichSummary
+            return row
         }
         let done = (strengthRows + cardioRows).sorted {
             let (a, b) = ($0.date ?? .distantPast, $1.date ?? .distantPast)

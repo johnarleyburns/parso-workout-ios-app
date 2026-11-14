@@ -27,9 +27,9 @@ struct WatchStrengthSummaryView: View {
                     + Text(verbatim: " · \(model.weightValue(model.volume)) \(model.unit.abbreviation)"))
                     .font(.caption2).foregroundStyle(.secondary)
                     .accessibilityLabel(Text("Duration \(model.durationText)") + Text(verbatim: ", ") + Text("\(model.setCount) sets"))
-                WatchHeartRateSection(hrSamples: model.recordedHeartRate, intensityProfile: intensityProfile,
-                                      sessionDuration: model.durationSeconds)
-                hrCoverageRow
+                WatchSummaryHeartRateBlock(presentation: presentation, profile: intensityProfile,
+                                           pending: watchManager.strengthCompletionOutbox.failedRecoverably
+                                               || model.completionHeartRateOmitted)
                 WatchReceiptRow(title: "Saved on watch", state: receipt.watch)
                 WatchReceiptRow(title: "iPhone", state: receipt.iPhone)
                 WatchReceiptRow(title: "Apple Health", state: receipt.health)
@@ -67,15 +67,17 @@ struct WatchStrengthSummaryView: View {
         watchSettings.resolvedCardioIntensityProfile
     }
 
-    private var hrCoverageRow: some View {
-        let coverage = WatchStrengthHRCoverage.presentation(
-            samples: model.recordedHeartRate,
-            duration: model.durationSeconds,
-            profile: intensityProfile,
-            pending: watchManager.strengthCompletionOutbox.failedRecoverably || model.completionHeartRateOmitted)
-        return Text(coverage.text).font(.caption2).foregroundStyle(.secondary)
-            .accessibilityLabel(coverage.accessibilityLabel)
-            .accessibilityIdentifier("watchSummary.hrCoverage")
+    /// Same presentation layer the read-only history uses.
+    private var presentation: WatchWorkoutSummaryPresentation {
+        let now = Date()
+        let summary = WatchWorkoutHistorySummary(
+            id: UUID(), kind: .strength, title: "", start: now.addingTimeInterval(-model.durationSeconds),
+            end: now, hrSamples: model.recordedHeartRate,
+            minuteSummary: WatchStrengthHRCoverage.summary(
+                samples: WatchWorkoutHistorySummary.normalized(model.recordedHeartRate),
+                duration: model.durationSeconds, profile: intensityProfile),
+            workingSetCount: model.setCount, totalVolumeKg: model.volume)
+        return WatchWorkoutSummaryPresentation.make(summary: summary, unit: model.unit, isHistorical: false)
     }
 
     private func refreshReceipt() {

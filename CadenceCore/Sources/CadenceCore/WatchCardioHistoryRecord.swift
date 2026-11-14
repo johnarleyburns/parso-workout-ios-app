@@ -25,14 +25,17 @@ public final class WatchCardioHistoryRecord {
     /// Already-presentable "Imported from …" text; nil for rows the user recorded.
     public var importLabel: String?
     public var updatedAt: Date = Date()
+    /// Encoded rich summary (display data only, size-capped); nil for legacy rows.
+    public var summaryData: Data?
 
     public init(id: UUID = UUID(), healthKitUUID: UUID? = nil, typeRaw: String = CardioType.other.rawValue,
                 title: String = "", start: Date = Date(), end: Date? = nil, distanceMeters: Double? = nil,
                 originRaw: String = CardioRecordOrigin.cladironRecorded.rawValue,
-                importLabel: String? = nil, updatedAt: Date = Date()) {
+                importLabel: String? = nil, updatedAt: Date = Date(), summaryData: Data? = nil) {
         self.id = id; self.healthKitUUID = healthKitUUID; self.typeRaw = typeRaw
         self.title = title; self.start = start; self.end = end
         self.distanceMeters = distanceMeters; self.originRaw = originRaw
         self.importLabel = importLabel; self.updatedAt = updatedAt
+        self.summaryData = summaryData
     }
 }

@@ -12,18 +12,19 @@ struct WatchCardioCompletionSummaryContent<Extra: View>: View {
     @ViewBuilder let extraRows: () -> Extra
 
     var body: some View {
-        let presentation = WatchCardioCompletionSummaryPresenter.present(
-            samples: summary.hrSamples, duration: summary.duration,
-            averageBPM: summary.avgHR, maximumBPM: summary.maxHR, profile: profile)
+        let now = Date()
+        let samples = WatchWorkoutHistorySummary.normalized(summary.hrSamples)
+        let shared = WatchWorkoutSummaryPresentation.make(
+            summary: WatchWorkoutHistorySummary(
+                id: UUID(), kind: .cardio, title: "", start: now.addingTimeInterval(-summary.duration), end: now,
+                hrSamples: samples, averageBPM: summary.avgHR, maximumBPM: summary.maxHR,
+                minuteSummary: WatchStrengthHRCoverage.summary(
+                    samples: samples, duration: summary.duration, profile: profile)),
+            unit: .kilograms, isHistorical: false)
         VStack(spacing: 8) {
             row(durationLabel, Self.formatTime(summary.duration))
-            if presentation.showsHeartRateChart {
-                WatchHeartRateSection(
-                    hrSamples: presentation.hrSamples,
-                    intensityProfile: profile,
-                    sessionDuration: summary.duration)
-                    .padding(.horizontal, 20)
-            }
+            WatchSummaryHeartRateBlock(presentation: shared, profile: profile)
+                .padding(.horizontal, 20)
             extraRows()
         }
     }

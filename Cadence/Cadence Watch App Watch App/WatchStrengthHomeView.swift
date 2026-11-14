@@ -37,6 +37,19 @@ struct WatchStrengthHomeView: View {
     }
 
     private var planList: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(model.session?.title ?? String(localized: "Plan"))
+                .font(.footnote.weight(.semibold))
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 8)
+                .accessibilityAddTraits(.isHeader)
+            planItems
+        }
+        .navigationBarHidden(true)
+    }
+
+    private var planItems: some View {
         List {
             if let added = model.lastAddedExerciseName {
                 Button {
@@ -63,7 +76,7 @@ struct WatchStrengthHomeView: View {
                         onSelect()
                     }
                 } label: {
-                    row(item.exercise, logged: item.setCount)
+                    row(item.exercise)
                 }
                 .buttonStyle(.plain)
                 .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(isCurrent(item.exercise) ? WatchTone.accentSoft : WatchTone.surface))
@@ -96,7 +109,6 @@ struct WatchStrengthHomeView: View {
             }
             .accessibilityIdentifier("watchStrength.addExercise")
         }
-        .navigationTitle(model.session?.title ?? String(localized: "Plan"))
         .alert("Remove \(exerciseToRemove?.name ?? "")?", isPresented: removeAlertBinding, presenting: exerciseToRemove) { exercise in
             Button("Remove", role: .destructive) {
                 WatchHaptics.delete()
@@ -119,37 +131,39 @@ struct WatchStrengthHomeView: View {
         Binding(get: { exerciseToRemove != nil }, set: { if !$0 { exerciseToRemove = nil } })
     }
 
-    private func row(_ exercise: Exercise, logged: Int) -> some View {
-        let planned = model.plannedWorkingSets(for: exercise).count
-        let done = model.completedWorkingSets(for: exercise)
+    private func row(_ exercise: Exercise) -> some View {
+        let presentation = WatchWorkoutExerciseRowPresentation(
+            exerciseName: exercise.name,
+            completedSetCount: model.completedWorkingSets(for: exercise),
+            plannedSetCount: model.plannedWorkingSets(for: exercise).count
+        )
         return HStack(spacing: 8) {
             ZStack {
                 Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
-                if planned > 0 {
-                    Circle().trim(from: 0, to: min(1, Double(done) / Double(planned)))
+                if presentation.isPlanned {
+                    Circle().trim(from: 0, to: presentation.progress)
                         .stroke(WatchTone.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                 }
-                if planned > 0 && done >= planned {
-                    Image(systemName: "checkmark").font(.caption2.weight(.bold)).foregroundStyle(WatchTone.accent)
-                }
+                Text("\(presentation.completedSetCount)")
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .lineLimit(1)
+                    .foregroundStyle(presentation.isPlanned ? WatchTone.accent : Color.secondary)
             }
-            .frame(width: 22, height: 22)
+            .frame(width: 32, height: 32)
             .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 1) {
-                HStack(spacing: 4) {
-                    Text(exercise.name).font(.body).lineLimit(1)
-                    if pendingExerciseID == exercise.id { ProgressView().controlSize(.mini) }
-                }
-                Text(detail(planned: planned, done: done, logged: logged)).font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 4) {
+                Text(exercise.name)
+                    .font(.body)
+                    .lineLimit(presentation.exerciseNameMaxLines, reservesSpace: true)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if pendingExerciseID == exercise.id { ProgressView().controlSize(.mini) }
             }
         }
         .padding(.vertical, 2)
-    }
-
-    private func detail(planned: Int, done: Int, logged: Int) -> String {
-        if planned > 0 { return String(localized: "\(done) of \(planned)") }
-        return logged > 0 ? String(localized: "\(logged) logged") : String(localized: "Not started")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(presentation.accessibilityLabel)
     }
 
     private func isCurrent(_ exercise: Exercise) -> Bool {

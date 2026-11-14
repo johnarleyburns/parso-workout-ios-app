@@ -60,8 +60,6 @@ struct WatchSetKeypadView: View {
                 }
                 fields(card)
                 if !isLuminanceReduced {
-                    if let line = card.planLine { WatchCoachLineView(line: line) }
-                    secondaryRow(card)
                     logButton(card)
                     // The teaching hint gives way to the lifter row when partners take the space.
                     if WatchQuickTalkController.isEnabled, card.lifterText == nil {
@@ -145,7 +143,6 @@ struct WatchSetKeypadView: View {
     private func adjustmentControls(_ card: WatchSetCardState) -> some View {
         let isWeight = focus == .weight && !card.isNonWeighted
         let amount = isWeight ? weightStep : 1
-        let field: WatchSetCardAdjustmentField = isWeight ? .weight(model.unit) : .reps
         HStack(spacing: WatchSetCardAdjustmentLayout.horizontalSpacing) {
             Button { adjustFocusedValue(by: -amount) } label: {
                 Text("−\(stepText(amount))")
@@ -154,12 +151,14 @@ struct WatchSetKeypadView: View {
             .accessibilityLabel("Subtract \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
             .accessibilityIdentifier(isWeight ? "watchWeight.minus" : "watchReps.minus")
 
-            Text(field.inlineLabel)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .frame(minWidth: 32)
-                .fixedSize(horizontal: true, vertical: false)
-                .accessibilityHidden(true)
+            Button { showingMore = true } label: {
+                Image(systemName: "ellipsis")
+                    .frame(minWidth: 32, minHeight: WatchSetCardAdjustmentLayout.controlMinHeight)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+            .contentShape(Rectangle())
+            .accessibilityLabel(Text("More"))
+            .accessibilityIdentifier("watchSet.more")
 
             Button { adjustFocusedValue(by: amount) } label: {
                 Text("+\(stepText(amount))")
@@ -201,26 +200,6 @@ struct WatchSetKeypadView: View {
     }
 
     // MARK: Effort + More
-
-    private func secondaryRow(_ card: WatchSetCardState) -> some View {
-        HStack(spacing: 6) {
-            Button { WatchHaptics.tap(); model.cycleEffort() } label: {
-                Text(card.effortText ?? String(localized: "\(model.effortMode.displayName) —"))
-            }
-            .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-            .accessibilityIdentifier("watchEffort.value")
-            .accessibilityHint(Text("Cycles the effort rating"))
-            if card.isWarmup {
-                Label("Warm-up", systemImage: "flame.fill").font(.caption2).foregroundStyle(WatchTone.attention)
-            }
-            Button { showingMore = true } label: { Image(systemName: "ellipsis") }
-                .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-                .frame(minWidth: 52)
-                .contentShape(Rectangle())
-                .accessibilityLabel(Text("More"))
-                .accessibilityIdentifier("watchSet.more")
-        }
-    }
 
     // MARK: Log (tap / Double Tap) and hold-to-talk
 
@@ -278,8 +257,10 @@ struct WatchSetMoreView: View {
     @State private var confirmRemove = false
     @State private var showingExactWeight = false
     @State private var showingExactReps = false
+    @State private var showingRPEPicker = false
     var body: some View {
         List {
+            WatchSetDetailsSection(model: model, showingRPEPicker: $showingRPEPicker)
             Toggle(isOn: Binding(get: { model.isWarmupSet }, set: { if $0 != model.isWarmupSet { model.toggleWarmup() } })) {
                 Label("Warm-up set", systemImage: "flame.fill")
             }
@@ -346,6 +327,7 @@ struct WatchSetMoreView: View {
             }
         }
         .navigationTitle("More")
+        .sheet(isPresented: $showingRPEPicker) { WatchRPEPickerSheet(onSelect: selectRPE) }
         .sheet(isPresented: $showingExactWeight) {
             WatchNumericEntrySheet(field: .weight, initial: "", title: Text("Enter weight in \(model.unit.abbreviation)")) { raw in
                 applyExactWeight(raw)
@@ -381,6 +363,16 @@ private extension WatchSetMoreView {
     var removableExercise: Exercise? {
         guard case .keypad(let exercise) = model.stage else { return nil }
         return exercise
+    }
+
+    func selectRPE(_ choice: Int?) {
+        WatchHaptics.tap()
+        var mode = model.effortMode
+        var value = model.effortValue
+        WatchRPESelection.apply(choice, mode: &mode, value: &value)
+        model.effortMode = mode
+        model.effortValue = value
+        showingRPEPicker = false
     }
 
     func applyExactWeight(_ raw: String) {

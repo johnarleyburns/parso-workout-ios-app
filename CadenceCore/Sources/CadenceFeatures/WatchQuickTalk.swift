@@ -73,7 +73,10 @@ public enum WatchQuickTalkPlanner {
                VoiceCommandExecutor().automaticAction(parsed: parsed, resolution: resolution) != nil {
                 return .apply(action, summary: describe(action, unit: context.unit))
             }
-            let note = parsed.confidence == .exact ? nil : inferredNote(parsed)
+            var note = parsed.confidence == .exact ? nil : inferredNote(parsed)
+            if resolution.exerciseWasInferred, note == nil {
+                note = String(localized: "Exercise name was corrected — check it", bundle: .module)
+            }
             items.append(WatchQuickTalkItem(id: index, action: action,
                                             title: describe(action, unit: context.unit), note: note))
         }

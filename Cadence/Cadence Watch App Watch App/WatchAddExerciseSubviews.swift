@@ -79,7 +79,7 @@ extension WatchCustomExerciseForm {
     }
 }
 
-/// Explicit Details for a result row; its Add uses the same path as the row.
+/// Exercise info screen: chevron + two-line title, Add, then a stable detail toggle.
 struct WatchAddExercisePreview: View {
     let entry: ExerciseCatalogEntry
     let feedback: String?
@@ -90,58 +90,65 @@ struct WatchAddExercisePreview: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: showingDetail ? .leading : .center, spacing: 10) {
-                if showingDetail {
-                    if let exercise = ExerciseCatalogSnapshot.exercise(id: entry.id, in: context) {
-                        WatchExerciseDetailContent(exercise: exercise)
-                    }
-                } else {
-                    WatchMarqueeText(text: entry.name)
-                        .padding(.top, 12)
+            VStack(alignment: .leading, spacing: 8) {
+                header
+                if let feedback {
+                    Text(feedback)
+                        .font(.caption.bold())
+                        .foregroundStyle(.orange)
+                        .accessibilityIdentifier("watchAddExercise.feedback")
                 }
-                quickActions
+                Button(action: onAdd) {
+                    Label("Add", systemImage: "plus.circle.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .accessibilityIdentifier("watchAddExercise.previewAdd")
+
+                Button {
+                    WatchHaptics.tap()
+                    showingDetail.toggle()
+                } label: {
+                    Text(WatchAddExercisePresentation.detailToggleTitle(isExpanded: showingDetail))
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .accessibilityLabel(WatchAddExercisePresentation.detailToggleTitle(isExpanded: showingDetail))
+                .accessibilityIdentifier("watchAddExercise.showDetail")
+
+                if showingDetail,
+                   let exercise = ExerciseCatalogSnapshot.exercise(id: entry.id, in: context) {
+                    WatchExerciseDetailContent(exercise: exercise)
+                }
             }
             .padding(.horizontal)
-            .padding(.bottom, showingDetail ? 0 : 28)
         }
     }
 
-    private var quickActions: some View {
-        VStack(spacing: 8) {
-            if let feedback {
-                Text(feedback)
-                    .font(.caption.bold())
-                    .foregroundStyle(.orange)
-                    .accessibilityIdentifier("watchAddExercise.feedback")
-            }
+    private var header: some View {
+        HStack(alignment: .top, spacing: 4) {
             Button {
                 WatchHaptics.tap()
                 showingDetail = false
                 onBack()
             } label: {
-                Label("Back", systemImage: "chevron.left")
-                    .frame(maxWidth: .infinity)
+                Image(systemName: "chevron.left")
+                    .frame(minWidth: WatchAddExercisePresentation.minimumTouchHeight,
+                           minHeight: WatchAddExercisePresentation.minimumTouchHeight,
+                           alignment: .leading)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("watchAddExercise.previewBack")
+            .buttonStyle(.plain)
+            .accessibilityLabel(WatchAddExercisePresentation.backAccessibilityLabel)
+            .accessibilityIdentifier("watchAddExercise.previewChevron")
 
-            Button(action: onAdd) {
-                Label("Add", systemImage: "plus.circle.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
-            .accessibilityIdentifier("watchAddExercise.previewAdd")
-
-            Button {
-                WatchHaptics.tap()
-                showingDetail = true
-            } label: {
-                Text("Show Detail")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("watchAddExercise.showDetail")
+            Text(entry.name)
+                .font(.headline)
+                .lineLimit(WatchAddExercisePresentation.exerciseNameMaxLines)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(minHeight: WatchAddExercisePresentation.minimumTouchHeight, alignment: .center)
         }
     }
 }

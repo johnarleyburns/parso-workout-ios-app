@@ -13,7 +13,6 @@ struct WatchAddExerciseView: View {
     /// Built on a background context; see `ExerciseCatalogSnapshot`.
     @State private var catalog = ExerciseCatalogSnapshot.empty
     @State private var selectedGroup: MuscleGroup?
-    @State private var showingRecent = false
     @State private var filter = WatchExerciseFilter()
     @State private var selectedEntry: ExerciseCatalogEntry?
     @State private var showingDetail = false
@@ -24,7 +23,6 @@ struct WatchAddExerciseView: View {
     @State private var showingCustomExercise = false
     @State private var customName = ""
     @State private var customAttribution = WatchCustomExerciseMuscleAttribution()
-    @State private var showingAllGroups = false
     /// Newest search; older searches may not install results.
     @State private var searchGeneration = 0
     /// Duplicate / failure feedback shown while the user stays in Add Exercise.
@@ -55,7 +53,7 @@ struct WatchAddExerciseView: View {
         // No title: it only costs vertical space on the small screen.
         .navigationTitle("")
         .task(id: newestExercise.first?.updatedAt) {
-            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
+            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 0)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 scheduleSearch(immediate: true)
             }
@@ -146,37 +144,15 @@ struct WatchAddExerciseView: View {
                         loadingRow
                     }
                 }
-            } else if showingRecent {
-                Section {
-                    Button {
-                        WatchHaptics.tap()
-                        showingRecent = false
-                    } label: { Label("Back", systemImage: "chevron.left") }
-                    .buttonStyle(.plain)
-                }
-                Section("My Last Exercises") {
-                    ForEach(catalog.recent) { exercise in
-                        exerciseButton(exercise)
-                    }
-                }
             } else {
-                Section {
-                    HStack(spacing: 6) {
-                        TextField("Search", text: $query)
-                            .frame(maxWidth: .infinity, minHeight: 44)
-                            .accessibilityIdentifier("watchAddExercise.search")
-                        customExerciseButton
-                    }
-                    if !catalog.recent.isEmpty {
-                        Button {
-                            WatchHaptics.tap()
-                            showingRecent = true
-                        } label: { Label("My Last Exercises", systemImage: "clock.arrow.circlepath") }
-                        .buttonStyle(.plain)
-                    }
+                HStack(spacing: 6) {
+                    TextField("Search", text: $query)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .accessibilityIdentifier("watchAddExercise.search")
+                    customExerciseButton
                 }
-                Section("Categories") {
-                    ForEach(watchCategoryOrder) { group in
+                Section(WatchAddExercisePresentation.muscleGroupSectionTitle) {
+                    ForEach(WatchAddExercisePresentation.visibleMuscleGroups) { group in
                         Button {
                             WatchHaptics.tap()
                             selectedGroup = group
@@ -188,14 +164,6 @@ struct WatchAddExerciseView: View {
                         .buttonStyle(.plain)
                         .accessibilityIdentifier("watchAddExercise.category.\(group.rawValue)")
                     }
-                    if !showingAllGroups {
-                        Button {
-                            WatchHaptics.tap()
-                            showingAllGroups = true
-                        } label: { Label("More muscles", systemImage: "ellipsis.circle") }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("watchAddExercise.moreCategories")
-                    }
                 }
             }
         }
@@ -205,7 +173,6 @@ struct WatchAddExerciseView: View {
     private var pickerBranchIdentity: String {
         if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "search" }
         if let selectedGroup { return "group.\(selectedGroup.rawValue)" }
-        if showingRecent { return "recent" }
         return "categories"
     }
 
@@ -219,13 +186,6 @@ struct WatchAddExerciseView: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("watchAddExercise.loading")
-    }
-
-    private var watchCategoryOrder: [MuscleGroup] {
-        let groups = showingAllGroups
-            ? MuscleGroup.canonicalOrder
-            : MuscleGroup.canonicalOrder.filter(\.isTrackedByDefault)
-        return [.chest] + groups.filter { $0 != .chest }
     }
 
     private var customExerciseButton: some View {
@@ -252,36 +212,25 @@ struct WatchAddExerciseView: View {
         return trimmed.isEmpty ? String(localized: "Add Custom Exercise") : String(localized: "Add Custom “\(trimmed)”")
     }
 
-    /// The row is a primary "add" action; Details is a separate target. Rows
-    /// are plain values, so the stored exercise is only read when added.
+    /// One full-width plain button that opens the preview; adding happens only there.
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
-        HStack(spacing: 6) {
-            Button {
-                requestAdd(exercise)
-            } label: {
-                Label(exercise.name, systemImage: "plus.circle.fill")
-                    .labelStyle(.titleAndIcon)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Add \(exercise.name)")
-            .accessibilityIdentifier("watchAddExercise.add.\(exercise.id.uuidString)")
-
-            Button {
-                WatchHaptics.tap()
-                feedback = nil
-                selectedEntry = exercise
-            } label: {
-                Image(systemName: "info.circle")
-                    .frame(minWidth: 44, minHeight: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Details for \(exercise.name)")
-            .accessibilityIdentifier("watchAddExercise.details.\(exercise.id.uuidString)")
+        Button {
+            WatchHaptics.tap()
+            feedback = nil
+            selectedEntry = exercise
+        } label: {
+            Text(WatchAddExercisePresentation.rowTitle(for: exercise.name))
+                .lineLimit(WatchAddExercisePresentation.exerciseNameMaxLines, reservesSpace: true)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity,
+                       minHeight: WatchAddExercisePresentation.minimumTouchHeight,
+                       alignment: .leading)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .accessibilityLabel(WatchAddExercisePresentation.rowAccessibilityLabel(for: exercise.name))
+        .accessibilityHint(WatchAddExercisePresentation.rowAccessibilityHint)
+        .accessibilityIdentifier("watchAddExercise.row.\(exercise.id.uuidString)")
     }
 
     private func requestAdd(_ entry: ExerciseCatalogEntry) {
@@ -307,7 +256,7 @@ struct WatchAddExerciseView: View {
     private func refreshResults() {
         confirmation.dismissOutcome()
         Task { @MainActor in
-            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 12)
+            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 0)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 scheduleSearch(immediate: true)
             }

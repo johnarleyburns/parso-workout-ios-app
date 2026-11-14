@@ -18,6 +18,34 @@ final class QuickTalkContractsTests: XCTestCase {
                                                resolution: VoiceResolutionResult(action: action)))
     }
 
+    private func resolveSet(_ name: String, exercises: [String]) -> (VoiceParseResult, VoiceResolutionResult) {
+        let parsed = VoiceParseResult(command: .logSet(VoiceSetSpec(
+            exercise: VoiceExerciseRef(name: name), weightKg: 100, reps: 5)), confidence: .exact)
+        let r = VoiceEntityResolver().resolve(parsed, currentExercise: nil,
+                                              exercises: exercises, performers: ["Me"])
+        return (parsed, r)
+    }
+
+    func testNearExerciseMatchResolvesButIsNotAutomatic() {
+        let (parsed, r) = resolveSet("squad", exercises: ["Squat"])
+        guard case .logSet(let ex, _, _, _, _, _)? = r.action else { return XCTFail("no action") }
+        XCTAssertEqual(ex.name, "Squat")
+        XCTAssertTrue(r.exerciseWasInferred)
+        XCTAssertNil(VoiceCommandExecutor().automaticAction(parsed: parsed, resolution: r))
+    }
+
+    func testExactExerciseRemainsAutomatic() {
+        let (parsed, r) = resolveSet("squat", exercises: ["Squat"])
+        XCTAssertFalse(r.exerciseWasInferred)
+        XCTAssertNotNil(VoiceCommandExecutor().automaticAction(parsed: parsed, resolution: r))
+    }
+
+    func testAmbiguousNearExerciseProducesNoAction() {
+        let (_, r) = resolveSet("squad", exercises: ["Back Squat", "Front Squat"])
+        XCTAssertNil(r.action)
+        XCTAssertNotNil(r.clarification)
+    }
+
     func testHeardLogIsBoundedAndFollowUpExpiresAtEightSeconds() {
         var log = HeardVoiceLog(capacity: 2)
         for index in 0..<3 {

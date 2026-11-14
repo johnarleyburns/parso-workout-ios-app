@@ -26,6 +26,7 @@ public struct VoiceCommandExecutor: Sendable {
     public func automaticAction(parsed: VoiceParseResult,
                                 resolution: VoiceResolutionResult) -> VoiceResolvedAction? {
         guard parsed.confidence == .exact, parsed.unsupportedTerms.isEmpty,
+              !resolution.exerciseWasInferred,
               case .logSet? = resolution.action else { return nil }
         return resolution.action
     }

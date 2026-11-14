@@ -133,7 +133,7 @@ struct WatchRootView: View {
                                     distanceUnit: watchAppSettings.distanceUnit)
             }
             .tabViewStyle(.page)
-            .navigationTitle("Cladiron")
+            .navigationTitle(WatchHomeChrome.navigationTitle)
             .task(id: sessionOwnership) {
                 if case .endNow(let startedAt) = sessionOwnership {
                     watchManager.endAbandonedSession(startedAt: startedAt)

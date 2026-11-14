@@ -53,13 +53,18 @@ public struct VoiceResolutionResult: Equatable, Sendable {
     public let action: VoiceResolvedAction?
     public let issue: VoiceResolutionIssue?
     public let clarification: String?
+    /// True when the exercise was matched by a near (fuzzy) match rather than
+    /// an exact or unique-prefix match. Such a resolution is never automatic.
+    public let exerciseWasInferred: Bool
 
     public init(action: VoiceResolvedAction? = nil,
                 issue: VoiceResolutionIssue? = nil,
-                clarification: String? = nil) {
+                clarification: String? = nil,
+                exerciseWasInferred: Bool = false) {
         self.action = action
         self.issue = issue
         self.clarification = clarification
+        self.exerciseWasInferred = exerciseWasInferred
     }
 }
 
@@ -75,9 +80,15 @@ public enum VoiceCommandResolver {
 
         switch command {
         case .logSet(let spec):
-            guard let exercise = resolveExercise(spec.exercise?.name ?? currentExercise,
-                                                 from: exercises) else {
-                return unresolvedExercise(spec.exercise?.name)
+            let named = spec.exercise?.name
+            var inferred = false
+            var resolved = resolveExercise(named ?? currentExercise, from: exercises)
+            if resolved == nil, let named, let near = nearExercise(named, from: exercises) {
+                resolved = near
+                inferred = true
+            }
+            guard let exercise = resolved else {
+                return unresolvedExercise(named)
             }
             guard let reps = spec.reps else {
                 return VoiceResolutionResult(issue: .missingReps,
@@ -93,7 +104,8 @@ public enum VoiceCommandResolver {
             guard let performer else { return unresolvedPerformer(spec.performer?.name ?? activePerformer) }
             return VoiceResolutionResult(action: .logSet(
                 exercise: VoiceResolvedExercise(name: exercise), weightKg: spec.weightKg,
-                reps: reps, rpe: spec.rpe, isWarmup: spec.isWarmup, performer: performer))
+                reps: reps, rpe: spec.rpe, isWarmup: spec.isWarmup, performer: performer),
+                exerciseWasInferred: inferred)
 
         case .repeatLastSet(let requestedPerformer, let adjust):
             guard let exercise = resolveExercise(currentExercise, from: exercises) else {
@@ -140,6 +152,14 @@ public enum VoiceCommandResolver {
             $0.normalizedVoiceTerm.hasPrefix(requested) || requested.hasPrefix($0.normalizedVoiceTerm)
         }
         return matches.count == 1 ? matches[0] : nil
+    }
+
+    /// Safe near match via the shared matcher; only when the existing exact and
+    /// prefix rules found nothing. Ambiguous or unknown names yield nil.
+    private static func nearExercise(_ requested: String, from names: [String]) -> String? {
+        guard case .inferred(let name) = VoiceExerciseMatcher.match(requested, candidates: names)
+        else { return nil }
+        return name
     }
 
     private static func resolvePerformer(_ requested: String?, from names: [String]) -> VoiceResolvedPerformer? {

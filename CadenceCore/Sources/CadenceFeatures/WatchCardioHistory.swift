@@ -13,7 +13,7 @@ extension WatchSync {
     /// projection, never a serialized SwiftData model: it carries no HR samples, routes,
     /// notes, calories, source bundle IDs, device identifiers or HealthKit metadata.
     public struct CardioHistoryItem: Equatable, Sendable {
-        public static let currentVersion = 1
+        public static let currentVersion = 2
         public static let maxTextLength = 120
 
         public var id: UUID
@@ -32,15 +32,19 @@ extension WatchSync {
         public var updatedAt: Date
         /// Tombstone: remove this previously mirrored row on the Watch.
         public var isDeleted: Bool
+        /// Optional encoded `WatchWorkoutHistorySummary` (v2+). Display data only, size-capped.
+        public var summaryData: Data?
 
         public init(id: UUID, healthKitUUID: UUID? = nil, type: String, title: String, start: Date,
                     end: Date? = nil, distanceMeters: Double? = nil, origin: String,
-                    importLabel: String? = nil, updatedAt: Date, isDeleted: Bool = false) {
+                    importLabel: String? = nil, updatedAt: Date, isDeleted: Bool = false,
+                    summaryData: Data? = nil) {
             self.id = id; self.healthKitUUID = healthKitUUID; self.type = type
             self.title = String(title.prefix(Self.maxTextLength)); self.start = start; self.end = end
             self.distanceMeters = distanceMeters; self.origin = origin
             self.importLabel = importLabel.map { String($0.prefix(Self.maxTextLength)) }
             self.updatedAt = updatedAt; self.isDeleted = isDeleted
+            self.summaryData = summaryData
         }
 
         public var propertyList: [String: Any] {
@@ -52,6 +56,7 @@ extension WatchSync {
             if let end { row["end"] = end }
             if let distanceMeters { row["distance"] = distanceMeters }
             if let importLabel { row["importLabel"] = importLabel }
+            if let summaryData { row["summary"] = summaryData }
             return row
         }
 
@@ -83,9 +88,16 @@ extension WatchSync {
                 guard let string = raw as? String else { return nil }
                 label = string
             }
+            // A malformed or oversize rich payload drops only the payload; the basic row stays valid.
+            var summary: Data?
+            if let raw = row["summary"], let data = raw as? Data,
+               data.count <= WatchWorkoutHistorySummary.maxPayloadBytes,
+               WatchWorkoutHistorySummary.decode(data) != nil {
+                summary = data
+            }
             self.init(id: id, healthKitUUID: healthKitUUID, type: type, title: title, start: start,
                       end: end, distanceMeters: distance, origin: origin, importLabel: label,
-                      updatedAt: updatedAt, isDeleted: deleted)
+                      updatedAt: updatedAt, isDeleted: deleted, summaryData: summary)
         }
     }
 
@@ -182,13 +194,15 @@ public enum WatchCardioHistoryProjection {
     }
 
     static func item(for row: CardioWorkout) -> WatchSync.CardioHistoryItem {
+        let summaryData = try? WatchWorkoutHistorySummary.make(cardio: row).encoded()
         let origin = row.originValue
         let label = origin == .healthKitImported
             ? HealthKitWorkoutOriginPresenter.label(for: row.healthKitProvenance).primary : nil
         return WatchSync.CardioHistoryItem(
             id: row.id, healthKitUUID: row.healthKitWorkoutUUID, type: row.type, title: row.displayTitle,
             start: row.start, end: row.end, distanceMeters: row.distance.flatMap { $0.isFinite && $0 >= 0 ? $0 : nil },
-            origin: origin.rawValue, importLabel: label, updatedAt: row.updatedAt)
+            origin: origin.rawValue, importLabel: label, updatedAt: row.updatedAt,
+            summaryData: summaryData.flatMap { $0.count <= WatchWorkoutHistorySummary.maxPayloadBytes ? $0 : nil })
     }
 }
 
@@ -214,6 +228,7 @@ public enum WatchCardioHistoryStore {
             record.healthKitUUID = item.healthKitUUID; record.typeRaw = item.type; record.title = item.title
             record.start = item.start; record.end = item.end; record.distanceMeters = item.distanceMeters
             record.originRaw = item.origin; record.importLabel = item.importLabel; record.updatedAt = item.updatedAt
+            record.summaryData = item.summaryData
             changed += 1
         }
         guard changed > 0 else { return 0 }
@@ -227,6 +242,6 @@ public enum WatchCardioHistoryStore {
     private static func differs(_ r: WatchCardioHistoryRecord, _ i: WatchSync.CardioHistoryItem) -> Bool {
         r.healthKitUUID != i.healthKitUUID || r.typeRaw != i.type || r.title != i.title || r.start != i.start
             || r.end != i.end || r.distanceMeters != i.distanceMeters || r.originRaw != i.origin
-            || r.importLabel != i.importLabel || r.updatedAt != i.updatedAt
+            || r.importLabel != i.importLabel || r.updatedAt != i.updatedAt || r.summaryData != i.summaryData
     }
 }

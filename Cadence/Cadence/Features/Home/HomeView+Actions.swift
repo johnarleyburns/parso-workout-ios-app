@@ -163,34 +163,32 @@ extension HomeView {
                         recentCardioTypes.append(type)
                     }
                 }
-                let week = TodayActivityPresenter.weekEntries(sessions: sessions, cardio: cardio, now: now)
-                let weeklyVolume = HomeWeeklyVolumeProjection.make(
-                    sessions: sessions, since: WeeklyStats.weekStart(now: now), now: now)
                 let weekStart = WeeklyStats.weekStart(now: now)
+                // Week-scoped outputs fetch only this week's rows (#710); the
+                // all-time arrays above serve recentCardioTypes and heroActivity.
+                let weekSessions = (try? WorkoutRepository.sessions(since: weekStart, in: backgroundContext)) ?? []
+                let weekCardio = (try? WorkoutRepository.cardio(since: weekStart, in: backgroundContext)) ?? []
+                let week = TodayActivityPresenter.weekEntries(sessions: weekSessions, cardio: weekCardio, now: now)
+                let weeklyVolume = HomeWeeklyVolumeProjection.make(
+                    sessions: weekSessions, since: weekStart, now: now)
                 let profile = CardioIntensityProfile.forHome(
                     passiveSamples: passiveSamples, userAge: userAge, maximumHROverride: maximumHROverride)
-                // Newest-first fetches: prefix stops at the week boundary.
-                let weekCardioRows = Array(cardio.prefix { $0.start >= weekStart })
-                let weekSessionRows = Array(sessions.prefix { $0.date >= weekStart })
                 let weeklyCardio = WeeklyCardioAggregator.summarize(
-                    weekCardioRows, since: weekStart, profile: profile, sessions: weekSessionRows)
+                    weekCardio, since: weekStart, profile: profile, sessions: weekSessions)
                 let activityDose = WeeklyActivityDoseAggregator.summarize(
-                    cardio: weekCardioRows, sessions: weekSessionRows, since: weekStart, profile: profile,
+                    cardio: weekCardio, sessions: weekSessions, since: weekStart, profile: profile,
                     aerobic: weeklyCardio)
                 return HomeActivityProjection(
                     weeklyCardio: weeklyCardio,
                     activityDose: activityDose,
                     today: WorkoutsTodayPresenter.historicalRows(
-                        sessions: sessions, cardio: cardio, now: now),
+                        sessions: weekSessions, cardio: weekCardio, now: now),
                     weekStrength: week.strength,
                     weekCardio: week.cardio,
                     weeklyVolumeKg: WeeklyStats.volumeKg(
-                        sessions.filter { $0.deletedAt == nil },
-                        since: WeeklyStats.weekStart(now: now)),
+                        weekSessions.filter { $0.deletedAt == nil }, since: weekStart),
                     muscleHistory: HomeMuscleHistoryPresenter.make(
-                        sessions: sessions,
-                        since: WeeklyStats.weekStart(now: now),
-                        now: now),
+                        sessions: weekSessions, since: weekStart, now: now),
                     weeklyVolumeByPerformer: weeklyVolume.volumes,
                     weeklyVolumeKgByPerformer: weeklyVolume.tonnage,
                     weeklyVolumePerformers: weeklyVolume.performers,

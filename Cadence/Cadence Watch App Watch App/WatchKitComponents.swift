@@ -20,6 +20,17 @@ enum WatchTone {
     /// Brighter accent stop so rings and primary pills read as lit, not flat.
     static let accentBright = Color(red: 0x9B / 255, green: 0xF5 / 255, blue: 0xC4 / 255)
     static let accentGradient = LinearGradient(colors: [accentBright, accent], startPoint: .top, endPoint: .bottom)
+    /// Cool secondary treatment for cardio actions (never PR gold / attention orange).
+    static let cardio = Color(red: 0x3F / 255, green: 0xB7 / 255, blue: 0xE0 / 255)
+    static let cardioDeep = Color(red: 0x0B / 255, green: 0x3A / 255, blue: 0x4D / 255)
+    /// Dark green-to-teal card surface for the ready state.
+    static let readyGradient = LinearGradient(
+        colors: [Color(red: 0.08, green: 0.35, blue: 0.2), Color(red: 0.04, green: 0.22, blue: 0.24), Color(red: 0.02, green: 0.08, blue: 0.08)],
+        startPoint: .topLeading, endPoint: .bottomTrailing)
+    /// Calm dark teal/green surface for the rest day.
+    static let restGradient = LinearGradient(
+        colors: [Color(red: 0.06, green: 0.2, blue: 0.2), Color(red: 0.03, green: 0.1, blue: 0.1)],
+        startPoint: .topLeading, endPoint: .bottomTrailing)
     static let ringGradient = AngularGradient(colors: [accent.opacity(0.55), accent, accentBright], center: .center)
 }
 

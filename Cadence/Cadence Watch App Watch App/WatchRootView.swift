@@ -30,6 +30,7 @@ struct WatchRootView: View {
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
     @State private var showingCardio = false
+    @State private var showingWorkoutChoice = false
     private let launchRequests = WatchLaunchRequests.shared
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -151,6 +152,11 @@ struct WatchRootView: View {
             }
             .navigationDestination(item: $resumingSession) { session in WatchStrengthView(resuming: session) }
             .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthStartView() }
+            .navigationDestination(isPresented: $showingWorkoutChoice) {
+                WatchWorkoutChoiceView(
+                    onStrength: { showingWorkoutChoice = false; startingQuickLift = true },
+                    onCardio: { showingWorkoutChoice = false; showingCardio = true })
+            }
             .navigationDestination(isPresented: $showingCardio) {
                 WatchCardioPickerView(types: cardioTypes) { ct in AnyView(cardioSetupView(for: ct)) }
             }
@@ -186,26 +192,18 @@ struct WatchRootView: View {
             heroCard
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
-            // Two tiles in one row: plain Buttons with their own destinations, because a List row
-            // with two NavigationLinks activates as one (tapping Lift opened Cardio).
-            HStack(spacing: 6) {
-                Button { startingQuickLift = true } label: {
-                    tile(title: "Lift", systemImage: "dumbbell.fill")
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("watch.startStrength")
-                Button { showingCardio = true } label: {
-                    tile(title: "Cardio", systemImage: "figure.run")
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("watch.cardio")
+            if presentation.showsQuickStartTiles {
+                WatchQuickStartTiles(
+                    onLift: { startingQuickLift = true },
+                    onCardio: { showingCardio = true })
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
             }
-            .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets())
         }
         .listStyle(.plain)
     }
 
+    private var presentation: WatchTodayHomePresentation { WatchTodayHomePresentation(hero: hero) }
 
     private func startRecommendation(_ row: WatchTodayRecommendations.Row) {
         switch row.modality {
@@ -276,41 +274,34 @@ struct WatchRootView: View {
                     .accessibilityIdentifier("watch.startPlannedCardio")
             }
         case .restDay(let advice):
-            heroContainer(colors: [WatchTone.surface, WatchTone.surface]) {
+            heroContainer(gradient: WatchTone.restGradient) {
                 Label("Rest day", systemImage: "bed.double.fill").font(.headline)
                 if let advice { WatchCoachLineView(line: advice) }
-                Text("Training anyway is your call.").font(.caption2).foregroundStyle(.secondary)
+                Text("Recovery supports progress.").font(.caption2).foregroundStyle(.secondary)
+                Button("Start another workout") { showingWorkoutChoice = true }
+                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
+                    .accessibilityHint(Text("Choose strength or cardio"))
+                    .accessibilityIdentifier("watch.rest.startAnother")
             }
-        case .unplanned(let synced):
-            heroContainer(colors: [WatchTone.surface, WatchTone.surface]) {
-                Text(synced ? "Nothing planned today" : "Open Cladiron on iPhone to sync today.")
-                    .font(.footnote).foregroundStyle(.secondary)
-            }
+        case .unplanned:
+            WatchReadyCard(
+                syncReminder: presentation.syncReminder,
+                onStrength: { startingQuickLift = true },
+                onCardio: { showingCardio = true })
         }
     }
 
     private func heroContainer<Content: View>(colors: [Color], @ViewBuilder _ content: () -> Content) -> some View {
+        heroContainer(gradient: LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing), content)
+    }
+
+    private func heroContainer<Content: View>(gradient: LinearGradient, @ViewBuilder _ content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 4, content: content)
             .padding(10)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(gradient, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             .accessibilityElement(children: .contain)
             .accessibilityIdentifier("watch.todayHero")
-    }
-
-    private func tile(title: LocalizedStringKey, systemImage: String) -> some View {
-        VStack(spacing: 3) {
-            Image(systemName: systemImage)
-                .font(.title3)
-                .frame(height: 22, alignment: .center)
-            Text(title)
-                .font(.caption2.weight(.semibold))
-                .frame(height: 16, alignment: .center)
-        }
-        .foregroundStyle(.primary)
-        .frame(maxWidth: .infinity, minHeight: 62, alignment: .center)
-        .background(RoundedRectangle(cornerRadius: 14).fill(WatchTone.surface))
     }
 
     @ViewBuilder

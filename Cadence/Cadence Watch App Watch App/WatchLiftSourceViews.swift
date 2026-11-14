@@ -15,13 +15,10 @@ struct WatchSuggestReviewView: View {
                                          historyState: watchManager.coachHistoryState)
         List {
             switch availability {
-            case .ready(let ready, let heading, let syncedAt):
+            case .ready(let ready, _, _):
                 let review = WatchSuggestReview(launch: ready)
                 Section {
-                    Text(heading).font(.caption).foregroundStyle(.secondary)
                     Text(review.title).font(.headline)
-                    Text("Synced \(syncedAt.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.caption2).foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel(WatchSuggestResolver.readyAccessibilityLabel)
@@ -30,24 +27,25 @@ struct WatchSuggestReviewView: View {
                     ForEach(Array(review.exerciseLines.enumerated()), id: \.offset) { _, line in
                         Text(line).font(.caption)
                     }
-                    if !review.prescriptionDetail.isEmpty {
-                        Text(review.prescriptionDetail).font(.caption2).foregroundStyle(.secondary)
+                    if WatchSuggestReadyPresentation.showsSupplementalDetail(review.supplementalDetail) {
+                        Text(review.supplementalDetail).font(.caption2).foregroundStyle(.secondary)
                     }
                 }
                 Section {
-                    if watchManager.isActive {
-                        Text("Finish or resume your current workout first.")
+                    if let message = WatchSuggestReadyPresentation.activeWorkoutMessage(workoutActive: watchManager.isActive) {
+                        Text(message)
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                     Button {
                         WatchHaptics.success()
                         launch = ready
                     } label: {
-                        Label("Start suggested workout", systemImage: "play.fill")
+                        Label(WatchSuggestReadyPresentation.startTitle, systemImage: "play.fill")
                             .frame(minHeight: 44)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(watchManager.isActive)
+                    .tint(.green)
+                    .disabled(WatchSuggestReadyPresentation.isStartDisabled(workoutActive: watchManager.isActive))
                     .accessibilityIdentifier("watchStrength.suggest.start")
                     .accessibilityHint("Creates a new workout from the suggestion")
                 }

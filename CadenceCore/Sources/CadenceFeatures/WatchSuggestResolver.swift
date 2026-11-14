@@ -127,7 +127,7 @@ public final class WatchSuggestResolutionCache {
 public struct WatchSuggestReview: Equatable, Sendable {
     public var title: String
     public var exerciseLines: [String]
-    public var prescriptionDetail: String
+    public var supplementalDetail: String
 
     public init(launch: WatchLiftLaunch) {
         title = launch.title
@@ -137,11 +137,10 @@ public struct WatchSuggestReview: Equatable, Sendable {
                 let working = p.sets.filter { !$0.isWarmup }
                 return "\(p.exerciseName) · \(working.count)×\(Self.repsText(working.map(\.targetReps)))"
             }
-            let total = prescriptions.reduce(0) { $0 + $1.sets.filter { !$0.isWarmup }.count }
-            prescriptionDetail = "\(total) working sets"
+            supplementalDetail = ""
         } else {
             exerciseLines = launch.exerciseNames
-            prescriptionDetail = launch.repLadder.isEmpty ? "" : "Reps " + launch.repLadder.map(String.init).joined(separator: "-")
+            supplementalDetail = launch.repLadder.isEmpty ? "" : "Reps " + launch.repLadder.map(String.init).joined(separator: "-")
         }
     }
 

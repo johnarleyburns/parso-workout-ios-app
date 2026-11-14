@@ -11,12 +11,24 @@ private func cadenceInstallAudioTap(_ inputNode: AVAudioInputNode,
                                    _ format: AVAudioFormat?,
                                    _ block: @escaping AVAudioNodeTapBlock)
 
+/// Local adapter (not a retroactive conformance on the Speech type).
+private final class RequestContextAdapter: ContextualStringsConfigurable {
+    let request: SFSpeechAudioBufferRecognitionRequest
+    init(_ request: SFSpeechAudioBufferRecognitionRequest) { self.request = request }
+    var contextualStrings: [String] {
+        get { request.contextualStrings }
+        set { request.contextualStrings = newValue }
+    }
+}
+
 @MainActor
 final class VoiceCaptureController: ObservableObject {
     @Published private(set) var transcript = ""
     @Published private(set) var isRecording = false
     @Published private(set) var errorMessage: String?
 
+    /// Bounded exercise names used to bias the legacy recognizer (a hint, not a guarantee).
+    var vocabulary: [String] = []
     private let recognizer = SFSpeechRecognizer(locale: Locale.current)
     private let audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
@@ -75,6 +87,7 @@ final class VoiceCaptureController: ObservableObject {
         let request = SFSpeechAudioBufferRecognitionRequest()
         request.shouldReportPartialResults = true
         if recognizer.supportsOnDeviceRecognition { request.requiresOnDeviceRecognition = true }
+        SpeechVocabulary.apply(vocabulary, to: RequestContextAdapter(request))
         self.request = request
 
         let input = audioEngine.inputNode
@@ -278,6 +291,9 @@ struct VoiceLoggingSheet: View {
             }
             .onAppear {
                 if phrase.isEmpty, let initialPhrase { phrase = initialPhrase }
+            }
+            .onAppear {
+                capture.vocabulary = SpeechVocabulary.exerciseVocabulary(current: currentExercise, exercises: exercises)
             }
             .onDisappear { capture.stop() }
         }

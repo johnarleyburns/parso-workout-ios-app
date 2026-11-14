@@ -15,6 +15,8 @@ extension SessionView {
             quickTalkDelayTask = Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(350))
                 guard !Task.isCancelled else { return }
+                quickTalkCapture.vocabulary = SpeechVocabulary.exerciseVocabulary(
+                    current: exercise.name, exercises: session.exercisesInOrder.map(\.name))
                 quickTalkCapture.start()
                 quickTalkListening = true
             }

@@ -122,12 +122,18 @@ struct WatchSetKeypadView: View {
             .accessibilityIdentifier("watchReps.current")
         if card.isNonWeighted {
             VStack(spacing: 4) {
-                Label("Non-weighted movement", systemImage: "figure.strengthtraining.traditional")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 28)
-                    .accessibilityIdentifier("watchSet.nonWeighted")
-                reps
+                HStack(spacing: 4) {
+                    Text("Non-\nWeighted")
+                        .font(.caption2.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.5)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .accessibilityLabel("Non-weighted movement")
+                        .accessibilityIdentifier("watchSet.nonWeighted")
+                    reps
+                }
                 adjustmentControls(card)
             }
         } else if WatchSetCardMetricLayout.fields(isAccessibilitySize: dynamicTypeSize >= .accessibility1) == .stacked {

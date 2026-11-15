@@ -135,14 +135,9 @@ extension XCUIApplication {
     @discardableResult
     func startQuickStartStrength() -> Bool {
         popToHome()
-        guard descendants(matching: .any)["home.startWorkout"].waitForExistence(timeout: 10) else { return false }
-        guard scrollToHittableAndTap("selectWorkout.startWorkout") else { return false }
-        guard navigationBars["Start Workout"].waitForExistence(timeout: 10) else { return false }
-        guard scrollToHittableAndTap("startWorkout.pick.strength") else { return false }
-        guard navigationBars["Pick Workout"].waitForExistence(timeout: 10) else { return false }
-        guard scrollToHittableAndTap("pickWorkout.custom") else { return false }
-        guard buttons["editor.start"].waitForExistence(timeout: 25) else { return false }
-        guard buttons["editor.start"].waitTap(timeout: 10) else { return false }
+        guard buttons["home.start.strength"].waitTap(timeout: 15) else { return false }
+        if buttons["prehr.start"].waitForExistence(timeout: 3) { buttons["prehr.start"].tap() }
+        skipCountdown()
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
     }
 
@@ -330,7 +325,7 @@ extension XCUIApplication {
         // Today first when a caller started from another primary tab.
         let homeTab = buttons["tab.today"]
         if homeTab.exists && homeTab.isHittable { homeTab.tap() }
-        let homeMarker = descendants(matching: .any)["home.startWorkout"]
+        let homeMarker = descendants(matching: .any)["home.start.strength"]
         var guardCount = 0
         while !homeMarker.exists && guardCount < 8 {
             let back = navigationBars.buttons.element(boundBy: 0)

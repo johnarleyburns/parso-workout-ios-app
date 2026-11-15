@@ -164,11 +164,11 @@ extension HomeView {
                                          launchDecision(coachDecision.primary)
                                      }
                                  },
-                                 onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { selectWorkoutPresented = true } },
+                                 onChooseAnother: { if hero.kind == .restDay { recoveryOptionsPresented = true } else { workoutControlsPresented = true } },
                                  onViewSummary: {
                                      path.append(HomeRoute.history)
                                  },
-                                 onAddSomething: { selectWorkoutPresented = true })
+                                 onAddSomething: { workoutControlsPresented = true })
         return VStack(alignment: .leading, spacing: 8) {
             heroCard
             if let pending = pendingSuggestedWorkoutPlan,

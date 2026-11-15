@@ -84,7 +84,7 @@ extension HomeView {
                 recoveryOptionsPresented = false
                 Task { @MainActor in
                     await Task.yield()
-                    selectWorkoutPresented = true
+                    workoutControlsPresented = true
                 }
             })
     }

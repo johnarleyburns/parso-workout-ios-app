@@ -153,9 +153,9 @@ struct HomeView: View {
     @State var restoredRecommendation: TodayRecommendationPayload?  // durable hero before hydration
     @State var passiveSamplesLoaded = false; @State var homeActivityReady = false  // first weekly projection applied
     // Historical Home projections are cached separately from the coach snapshot.
+    @State var strengthRequestState: TodayRequestCardState = .idle
     @State var cachedWorkoutsTodayRows: [WorkoutsTodayPresenter.Row] = []
-    @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []
-    @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
+    @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []; @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeeklyVolumeKg = 0.0
     @State var cachedMuscleHistory: [HomeMuscleHistory] = []
     @State var cachedMuscleHistoryByPerformer: [String: [HomeMuscleHistory]] = [:]

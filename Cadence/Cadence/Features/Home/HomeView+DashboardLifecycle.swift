@@ -140,7 +140,6 @@ extension HomeView {
                 sessionCount: displayRestoreComplete ? sessions.count : -1,
                 isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
                 guard displayRestoreComplete else { return }
-                await prepareTodaySuggestion()
                 await prepareTodayCardio()
             }
             .onChange(of: todaySuggestedPlan?.id) { _, _ in

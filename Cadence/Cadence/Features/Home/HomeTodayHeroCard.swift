@@ -11,6 +11,8 @@ struct HomeTodayHeroCard: View {
     let citationIDs: [String]
     let summary: DaySummary?
     let unit: MeasurementUnitPreference
+    let strengthRequestState: TodayRequestCardState
+    let onRequestSuggestion: () -> Void
     let onStart: () -> Void
     let onChooseAnother: () -> Void
     let onViewSummary: () -> Void
@@ -96,11 +98,19 @@ struct HomeTodayHeroCard: View {
                 }
 
                 if tag == String(localized: "Loading") {
-                    HStack(spacing: 8) {
-                        ProgressView()
-                        Text("Preparing today's recommendation…")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    let display = TodayRequestCardPresenter.make(
+                        title: String(localized: "Suggest a strength workout"),
+                        state: strengthRequestState, resultSummary: nil)
+                    VStack(spacing: 8) {
+                        Button(display.buttonLabel) { onRequestSuggestion() }
+                            .buttonStyle(.borderedProminent)
+                            .tint(CadenceTheme.accent)
+                            .disabled(!display.isTappable)
+                            .accessibilityLabel(display.accessibilityLabel)
+                            .accessibilityIdentifier("home.hero.request")
+                        if display.isLoading {
+                            ProgressView()
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 8)

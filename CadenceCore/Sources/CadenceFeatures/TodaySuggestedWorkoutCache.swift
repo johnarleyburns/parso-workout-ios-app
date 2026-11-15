@@ -485,3 +485,26 @@ public actor TodaySuggestedWorkoutCacheStore {
         return env
     }
 }
+
+/// Result of a durable cache write. A failure leaves any previous valid file
+/// and in-memory record untouched, so a generated value is never mistaken for
+/// a persisted one.
+public enum TodayCacheWriteResult: Equatable, Sendable {
+    case saved
+    case failed(String)
+
+    public var isSaved: Bool { self == .saved }
+}
+
+enum TodayCacheFile {
+    /// Atomic write; `nil` URL is memory-only and always succeeds.
+    static func write<T: Encodable>(_ value: T, to url: URL?) -> TodayCacheWriteResult {
+        guard let url else { return .saved }
+        do {
+            try JSONEncoder().encode(value).write(to: url, options: .atomic)
+            return .saved
+        } catch {
+            return .failed(String(describing: type(of: error)))
+        }
+    }
+}

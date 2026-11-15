@@ -8,17 +8,6 @@ extension HomeView {
     /// generator. Starting or editing still goes through the normal editor.
     func prepareTodaySuggestion() async {
         guard surface == .today, suggestedWorkoutPlan == nil, suggestedWorkoutTask == nil else { return }
-        // The paired recommendation cache has established that strength is
-        // appropriate, but the plan file may have been purged independently.
-        // Give Home a complete, launchable plan now; a personalized replacement
-        // is held behind the existing explicit confirmation banner.
-        if todaySuggestedPlan == nil, restoredRecommendation?.primaryIsStrength == true {
-            todaySuggestedPlan = TodayStartupPresentation.immediateFallback(
-                style: settings.preferredWorkoutStyle,
-                warmupMinutes: settings.warmupMinutes,
-                cooldownMinutes: settings.cooldownMinutes).makePlan()
-            todaySuggestionIsStartupFallback = true
-        }
         await Task.yield()
         guard !Task.isCancelled else { return }
         // Key + request are built on a background ModelContext; this actor only

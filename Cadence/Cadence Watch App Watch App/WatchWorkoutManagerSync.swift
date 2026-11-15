@@ -238,6 +238,7 @@ extension WatchWorkoutManager: WCSessionDelegate {
             break
         }
         let commitEnvelope = decision == .apply ? envelope : nil
+        applyCardioSuggestion(context: applicationContext)
         phoneSyncState = .syncing(Date())
         let current = WatchSync.Preferences(
             unit: s.unit,

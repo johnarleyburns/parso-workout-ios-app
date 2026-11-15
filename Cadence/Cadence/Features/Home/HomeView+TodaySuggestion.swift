@@ -171,6 +171,16 @@ struct WatchCoachRefreshModifier: ViewModifier {
     }
 }
 
+/// Watch `request_settings_sync` → regenerate the cardio suggestion.
+struct WatchCardioRefreshModifier: ViewModifier {
+    let action: () -> Void
+    func body(content: Content) -> some View {
+        content.onReceive(NotificationCenter.default.publisher(for: .cardioSuggestionRefreshRequested)) { _ in
+            action()
+        }
+    }
+}
+
 extension HomeView {
     func refreshWatchCoachSuggestion() {
         guard surface == .today, suggestedWorkoutTask == nil else { return }

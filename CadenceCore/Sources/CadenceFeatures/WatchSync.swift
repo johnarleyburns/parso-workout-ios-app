@@ -68,6 +68,10 @@ public enum WatchSync {
         public static let coachSuggestionSnapshot = "coachSuggestion.snapshot"
         public static let coachSuggestionSnapshotUpdatedAt = "coachSuggestion.updatedAt"
 
+        /// Separate JSON `Data` payload of `WatchCardioSuggestionEnvelope`.
+        public static let cardioSuggestionSnapshot = "cardioSuggestion.snapshot"
+        public static let cardioSuggestionSnapshotUpdatedAt = "cardioSuggestion.updatedAt"
+
         /// JSON `Data` of `WatchSingleExerciseSuggestionContext`; persisted on the Watch, not yet used by any UI.
         public static let singleExerciseSuggestionContext = "suggestion.singleExerciseContext"
 

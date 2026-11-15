@@ -95,6 +95,7 @@ struct WatchHeardLogView: View {
 struct WatchCardioPickerView: View {
     let types: [CardioType]
     let destination: (CardioType) -> AnyView
+    var onSuggest: ((CardioSuggestion) -> Void)? = nil
     private static let countsKey = "watch.cardio.startCounts"
     @State private var selected: CardioType?
 
@@ -103,6 +104,15 @@ struct WatchCardioPickerView: View {
         let tiles = order.tiles.compactMap(CardioType.init(rawValue:))
         let more = order.more.compactMap(CardioType.init(rawValue:))
         List {
+            if let onSuggest {
+                NavigationLink {
+                    WatchCardioSuggestReviewView(onStart: onSuggest)
+                } label: {
+                    Label("Suggest", systemImage: "sparkles")
+                }
+                .accessibilityIdentifier("watchCardio.suggest")
+                .accessibilityHint("Shows the cardio suggestion from your iPhone")
+            }
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                 // Buttons, not NavigationLinks: several links in one List row activate together.
                 ForEach(tiles, id: \.self) { type in

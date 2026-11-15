@@ -51,4 +51,13 @@ final class PreviousWorkoutPickerPolicyTests: XCTestCase {
         XCTAssertEqual(result.map(\.date), result.map(\.date).sorted(by: >))
         XCTAssertEqual(result.first?.id, all[2].id)
     }
+
+    func testCandidatesWithNoExclusionReturnsMostRecentFirst() throws {
+        let ctx = try make()
+        let old = session(ctx, daysAgo: 5)
+        let empty = session(ctx, daysAgo: 2, withSets: false)
+        let recent = session(ctx, daysAgo: 1)
+        let result = PreviousWorkoutPickerPolicy.candidates(sessions: [old, empty, recent])
+        XCTAssertEqual(result.map(\.id), [recent.id, old.id])
+    }
 }

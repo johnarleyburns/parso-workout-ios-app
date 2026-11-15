@@ -114,13 +114,6 @@ extension HomeView {
                 await restoreTodayDisplayCacheImmediately()
                 todayDisplayRestoreState = .finished
             }
-            .task(id: HomeCoachTaskIdentity(
-                signature: displayRestoreComplete ? coachSignature : nil,
-                isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-                // Re-runs with a real identity once the restore gate finishes.
-                guard displayRestoreComplete else { return }
-                await runCoachTask()
-            }
             .task(id: HomeActivityTaskIdentity(
                 historyRefreshToken: historyRefreshToken,
                 sessionCount: sessions.count,

@@ -63,6 +63,10 @@ struct ProgressQuestionSummaryView<DetailContent: View>: View {
             .scrollTargetLayout()
         }
         .scrollPosition(id: $scrolledQuestion, anchor: .leading)
+        .onAppear { scrolledQuestion = selection.selected }
+        .onChange(of: selection.selected) { _, selected in
+            scrolledQuestion = selected
+        }
         .accessibilityIdentifier("progress.question")
     }
 

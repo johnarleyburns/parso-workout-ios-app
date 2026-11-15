@@ -338,7 +338,9 @@ struct ExercisePickerView: View {
             .navigationTitle(isFind ? String(localized: "Find") : action.navigationTitle)
             .navigationBarTitleDisplayMode(isFind ? .large : .inline)
             .scrollDismissesKeyboard(isFind ? .interactively : .immediately)
-            .searchable(text: $query, prompt: "Search name, muscle, or equipment")
+            .searchable(text: $query,
+                        placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "Search name, muscle, or equipment")
             .navigationDestination(for: ExerciseDetailRoute.self) { routeDestination($0) }
             .toolbar {
                 if selectedTab == .browse || !trimmedQuery.isEmpty {

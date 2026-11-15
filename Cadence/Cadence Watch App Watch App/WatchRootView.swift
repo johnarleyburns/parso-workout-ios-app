@@ -189,13 +189,14 @@ struct WatchRootView: View {
                 .listRowInsets(EdgeInsets())
             // A workout explicitly sent from the phone takes precedence over coaching content.
             WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
-            heroCard
-                .listRowBackground(Color.clear)
-                .listRowInsets(EdgeInsets())
-            if presentation.showsQuickStartTiles {
-                WatchQuickStartTiles(
-                    onLift: { startingQuickLift = true },
-                    onCardio: { showingCardio = true })
+            if resumableStrengthSession != nil {
+                heroCard
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+            } else {
+                WatchHomeStartControls(pendingCardio: watchManager.pendingCardioCompletions,
+                    cardioDestination: { AnyView(cardioSetupView(for: $0)) },
+                    onMoreCardio: { showingCardio = true })
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
             }

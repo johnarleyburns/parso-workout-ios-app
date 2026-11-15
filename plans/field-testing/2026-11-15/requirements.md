@@ -69,7 +69,7 @@ Record item → production entry point → regression coverage → PR URL → CI
 PR #757 also updates HomeWeekDashboardSection (the shipped Strength tab), not
 only the similarly titled legacy WeightsStartView. Audit document PR: #758.
 
-## Remaining investigation findings
+## Initial investigation findings (before the PRs below)
 
 - c: doubling exists in Exercise.prospectiveEffectiveLoadKg and
   SetEntry.effectiveLoadKg (Models.swift); SessionInfoSheets explains per-bell
@@ -98,3 +98,41 @@ All listed PRs have auto-merge requested. Unchecked items are not completed.
 Worktree: /tmp/cladiron-field-testing. All branches begin codex/field-.
 Local full package tests cannot run because this is Linux and app targets require
 Apple SwiftData/SwiftUI; full package/build checks are delegated to required CI.
+
+## Continuation — all previously unfinished items now have PRs
+
+All PRs below have auto-merge enabled. Implementation is submitted, not yet
+verified on a real device. Required CI is queued/running as of this audit.
+
+| Item | PR | Production entry and verification |
+| --- | --- | --- |
+| g | https://github.com/johnarleyburns/parso-workout-ios-app/pull/763 | WeeklyActivityColor → phone/watch rings and weekly tabs; new boundary regressions, updated tint tests |
+| c | https://github.com/johnarleyburns/parso-workout-ios-app/pull/764 | Exercise.prospectiveEffectiveLoadKg + SetEntry.effectiveLoadKg + weight help; LoadAccountingTests updated |
+| d | https://github.com/johnarleyburns/parso-workout-ios-app/pull/765 | WorkoutEntryPreference → Watch prefill/logging, phone editor/pending rows/logging; preference/Watch flow tests; CloudKit schema and native archive round-trip coverage updated |
+| m | https://github.com/johnarleyburns/parso-workout-ios-app/pull/766 | Phone suggestion/editor and Watch review detail entry points; on-open store resolution; real-device visibility checklist |
+| f | https://github.com/johnarleyburns/parso-workout-ios-app/pull/767 | HomeView.dashboardTopContent → HomeWorkoutStartControls; shared source/recent-cardio policy tests |
+| e | https://github.com/johnarleyburns/parso-workout-ios-app/pull/768 | WatchRootView → WatchHomeStartControls/WatchHomeSuggestedStrengthView; same-day phone snapshot or local generation; shared choice tests |
+| o | https://github.com/johnarleyburns/parso-workout-ios-app/pull/769 | Deletes voice capture/transcription/command paths, UI/settings/intents/sync/tests and microphone permissions; legacy JSON-key compatibility regression; spoken OUTPUT cues remain |
+| n | https://github.com/johnarleyburns/parso-workout-ios-app/pull/770 | Removes scheduling UI, creation/reschedule APIs, draft scheduling promotion and Watch injection; retains old storage/codecs as startable drafts; action/promotion tests updated |
+| q | https://github.com/johnarleyburns/parso-workout-ios-app/pull/771 | Removes retired phone/watch chooser views; More.. uses CardioTypePickerView; preserves CardioWeekView tab; obsolete policies/tests removed; single real-device smoke flow updated but NOT executed |
+
+### Integration and validation notes
+
+- #771 includes #767/#768/#770 dependencies and integrates #763/#757 to resolve
+  modify/delete overlaps without resurrecting obsolete screens/tests.
+- #756's CI failure was the static text-shrinking guard contradicting the
+  explicitly requested compact non-weighted label. Its test now permits only
+  that one label's shrink factor. The new CI run is pending.
+- #755 (Find search) has merged. #754/#758/#760 previously passed CI but were
+  behind main; GitHub branch updates were requested, triggering fresh validation.
+- Local changed Swift files frontend-parse; diff, no-simulators and test-pyramid
+  guards pass. Full SwiftData/SwiftUI compilation and unit-test passing evidence
+  remain required CI responsibilities. No simulator or UI suite was run.
+- No pending request item is missing a PR. Unchecked acceptance boxes remain
+  unchecked until CI/device evidence supports verification.
+- Historical bell entries retain raw weights; removing doubling recalculates
+  effective volume/records. #764 explicitly documents this behavior.
+- Scheduling models/codecs remain solely to avoid destructive migrations and
+  preserve existing backups. Scheduling creation and date-selection capabilities
+  are removed. Draft start/discard remains supported.
+- Repository issue admission remains paused: CLAUDE_PIPELINE_AUTO_ENABLED=false.

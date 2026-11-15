@@ -61,8 +61,6 @@ struct HomeWeekDashboardSection: View {
                         HStack {
                             Text("Muscle coverage").font(.headline).foregroundStyle(.primary)
                             Spacer()
-                            Text(dashboard.volumeCoverage.displayText)
-                                .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                         }
                         fillGapsButton
                         muscleMapSummary

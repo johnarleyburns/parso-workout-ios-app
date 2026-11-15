@@ -9,11 +9,11 @@ final class WatchRedesignTests: XCTestCase {
 
     // MARK: - Set Card
 
-    func testDotsFollowThePlanAndGrowPastIt() {
-        XCTAssertEqual(WatchSetCardBuilder.makeDots(planned: 5, completed: 2),
-                       [.done, .done, .current, .upcoming, .upcoming])
-        XCTAssertEqual(WatchSetCardBuilder.makeDots(planned: 2, completed: 3), [.done, .done, .done, .current])
-        XCTAssertEqual(WatchSetCardBuilder.makeDots(planned: 0, completed: 0), [.current])
+    func testRingUsesTheExerciseListProgressPolicy() {
+        let state = card(current: 100, reps: 5, prefill: 100, prefillReps: 5)
+        XCTAssertEqual(state.exerciseProgress.exerciseName, state.exerciseName)
+        XCTAssertEqual(state.exerciseProgress.completedSetCount, 0)
+        XCTAssertEqual(state.exerciseProgress.exerciseNameMaxLines, 2)
     }
 
     func testLogTitleEchoesOnlyAChangedSet() {
@@ -74,7 +74,9 @@ final class WatchRedesignTests: XCTestCase {
         model.startLogSet(for: exercise)
 
         let state = try XCTUnwrap(model.setCardState)
-        XCTAssertEqual(state.dots, [.current, .upcoming])
+        XCTAssertEqual(state.exerciseProgress.completedSetCount, 0)
+        XCTAssertEqual(state.exerciseProgress.plannedSetCount, 2)
+        XCTAssertEqual(state.exerciseProgress.progress, 0)
         XCTAssertEqual(model.prefillReps, 5)
         XCTAssertFalse(state.echoesChange)
 

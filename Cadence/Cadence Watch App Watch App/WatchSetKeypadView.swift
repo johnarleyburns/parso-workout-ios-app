@@ -35,14 +35,17 @@ struct WatchSetKeypadView: View {
     var body: some View {
         if let card = model.setCardState {
             VStack(spacing: 3) {
-                Text(card.exerciseName)
-                    .font(.footnote.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                // Dots and (with partners) who is lifting share one row, so the card fits under the title.
                 HStack(spacing: 6) {
-                    WatchSetDots(dots: card.dots)
+                    WatchExerciseProgressRing(presentation: card.exerciseProgress)
+                    Text(card.exerciseName)
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(2, reservesSpace: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel(card.exerciseProgress.accessibilityLabel)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                if card.lifterText != nil {
+                  HStack(spacing: 6) {
                     if let lifter = card.lifterText {
                         Spacer(minLength: 0)
                         Button { showingLifters = true } label: {
@@ -57,6 +60,7 @@ struct WatchSetKeypadView: View {
                         .accessibilityIdentifier("watchStrength.lifterChip")
                         .accessibilityHint(Text("Choose who lifts next"))
                     }
+                  }
                 }
                 fields(card)
                 if !isLuminanceReduced {

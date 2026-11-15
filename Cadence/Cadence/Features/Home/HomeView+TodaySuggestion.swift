@@ -3,12 +3,6 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-struct HomeTodaySuggestionTaskIdentity: Equatable {
-    let historyRefreshToken: UUID
-    let sessionCount: Int
-    let isRestoringCloudKitHistory: Bool
-}
-
 extension HomeView {
     /// Prepares a value-only Today preview from the existing personalized
     /// generator. Starting or editing still goes through the normal editor.

@@ -58,9 +58,11 @@ extension HomeView {
                 suggestion: todayCardio,
                 completedTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
                 isCalculating: todayCardioCalculating,
+                isRequesting: cardioRequestState == .requesting,
                 hasNewer: pendingTodayCardio != nil,
                 onStart: { todayCardioReviewPresented = true },
-                onShowNewer: { showNewerTodayCardio() })
+                onShowNewer: { showNewerTodayCardio() },
+                onRequest: { requestCardioSuggestion() })
         } else {
             HomeTodayRecommendationsCard(rows: dualRows,
                                          completedStrengthTitle: cachedTodayHeroActivity.latestCompletedStrength?.title,

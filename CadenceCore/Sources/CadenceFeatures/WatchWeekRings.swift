@@ -8,7 +8,7 @@ public enum WatchWeekRingTone: Sendable, Equatable {
     /// Some progress, below the minimum.
     case yellow
     /// Between the minimum and the upper limit.
-    case lightBlue
+    case lightGreen
     /// At or beyond the upper limit.
     case green
 }
@@ -33,10 +33,12 @@ public struct WatchWeekRing: Equatable, Sendable, Identifiable {
     public var progress: Double { target > 0 ? min(1, value / target) : 0 }
 
     public var tone: WatchWeekRingTone {
-        if value <= 0 { return .red }
-        if value < minimum { return .yellow }
-        if target > 0 && value < target { return .lightBlue }
-        return .green
+        switch kind == .strength ? WeeklyActivityColor.strength(value) : WeeklyActivityColor.cardio(value) {
+        case .red: .red
+        case .yellow: .yellow
+        case .lightGreen: .lightGreen
+        case .green: .green
+        }
     }
 
     /// Whole number for display ("12"); fractional fractional-set credit is rounded.

@@ -311,4 +311,23 @@ final class TrainingFactsTests: XCTestCase {
         let facts = TrainingFacts.make(sessions: [old], now: testNow, goal: .strength, experience: .intermediate)
         XCTAssertTrue(facts.incompleteCustomExerciseNames.isEmpty)
     }
+
+    func testTrainingFactsOutputIsUnaffectedByPrefilteringInputToTwelveWeeks() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let ex = try WorkoutRepository.findOrCreateExercise(
+            named: "Prefilter Row", primaryMuscles: ["back"], in: ctx)
+        let within = try WorkoutRepository.createSession(date: now.addingTimeInterval(-5 * 7 * 86_400), in: ctx)
+        _ = try WorkoutRepository.addSet(to: within, exercise: ex, weightKg: 70, reps: 8, in: ctx)
+        let beyond = try WorkoutRepository.createSession(date: now.addingTimeInterval(-20 * 7 * 86_400), in: ctx)
+        _ = try WorkoutRepository.addSet(to: beyond, exercise: ex, weightKg: 70, reps: 8, in: ctx)
+        let all = [within, beyond]
+        let prefiltered = all.filter { $0.date >= now.addingTimeInterval(-TrainingFacts.historyWindow) }
+
+        let fromAll = TrainingFacts.make(sessions: all, now: now, goal: .strength, experience: .intermediate)
+        let fromPrefiltered = TrainingFacts.make(sessions: prefiltered, now: now, goal: .strength, experience: .intermediate)
+        XCTAssertEqual(fromAll.allTimeWorkingSets, fromPrefiltered.allTimeWorkingSets)
+        XCTAssertEqual(fromAll.weeklySetsByMuscle, fromPrefiltered.weeklySetsByMuscle)
+        XCTAssertEqual(fromAll.incompleteCustomExerciseNames, fromPrefiltered.incompleteCustomExerciseNames)
+    }
 }

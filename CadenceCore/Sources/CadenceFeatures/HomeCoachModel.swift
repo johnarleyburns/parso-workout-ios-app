@@ -150,7 +150,8 @@ public enum HomeCoachModel {
                                      constraintPolicy: PlanningConstraintPolicy = .safe) async -> CoachSnapshot {
         // Phase 1: extract value types from SwiftData models (must be on main actor)
         let liveSessions = sessions.filter { $0.deletedAt == nil }
-        let trainingFacts = TrainingFacts.make(sessions: liveSessions,
+        let historyFloor = now.addingTimeInterval(-TrainingFacts.historyWindow)
+        let trainingFacts = TrainingFacts.make(sessions: liveSessions.filter { $0.date >= historyFloor },
                                                assessments: assessments,
                                                now: now,
                                                goal: goal,

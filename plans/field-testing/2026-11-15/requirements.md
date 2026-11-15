@@ -61,6 +61,38 @@ Record item → production entry point → regression coverage → PR URL → CI
 | l | https://github.com/johnarleyburns/parso-workout-ios-app/pull/755 | ExercisePickerView | Swift parse/diff/guard pass; CI/device pending |
 | a | https://github.com/johnarleyburns/parso-workout-ios-app/pull/756 | WatchSetKeypadView.fields | Swift parse/diff/guard pass; CI/device pending |
 | i2 | https://github.com/johnarleyburns/parso-workout-ios-app/pull/757 | WeightsStartView | Swift parse/diff/guard pass; CI/device pending |
+| j | https://github.com/johnarleyburns/parso-workout-ios-app/pull/759 | HomeMuscleMapView.muscleList | Swift parse/diff/guard pass; CI/device pending |
+| b | https://github.com/johnarleyburns/parso-workout-ios-app/pull/760 | WatchSetCardBuilder, WatchSetKeypadView, WatchStrengthHomeView, shared WatchExerciseProgressRing | ring regressions updated; local package attempt fails: missing SwiftData on Linux; CI/device pending |
+| k | https://github.com/johnarleyburns/parso-workout-ios-app/pull/761 | HomeView.Surface.title | Swift parse/diff/guard pass; CI/device pending |
+| i1 | https://github.com/johnarleyburns/parso-workout-ios-app/pull/762 | HomeWeekDashboardSection | Swift parse/diff/guard pass; CI/device pending |
+
+PR #757 also updates HomeWeekDashboardSection (the shipped Strength tab), not
+only the similarly titled legacy WeightsStartView. Audit document PR: #758.
+
+## Remaining investigation findings
+
+- c: doubling exists in Exercise.prospectiveEffectiveLoadKg and
+  SetEntry.effectiveLoadKg (Models.swift); SessionInfoSheets explains per-bell
+  entry/doubling. LoadAccountingTests and export/history expectations need review.
+- d: inspect shared SessionViewModel and WatchStrengthFlowModel prefill/override
+  paths; preserve partner attribution and explicit override vs prescription.
+- e/f: WatchReadyCard still renders the welcome block. Phone Today renders
+  coach hero/recommendation cards in HomeView+DashboardContent. Wire new pickers
+  to actual start flows; do not merely relabel legacy navigation.
+- g: phone WeeklyIntentPresenter uses ratio-based three-color tint; watch
+  WatchWeekRing uses red/yellow/lightBlue/green. Both need one absolute-threshold
+  policy, plus all weekly-tab text/progress bindings and boundary regressions.
+- m: phone SuggestExerciseView hides info when exerciseForName returns nil;
+  watch WatchSuggestedExerciseView resolves catalog entry and disables Details
+  when resolution fails. Investigate catalog readiness/name identity and all
+  suggested-workout row entry points before selecting a fix.
+- n: scheduling is still reachable in HomeView+Dashboard sheets, timer cardio,
+  legacy picker callbacks and CoachSchedulePreferencesView. Remove capabilities
+  without destroying existing saved/exported data or draft-start support.
+- o: WatchSetKeypadView still depends on WatchQuickTalkController, hold-to-talk
+  hints and More dictation. Audit phone services/settings/sync contracts too.
+- q: SelectWorkoutView, WeightsStartView and CardioPickerView remain referenced
+  from HomeView+Dashboard sheets. Replace reachable routes before deleting views.
 
 All listed PRs have auto-merge requested. Unchecked items are not completed.
 Worktree: /tmp/cladiron-field-testing. All branches begin codex/field-.

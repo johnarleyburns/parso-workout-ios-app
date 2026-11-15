@@ -154,6 +154,7 @@ struct HomeView: View {
     @State var passiveSamplesLoaded = false; @State var homeActivityReady = false  // first weekly projection applied
     // Historical Home projections are cached separately from the coach snapshot.
     @State var strengthRequestState: TodayRequestCardState = .idle
+    @State var cardioRequestState: TodayRequestCardState = .idle
     @State var cachedWorkoutsTodayRows: [WorkoutsTodayPresenter.Row] = []
     @State var cachedWeekStrengthEntries: [TodayActivityPresenter.Entry] = []; @State var cachedWeekCardioEntries: [TodayActivityPresenter.Entry] = []
     @State var cachedWeeklyVolumeKg = 0.0
@@ -389,9 +390,8 @@ struct HomeView: View {
         return f
     }()
     var headerDateText: String { Self.headerDateFormatter.string(from: .now) }
-    /// Phase A (field-test-fixes): resume card from either in-memory active session
-    /// or a persisted `isResumable` candidate the coach pipeline detects but
-    /// ActiveWorkoutModel hasn't yet adopted.
+    /// Resume card source: in-memory active session, or a persisted `isResumable`
+    /// candidate that ActiveWorkoutModel hasn't yet adopted.
     var resumeSession: WorkoutSession? {
         active.strengthSession ?? ActiveSessionRecovery.candidate(in: sessions)
     }

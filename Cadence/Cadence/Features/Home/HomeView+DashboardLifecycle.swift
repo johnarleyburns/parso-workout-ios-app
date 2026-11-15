@@ -135,13 +135,6 @@ extension HomeView {
                 await refreshWeeklyIntentSnapshot()
                 await refreshHomeActivitySnapshot()
             }
-            .task(id: HomeTodaySuggestionTaskIdentity(
-                historyRefreshToken: historyRefreshToken,
-                sessionCount: displayRestoreComplete ? sessions.count : -1,
-                isRestoringCloudKitHistory: model.isRestoringCloudKitHistory)) {
-                guard displayRestoreComplete else { return }
-                await prepareTodayCardio()
-            }
             .onChange(of: todaySuggestedPlan?.id) { _, _ in
                 // Watch Suggest mirrors the phone's generated Today plan.
                 guard coachSnapshotReady, let plan = todaySuggestedPlan else { return }

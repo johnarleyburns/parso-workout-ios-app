@@ -9,10 +9,14 @@ struct HomeTodayCardioCard: View {
     let suggestion: CardioSuggestion?
     let completedTitle: String?
     let isCalculating: Bool
+    /// True while an explicit "Suggest cardio" request is running.
+    let isRequesting: Bool
     let hasNewer: Bool
     /// Opens the review sheet (rationale, citations, Suggest Another); never launches directly.
     let onStart: () -> Void
     let onShowNewer: () -> Void
+    /// Explicit "Suggest cardio" action; nil disables it.
+    let onRequest: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -49,9 +53,18 @@ struct HomeTodayCardioCard: View {
                     ProgressView()
                     Text("Preparing your cardio suggestion…").font(.subheadline).foregroundStyle(.secondary)
                 }
+            } else if isRequesting {
+                HStack(spacing: 8) {
+                    ProgressView()
+                    Text("Suggesting…").font(.subheadline).foregroundStyle(.secondary)
+                }
             } else {
-                Text("No cardio suggestion is available right now.")
-                    .font(.subheadline).foregroundStyle(.secondary)
+                Button(onRequest != nil ? "Suggest cardio" : "No cardio suggestion is available right now.") {
+                    onRequest?()
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(onRequest == nil)
+                .accessibilityIdentifier("home.cardio.request")
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -71,36 +84,35 @@ extension HomeView {
         }
     }
 
-    /// Shows today's cached cardio suggestion first, then computes a fresh one in
-    /// the background; a different result waits behind "Show newer…".
-    func prepareTodayCardio() async {
-        guard surface == .today else { return }
-        if todayCardio == nil { todayCardio = TodayCardioSuggestionCache().load() }
+    /// Explicit "Suggest cardio" tap — always generates on tap; nothing runs
+    /// automatically on launch or history change.
+    func requestCardioSuggestion() {
+        guard cardioRequestState != .requesting else { return }
+        cardioRequestState = .requesting
         let snapshots = cardioSnapshots()
         let weeklyMinutes = dashboard.cardioDetail.moderateEquivalentMinutes
         let targetMinutes = dashboard.cardioDetail.targetMinutes
         let experience = settings.experienceLevel
         let excludedTypes = settings.excludedCardioTypes
         let excludedProtocolIDs = Set(settings.excludedHIITProtocolIDs)
-        if todayCardio == nil { todayCardioCalculating = true }
-        let (input, fresh) = await Task.detached(priority: .userInitiated) {
-            let input = Self.cardioSuggestionInput(from: snapshots, weeklyMinutes: weeklyMinutes,
-                                                   targetMinutes: targetMinutes, experience: experience,
-                                                   excludedTypes: excludedTypes,
-                                                   excludedProtocolIDs: excludedProtocolIDs, asOf: Date())
-            return (input, CardioSuggestionGenerator.generate(input: input))
-        }.value
-        guard !Task.isCancelled else { return }
-        todayCardioCalculating = false
-        todayCardioInput = input
-        guard let fresh else { return }
-        switch TodayCardioReplacementGate.decide(displayed: todayCardio, fresh: fresh) {
-        case .applyImmediately:
+        Task {
+            let (input, fresh) = await Task.detached(priority: .userInitiated) {
+                let input = Self.cardioSuggestionInput(from: snapshots, weeklyMinutes: weeklyMinutes,
+                                                       targetMinutes: targetMinutes, experience: experience,
+                                                       excludedTypes: excludedTypes,
+                                                       excludedProtocolIDs: excludedProtocolIDs, asOf: Date())
+                return (input, CardioSuggestionGenerator.generate(input: input))
+            }.value
+            guard !Task.isCancelled else { return }
+            todayCardioInput = input
+            guard let fresh else {
+                cardioRequestState = .failed(String(localized: "No cardio suggestion is available right now."))
+                return
+            }
             todayCardio = fresh
             pendingTodayCardio = nil
             TodayCardioSuggestionCache().save(fresh)
-        case .holdPending:
-            pendingTodayCardio = fresh
+            cardioRequestState = .result
         }
     }
 

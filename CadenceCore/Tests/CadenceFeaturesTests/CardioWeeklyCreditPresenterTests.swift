@@ -15,7 +15,7 @@ final class CardioWeeklyCreditPresenterTests: XCTestCase {
         XCTAssertEqual(display.targetMinutes, 300)
         XCTAssertEqual(display.visibleText, "158 of 300 min credit")
         XCTAssertEqual(display.normalizedProgress, 158.0 / 300.0)
-        XCTAssertEqual(display.tintRole, .yellow)
+        XCTAssertEqual(display.tintRole, .lightGreen)
     }
 
     func testZeroCreditIsEmptyRingAndRed() {
@@ -96,9 +96,9 @@ final class CardioWeeklyCreditPresenterTests: XCTestCase {
         func role(_ credit: Double) -> WeeklySetTintRole {
             CardioWeeklyCreditPresenter.make(creditedMinutes: credit, targetMinutes: 300).tintRole
         }
-        XCTAssertEqual(role(149.999), .red)
-        XCTAssertEqual(role(150), .yellow)
-        XCTAssertEqual(role(299.999), .yellow)
+        XCTAssertEqual(role(149.999), .yellow)
+        XCTAssertEqual(role(150), .lightGreen)
+        XCTAssertEqual(role(299.999), .lightGreen)
         XCTAssertEqual(role(300), .green)
     }
 

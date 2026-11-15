@@ -5,6 +5,7 @@ import Foundation
 public enum WeeklySetTintRole: Sendable, Equatable {
     case red
     case yellow
+    case lightGreen
     case green
 }
 
@@ -64,10 +65,24 @@ public enum WeeklyCardioProgress {
     public static let target = 300.0
 
     public static func tintRole(for moderateEquivalentMinutes: Double) -> WeeklySetTintRole {
-        switch moderateEquivalentMinutes {
-        case ..<minimum: .red
-        case ..<target: .yellow
-        default: .green
-        }
+        WeeklyActivityColor.cardio(moderateEquivalentMinutes)
+    }
+}
+
+/// Absolute weekly activity bands, independent of a user's ring-fill target.
+public enum WeeklyActivityColor {
+    public static func strength(_ sets: Double) -> WeeklySetTintRole {
+        band(sets, minimum: 128, upper: 192)
+    }
+
+    public static func cardio(_ minutes: Double) -> WeeklySetTintRole {
+        band(minutes, minimum: 150, upper: 300)
+    }
+
+    private static func band(_ value: Double, minimum: Double, upper: Double) -> WeeklySetTintRole {
+        guard value.isFinite, value > 0 else { return .red }
+        if value < minimum { return .yellow }
+        if value < upper { return .lightGreen }
+        return .green
     }
 }

@@ -211,8 +211,21 @@ public extension TrainingFacts {
         var bestAll: [String: Double] = [:]
         var bestRecent: [String: Double] = [:]
         var bestPrior: [String: Double] = [:]
+        // Also the single all-time walk of `orderedSets`: weekly-best e1RM, per-session
+        // top loads, all-time working-set count, and incomplete custom exercises.
+        var weeklyBestE1RM: [String: [Date: Double]] = [:]
+        var topByExerciseSession: [String: [(date: Date, weight: Double)]] = [:]
+        var allTimeSets = 0
+        var incompleteCustom: Set<String> = []
         for session in sessions {
-            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 {
+            let wk = WeeklyStats.weekStart(now: session.date)
+            var topForEx: [String: Double] = [:]
+            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
+                allTimeSets += 1
+                if let ex = set.exercise, ex.isCustom, ex.primaryMuscles.isEmpty {
+                    incompleteCustom.insert(ex.name)
+                }
+                guard set.effectiveLoadKg > 0 else { continue }
                 guard let name = set.exercise?.name, !name.isEmpty else { continue }
                 let e1rm = WorkoutMath.estimated1RM(weight: set.effectiveLoadKg, reps: set.reps, formula: formula)
                 bestAll[name] = max(bestAll[name] ?? 0, e1rm)
@@ -221,7 +234,10 @@ public extension TrainingFacts {
                 } else if session.date >= priorStart && session.date < weekStart {
                     bestPrior[name] = max(bestPrior[name] ?? 0, e1rm)
                 }
+                weeklyBestE1RM[name, default: [:]][wk] = max(weeklyBestE1RM[name]?[wk] ?? 0, e1rm)
+                topForEx[name] = max(topForEx[name] ?? 0, set.effectiveLoadKg)
             }
+            for (name, w) in topForEx { topByExerciseSession[name, default: []].append((session.date, w)) }
         }
         var trends: [String: TrendDirection] = [:]
         let trendEpsilon = 0.02   // ±2% counts as flat (noise floor)
@@ -302,21 +318,8 @@ public extension TrainingFacts {
         }
         let volumeTrendByGroup = trend(current: setsByGroup, prior: priorSetsByGroup)
 
-        // Weekly-best e1RM per lift → trailing consecutive-decline count.
-        // Uses effective load.
-        var weeklyBestE1RM: [String: [Date: Double]] = [:]
-        var topByExerciseSession: [String: [(date: Date, weight: Double)]] = [:]
-        for session in sessions {
-            let wk = WeeklyStats.weekStart(now: session.date)
-            var topForEx: [String: Double] = [:]
-            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 && set.effectiveLoadKg > 0 {
-                guard let name = set.exercise?.name, !name.isEmpty else { continue }
-                let e1 = WorkoutMath.estimated1RM(weight: set.effectiveLoadKg, reps: set.reps, formula: formula)
-                weeklyBestE1RM[name, default: [:]][wk] = max(weeklyBestE1RM[name]?[wk] ?? 0, e1)
-                topForEx[name] = max(topForEx[name] ?? 0, set.effectiveLoadKg)
-            }
-            for (name, w) in topForEx { topByExerciseSession[name, default: []].append((session.date, w)) }
-        }
+        // Weekly-best e1RM per lift → trailing consecutive-decline count
+        // (weeklyBestE1RM / topByExerciseSession come from the single all-time pass above).
         var repeatedDecline: [String: Int] = [:]
         let declineEps = 0.02
         for (name, byWeek) in weeklyBestE1RM {
@@ -342,19 +345,7 @@ public extension TrainingFacts {
             sessionsSinceDeload[name] = lastDeloadIndex.map { ordered.count - 1 - $0 } ?? ordered.count
         }
 
-        // All-time working set count (not week-scoped) — the true cold-start gate.
-        let allTimeSets = sessions.reduce(0) { count, session in
-            count + session.orderedSets.filter { !$0.isWarmup && $0.isOwnerSet && $0.reps > 0 }.count
-        }
-
-        // Scan ALL sessions for incomplete custom exercises, not just this week's.
-        var incompleteCustom: Set<String> = []
-        for session in sessions {
-            for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
-                guard let ex = set.exercise, ex.isCustom, ex.primaryMuscles.isEmpty else { continue }
-                incompleteCustom.insert(ex.name)
-            }
-        }
+        // allTimeSets / incompleteCustom were accumulated in the single all-time pass above.
         let incompleteCustomExerciseNames = incompleteCustom.sorted()
 
         return TrainingFacts(weeklySetsByGroup: setsByGroup,

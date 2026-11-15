@@ -240,4 +240,33 @@ final class TrainingFactsTests: XCTestCase {
         let facts = TrainingFacts.make(sessions: [a, b, c, d], now: now, goal: .strength, experience: .intermediate)
         XCTAssertEqual(facts.sessionsSinceDeloadByExercise["SLift"], 1)
     }
+
+    /// Golden-output regression for the pass-consolidation refactor.
+    func testAllTimeFactsMatchGoldenOutputAcrossMultipleWeeksAndExercises() throws {
+        let ctx = try makeContext()
+        let now = testNow
+        let squat = try WorkoutRepository.findOrCreateExercise(
+            named: "Consolidation Squat", primaryMuscles: ["quads"], in: ctx)
+        var sessions: [WorkoutSession] = []
+        let weights: [Double] = [100, 110, 105, 95]
+        for (i, weight) in weights.enumerated() {
+            let s = try WorkoutRepository.createSession(
+                date: now.addingTimeInterval(TimeInterval(-7 * 86_400 * (weights.count - i))), in: ctx)
+            _ = try WorkoutRepository.addSet(to: s, exercise: squat, weightKg: weight, reps: 5, in: ctx)
+            sessions.append(s)
+        }
+        let custom = try WorkoutRepository.findOrCreateExercise(
+            named: "My Custom Move", primaryMuscles: [], in: ctx)
+        let customSession = try WorkoutRepository.createSession(
+            date: now.addingTimeInterval(-10 * 7 * 86_400), in: ctx)
+        _ = try WorkoutRepository.addSet(to: customSession, exercise: custom, weightKg: 20, reps: 8, in: ctx)
+        sessions.append(customSession)
+
+        let facts = TrainingFacts.make(sessions: sessions, now: now, goal: .strength, experience: .intermediate)
+
+        XCTAssertEqual(facts.allTimeWorkingSets, 5)
+        XCTAssertEqual(facts.incompleteCustomExerciseNames, ["My Custom Move"])
+        XCTAssertEqual(facts.repeatedDeclineByExercise["Consolidation Squat"], 2)
+        XCTAssertEqual(facts.sessionsSinceDeloadByExercise["Consolidation Squat"], 4)
+    }
 }

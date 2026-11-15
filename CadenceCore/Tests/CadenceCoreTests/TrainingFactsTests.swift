@@ -269,4 +269,46 @@ final class TrainingFactsTests: XCTestCase {
         XCTAssertEqual(facts.repeatedDeclineByExercise["Consolidation Squat"], 2)
         XCTAssertEqual(facts.sessionsSinceDeloadByExercise["Consolidation Squat"], 4)
     }
+
+    private func windowSession(_ ctx: ModelContext, _ ex: Exercise, weeksAgo: Double, kg: Double, reps: Int) throws -> WorkoutSession {
+        let s = try WorkoutRepository.createSession(date: testNow.addingTimeInterval(-weeksAgo * 7 * 86_400), in: ctx)
+        _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: kg, reps: reps, in: ctx)
+        return s
+    }
+
+    func testAllTimeWorkingSetsExcludesSessionsOlderThan12Weeks() throws {
+        let ctx = try makeContext()
+        let squat = try WorkoutRepository.findOrCreateExercise(named: "12wk Squat", primaryMuscles: ["quads"], in: ctx)
+        let within = try windowSession(ctx, squat, weeksAgo: 11, kg: 100, reps: 5)
+        let beyond = try windowSession(ctx, squat, weeksAgo: 13, kg: 100, reps: 5)
+        let facts = TrainingFacts.make(sessions: [within, beyond], now: testNow, goal: .strength, experience: .intermediate)
+        XCTAssertEqual(facts.allTimeWorkingSets, 1)
+    }
+
+    func testColdStartGateTriggersAfterTwelveWeeksOfInactivity() throws {
+        let ctx = try makeContext()
+        let bench = try WorkoutRepository.findOrCreateExercise(named: "12wk Bench", primaryMuscles: ["chest"], in: ctx)
+        let old = try windowSession(ctx, bench, weeksAgo: 20, kg: 60, reps: 8)
+        let facts = TrainingFacts.make(sessions: [old], now: testNow, goal: .strength, experience: .intermediate)
+        XCTAssertEqual(facts.allTimeWorkingSets, 0)
+    }
+
+    func testBestAllE1RMIgnoresLiftsPerformedBeyondTwelveWeeks() throws {
+        let ctx = try makeContext()
+        let dl = try WorkoutRepository.findOrCreateExercise(named: "12wk Deadlift", primaryMuscles: ["hamstrings"], in: ctx)
+        let old = try windowSession(ctx, dl, weeksAgo: 15, kg: 150, reps: 3)
+        let recent = try windowSession(ctx, dl, weeksAgo: 0, kg: 100, reps: 3)
+        let facts = TrainingFacts.make(sessions: [old, recent], now: testNow, goal: .strength, experience: .intermediate)
+        // Against its own in-window best the set is 100% (heavy); against the stale 150kg it would be moderate.
+        XCTAssertEqual(facts.intensity.sampleCount, 1)
+        XCTAssertEqual(facts.intensity.heavy, 1.0, accuracy: 0.001)
+    }
+
+    func testIncompleteCustomExerciseNamesExcludesExercisesOnlyLoggedBeyondTwelveWeeks() throws {
+        let ctx = try makeContext()
+        let custom = try WorkoutRepository.findOrCreateExercise(named: "12wk Custom Move", primaryMuscles: [], in: ctx)
+        let old = try windowSession(ctx, custom, weeksAgo: 14, kg: 20, reps: 8)
+        let facts = TrainingFacts.make(sessions: [old], now: testNow, goal: .strength, experience: .intermediate)
+        XCTAssertTrue(facts.incompleteCustomExerciseNames.isEmpty)
+    }
 }

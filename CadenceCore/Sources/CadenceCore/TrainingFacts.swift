@@ -171,6 +171,9 @@ public struct TrainingFacts: Sendable {
 
 public extension TrainingFacts {
 
+    /// Coaching memory window (12 weeks, a normal mesocycle).
+    static let historyWindow: TimeInterval = 12 * 7 * 86_400
+
     /// Build the snapshot from a user's strength sessions. Pure; the caller passes
     /// its `@Query` array straight in. `now` and `formula` are injectable for tests.
     static func make(sessions: [WorkoutSession],
@@ -182,6 +185,10 @@ public extension TrainingFacts {
         let weekStart = WeeklyStats.weekStart(now: now)
         let priorStart = Calendar.current.date(byAdding: .day, value: -7, to: weekStart) ?? now.addingTimeInterval(-14 * 86_400)
         let cal = Calendar.current
+        // Mesocycle-length memory window: no session older than this contributes to
+        // ANY output, including the cold-start gate.
+        let historyFloor = now.addingTimeInterval(-historyWindow)
+        let windowedSessions = sessions.filter { $0.date >= historyFloor }
 
         // One flat list of (session, owner working set) for the trailing week.
         struct WorkingSet { let date: Date; let set: SetEntry; let exercise: Exercise }
@@ -217,7 +224,7 @@ public extension TrainingFacts {
         var topByExerciseSession: [String: [(date: Date, weight: Double)]] = [:]
         var allTimeSets = 0
         var incompleteCustom: Set<String> = []
-        for session in sessions {
+        for session in windowedSessions {
             let wk = WeeklyStats.weekStart(now: session.date)
             var topForEx: [String: Double] = [:]
             for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
@@ -297,7 +304,7 @@ public extension TrainingFacts {
         let avgRPE = rpes.isEmpty ? nil : rpes.reduce(0, +) / Double(rpes.count)
 
         // Days since last session (any strength session in history).
-        let lastDate = sessions.map(\.date).max()
+        let lastDate = windowedSessions.map(\.date).max()
         let daysSince = lastDate.map { max(0, cal.dateComponents([.day], from: cal.startOfDay(for: $0), to: cal.startOfDay(for: now)).day ?? 0) }
 
         // Assessment series + which are due for a re-test, against the same `now`.

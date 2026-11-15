@@ -106,11 +106,17 @@ public struct CoachWarning: Sendable, Equatable, Identifiable {
     public let id: String
     public let message: String
     public let citationIds: [String]
+    public let modality: Modality
 
-    public init(id: String, message: String, citationIds: [String] = []) {
+    public enum Modality: String, Sendable, Equatable {
+        case strength, cardio, general
+    }
+
+    public init(id: String, message: String, citationIds: [String] = [], modality: Modality = .general) {
         self.id = id
         self.message = message
         self.citationIds = citationIds
+        self.modality = modality
     }
 }
 
@@ -238,7 +244,8 @@ public enum CoachDecisionEngine {
                 strengthOverrideWarning = CoachWarning(
                     id: "strengthOverride",
                     message: String(localized: "Coach is recommending strength despite some muscle groups still recovering. Prioritize the exercises that feel recovered.", bundle: .module),
-                    citationIds: ["schoenfeld2021"])
+                    citationIds: ["schoenfeld2021"],
+                    modality: .strength)
             } else {
                 // Phase C (field-test-fixes): rescue still-due cardio before ever
                 // recommending rest when actual weekly aerobic minutes are short.
@@ -820,7 +827,8 @@ public enum CoachDecisionEngine {
             warnings.append(CoachWarning(
                 id: "excessiveWeeklyVolume.\(part.rawValue)",
                 message: String(localized: "\(part.displayName) has \(Int(sets)) sets this week — more than 20% above the high end of the research-backed starting range. Diminishing returns are likely.", bundle: .module),
-                citationIds: ["pellandDoseResponse2026"]
+                citationIds: ["pellandDoseResponse2026"],
+                modality: .strength
             ))
         }
 
@@ -831,7 +839,8 @@ public enum CoachDecisionEngine {
                 warnings.append(CoachWarning(
                     id: "excessiveSetsPerSession.\(ex.exerciseName)",
                     message: String(localized: "\(ex.exerciseName) had \(ex.hardSetCount) hard sets in one session. Research found no advantage beyond ~5 hard sets per muscle per session.", bundle: .module),
-                    citationIds: ["amirthalingamGVT"]
+                    citationIds: ["amirthalingamGVT"],
+                    modality: .strength
                 ))
             }
         }

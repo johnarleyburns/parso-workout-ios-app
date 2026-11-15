@@ -20,58 +20,23 @@ extension HomeView {
 
     @ViewBuilder
     var dashboardTopContent: some View {
-        HStack {
-            Text(headerDateText)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .accessibilityIdentifier("home.headerDate")
-            Spacer(minLength: 8)
-            if let badge = HomeHeaderPresentation(isSupporter: contributions.store.isSupporter).supporterBadge {
-                supporterBadgeView(badge)
-            }
-        }
         WeeklyIntentRingsCard(
             display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
             tabSelection: rootTabSelection)
-        if surface != .today,
-           let close = WeekCloseMoment.make(
-               workingSets: dashboard.volumeCoverage.completed,
-               setTarget: dashboard.volumeCoverage.target,
-               cardioMinutes: dashboard.cardioDetail.moderateEquivalentMinutes,
-               cardioTarget: dashboard.cardioDetail.targetMinutes) {
-            VStack(alignment: .leading, spacing: 4) {
-                Label(close.title, systemImage: "party.popper.fill")
-                    .font(.headline)
-                    .foregroundStyle(CadenceTheme.achievement)
-                Text(close.detail).font(.subheadline).foregroundStyle(.secondary)
-            }
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(CadenceTheme.achievement.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .sensoryFeedback(.success, trigger: close.title)
-            .accessibilityIdentifier("week.closeMoment")
-        }
-        let dualRows = dualRecommendationRows
-        if dualRows.isEmpty {
+        if resumeSession != nil {
             todayHeroCard
-            CoachWarningRow(warnings: strengthWarnings)
-            HomeTodayCardioCard(
-                suggestion: todayCardio,
-                completedTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
-                isCalculating: todayCardioCalculating,
-                isRequesting: cardioRequestState == .requesting,
-                hasNewer: pendingTodayCardio != nil,
-                onStart: { todayCardioReviewPresented = true },
-                onShowNewer: { showNewerTodayCardio() },
-                onRequest: { requestCardioSuggestion() })
-            CoachWarningRow(warnings: cardioWarnings)
         } else {
-            HomeTodayRecommendationsCard(rows: dualRows,
-                                         completedStrengthTitle: cachedTodayHeroActivity.latestCompletedStrength?.title,
-                                         completedCardioTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
-                                         onStart: { launchDecision($0) })
+            HomeWorkoutStartControls(
+                recentCardio: recentCardioTypes,
+                onQuickStart: {
+                    handleEditorStart(.empty(warmup: settings.warmupMinutes,
+                                             cooldown: settings.cooldownMinutes))
+                },
+                onSuggested: { openTodaySuggestion() },
+                onPreviousStart: handleEditorStart,
+                onCardio: { start($0) },
+                onMoreCardio: { openFullCardioPicker() })
         }
-        readinessCard
     }
 
     /// Rows for the compact dual card; empty keeps the existing hero. Only the

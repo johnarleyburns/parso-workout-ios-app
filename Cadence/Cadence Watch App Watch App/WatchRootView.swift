@@ -158,7 +158,7 @@ struct WatchRootView: View {
                     onCardio: { showingWorkoutChoice = false; showingCardio = true })
             }
             .navigationDestination(isPresented: $showingCardio) {
-                WatchCardioPickerView(types: cardioTypes) { ct in AnyView(cardioSetupView(for: ct)) }
+                WatchCardioPickerView(types: cardioTypes, destination: { ct in AnyView(cardioSetupView(for: ct)) }, onSuggest: { startSuggestedCardio($0) })
             }
             .alert("Discard this workout?", isPresented: $confirmDiscardResume) {
                 Button("Discard", role: .destructive) {
@@ -356,6 +356,18 @@ struct WatchRootView: View {
             } else {
                 startConfiguredCardio(ct, spec: spec)
             }
+        }
+    }
+
+    /// Explicit Start from the cardio Suggest review: builds a new workout from the phone's suggestion.
+    private func startSuggestedCardio(_ suggestion: CardioSuggestion) {
+        let ct = suggestion.type
+        if ct == .hiit || ct == .boxing {
+            let model = intervalSetupModel(kind: ct.displayName)
+            activeIntervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: ct.displayName)
+        } else {
+            let spec = WorkoutConfigurationSpec(for: ct.rawValue, plannedDurationSeconds: suggestion.durationMinutes * 60, targetZone: nil)
+            if ct == .swim { plannedSwimSpec = spec } else { startConfiguredCardio(ct, spec: spec) }
         }
     }
 

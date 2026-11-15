@@ -135,6 +135,7 @@ extension HomeView {
                     from: coachDecision, suggestedStrength: plan))
             }
             .modifier(WatchCoachRefreshModifier(action: refreshWatchCoachSuggestion))
+            .modifier(WatchCardioRefreshModifier(action: refreshWatchCardioSuggestion))
             .onChange(of: historyRefreshToken) { _, _ in
                 // The token is only a wake-up. Invalidate solely when the
                 // semantic suggestion key proves the inputs changed; the hero

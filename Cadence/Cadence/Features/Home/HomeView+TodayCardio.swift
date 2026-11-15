@@ -112,9 +112,16 @@ extension HomeView {
             }
             todayCardio = fresh
             pendingTodayCardio = nil
+            model.updateWatchCardioSuggestion(WatchCardioSuggestionEnvelope.make(suggestion: fresh, issuedAt: Date()))
             TodayCardioSuggestionCache().save(fresh)
             cardioRequestState = .result
         }
+    }
+
+    /// Watch `request_settings_sync`: regenerate and push the cardio suggestion.
+    func refreshWatchCardioSuggestion() {
+        guard surface == .today else { return }
+        requestCardioSuggestion()
     }
 
     func showNewerTodayCardio() {

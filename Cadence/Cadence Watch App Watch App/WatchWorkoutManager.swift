@@ -176,15 +176,15 @@ final class WatchWorkoutManager: NSObject {
 
     @ObservationIgnored let coachSuggestionCoordinator = WatchCoachSuggestionCoordinator(store: UserDefaultsWatchCoachSuggestionStore())
     var coachSuggestionEnvelope: WatchCoachSuggestionEnvelope?; var coachHistoryState = WatchCoachHistoryState()
-    @ObservationIgnored var coachClock: @Sendable () -> Date = { Date() } // injectable Suggest clock
-    @ObservationIgnored var localHistoryObserver: NSObjectProtocol?
+    var cardioSuggestionEnvelope: WatchCardioSuggestionEnvelope?
+    @ObservationIgnored var coachClock: @Sendable () -> Date = { Date() }; @ObservationIgnored var localHistoryObserver: NSObjectProtocol?
 
     init(uiTestMode: Bool = false) {
         self.uiTestMode = uiTestMode
         self.healthAuthorizationGateActive = WatchHealthAuthorizationGate.initialGateActive()
         super.init()
         pendingCardioCompletions = Self.loadPendingCardioCompletions(); refreshWeekLocalOverlays()
-        startCoachSuggestionLifecycle()
+        startCoachSuggestionLifecycle(); restoreCardioSuggestion()
     }
 
     var wcSession: WCSession? { WCSession.isSupported() ? WCSession.default : nil }

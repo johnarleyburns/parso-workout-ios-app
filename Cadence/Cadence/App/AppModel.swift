@@ -411,6 +411,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     private var cachedWeekSummary: WatchSync.WeekSummary?
     /// The exact shared Coach snapshot envelope last published by Home; separate from `cachedTodayPlan`.
     private(set) var cachedCoachSuggestionSnapshot: WatchCoachSuggestionEnvelope?
+    /// The cardio suggestion envelope last published by Home's explicit "Suggest cardio".
+    private(set) var cachedCardioSuggestionSnapshot: WatchCardioSuggestionEnvelope?
     /// Workouts the user chose to send to the Watch; mirrored in the application context.
     private var cachedSentWorkouts: [WatchSync.TodayPlan.Session] = []
     private var watchPayloadTask: Task<Void, Never>?
@@ -943,6 +945,31 @@ final class AppModel: NSObject, @unchecked Sendable {
         context.removeValue(forKey: WatchSync.Key.coachSuggestionSnapshotUpdatedAt)
         if let envelope = cachedCoachSuggestionSnapshot, let coach = try? WatchSync.contextDict(envelope) {
             context.merge(coach) { _, new in new }
+        }
+        enqueueWatchContextWrite(context, on: session, at: Date(), trigger: trigger)
+    }
+
+    /// Publishes the cardio suggestion the user explicitly generated on the phone.
+    func updateWatchCardioSuggestion(_ envelope: WatchCardioSuggestionEnvelope) {
+        cachedCardioSuggestionSnapshot = envelope
+        writeWatchCardioSuggestionContext(trigger: .contentChanged)
+    }
+
+    /// Drops the cardio envelope and delivers the removal to the Watch.
+    func invalidateWatchCardioSuggestion() {
+        guard cachedCardioSuggestionSnapshot != nil
+                || (wcSession?.applicationContext[WatchSync.Key.cardioSuggestionSnapshot] != nil) else { return }
+        cachedCardioSuggestionSnapshot = nil
+        writeWatchCardioSuggestionContext(trigger: .contentChanged)
+    }
+
+    private func writeWatchCardioSuggestionContext(trigger: WatchSyncTrigger) {
+        guard let session = wcSession, session.isWatchAppInstalled else { return }
+        var context = session.applicationContext
+        context.removeValue(forKey: WatchSync.Key.cardioSuggestionSnapshot)
+        context.removeValue(forKey: WatchSync.Key.cardioSuggestionSnapshotUpdatedAt)
+        if let envelope = cachedCardioSuggestionSnapshot, let cardio = try? WatchSync.contextDict(envelope) {
+            context.merge(cardio) { _, new in new }
         }
         enqueueWatchContextWrite(context, on: session, at: Date(), trigger: trigger)
     }
@@ -1590,6 +1617,7 @@ extension AppModel {
         refreshWatchSyncState()
         // Rebuild the Coach snapshot through Home's normal builder path (no fabricated workout).
         NotificationCenter.default.post(name: .watchCoachSuggestionRefreshRequested, object: nil)
+        NotificationCenter.default.post(name: .cardioSuggestionRefreshRequested, object: nil)
         // An incompatible Watch keeps its current state; still offer the latest snapshot.
         pushSettingsContext(reason: .watchRequest)
     }
@@ -2072,4 +2100,6 @@ extension Notification.Name {
 extension Notification.Name {
     /// The Watch asked for a fresh snapshot: Home rebuilds the Coach snapshot via its normal builder.
     static let watchCoachSuggestionRefreshRequested = Notification.Name("cadence.watchCoachSuggestionRefreshRequested")
+    /// The Watch asked for a fresh snapshot: Home regenerates the cardio suggestion.
+    static let cardioSuggestionRefreshRequested = Notification.Name("cadence.cardioSuggestionRefreshRequested")
 }

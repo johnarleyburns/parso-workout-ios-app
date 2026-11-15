@@ -175,7 +175,8 @@ struct HomeMuscleMapView: View {
                         HStack {
                             Text(row.displayName)
                             Spacer()
-                            Text(row.rangeText).font(.caption).foregroundStyle(.secondary)
+                            Text("\(WeeklySetProgress.formattedSets(row.sets))/12")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                         ProgressView(value: row.normalized)
                             .tint(muscleColor(for: MuscleHeatPresenter.level(sets: row.sets, target: 12)))
@@ -183,7 +184,7 @@ struct HomeMuscleMapView: View {
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(row.displayName), \(row.rangeText)")
+                .accessibilityLabel("\(row.displayName), \(WeeklySetProgress.formattedSets(row.sets)) of 12 sets this week")
                 .accessibilityIdentifier("home.week.muscleMap.list.\(row.group.rawValue)")
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowBackground(Color.clear)

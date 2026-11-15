@@ -13,14 +13,6 @@ final class CardioPickerLayoutPresenterTests: XCTestCase {
              .cardioSection, .typeGrid, .showMore])
     }
 
-    func testScheduleModeHasNoCreditOrSuggestionAndKeepsItsGrid() {
-        let sections = CardioPickerLayoutPresenter.sections(for: .schedule, showsWeeklyCredit: true,
-                                                            showsSuggestCardio: true)
-        XCTAssertEqual(sections, [.typeGrid, .showMore])
-        XCTAssertFalse(sections.contains(.weeklyCredit))
-        XCTAssertFalse(sections.contains(.suggestCardio))
-        XCTAssertFalse(sections.contains(.excludedTypesNoteWhenPresent))
-    }
 
     func testSuggestCardioAppearsExactlyOnceBeforeTheCardioSectionAndGrid() {
         let sections = CardioPickerLayoutPresenter.sections(for: .start, showsWeeklyCredit: true,

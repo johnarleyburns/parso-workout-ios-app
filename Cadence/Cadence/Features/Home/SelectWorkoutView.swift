@@ -7,10 +7,9 @@ import CadenceFeatures
 /// sheet dismissal and Home callbacks in one place.
 struct SelectWorkoutView: View {
     let onEditorStart: (EditablePlan) -> Void
-    let onScheduleStrength: () -> Void
+    let onCreateDraft: () -> Void
     let onLogWorkout: () -> Void
     let onStartCardio: (WorkoutType) -> Void
-    let onScheduleCardio: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var recentCardioTypes: [WorkoutType] = []
     /// Home's cached weekly cardio credit, forwarded to the Cardio picker.
@@ -25,10 +24,9 @@ struct SelectWorkoutView: View {
             NavigationLink {
                 StartWorkoutView(
                     onEditorStart: onEditorStart,
-                    onScheduleStrength: onScheduleStrength,
+                    onCreateDraft: onCreateDraft,
                     onLogWorkout: onLogWorkout,
                     onStartCardio: onStartCardio,
-                    onScheduleCardio: onScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes,
                     weeklyCardioCredit: weeklyCardioCredit,
@@ -51,10 +49,9 @@ struct SelectWorkoutView: View {
             NavigationStack {
                 StartWorkoutView(
                     onEditorStart: onEditorStart,
-                    onScheduleStrength: onScheduleStrength,
+                    onCreateDraft: onCreateDraft,
                     onLogWorkout: onLogWorkout,
                     onStartCardio: onStartCardio,
-                    onScheduleCardio: onScheduleCardio,
                     onOtherCardio: onOtherCardio,
                     recentCardioTypes: recentCardioTypes,
                     weeklyCardioCredit: weeklyCardioCredit,

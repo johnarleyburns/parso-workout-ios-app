@@ -10,7 +10,6 @@ struct CardioPickerView: View {
     let mode: CardioPickerMode
     let recentCardioTypes: [WorkoutType]
     let onSelect: (WorkoutType) -> Void
-    let onSchedule: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     var onSuggestCardio: (() -> Void)? = nil
     /// Prepared by Home from its cached dashboard; the picker never computes it.
@@ -51,10 +50,9 @@ struct CardioPickerView: View {
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }
-        .navigationTitle(mode == .start ? String(localized: "Cardio This Week")
-                                        : String(localized: "Schedule Cardio"))
+        .navigationTitle(String(localized: "Cardio"))
         .navigationBarTitleDisplayMode(.inline)
-        .accessibilityIdentifier(mode == .start ? "cardioPicker" : "cardioPicker.scheduleMode")
+        .accessibilityIdentifier("cardioPicker")
     }
 
     @ViewBuilder
@@ -167,35 +165,24 @@ struct CardioPickerView: View {
     private func cardioChoice(_ type: WorkoutType) -> some View {
         Button {
             dismiss()
-            if mode == .start { onSelect(type) } else { onSchedule(type) }
+            onSelect(type)
         } label: {
             WorkoutHero(type: type, compact: true)
         }
         .buttonStyle(.plain)
         .tapHaptic()
         .accessibilityIdentifier("cardioPicker.\(mode == .start ? "start" : "schedule").\(type.rawValue)")
-        .accessibilityLabel(mode == .start ? "Start \(type.displayName)" : "Schedule \(type.displayName)")
+        .accessibilityLabel("Start \(type.displayName)")
     }
 
-    @ViewBuilder
     private var otherCardioChoice: some View {
-        if mode == .start {
-            NavigationLink { OtherCardioEntryView(onStart: onOtherCardio) } label: {
-                WorkoutHero(type: .other, compact: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("cardioPicker.start.other")
-        } else {
-            Button {
-                dismiss()
-                onSchedule(.other)
-            } label: {
-                WorkoutHero(type: .other, compact: true)
-            }
-            .buttonStyle(.plain)
-            .accessibilityIdentifier("cardioPicker.schedule.other")
+        NavigationLink { OtherCardioEntryView(onStart: onOtherCardio) } label: {
+            WorkoutHero(type: .other, compact: true)
         }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("cardioPicker.start.other")
     }
+
 }
 
 /// This week's moderate-equivalent cardio credit: a determinate system

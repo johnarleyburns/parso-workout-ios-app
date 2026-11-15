@@ -75,14 +75,6 @@ extension HomeView {
         markWorkoutHistoryChanged()
     }
 
-    func scheduleCardioWorkout(_ type: WorkoutType, for date: Date) throws {
-        guard let cardioType = type.cardioType else { return }
-        _ = try ScheduledWorkoutStore.schedule(cardioType: cardioType,
-                                               title: type.displayName,
-                                               for: date,
-                                               in: context)
-        NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
-    }
 
     func retryRouteFailure(_ failure: HomeRouteFailure) {
         switch failure {

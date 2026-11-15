@@ -3,7 +3,6 @@ import Foundation
 /// The two intents the shared Cardio picker serves.
 public enum CardioPickerMode: Equatable, Hashable, Sendable {
     case start
-    case schedule
 }
 
 /// One top-level block of the Cardio picker, in render order.
@@ -28,9 +27,6 @@ public enum CardioPickerLayoutPresenter {
                                 showsWeeklyCredit: Bool,
                                 showsSuggestCardio: Bool) -> [CardioPickerSection] {
         switch mode {
-        case .schedule:
-            // Scheduling keeps its existing grid-and-Show-more surface.
-            return [.typeGrid, .showMore]
         case .start:
             var sections: [CardioPickerSection] = []
             if showsWeeklyCredit { sections.append(.weeklyCredit) }

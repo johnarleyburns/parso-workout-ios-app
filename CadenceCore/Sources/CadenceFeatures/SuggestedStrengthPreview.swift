@@ -5,14 +5,11 @@ import CadenceCore
 /// the asynchronous/schedule outcomes that feed back into it.
 public enum SuggestedStrengthAction: Equatable, Sendable {
     case start
-    case schedule
     case suggestAnother
     case cancel
     case interactiveDismiss
     case replacementSucceeded(EditablePlan, token: UUID)
     case replacementUnavailable(token: UUID)
-    case scheduleSucceeded
-    case scheduleCancelled
 }
 
 /// Side effects the view must perform after a reduction.
@@ -20,7 +17,6 @@ public enum SuggestedStrengthEffect: Equatable, Sendable {
     case none
     /// Dismiss the sheet exactly once, then hand the plan to the launch path.
     case dismissThenStart(EditablePlan)
-    case dismissAfterSchedule
     /// Regenerate for this interaction only; never persisted.
     case requestAlternative(excluding: Set<String>, token: UUID)
     /// Dismiss and cancel any in-flight generation. Mutates nothing.
@@ -36,19 +32,16 @@ public enum SuggestedStrengthActionContract {
     }
 
     public static let startIdentifier = "suggestedStrength.start"
-    public static let scheduleIdentifier = "suggestedStrength.schedule"
     public static let anotherIdentifier = "suggestedStrength.another"
     public static let cancelIdentifier = "suggestedStrength.cancel"
 
     public static let startTitle = "Start this Workout"
-    public static let scheduleTitle = "Schedule this Workout"
     public static let anotherTitle = "Suggest another"
     public static let cancelTitle = "Cancel"
 
     /// Exactly the order the user sees; Cancel is last and text-only.
     public static let ordered: [Entry] = [
         Entry(action: .start, title: startTitle, accessibilityIdentifier: startIdentifier),
-        Entry(action: .schedule, title: scheduleTitle, accessibilityIdentifier: scheduleIdentifier),
         Entry(action: .suggestAnother, title: anotherTitle, accessibilityIdentifier: anotherIdentifier),
         Entry(action: .cancel, title: cancelTitle, accessibilityIdentifier: cancelIdentifier),
     ]
@@ -57,7 +50,7 @@ public enum SuggestedStrengthActionContract {
 /// Presentation policy: only the suggested-strength wrapper owns preview
 /// Cancel / Suggest another semantics. Every other editor flow is unchanged.
 public enum WorkoutPlanEditorPresentation: Equatable, Sendable {
-    case manual, library, previousWorkout, scheduled, suggestedStrength
+    case manual, library, previousWorkout, suggestedStrength
 
     public var showsSuggestedPreviewActions: Bool { self == .suggestedStrength }
 }
@@ -67,7 +60,6 @@ public struct SuggestedStrengthPreviewState: Equatable, Sendable {
     /// The plan as last edited by the user, handed over on Start/Schedule.
     public var editedPlan: EditablePlan?
     public var isRegenerating = false
-    public var isSchedulePresented = false
     public var unavailableMessage: String?
     public private(set) var activeToken: UUID?
     private var hasStarted = false
@@ -96,17 +88,6 @@ public struct SuggestedStrengthPreviewState: Equatable, Sendable {
             hasStarted = true
             clearPresentation()
             return .dismissThenStart(current)
-        case .schedule:
-            guard !isRegenerating else { return .none }
-            isSchedulePresented = true
-            return .none
-        case .scheduleCancelled:
-            isSchedulePresented = false
-            return .none
-        case .scheduleSucceeded:
-            guard isSchedulePresented else { return .none }
-            clearPresentation()
-            return .dismissAfterSchedule
         case .suggestAnother:
             guard !isRegenerating else { return .none }
             let token = newToken()
@@ -143,7 +124,6 @@ public struct SuggestedStrengthPreviewState: Equatable, Sendable {
         plan = nil
         editedPlan = nil
         isRegenerating = false
-        isSchedulePresented = false
         activeToken = nil
     }
 }

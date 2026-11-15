@@ -10,7 +10,6 @@ struct SuggestedStrengthEditorHooks {
     var isRegenerating: Bool
     var message: String?
     var onStart: (EditablePlan) -> Void
-    var onScheduled: () -> Void
     var onSuggestAnother: (EditablePlan) -> Void
     var onCancel: () -> Void
 }
@@ -32,17 +31,6 @@ extension WorkoutPlanEditor {
             }
             .disabled(hooks.isRegenerating)
             .accessibilityIdentifier(SuggestedStrengthActionContract.startIdentifier)
-            CadenceActionButton(title: String(localized: "Schedule this Workout"),
-                                systemImage: "calendar.badge.plus",
-                                emphasis: .secondary) {
-                if isEditing {
-                    originalPlan = plan
-                    isEditing = false
-                }
-                schedulePresented = true
-            }
-            .disabled(hooks.isRegenerating)
-            .accessibilityIdentifier(SuggestedStrengthActionContract.scheduleIdentifier)
             CadenceActionButton(title: String(localized: "Suggest another"),
                                 systemImage: "arrow.triangle.2.circlepath",
                                 emphasis: .secondary) {
@@ -93,18 +81,6 @@ extension WorkoutPlanEditor {
         sendToWatchResultPresented = true
     }
 
-    var scheduleButton: some View {
-        CadenceActionButton(title: String(localized: "Schedule this Workout"),
-                            systemImage: "calendar.badge.plus",
-                            emphasis: .secondary) {
-            if isEditing {
-                originalPlan = plan
-                isEditing = false
-            }
-            schedulePresented = true
-        }
-        .accessibilityIdentifier("editor.schedule")
-    }
 
     var settingsButton: some View {
         CadenceActionButton(title: String(localized: "Show workout settings\u{2026}"),

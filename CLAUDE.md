@@ -68,7 +68,7 @@ Supporter badge; it unlocks nothing. There are no subscriptions, trials,
 entitlements, paywalls, or Pro targets.
 
 ## Information Architecture (4 primary tabs plus system Search)
-- **Today** (Home) — strength-first workout flow, secondary cardio, coach observations, scheduling, and compact weekly review.
+- **Today** (Home) — strength/cardio start controls and compact weekly review. Workouts may be saved as drafts and started at any time; scheduling is outside release scope.
 - **Progress** — history, PR timeline, per-exercise trends, assessment trends, consistency heatmap, and the Tests entry point.
 - **Settings** — exercise library, saved workouts, coach controls, transparency, sync, and app settings.
 - **Search** — the iOS 18+ system search tab for the unified exercise catalog.

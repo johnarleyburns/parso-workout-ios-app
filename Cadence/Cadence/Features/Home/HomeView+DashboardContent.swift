@@ -179,6 +179,8 @@ extension HomeView {
                                  citationIDs: hero.citationIDs,
                                  summary: hero.summary,
                                  unit: settings.unit,
+                                 strengthRequestState: strengthRequestState,
+                                 onRequestSuggestion: { requestStrengthSuggestion() },
                                  onStart: {
                                      if activeSession != nil {
                                          if let activeSession,

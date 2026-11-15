@@ -68,7 +68,10 @@ extension HomeView {
         suggestedWorkoutTask?.cancel()
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
-        guard request.failureMessage == nil else { return }
+        guard request.failureMessage == nil else {
+            strengthRequestState = .failed(request.failureMessage ?? String(localized: "Couldn't generate a suggestion."))
+            return
+        }
         // Stable semantic fingerprint: never the view refresh token or task ids.
         let fingerprint = TodaySuggestedWorkoutFingerprint.make(
             input: request.input,
@@ -104,6 +107,7 @@ extension HomeView {
                     todaySuggestedPlan = payload.makePlan()
                     todaySuggestionIsStartupFallback = false
                     pendingSuggestedWorkoutPlan = nil
+                    strengthRequestState = .result
                 } else {
                     applyOrHoldTodaySuggestion(payload)
                 }
@@ -111,6 +115,21 @@ extension HomeView {
             }
         }
         suggestedWorkoutTask = task
+    }
+
+    /// Explicit "Suggest a strength workout" tap. Always generates on tap.
+    func requestStrengthSuggestion() {
+        guard strengthRequestState != .requesting else { return }
+        strengthRequestState = .requesting
+        Task {
+            guard let snapshot = await loadTodaySuggestionLaunchSnapshot(), snapshot.hasMinimumHistory,
+                  let request = snapshot.request else {
+                strengthRequestState = .failed(String(localized: "Not enough history yet to suggest a workout."))
+                return
+            }
+            generateTodaySuggestion(SuggestedWorkoutRequest(request), earlyKey: snapshot.earlyKey,
+                                    scheduledStamps: snapshot.scheduledStamps, replaceImmediately: true)
+        }
     }
 
     /// "Suggest Another": replaces Today's strength suggestion with a different

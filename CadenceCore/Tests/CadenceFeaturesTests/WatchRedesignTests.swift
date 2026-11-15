@@ -185,51 +185,6 @@ final class WatchRedesignTests: XCTestCase {
         XCTAssertEqual(order.more, ["boxing", "hiit"])
     }
 
-    // MARK: - Quick Talk
-
-    private let talk = WatchQuickTalkPlanner.Context(unit: .kilograms, currentExercise: "Bench Press",
-                                                     exercises: ["Bench Press", "Back Squat"],
-                                                     performers: ["Sam"], activePerformer: nil)
-
-    func testExactSetLogAppliesImmediately() {
-        guard case .apply(let action, let summary) = WatchQuickTalkPlanner.outcome(for: "100 kg for 5", context: talk) else {
-            return XCTFail("an exact set log saves now (D4)")
-        }
-        guard case .logSet(_, let kg, let reps, _, _, _) = action else { return XCTFail("logSet expected") }
-        XCTAssertEqual(kg, 100)
-        XCTAssertEqual(reps, 5)
-        XCTAssertTrue(summary.contains("Bench Press"))
-    }
-
-    func testSetWithoutAUnitIsReviewedNotSaved() {
-        guard case .review(let items) = WatchQuickTalkPlanner.outcome(for: "100 for 5", context: talk) else {
-            return XCTFail("an inferred set log is reviewed, never saved silently")
-        }
-        XCTAssertEqual(items.count, 1)
-    }
-
-    func testMultiCommandPhraseIsReviewedLineByLine() {
-        guard case .review(let items) = WatchQuickTalkPlanner.outcome(for: "switch to back squat, Sam's turn", context: talk) else {
-            return XCTFail("commands other than an exact set log are reviewed")
-        }
-        XCTAssertEqual(items.count, 2)
-    }
-
-    func testNonsenseIsNotUnderstood() {
-        guard case .notUnderstood = WatchQuickTalkPlanner.outcome(for: "la la la", context: talk) else {
-            return XCTFail("nothing usable was heard")
-        }
-        XCTAssertEqual(WatchQuickTalkPlanner.examples(unit: .pounds).count, 4)
-    }
-
-    func testHeardLogStoresTextOnly() {
-        let defaults = UserDefaults(suiteName: "heard-\(UUID().uuidString)")!
-        WatchHeardLogStore.append(HeardVoiceEntry(transcript: "100 for 5", confidence: .exact, appliedAutomatically: true), defaults)
-        XCTAssertEqual(WatchHeardLogStore.load(defaults).entries.map(\.transcript), ["100 for 5"])
-        WatchHeardLogStore.clear(defaults)
-        XCTAssertTrue(WatchHeardLogStore.load(defaults).entries.isEmpty)
-    }
-
     // MARK: - Helpers
 
     private func card(current: Double, reps: Int, prefill: Double, prefillReps: Int) -> WatchSetCardState {

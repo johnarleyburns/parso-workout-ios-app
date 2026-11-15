@@ -154,3 +154,9 @@ feed of every dashboard crash. Only the owner closes repair issues after device 
 Completed strength workouts export as a Garmin-valid `.fit` Activity (standard File Id/Session/Lap/Event messages) plus a DB++ developer-field sidecar carrying the exact workout, via `FreeExerciseDBPlusPlusFIT` v1.18.2. Everything runs on-device; no Garmin account, network, or telemetry.
 
 Compatibility contract: re-importing a Cladiron-exported file restores the workout losslessly and atomically (duplicates can be cancelled, kept as a traceable copy, or replaced). A FIT file **without** the sidecar (e.g. a native Garmin recording) is never guessed into a strength workout — strict import reports that the sidecar is required and writes nothing. FIT timestamps are whole seconds, so sub-second precision is not preserved.
+
+## Release scope
+
+Workout logging uses touch controls on iPhone and Apple Watch. Voice/talk logging,
+microphone transcription, and raise-to-talk are outside this release. Spoken
+workout cues remain available independently.

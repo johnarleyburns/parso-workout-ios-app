@@ -56,16 +56,6 @@ final class PlatformSnapshotTests: XCTestCase {
         XCTAssertEqual(CadenceWatchComplicationState.current(defaults: defaults, now: now), .idle)
     }
 
-    func testQuickTalkRequestIsConsumedOnce() {
-        let suite = "cadence.platform.quick-talk.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
-
-        XCTAssertFalse(CadencePlatformRequestStore.consumeQuickTalk(defaults: defaults))
-        CadencePlatformRequestStore.requestQuickTalk(defaults: defaults)
-        XCTAssertTrue(CadencePlatformRequestStore.consumeQuickTalk(defaults: defaults))
-        XCTAssertFalse(CadencePlatformRequestStore.consumeQuickTalk(defaults: defaults))
-    }
 
     func testLiveActivityActionIsConsumedOnce() {
         let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.\(UUID().uuidString)")!

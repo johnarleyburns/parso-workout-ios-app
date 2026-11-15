@@ -9,7 +9,6 @@ extension Notification.Name {
     static let cadenceShowTodaysPlan = Notification.Name("cadence.showTodaysPlan")
     static let cadenceShowThisWeek = Notification.Name("cadence.showThisWeek")
     static let cadenceLogSetRequested = Notification.Name("cadence.logSetRequested")
-    static let cadenceQuickTalkRequested = Notification.Name("cadence.quickTalkRequested")
     static let cadenceLiveActivityActionRequested = Notification.Name("cadence.liveActivityActionRequested")
 }
 
@@ -96,23 +95,6 @@ struct LogSetIntent: AppIntent {
         CadencePlatformRequestStore.requestLogSet(request)
         NotificationCenter.default.post(name: .cadenceLogSetRequested, object: request)
         return .result(dialog: "Open Cladiron to log this set in your active workout.")
-    }
-}
-
-/// The iOS 18 system audio-recording surface used by Action Button, Lock
-/// Screen, and Siri. The system launches Cladiron first; the active session then
-/// presents the same reviewed Quick Talk sheet used by the in-app hold gesture.
-@available(iOS 18.0, *)
-struct QuickTalkRecordingIntent: AppIntent, AudioRecordingIntent {
-    static let title: LocalizedStringResource = "Talk to log a set"
-    static let description = IntentDescription("Open Quick Talk in the active Cladiron workout.")
-    static var openAppWhenRun: Bool { true }
-
-    @MainActor
-    func perform() async throws -> some IntentResult {
-        CadencePlatformRequestStore.requestQuickTalk()
-        NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
-        return .result(dialog: "Quick Talk is ready in your active workout.")
     }
 }
 

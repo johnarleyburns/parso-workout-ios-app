@@ -3,7 +3,7 @@ import CadenceCore
 import CadenceFeatures
 
 /// Watch redesign §4 — Settings (⚙︎ on Today): everything that used to crowd the launcher.
-/// HR source, units, spoken cues, Quick Talk (with the Heard log), phone sync status/retry, About.
+/// HR source, units, spoken cues, phone sync status/retry, About.
 struct WatchSettingsView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchAppSettings
@@ -21,12 +21,6 @@ struct WatchSettingsView: View {
                     .accessibilityIdentifier("watch.settings.spokenCues")
             }
 
-            Section("Quick Talk") {
-                Text("Hold Log set and speak a set. Your iPhone turns it into text; the recording is deleted.")
-                    .font(.caption2).foregroundStyle(.secondary)
-                NavigationLink { WatchHeardLogView() } label: { Label("Heard", systemImage: "text.bubble") }
-                    .accessibilityIdentifier("watch.settings.heard")
-            }
 
             Section("Phone Sync") {
                 VStack(alignment: .leading, spacing: 2) {
@@ -64,32 +58,6 @@ struct WatchSettingsView: View {
 }
 
 /// What Quick Talk heard (text and confidence only — never audio), newest first, with Clear.
-struct WatchHeardLogView: View {
-    @State private var log = WatchHeardLogStore.load()
-
-    var body: some View {
-        List {
-            if log.entries.isEmpty {
-                Text("Nothing heard yet.").font(.footnote).foregroundStyle(.secondary)
-            }
-            ForEach(log.entries.reversed()) { entry in
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: "“\(entry.transcript)”").font(.footnote)
-                    Text(entry.appliedAutomatically ? "Saved automatically" : "Reviewed or not used")
-                        .font(.caption2).foregroundStyle(.secondary)
-                    Text(entry.heardAt, style: .relative).font(.caption2).foregroundStyle(.secondary)
-                }
-            }
-            if !log.entries.isEmpty {
-                Button("Clear", role: .destructive) {
-                    WatchHeardLogStore.clear()
-                    log = WatchHeardLogStore.load()
-                }
-            }
-        }
-        .navigationTitle("Heard")
-    }
-}
 
 /// §5 T4 — Cardio: the four most-started kinds as tiles (learned order), the rest under More.
 struct WatchCardioPickerView: View {

@@ -8,7 +8,6 @@ import CadenceFeatures
 /// behaviour, kept); rest never auto-advances. Wrist down, the ring and time stay; HR hides.
 struct WatchRestView: View {
     let model: WatchStrengthFlowModel
-    let talk: WatchQuickTalkController
 
     @Environment(AppSettings.self) private var watchSettings
     @Environment(WatchWorkoutManager.self) private var watchManager
@@ -110,8 +109,6 @@ struct WatchRestView: View {
                 .handGestureShortcut(.primaryAction)
                 .accessibilityIdentifier("watchRest.nextSet")
         } else {
-            // R1 toolbar (mockup): +30 s · Talk · Next set. With the iPhone away, Talk is the system
-            // dictation sheet (Quick Talk C) behind the same mic button.
             HStack(spacing: 6) {
                 Button("+30") {
                     WatchHaptics.tap()
@@ -122,28 +119,6 @@ struct WatchRestView: View {
                 }
                 .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
                 .accessibilityLabel(Text("Add 30 seconds"))
-                if !WatchQuickTalkController.isEnabled {
-                    EmptyView()
-                } else if talk.isPhoneReachable {
-                    Button { talk.startListening() } label: { Image(systemName: "mic.fill") }
-                        .buttonStyle(WatchPillStyle(kind: .light, small: true))
-                        .accessibilityLabel(Text("Talk"))
-                        .accessibilityIdentifier("watchRest.talk")
-                        .simultaneousGesture(DragGesture(minimumDistance: 0).onEnded { _ in talk.finishListening() })
-                } else {
-                    TextFieldLink(prompt: Text("Dictate a set")) {
-                        Image(systemName: "mic.fill")
-                            .font(.footnote.weight(.bold))
-                            .foregroundStyle(.black)
-                            .frame(maxWidth: .infinity, minHeight: 34)
-                            .background(Capsule().fill(.white))
-                    } onSubmit: { text in
-                        talk.handle(transcript: text, source: .dictation)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(Text("Dictate a set"))
-                    .accessibilityIdentifier("watchRest.dictate")
-                }
                 Button { startNext() } label: { Image(systemName: "forward.end.fill") }
                     .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
                     .handGestureShortcut(.primaryAction)

@@ -54,6 +54,7 @@ extension HomeView {
         let dualRows = dualRecommendationRows
         if dualRows.isEmpty {
             todayHeroCard
+            CoachWarningRow(warnings: strengthWarnings)
             HomeTodayCardioCard(
                 suggestion: todayCardio,
                 completedTitle: cachedTodayHeroActivity.latestCompletedCardio?.title,
@@ -63,6 +64,7 @@ extension HomeView {
                 onStart: { todayCardioReviewPresented = true },
                 onShowNewer: { showNewerTodayCardio() },
                 onRequest: { requestCardioSuggestion() })
+            CoachWarningRow(warnings: cardioWarnings)
         } else {
             HomeTodayRecommendationsCard(rows: dualRows,
                                          completedStrengthTitle: cachedTodayHeroActivity.latestCompletedStrength?.title,

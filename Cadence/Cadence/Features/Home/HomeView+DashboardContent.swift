@@ -111,22 +111,21 @@ extension HomeView {
         // internal Coach state, but must not silently exchange its modality or
         // workout beneath them. A later interaction or a new day may choose a
         // new recommendation deliberately.
-        let pinnedRecommendation = restoredRecommendation
         let recommendationReady = activity.isLoaded
-            ? (coachSnapshotReady || restoredRecommendation != nil || todaySuggestedPlan != nil)
-            : (restoredRecommendation != nil || todaySuggestedPlan != nil)
-        let coachRecommendsStrength = pinnedRecommendation?.primaryIsStrength ?? (coachSnapshotReady
+            ? (coachSnapshotReady || todaySuggestedPlan != nil)
+            : (todaySuggestedPlan != nil)
+        let coachRecommendsStrength = coachSnapshotReady
             ? coachDecision.primary.kind == .strength
-            : false)
+            : false
         // The personalized generator is intentionally asynchronous. Its compact
         // decision is a fallback only; a complete generated plan always wins.
-        let coachFallback = pinnedRecommendation?.makeHero() ?? (coachSnapshotReady
+        let coachFallback = coachSnapshotReady
             ? TodayHeroPresenter.recommendation(coachDecision)
-            : nil)
+            : nil
         // A generated plan is the source of truth for both this hero and the
         // plan opened by Start.  Never substitute the compact one-exercise
         // coach fallback while a full plan is already available.
-        let pairedPlan = (todaySuggestionIsStartupFallback || restoredRecommendation?.primaryIsStrength == true || coachRecommendsStrength)
+        let pairedPlan = (todaySuggestionIsStartupFallback || coachRecommendsStrength)
             ? todaySuggestedPlan.map(TodaySuggestedPlanPayload.init)
             : nil
         let suggested = TodayStartupPresentation.hero(

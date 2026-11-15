@@ -21,14 +21,30 @@ struct HomeActivityCacheKey: Equatable {
     let weekStart: Date
 }
 
+/// Order-independent stamp (FNV-1a 64) for a collection of dated records.
+enum HomeHistoryStamp {
+    static func make(count: Int, latestChange: Date?, ids: [UUID]) -> String {
+        var state: UInt64 = 0xcbf29ce484222325
+        func add(_ s: String) {
+            var n = UInt64(s.utf8.count)
+            for _ in 0..<8 { state = (state ^ (n & 0xff)) &* 0x100000001b3; n >>= 8 }
+            for b in s.utf8 { state = (state ^ UInt64(b)) &* 0x100000001b3 }
+        }
+        add(String(count))
+        add(latestChange.map { String($0.timeIntervalSinceReferenceDate.bitPattern) } ?? "-")
+        for id in ids.map(\.uuidString).sorted() { add(id) }
+        return String(state, radix: 16)
+    }
+}
+
 extension HomeView {
     var activityCacheKey: HomeActivityCacheKey {
         let now = Date()
         return HomeActivityCacheKey(
-            sessionsStamp: TodayRecommendationFingerprint.historyStamp(
+            sessionsStamp: HomeHistoryStamp.make(
                 count: sessions.count, latestChange: sessions.compactMap(\.updatedAt).max(),
                 ids: sessions.map(\.id)),
-            cardioStamp: TodayRecommendationFingerprint.historyStamp(
+            cardioStamp: HomeHistoryStamp.make(
                 count: cardio.count, latestChange: cardio.compactMap(\.updatedAt).max(),
                 ids: cardio.map(\.id)),
             scheduledWorkouts: scheduledWorkoutTaskSignatures,

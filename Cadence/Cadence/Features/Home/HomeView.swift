@@ -150,7 +150,6 @@ struct HomeView: View {
     @State var confirmCancelPrevious = false
     @State var coachSnapshot: HomeCoachSnapshot = .placeholder
     @State var coachSnapshotSignatureUsed: HomeCoachModel.Signature?; @State var coachSnapshotReady = false; @State var coachInputsSettled = false  // settled: initial HealthKit ingest done
-    @State var restoredRecommendation: TodayRecommendationPayload?  // durable hero before hydration
     @State var passiveSamplesLoaded = false; @State var homeActivityReady = false  // first weekly projection applied
     // Historical Home projections are cached separately from the coach snapshot.
     @State var strengthRequestState: TodayRequestCardState = .idle
@@ -190,7 +189,7 @@ struct HomeView: View {
                                            userAge: settings.userAge,
                                            liveVolumeDelta: liveVolumeDelta, weeklyCardio: weeklyIntent?.weeklyCardioSummary ?? cachedWeeklyCardio,
                                            activityDose: cachedWeeklyActivityDose,
-                                           restoredWeeklySetsByMuscle: weeklyIntent?.setsByMuscle ?? (coachSnapshotReady ? nil : restoredRecommendation?.weeklySetsByMuscle))
+                                           restoredWeeklySetsByMuscle: weeklyIntent?.setsByMuscle)
     }
 
     func savePlatformSnapshot(for dashboard: HomeDashboardState) {
@@ -321,7 +320,7 @@ struct HomeView: View {
         guard !model.isRestoringCloudKitHistory else { return }
         model.coachRefreshInProgress = true
         defer { model.coachRefreshInProgress = false }
-        coachSnapshot = await buildAndCacheCoachSnapshot()
+        coachSnapshot = await buildCoachSnapshot()
         coachSnapshotReady = true
         liveVolumeDelta = [:]
         publishCachedDashboard()

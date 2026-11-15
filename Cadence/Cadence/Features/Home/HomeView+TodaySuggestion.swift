@@ -116,6 +116,7 @@ extension HomeView {
         guard strengthRequestState != .requesting else { return }
         strengthRequestState = .requesting
         Task {
+            await ensureCoachSnapshotForExplicitRequest()
             guard let snapshot = await loadTodaySuggestionLaunchSnapshot(), snapshot.hasMinimumHistory,
                   let request = snapshot.request else {
                 strengthRequestState = .failed(String(localized: "Not enough history yet to suggest a workout."))

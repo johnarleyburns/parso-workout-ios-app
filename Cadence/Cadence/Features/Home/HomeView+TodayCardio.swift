@@ -96,6 +96,7 @@ extension HomeView {
         let excludedTypes = settings.excludedCardioTypes
         let excludedProtocolIDs = Set(settings.excludedHIITProtocolIDs)
         Task {
+            await ensureCoachSnapshotForExplicitRequest()
             let (input, fresh) = await Task.detached(priority: .userInitiated) {
                 let input = Self.cardioSuggestionInput(from: snapshots, weeklyMinutes: weeklyMinutes,
                                                        targetMinutes: targetMinutes, experience: experience,

@@ -3,13 +3,6 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
-struct HomeCoachTaskIdentity: Equatable {
-    /// nil until Today's display restore finishes, so no history-derived
-    /// signature is evaluated during the first-frame phase.
-    let signature: HomeCoachModel.Signature?
-    let isRestoringCloudKitHistory: Bool
-}
-
 struct HomeActivityTaskIdentity: Equatable {
     let historyRefreshToken: UUID
     let sessionCount: Int

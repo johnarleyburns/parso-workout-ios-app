@@ -13,6 +13,7 @@ final class SmokeLaunchTests: CadenceUITestCase {
         XCTAssertFalse(app.buttons["editor.schedule"].exists)
         XCTAssertTrue(app.startEmptyStrengthWorkout())
         XCTAssertTrue(app.pickExercise("Bench Press"))
+        XCTAssertTrue(app.scrollToHittableAndTap("set.add.Bench Press"))
         XCTAssertTrue(app.saveSetInEditor())
         app.dismissRestBar()
         XCTAssertTrue(app.buttons["workout.end"].waitTap(timeout: 10))

@@ -58,7 +58,7 @@ extension HomeView {
                     HomeWorkoutStartControls(recentCardio: recentCardioTypes,
                         onQuickStart: {
                             workoutControlsPresented = false
-                            handleEditorStart(.empty(warmup: settings.warmupMinutes, cooldown: settings.cooldownMinutes))
+                            startQuickStartStrength()
                         },
                         onSuggested: { workoutControlsPresented = false; openTodaySuggestion() },
                         onPreviousStart: { plan in workoutControlsPresented = false; handleEditorStart(plan) },

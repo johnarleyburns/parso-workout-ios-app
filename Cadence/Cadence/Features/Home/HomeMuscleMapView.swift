@@ -21,6 +21,10 @@ struct HomeMuscleMapView: View {
         HomeDashboardPresenter.sortedVolumeRows(volumeRows ?? dashboard.volume)
     }
 
+    private var cardioTint: Color {
+        CadenceTheme.weeklyTint(WeeklyActivityColor.cardio(dashboard.cardioDetail.moderateEquivalentMinutes))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Muscle view", selection: $selectedPanel) {
@@ -56,8 +60,7 @@ struct HomeMuscleMapView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.cardio(
-                    dashboard.cardioDetail.moderateEquivalentMinutes)))
+                .foregroundStyle(cardioTint)
             }
             legend
         }

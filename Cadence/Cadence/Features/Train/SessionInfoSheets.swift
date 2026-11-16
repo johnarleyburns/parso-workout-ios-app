@@ -110,7 +110,7 @@ extension SessionView {
                             .font(.subheadline).foregroundStyle(.secondary)
                     case .dualDumbbell, .isolateralDumbbell:
                         Text("Dumbbell Weight").font(.headline)
-                        Text("Enter the weight of one dumbbell. The app accounts for paired, single, and isolateral dumbbell movements in calculations.\n\nFor standard two-dumbbell exercises (bench press, curls, etc.), your entered weight is doubled automatically.")
+                        Text("Enter the total weight lifted across both dumbbells. For a one-arm or single-dumbbell movement, enter only the weight used. The app uses this total as entered and never doubles it.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     case .singleDumbbell:
                         Text("Dumbbell Weight").font(.headline)
@@ -118,7 +118,7 @@ extension SessionView {
                             .font(.subheadline).foregroundStyle(.secondary)
                     case .dualKettlebell, .isolateralKettlebell:
                         Text("Kettlebell Weight").font(.headline)
-                        Text("Enter the weight of one kettlebell. The app accounts for paired and single kettlebell movements in calculations.\n\nFor standard two-kettlebell exercises (double cleans, double presses, front squats, etc.), your entered weight is doubled automatically.")
+                        Text("Enter the total weight lifted across both kettlebells. For a one-arm or single-kettlebell movement, enter only the weight used. The app uses this total as entered and never doubles it.")
                             .font(.subheadline).foregroundStyle(.secondary)
                     case .singleKettlebell:
                         Text("Kettlebell Weight").font(.headline)
@@ -131,7 +131,7 @@ extension SessionView {
                     }
                 } else {
                     Text("Weight Entry").font(.headline)
-                    Text("Enter the weight you lifted. For barbell exercises, enter the plate load — the bar weight is added automatically. For dumbbell and kettlebell exercises, enter the weight of one dumbbell or kettlebell.")
+                    Text("Enter the total weight you lifted. For barbell exercises, enter the plate load — the bar weight is added automatically. For dumbbell and kettlebell exercises, enter the total across the weights used; the app never doubles it.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 }
             }
@@ -145,7 +145,7 @@ extension SessionView {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Kettlebell Weight Entry").font(.headline)
-                Text("For kettlebell exercises, enter the weight of a single kettlebell — the app handles the accounting automatically:\n\n• **Two-kettlebell exercises** like double kettlebell cleans or presses: your entered weight is doubled for calculations (you're lifting two of them).\n\n• **Single-kettlebell exercises** like swings, snatches, or Turkish get-ups: your entered weight is used as-is.\n\nThis way you can always enter what's printed on the kettlebell, and the math works correctly behind the scenes.")
+                Text("Enter the total weight lifted. With two kettlebells, add their weights together. With one kettlebell, enter its weight. The app uses the total as entered for volume, records and trends; it never doubles the weight.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             .padding()
@@ -158,7 +158,7 @@ extension SessionView {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
                 Text("Dumbbell Weight Entry").font(.headline)
-                Text("For dumbbell exercises, enter the weight of a single dumbbell — the app handles the accounting automatically:\n\n• **Two-dumbbell exercises** like bench press or curls: your entered weight is doubled for calculations (you're lifting two of them).\n\n• **Single-dumbbell exercises** like goblet squats or skullcrushers: your entered weight is used as-is.\n\n• **Isolateral exercises** like one-arm rows: your entered weight is doubled for comparison against barbell movements.\n\nThis way you can always enter what's printed on the dumbbell, and the math works correctly behind the scenes.")
+                Text("Enter the total weight lifted. With two dumbbells, add their weights together. With one dumbbell or a one-arm movement, enter the weight used. Isolateral and isometric movements also use the entered total without doubling for comparisons. This total is used for volume, records and trends.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
             .padding()

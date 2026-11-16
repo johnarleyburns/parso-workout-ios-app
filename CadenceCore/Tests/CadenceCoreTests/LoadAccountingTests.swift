@@ -3,6 +3,19 @@ import SwiftData
 @testable import CadenceCore
 
 final class LoadAccountingTests: XCTestCase {
+    func testAllBellModesUseTotalForIsometricAndIsolateralMovements() throws {
+        let context = try makeContext()
+        for mode: LoadAccountingMode in [.dualDumbbell, .singleDumbbell, .isolateralDumbbell,
+                                         .dualKettlebell, .singleKettlebell, .isolateralKettlebell] {
+            let exercise = Exercise(name: "Isometric Biceps Curl", loadAccountingMode: mode)
+            context.insert(exercise)
+            let set = SetEntry(weight: 40, reps: 10, exercise: exercise,
+                               loadMultiplier: 2, loadAccountingMode: mode.rawValue)
+            context.insert(set)
+            XCTAssertEqual(exercise.prospectiveEffectiveLoadKg(rawWeightKg: 40), 40)
+            XCTAssertEqual(set.effectiveLoadKg, 40)
+        }
+    }
 
     // MARK: - Setup
 
@@ -83,7 +96,7 @@ final class LoadAccountingTests: XCTestCase {
         let set = SetEntry(weight: 16, reps: 8, exercise: ex,
                            loadAccountingMode: LoadAccountingMode.dualKettlebell.rawValue)
         ctx.insert(set)
-        XCTAssertEqual(set.effectiveLoadKg, 32.0)
+        XCTAssertEqual(set.effectiveLoadKg, 16.0)
     }
 
     func testSingleKettlebellEffectiveLoad() throws {
@@ -104,7 +117,7 @@ final class LoadAccountingTests: XCTestCase {
                           equipment: .kettlebell,
                           loadAccountingMode: .dualKettlebell)
         ctx.insert(ex)
-        XCTAssertEqual(ex.prospectiveEffectiveLoadKg(rawWeightKg: 20), 40.0)
+        XCTAssertEqual(ex.prospectiveEffectiveLoadKg(rawWeightKg: 20), 20.0)
     }
 
     func testProspectiveSingleKettlebellLoad() throws {
@@ -159,12 +172,12 @@ final class LoadAccountingTests: XCTestCase {
         XCTAssertEqual(set.effectiveLoadKg, barWeight, accuracy: 0.01)
     }
 
-    func testEffectiveLoadKgDualDumbbellDoubles() throws {
+    func testEffectiveLoadKgDualDumbbellUsesEnteredTotal() throws {
         let ctx = try makeContext()
         let set = SetEntry(weight: 50, reps: 10,
                            loadAccountingMode: LoadAccountingMode.dualDumbbell.rawValue)
         ctx.insert(set)
-        XCTAssertEqual(set.effectiveLoadKg, 100)
+        XCTAssertEqual(set.effectiveLoadKg, 50)
     }
 
     func testEffectiveLoadKgSingleDumbbellKeepsWeight() throws {
@@ -175,12 +188,12 @@ final class LoadAccountingTests: XCTestCase {
         XCTAssertEqual(set.effectiveLoadKg, 50)
     }
 
-    func testEffectiveLoadKgIsolateralDumbbellDoubles() throws {
+    func testEffectiveLoadKgIsolateralDumbbellUsesEnteredTotal() throws {
         let ctx = try makeContext()
         let set = SetEntry(weight: 50, reps: 8,
                            loadAccountingMode: LoadAccountingMode.isolateralDumbbell.rawValue)
         ctx.insert(set)
-        XCTAssertEqual(set.effectiveLoadKg, 100)
+        XCTAssertEqual(set.effectiveLoadKg, 50)
     }
 
     func testEffectiveLoadKgBodyweight() throws {
@@ -213,7 +226,7 @@ final class LoadAccountingTests: XCTestCase {
         let ctx = try makeContext()
         let ex = Exercise(name: "Dumbbell Press", equipment: .dumbbell)
         ctx.insert(ex)
-        XCTAssertEqual(ex.prospectiveEffectiveLoadKg(rawWeightKg: 30), 60)
+        XCTAssertEqual(ex.prospectiveEffectiveLoadKg(rawWeightKg: 30), 30)
     }
 
     func testProspectiveEffectiveLoadKgCustomBarWeight() throws {

@@ -9,12 +9,12 @@ import Foundation
 public enum LoadAccountingMode: String, CaseIterable, Codable, Sendable {
     case barbell            // entered = added plate load; effective = (entered + barWeight) * multiplier
     case bodyweight         // entered = added load only; effective = entered * multiplier
-    case dualDumbbell       // entered = one dumbbell; effective = entered * 2
+    case dualDumbbell       // entered total; no pairing multiplier
     case singleDumbbell     // entered = one dumbbell; effective = entered * 1
-    case isolateralDumbbell // entered = one dumbbell; effective = entered * 2 (comparison mode)
-    case dualKettlebell       // entered = one kettlebell; effective = entered * 2
+    case isolateralDumbbell // entered total; no comparison multiplier
+    case dualKettlebell       // entered total; no pairing multiplier
     case singleKettlebell     // entered = one kettlebell; effective = entered * 1
-    case isolateralKettlebell // entered = one kettlebell; effective = entered * 2 (comparison mode)
+    case isolateralKettlebell // entered total; no comparison multiplier
 }
 
 /// How the exercise is loaded (decision #11). Isolateral/unilateral is a

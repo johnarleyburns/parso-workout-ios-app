@@ -21,8 +21,7 @@ extension HomeView {
         // Only "Other Cardio" carries a custom title; clear any stale one first.
         otherCardioTitle = nil
         if type.isStrength {
-            // Weights is handled inside the sheet (WeightsStartView), so this
-            // branch is normally unreached.
+            // Strength uses the empty-session launch path.
             launchFromPicker(.strength)
         } else if type == .swim {
             guard acquireCardio(.swim(id: UUID())) else { return }

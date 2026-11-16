@@ -20,7 +20,7 @@ extension Notification.Name {
     static let cadenceStartPlanningDraft = Notification.Name("cadence.startPlanningDraft")
 }
 
-/// The persistent, unscheduled Workout Draft. Every edit goes through
+/// The persistent, saved Workout Draft. Every edit goes through
 /// `PlanningDraftEditorModel`, which saves before publishing.
 struct WorkoutDraftView: View {
     @Environment(\.modelContext) private var context
@@ -100,7 +100,7 @@ struct WorkoutDraftView: View {
             Button("Discard draft", role: .destructive) { discard(model) }
             Button("Keep draft", role: .cancel) {}
         } message: {
-            Text("This removes \(model.exerciseCountText) from your unscheduled draft. It can't be undone.")
+            Text("This removes \(model.exerciseCountText) from your saved draft. It can't be undone.")
         }
     }
 
@@ -218,7 +218,7 @@ struct WorkoutDraftView: View {
             Button { start(model) } label: {
                 Text("Start now").frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.borderedProminent).disabled(!model.canStartOrSchedule)
+            .buttonStyle(.borderedProminent).disabled(!model.canStart)
             .accessibilityIdentifier("planningDraft.startNow")
         }
         .padding(.horizontal).padding(.vertical, 8).background(.bar)

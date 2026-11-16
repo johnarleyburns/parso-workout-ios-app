@@ -1,9 +1,8 @@
 import Foundation
 import SwiftData
 
-/// A user-authored, one-off workout date. This is deliberately separate from
-/// `PersistedPlan`: scheduling is execution state owned by this app, not a
-/// DB++ weekly-program concept.
+/// Legacy saved-workout storage retained for existing stores and archives.
+/// New workouts use PlanningDraft; no date-based scheduling API remains.
 @Model
 public final class ScheduledWorkout {
     public var id: UUID = UUID()
@@ -66,30 +65,3 @@ public enum ScheduledWorkoutStatus: String, Codable, CaseIterable, Sendable {
     case cancelled
 }
 
-public enum ScheduledWorkoutDate {
-    public static let dayKeyFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
-    }()
-
-    public static func normalize(_ date: Date, calendar: Calendar = .current) -> Date {
-        // Schedule pickers operate at minute precision. Preserve the selected
-        // local time while removing incidental seconds so same-minute edits
-        // remain deterministic across devices.
-        calendar.date(bySetting: .second, value: 0, of: date) ?? date
-    }
-
-    public static func hasExplicitTime(_ date: Date, calendar: Calendar = .current) -> Bool {
-        let components = calendar.dateComponents([.hour, .minute], from: date)
-        return components.hour != 0 || components.minute != 0
-    }
-
-    public static func dayKey(_ date: Date, calendar: Calendar = .current) -> String {
-        let formatter = dayKeyFormatter
-        formatter.timeZone = calendar.timeZone
-        return formatter.string(from: date)
-    }
-}

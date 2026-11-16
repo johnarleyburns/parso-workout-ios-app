@@ -24,8 +24,17 @@ struct WatchSuggestReviewView: View {
                 .accessibilityLabel(WatchSuggestResolver.readyAccessibilityLabel)
                 .accessibilityIdentifier("watchStrength.suggest.ready")
                 Section("Exercises") {
-                    ForEach(Array(review.exerciseLines.enumerated()), id: \.offset) { _, line in
-                        Text(line).font(.caption)
+                    ForEach(Array(review.exerciseLines.enumerated()), id: \.offset) { index, line in
+                        HStack {
+                            Text(line).font(.caption)
+                            Spacer()
+                            if ready.exerciseNames.indices.contains(index) {
+                                NavigationLink {
+                                    WatchSuggestedExerciseInfoView(name: ready.exerciseNames[index])
+                                } label: { Image(systemName: "info.circle") }
+                                .accessibilityLabel("Exercise details")
+                            }
+                        }
                     }
                     if WatchSuggestReadyPresentation.showsSupplementalDetail(review.supplementalDetail) {
                         Text(review.supplementalDetail).font(.caption2).foregroundStyle(.secondary)

@@ -72,7 +72,7 @@ struct WorkoutPlanExerciseSection: View {
         HStack {
             Text(exercise.name).font(.headline)
             Spacer()
-            if exerciseInfo != nil {
+            Group {
                 Button { showInfo = true } label: {
                     Image(systemName: "info.circle")
                 }
@@ -109,9 +109,7 @@ struct WorkoutPlanExerciseSection: View {
             .accessibilityLabel("Exercise options")
         }
         .sheet(isPresented: $showInfo) {
-            if let exerciseInfo {
-                NavigationStack { ExerciseDetailView(exercise: exerciseInfo) }
-            }
+            NavigationStack { SuggestedExerciseInfoView(name: exercise.name, initial: exerciseInfo) }
         }
         .sheet(isPresented: $showRepSchemes) {
             RepSchemeSheet(current: editedSets.map(\.targetReps)) { reps in

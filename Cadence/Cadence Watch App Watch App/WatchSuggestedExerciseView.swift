@@ -101,15 +101,13 @@ struct WatchSuggestedExerciseView: View {
                     }
                     .buttonStyle(.bordered)
                     .accessibilityIdentifier("watchSuggest.another")
-                    Button {
-                        WatchHaptics.tap()
-                        showingDetail = false
-                        showingDetails = true
+                    NavigationLink {
+                        WatchSuggestedExerciseInfoView(name: exercise.name)
                     } label: {
-                        Text("Details").frame(maxWidth: .infinity, minHeight: 44)
+                        Label("Details", systemImage: "info.circle")
+                            .frame(maxWidth: .infinity, minHeight: 44)
                     }
                     .buttonStyle(.plain)
-                    .disabled(entry == nil)
                     .accessibilityIdentifier("watchSuggest.details")
                     Button(role: .cancel) {
                         WatchHaptics.tap()

@@ -87,9 +87,9 @@ struct SuggestExerciseView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text(exercise.name).font(.title3.weight(.semibold))
                     Spacer()
-                    if let info = exerciseForName(exercise.name) {
+                    Group {
                         NavigationLink {
-                            ExerciseDetailView(exercise: info)
+                            SuggestedExerciseInfoView(name: exercise.name, initial: exerciseForName(exercise.name))
                         } label: {
                             Image(systemName: "info.circle")
                                 .font(.title3)

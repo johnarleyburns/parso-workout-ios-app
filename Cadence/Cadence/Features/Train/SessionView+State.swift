@@ -99,7 +99,8 @@ extension SessionView {
         if isEditing, let set = editingSet {
             reps = set.reps
         } else {
-            reps = pendingRepsOverride ?? own?.reps ?? PerformerSetPlanner.defaultReps
+            reps = WorkoutEntryPreference.reps(in: session, performerID: performerID)
+                ?? pendingRepsOverride ?? own?.reps ?? PerformerSetPlanner.defaultReps
         }
         let rpe: Int? = isEditing ? editingSet?.rpe.map { Int($0.rounded()) } : nil
         let bodyweight = isEditing ? (editingSet?.usesBodyweight ?? false) : isBodyweight(exercise)
@@ -137,6 +138,9 @@ extension SessionView {
         setEditorRoute = nil
     }
     func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
+        if draft.repsWereEdited {
+            WorkoutEntryPreference.setReps(draft.reps, in: session, performerID: draft.performerID)
+        }
         let enteredKg = SessionViewModel.canonicalKg(input: draft.weightString, unit: draft.unit,
                                                      plateRounding: settings.plateRounding)
         let normalized = SessionViewModel.normalizedSetEntry(
@@ -172,8 +176,12 @@ extension SessionView {
     func logPendingSet(_ pending: SessionRenderModel.PendingSetDisplay, for exercise: Exercise) {
         let defaultWeight = performerDefaults(for: exercise)
             .first { $0.performerID == pending.performerID }?.weightKg
-        let weightKg = (pending.targetWeightKg ?? defaultWeight ?? session.prescribedLoadKg)
-        addSet(to: exercise, weightKg: max(0, weightKg), reps: pending.targetReps,
+        let weightKg = (SessionViewModel.lastSessionWeight(session: session, exercise: exercise,
+                                                         performerID: pending.performerID)
+            ?? pending.targetWeightKg ?? defaultWeight ?? session.prescribedLoadKg)
+        let reps = pending.kind == .warmup ? pending.targetReps
+            : (WorkoutEntryPreference.reps(in: session, performerID: pending.performerID) ?? pending.targetReps)
+        addSet(to: exercise, weightKg: max(0, weightKg), reps: reps,
                rpe: nil, isWarmup: pending.kind == .warmup,
                usesBodyweight: isBodyweight(exercise), note: nil,
                performedBy: people(for: pending.performerID))
@@ -223,7 +231,9 @@ extension SessionView {
             // whose loads are not plate increments.
             let exactRepositoryWeight = SessionViewModel.exactHistoricalWeight(
                 targetReps: resolved.reps, history: repositoryHistory)
-            let defaultWeight = exactRepositoryWeight ?? resolved.weightKg
+            let defaultWeight = SessionViewModel.lastSessionWeight(session: session, exercise: exercise,
+                                                                   performerID: performerID)
+                ?? exactRepositoryWeight ?? resolved.weightKg
             let weightBasis: PerformerSetPlanner.WeightBasis = exactRepositoryWeight != nil
                 ? .exactHistory : resolved.weightBasis
             let weightKg = defaultWeight.map {
@@ -247,7 +257,8 @@ extension SessionView {
             let lastTime = cachedLastTime ?? repositoryLastTime
             let lastSet = SetHistoryText.lastSetThisSession(loggedSets(for: exercise, performerID: performerID).last, unit: settings.unit)
             return InlineEditorConfig.PerformerDefault(
-                performerID: performerID, reps: resolved.reps, weightKg: weightKg,
+                performerID: performerID,
+                reps: WorkoutEntryPreference.reps(in: session, performerID: performerID) ?? resolved.reps, weightKg: weightKg,
                 weight: weightKg.map { Format.weightValue($0, unit: settings.unit) } ?? "",
                 weightSourceText: weightSourceText(for: weightBasis,
                                                    performerID: performerID,

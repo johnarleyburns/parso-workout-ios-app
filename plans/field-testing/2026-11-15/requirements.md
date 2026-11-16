@@ -51,6 +51,10 @@ CLAUDE_PIPELINE_AUTO_ENABLED=false (verified 2026-11-15).
 
 ## PR audit ledger
 
+The full follow-up audit, discrepancies, fixes and verification limits are in
+[audit.md](audit.md). PR #772 fixes the discovered issue-pause/PR-maintenance
+coupling. #771 carries the audited combined source changes for integration CI.
+
 Record item → production entry point → regression coverage → PR URL → CI result
 → real-device checklist status. A passing build is not device verification.
 

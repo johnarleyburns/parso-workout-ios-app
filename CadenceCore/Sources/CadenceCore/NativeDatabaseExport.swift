@@ -55,6 +55,7 @@ private struct NativeWorkoutSession: Codable, Equatable, Sendable {
     var date: Date
     var endedAt: Date?
     var plannedExerciseNames: [String]
+    var setEntryRepOverridesJSON: String? = nil
     var plannedRepLadder: [Int]
     var plannedPrescriptions: [PlannedExercisePrescription]
     var plannedPerformerPrescriptions: [PlannedPerformerPrescription]
@@ -400,6 +401,7 @@ public enum NativeDatabaseExport {
                         NativeWorkoutSession(id: row.id, title: row.title, date: row.date,
                                              endedAt: row.endedAt,
                                              plannedExerciseNames: row.plannedExerciseNames,
+                                             setEntryRepOverridesJSON: row.setEntryRepOverridesJSON,
                                              plannedRepLadder: row.plannedRepLadder,
                                              plannedPrescriptions: row.plannedPrescriptions,
                                              plannedPerformerPrescriptions: row.plannedPerformerPrescriptions.map {
@@ -756,6 +758,7 @@ public enum NativeDatabaseExport {
             }
             session.title = value.title; session.date = value.date; session.endedAt = value.endedAt
             session.plannedExerciseNames = value.plannedExerciseNames
+            session.setEntryRepOverridesJSON = value.setEntryRepOverridesJSON ?? ""
             session.plannedRepLadder = value.plannedRepLadder
             session.plannedPrescriptions = value.plannedPrescriptions
             session.plannedPerformerPrescriptions = value.plannedPerformerPrescriptions.map {

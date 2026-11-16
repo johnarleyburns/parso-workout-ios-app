@@ -118,7 +118,7 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
                                 "healthKitWorkoutUUID", "lastMeaningfulActivityAt", "inactivityAutoEndedAt", "endReasonRaw", "hrAppliedFinalSequence", "hrCompletionPending", "hrBackupData", "hrCoverageData", "hasManualCardioMinutesOverride", "hrSamplesData", "id", "intensitySummaryData", "isLogged", "notes", "originDevice", "planKey",
                                 "planSessionID", "plannedExerciseNamesData", "plannedPerformerPrescriptionsData",
                                 "plannedPrescriptionsData", "plannedRepLadderData", "prescribedLoadKg",
-                                "scheduledWorkoutID", "templateName", "title", "updatedAt", "warmupSeconds"]
+                                "scheduledWorkoutID", "setEntryRepOverridesJSON", "templateName", "title", "updatedAt", "warmupSeconds"]
         ]
 
         let actual = Dictionary(uniqueKeysWithValues: CadenceStore.schema.entities.map {

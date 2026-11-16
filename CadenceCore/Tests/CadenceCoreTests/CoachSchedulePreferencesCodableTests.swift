@@ -111,6 +111,20 @@ final class CoachSchedulePreferencesCodableTests: XCTestCase {
                        "The retired BodyPart key must never be encoded again")
     }
 
+    func testVersionTwoPreferencesGainSpecializedGroupsOnce() throws {
+        let data = try JSONEncoder().encode(CoachSchedulePreferences(trackedMuscleGroups: [.chest]))
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        json["trackedMuscleGroupsVersion"] = 2
+        let oldData = try JSONSerialization.data(withJSONObject: json)
+        let migrated = try JSONDecoder().decode(CoachSchedulePreferences.self, from: oldData)
+        XCTAssertEqual(migrated.trackedMuscleGroups, [.chest, .hipFlexors, .tibialis, .neck, .rotatorCuff])
+        var customized = migrated
+        customized.trackedMuscleGroups.remove(.neck)
+        let roundTrip = try JSONDecoder().decode(CoachSchedulePreferences.self,
+            from: JSONEncoder().encode(customized))
+        XCTAssertFalse(roundTrip.trackedMuscleGroups.contains(.neck))
+    }
+
     // MARK: - Round-trip stability
 
     func testRoundTripStable() throws {

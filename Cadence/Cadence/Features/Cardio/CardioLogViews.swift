@@ -14,7 +14,7 @@ struct OtherCardioEntryView: View {
 
     var body: some View {
         Form {
-            Section("Other Cardio") {
+            Section("Custom Cardio") {
                 TextField("Description (e.g. Rowing)", text: $description)
                     .accessibilityIdentifier("otherCardio.desc")
                 Toggle("GPS tracked", isOn: $gps)
@@ -39,7 +39,7 @@ struct OtherCardioEntryView: View {
                 Text("Records like any cardio workout; its description shows in history.")
             }
         }
-        .navigationTitle("Other Cardio")
+        .navigationTitle("Custom Cardio")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

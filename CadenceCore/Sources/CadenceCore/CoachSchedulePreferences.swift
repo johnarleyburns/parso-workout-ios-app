@@ -66,15 +66,18 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
     public var dailyStepTarget: Int
     public var desiredSetsPerExercise: Int
     /// The muscle groups the coach programs toward and Home always shows a row
-    /// for. Defaults to `MuscleGroup.defaultTracked`. Anyone who wants to program
-    /// additional specialised groups can add them here.
+    /// for. Defaults to the complete DB++ muscle ontology; users can customize it.
     public var trackedMuscleGroups: Set<MuscleGroup>
 
     // Store a migration marker so an older explicit set is upgraded once without
     // repeatedly changing a current user's intentional custom selection.
-    private static let trackedMuscleGroupsVersion = 2
+    private static let trackedMuscleGroupsVersion = 3
     private static let groupsAddedInTrackedMuscleGroupsVersion2: Set<MuscleGroup> = [
         .abductors, .adductors, .lowerBack
+    ]
+
+    private static let groupsAddedInTrackedMuscleGroupsVersion3: Set<MuscleGroup> = [
+        .hipFlexors, .tibialis, .neck, .rotatorCuff
     ]
 
     private enum CodingKeys: String, CodingKey {
@@ -128,8 +131,11 @@ public struct CoachSchedulePreferences: Codable, Equatable, Sendable {
         if let stored = try c.decodeIfPresent(Set<MuscleGroup>.self, forKey: .trackedMuscleGroups),
            !stored.isEmpty {
             var migrated = stored
-            if storedTrackedMuscleGroupsVersion < Self.trackedMuscleGroupsVersion {
+            if storedTrackedMuscleGroupsVersion < 2 {
                 migrated.formUnion(Self.groupsAddedInTrackedMuscleGroupsVersion2)
+            }
+            if storedTrackedMuscleGroupsVersion < 3 {
+                migrated.formUnion(Self.groupsAddedInTrackedMuscleGroupsVersion3)
             }
             trackedMuscleGroups = Self.applyingLegacyCoverageExclusions(
                 to: migrated,

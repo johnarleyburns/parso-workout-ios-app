@@ -55,7 +55,7 @@ struct WatchSuggestedExerciseView: View {
         } else {
             ScrollView {
                 VStack(spacing: 8) {
-                    Text(exercise.name)
+                    Text(exercise.name.localizedExerciseName)
                         .font(.headline)
                         .multilineTextAlignment(.center)
                         .accessibilityIdentifier("watchSuggest.name")

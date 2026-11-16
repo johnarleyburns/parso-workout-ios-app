@@ -51,7 +51,7 @@ final class VolumeLandmarksTests: XCTestCase {
 
     /// Groups the coach does not target get deliberately low bands, so opting one
     /// in never demands a training block for it.
-    func testUntrackedGroupsHaveGentlerBandsThanTrackedOnes() {
+    func testSpecializedGroupsHaveGentlerBandsThanLargerGroups() {
         let neck = VolumeLandmarks.bands(for: MuscleGroup.neck, experience: .intermediate)
         let chest = VolumeLandmarks.bands(for: MuscleGroup.chest, experience: .intermediate)
         XCTAssertLessThan(neck.mev, chest.mev)

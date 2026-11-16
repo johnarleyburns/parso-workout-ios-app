@@ -39,7 +39,7 @@ extension HomeView {
                     ForEach(favoriteExercises) { exercise in
                         NavigationLink { ExerciseDetailView(exercise: exercise) } label: {
                             HStack {
-                                Text(exercise.name).font(.subheadline)
+                                Text(exercise.name.localizedExerciseName).font(.subheadline)
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                             }

@@ -19,11 +19,11 @@ final class TrainingEngineDatabaseTests: XCTestCase {
     func testDocumentDecodes() throws {
         XCTAssertEqual(TrainingEngineBridge.metadataString("completeness"), "full")
         XCTAssertFalse(TrainingEngineBridge.metadataString("schemaVersion")?.isEmpty ?? true)
-        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 927)
+        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 938)
     }
 
     func testRecordCount() throws {
-        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 927)
+        XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count, 938)
         XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count,
                        TrainingEngineBridge.metadataInt("outputExerciseCount"))
     }
@@ -63,7 +63,7 @@ final class TrainingEngineDatabaseTests: XCTestCase {
 
     func testVolumeEligibleCount() {
         let eligible = TrainingEngineBridge.exerciseRecords.filter(\.volumeEligible)
-        XCTAssertEqual(eligible.count, 724)
+        XCTAssertEqual(eligible.count, 735)
         XCTAssertEqual(TrainingEngineBridge.exerciseRecords.count - eligible.count, 203)
     }
 
@@ -92,7 +92,7 @@ final class TrainingEngineDatabaseTests: XCTestCase {
     }
 
     func testEveryReferenceHasAUrl() throws {
-        XCTAssertEqual(TrainingEngineBridge.evidenceReferences.count, 63)
+        XCTAssertEqual(TrainingEngineBridge.evidenceReferences.count, 78)
         for (id, reference) in TrainingEngineBridge.evidenceReferences {
             XCTAssertFalse(reference.url.isEmpty, "reference \(id) has no url")
             XCTAssertFalse(reference.title.isEmpty, "reference \(id) has no title")

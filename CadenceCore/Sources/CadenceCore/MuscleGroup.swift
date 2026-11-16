@@ -164,19 +164,9 @@ public enum MuscleGroup: String, CaseIterable, Codable, Sendable, Identifiable, 
 
     // MARK: Coverage
 
-    /// The groups the coach programs toward and Home always shows a row for
-    /// (decision D4). The remaining specialised groups are shown once the user
-    /// has actually trained them, and are never targeted by default.
-    ///
-    /// The excluded groups are intentionally not coach targets: they have limited
-    /// or specialised coverage, or are normally trained as stabilisers and
-    /// indirect work in compound lifts. Users who want to program them can do so
-    /// via `CoachSchedulePreferences.trackedMuscleGroups`.
-    public static let defaultTracked: Set<MuscleGroup> = [
-        .abdominals, .abductors, .adductors, .biceps, .calves, .chest, .forearms,
-        .glutes, .hamstrings, .lats, .lowerBack, .middleBack, .quadriceps,
-        .shoulders, .traps, .triceps
-    ]
+    /// Every group in the DB++ ontology is tracked and visible by default.
+    /// Users can still customize coaching targets in schedule preferences.
+    public static let defaultTracked = Set(allCases)
 
     public var isTrackedByDefault: Bool { Self.defaultTracked.contains(self) }
 

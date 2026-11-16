@@ -105,7 +105,7 @@ struct PlannedDayPreviewView: View {
         }
         if let rir = ex.rir { line += " · ~\(rir) RIR" }
         return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(ex.name).font(.subheadline)
+            Text(ex.name.localizedExerciseName).font(.subheadline)
             Spacer()
             Text(line)
                 .font(.caption.monospacedDigit())

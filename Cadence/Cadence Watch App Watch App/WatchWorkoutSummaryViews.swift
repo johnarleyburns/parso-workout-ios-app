@@ -67,7 +67,7 @@ struct WatchHistoricalWorkoutSummaryView: View {
                 if p.kind == .strength {
                     ForEach(Array(p.exercises.enumerated()), id: \.offset) { _, exercise in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(exercise.name).font(.footnote.weight(.semibold))
+                            Text(exercise.name.localizedExerciseName).font(.footnote.weight(.semibold))
                             Text(exercise.setTexts.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
                         }
                     }

@@ -121,7 +121,7 @@ public enum ExerciseLibrary {
 
     /// Built-in catalog seeded on first launch and version-upgraded thereafter.
     /// Bump `seedVersion` when entries are added so existing stores backfill.
-    public static let seedVersion = 10
+    public static let seedVersion = 11
 
     /// Our hand-curated catalog — the authoritative facet source (our muscle ids,
     /// movement-split categories, the "popular" shortlist all reference these).

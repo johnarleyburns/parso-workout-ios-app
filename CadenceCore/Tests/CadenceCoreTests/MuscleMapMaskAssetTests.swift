@@ -30,14 +30,14 @@ final class MuscleMapMaskAssetTests: XCTestCase {
 
     func testVisibleMaskGroupsFollowTheVolumeScope() {
         let visible = MuscleMapLayout.maskGroups(for: .back, visibleGroups: MuscleGroup.defaultTracked)
-        XCTAssertFalse(visible.contains(.rotatorCuff))
+        XCTAssertTrue(visible.contains(.rotatorCuff))
         XCTAssertTrue(visible.contains(.lats))
     }
 
     /// Field report 2026-10-04: with every group on target no muscle may stay red or white.
     /// Groups outside the volume scope take their nearest tracked group's colour.
     func testUntrackedGroupsTakeTheirNearestTrackedGroupsColour() {
-        let visible = MuscleGroup.defaultTracked
+        let visible = MuscleGroup.defaultTracked.subtracting([.neck, .tibialis, .rotatorCuff, .hipFlexors])
         XCTAssertEqual(MuscleMapLayout.colourGroup(for: .neck, visibleGroups: visible), .traps)
         XCTAssertEqual(MuscleMapLayout.colourGroup(for: .tibialis, visibleGroups: visible), .calves)
         XCTAssertEqual(MuscleMapLayout.colourGroup(for: .rotatorCuff, visibleGroups: visible), .middleBack)

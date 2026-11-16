@@ -19,7 +19,7 @@ struct CompactExerciseRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(exercise.name).font(.headline)
+                Text(exercise.name.localizedExerciseName).font(.headline)
                 Spacer(minLength: 4)
                 Group {
                     NavigationLink {

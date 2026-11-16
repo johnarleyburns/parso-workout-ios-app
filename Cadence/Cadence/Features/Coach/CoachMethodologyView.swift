@@ -59,6 +59,7 @@ struct CoachMethodologyView: View {
             // Reuse the bottom sections from CoachAboutView so this page
             // can serve as the canonical methodology reference.
             publishedStudiesSection
+            ExerciseCatalogReferencesSection()
 
             disclaimer
         }

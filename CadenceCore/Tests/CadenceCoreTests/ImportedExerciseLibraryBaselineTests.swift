@@ -34,7 +34,7 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
     /// Twenty templates spread evenly across the alphabetically sorted catalog.
     private static let fixtures: [Fixture] = [
         Fixture(name: "3/4 Sit-Up", category: "core", equipment: "bodyweight", force: "pull",
-                mechanics: "compound", lateral: false, primary: "abdominals", secondary: "",
+                mechanics: "compound", lateral: false, primary: "abdominals", secondary: "hip_flexors",
                 stabilizers: "", volumeEligible: true, trainingTypes: "strength",
                 modalities: "bodyweight", imageName: "3_4_Sit-Up", level: "beginner", instructionCount: 5),
         Fixture(name: "Barbell Curls Lying Against An Incline", category: "pull", equipment: "barbell", force: "pull",
@@ -116,7 +116,7 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
     ]
 
     func testTemplateCount() {
-        XCTAssertEqual(ImportedExerciseLibrary.templates.count, 927)
+        XCTAssertEqual(ImportedExerciseLibrary.templates.count, 938)
     }
 
     func testSampledTemplatesMatchTheAnnotation() throws {
@@ -195,7 +195,7 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
                            "\(stretch.name) must stay browsable by muscle")
             XCTAssertTrue(stretch.volumeCredits.isEmpty, stretch.name)
         }
-        XCTAssertEqual(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count, 724)
+        XCTAssertEqual(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count, 735)
     }
 
     /// No template may carry a muscle string the volume engine cannot resolve.

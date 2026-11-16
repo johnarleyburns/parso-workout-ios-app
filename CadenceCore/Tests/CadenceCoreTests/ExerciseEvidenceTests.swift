@@ -3,14 +3,20 @@ import XCTest
 
 final class ExerciseEvidenceTests: XCTestCase {
     func testAllPackageReferencesBecomeCitations() {
-        XCTAssertEqual(ExerciseEvidence.citations.count, 63)
+        XCTAssertEqual(ExerciseEvidence.citations.count, 78)
     }
 
-    func testEveryEvidenceCitationHasUrlAndYear() {
+    func testEveryEvidenceCitationHasUrlAndAnHonestDate() {
         for citation in ExerciseEvidence.citations {
             XCTAssertTrue(citation.id.hasPrefix("exdb."))
             XCTAssertFalse(citation.url.isEmpty)
-            XCTAssertGreaterThan(citation.year, 1900)
+            let key = String(citation.id.dropFirst("exdb.".count))
+            let reference = TrainingEngineBridge.evidenceReferences[key]
+            if citation.year == 0 {
+                XCTAssertTrue(["clinical_exercise_guide", "manufacturer_exercise_guide"].contains(reference?.type ?? ""))
+            } else {
+                XCTAssertGreaterThan(citation.year, 1900)
+            }
         }
     }
 
@@ -27,11 +33,11 @@ final class ExerciseEvidenceTests: XCTestCase {
 
     func testShortTextHandlesEmptyAuthors() {
         let citation = ExerciseEvidence.citations[0]
-        XCTAssertEqual(citation.shortText, "\(citation.source) (\(citation.year))")
+        XCTAssertEqual(citation.shortText, citation.year > 0 ? "\(citation.source) (\(citation.year))" : citation.source)
     }
 
     func testEveryPatternHasSummaryAndAtLeastOneCitation() {
-        XCTAssertEqual(ExerciseEvidence.patterns.count, 89)
+        XCTAssertEqual(ExerciseEvidence.patterns.count, 93)
         for pattern in ExerciseEvidence.patterns.values {
             XCTAssertFalse(pattern.summary.isEmpty)
             if pattern.citationIDs.isEmpty {

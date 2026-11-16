@@ -234,7 +234,7 @@ extension ExercisePickerView {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(ex.name)
+                        Text(ex.localizedDisplayName)
                         if ex.isCustom {
                             Text("Custom").font(.caption2).foregroundStyle(.secondary)
                         }

@@ -32,7 +32,7 @@ struct ManualStrengthItemEditor: View {
                         pickerPresented = true
                     } label: {
                         HStack {
-                            Text(exerciseName).foregroundStyle(.primary)
+                            Text(exerciseName.localizedExerciseName).foregroundStyle(.primary)
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.caption.weight(.semibold))

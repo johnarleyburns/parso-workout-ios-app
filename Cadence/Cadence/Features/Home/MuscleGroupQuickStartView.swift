@@ -40,7 +40,7 @@ struct MuscleGroupQuickStartView: View {
                     Section("Build from suggestions") {
                         ForEach(allowedSuggestions, id: \.id) { t in
                             HStack {
-                                Text(t.name)
+                                Text(t.name.localizedExerciseName)
                                 Spacer()
                                 Text(ExerciseLibrary.muscleGroups(of: t)
                                         .filter { missing.contains($0) }

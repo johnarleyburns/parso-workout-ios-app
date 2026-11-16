@@ -208,11 +208,11 @@ final class HomeDashboardPresenterTests: XCTestCase {
 
     /// An untracked group is noise at zero and information once it has work in it.
     func testUntrackedGroupAppearsOnlyOnceTrained() {
-        let quiet = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4])
+        let quiet = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4], tracked: [.chest])
         XCTAssertFalse(quiet.contains { $0.group == .neck })
         XCTAssertFalse(quiet.contains { $0.group == .tibialis })
 
-        let trained = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4, .neck: 2])
+        let trained = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4, .neck: 2], tracked: [.chest])
         let neck = trained.first { $0.group == .neck }
         XCTAssertNotNil(neck)
         XCTAssertEqual(neck?.sets, 2)

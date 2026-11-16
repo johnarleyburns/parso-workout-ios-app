@@ -113,9 +113,9 @@ final class MuscleGroupTests: XCTestCase {
         XCTAssertEqual(MuscleGroup.defaultTracked, [
             .abdominals, .abductors, .adductors, .biceps, .calves, .chest, .forearms,
             .glutes, .hamstrings, .lats, .lowerBack, .middleBack, .quadriceps,
-            .shoulders, .traps, .triceps
+            .shoulders, .traps, .triceps, .hipFlexors, .tibialis, .neck, .rotatorCuff
         ])
-        XCTAssertEqual(MuscleGroup.defaultTracked.count, 16)
+        XCTAssertEqual(MuscleGroup.defaultTracked.count, 20)
     }
 
     /// The test that would have caught `tibialis`: a group the coach targets must
@@ -132,7 +132,7 @@ final class MuscleGroupTests: XCTestCase {
             XCTAssertGreaterThan(directCounts[group] ?? 0, 0,
                                  "\(group) is tracked but no movement trains it directly")
         }
-        XCTAssertFalse(MuscleGroup.defaultTracked.contains(.tibialis))
+        XCTAssertTrue(MuscleGroup.defaultTracked.contains(.tibialis))
     }
 
     func testCanonicalOrderIsAPermutationWithTrackedFirst() {

@@ -281,7 +281,7 @@ struct ExercisePickerView: View {
                                 VStack(alignment: .leading) {
                                     Text("Found a good match")
                                         .font(.subheadline.weight(.medium))
-                                    Text(match.name)
+                                    Text(match.localizedDisplayName)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

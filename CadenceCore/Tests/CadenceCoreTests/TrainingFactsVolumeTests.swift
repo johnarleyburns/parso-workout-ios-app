@@ -35,6 +35,23 @@ final class TrainingFactsVolumeTests: XCTestCase {
                            goal: .hypertrophy, experience: .intermediate)
     }
 
+    func testSpecializedCatalogGroupsReceiveWeeklyDirectAndIndirectCredit() throws {
+        let context = try makeContext()
+        let sessions = try [
+            log("Standing Toe Raise", sets: 2, in: context),
+            log("Seated Hip Flexion", sets: 2, in: context),
+            log("Resisted Neck Rotation Isometric", sets: 2, in: context),
+            log("Side-Lying Dumbbell Internal Rotation", sets: 2, in: context),
+            log("Sit-Up", sets: 2, in: context),
+            log("Dumbbell Scaption", sets: 2, in: context),
+        ]
+        let weekly = facts(sessions).weeklySetsByGroup
+        XCTAssertEqual(weekly[.tibialis], 2)
+        XCTAssertEqual(weekly[.neck], 2)
+        XCTAssertEqual(weekly[.hipFlexors], 3)
+        XCTAssertEqual(weekly[.rotatorCuff], 3)
+    }
+
     /// The headline change: a deadlift's lower back stabilises. It used to earn
     /// half a set every time and read as trained back volume.
     func testDeadliftDoesNotCreditLowerBack() throws {
@@ -180,7 +197,7 @@ final class TrackedMuscleGroupPreferenceTests: XCTestCase {
         XCTAssertFalse(decoded.trackedMuscleGroups.contains(.calves))
         XCTAssertFalse(decoded.trackedMuscleGroups.contains(.abdominals))
         XCTAssertTrue(decoded.trackedMuscleGroups.contains(.chest))
-        XCTAssertEqual(decoded.trackedMuscleGroups.count, MuscleGroup.defaultTracked.count - 2)
+        XCTAssertEqual(decoded.trackedMuscleGroups.count, MuscleGroup.defaultTracked.count - 3)
     }
 
     func testAFileWithNeitherKeyGetsTheDefault() throws {

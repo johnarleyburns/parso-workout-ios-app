@@ -1,5 +1,5 @@
 {
-  "originHash" : "3b57dad4d7250b111d4e52d527cde2f9683b99fd8d5b006318f2ee58727f5da6",
+  "originHash" : "a0cfe698f47e34aa9870de614525907facbb3ddb719557e1dcc999d9950de123",
   "pins" : [
     {
       "identity" : "fit-swift-sdk",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/johnarleyburns/free-exercise-db-plusplus.git",
       "state" : {
-        "revision" : "5df25621e7ccccacb1f6497f5894fd6ec8157c37",
-        "version" : "1.18.2"
+        "revision" : "b78149ce41d63afd74bacc299c38a6da09b55da4",
+        "version" : "1.19.0"
       }
     },
     {

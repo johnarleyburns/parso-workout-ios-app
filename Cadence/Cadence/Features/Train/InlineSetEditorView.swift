@@ -103,7 +103,7 @@ struct InlineSetEditorView: View {
 
     private var headerContext: some View {
         VStack(spacing: 6) {
-            Text(config.exerciseName).font(.headline).frame(maxWidth: .infinity)
+            Text(config.exerciseName.localizedExerciseName).font(.headline).frame(maxWidth: .infinity)
                 .accessibilityIdentifier("setEditor.exerciseName")
             Text(config.setNumberText).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                 .accessibilityIdentifier("setEditor.setNumber")

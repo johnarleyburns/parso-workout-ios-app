@@ -57,7 +57,7 @@ struct AdaptiveSessionRoot: View {
                 List {
                     Section("Exercises") {
                         ForEach(session.exercisesInOrder) { exercise in
-                            Label(exercise.name, systemImage: "dumbbell")
+                            Label(exercise.name.localizedExerciseName, systemImage: "dumbbell")
                                 .lineLimit(2)
                         }
                     }

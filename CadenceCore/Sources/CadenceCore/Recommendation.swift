@@ -181,13 +181,13 @@ public extension Recommendation {
         case .lats: return "Lat Pulldown"
         case .lowerBack: return "Back Extension"
         case .middleBack: return "Seated Cable Row"
-        case .neck: return "Neck Flexion"
+        case .neck: return "Resisted Neck Rotation Isometric"
         case .quadriceps: return "Back Squat"
         case .shoulders: return "Overhead Press"
         case .traps: return "Barbell Shrug"
         case .triceps: return "Triceps Pushdown"
-        case .tibialis: return "Standing Calf Raise"
-        case .rotatorCuff: return "Cable External Rotation"
+        case .tibialis: return "Standing Toe Raise"
+        case .rotatorCuff: return "External Rotation with Cable"
         case .hipFlexors: return "Hanging Leg Raise"
         }
     }

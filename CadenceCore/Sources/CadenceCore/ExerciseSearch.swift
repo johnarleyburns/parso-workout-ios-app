@@ -12,6 +12,7 @@ public protocol ExerciseSearchable {
 }
 
 public extension ExerciseSearchable {
+    var localizedDisplayName: String { isCustom ? name : name.localizedExerciseName }
     var primaryMuscleGroups: [MuscleGroup] { [] }
 }
 
@@ -115,6 +116,7 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
     fileprivate struct Indexed {
         let item: T
         let name: String
+        let localizedName: String
         let keywords: [String]
         let isCustom: Bool
         let primaryMuscles: [MuscleGroup]
@@ -122,11 +124,16 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
 
     private let indexed: [Indexed]
 
-    public init(_ items: [T]) {
+    public init(_ items: [T], locale: Locale = .current) {
         indexed = items.map { item in
             Indexed(item: item,
                     name: ExerciseSearch.normalize(item.name),
-                    keywords: item.searchKeywords.map(ExerciseSearch.normalize),
+                    localizedName: ExerciseSearch.normalize(item.isCustom ? item.name :
+                        ExerciseNameLocalizer.shared.localizedName(for: item.name, locale: locale)),
+                    keywords: (item.searchKeywords + (item.isCustom ? [] :
+                        ExerciseNameLocalizer.shared.searchTerms(for: item.name, locale: locale).flatMap {
+                            [$0] + ExerciseSearch.terms($0)
+                        })).map(ExerciseSearch.normalize),
                     isCustom: item.isCustom,
                     primaryMuscles: item.primaryMuscleGroups)
         }
@@ -159,7 +166,8 @@ public struct ExerciseSearchIndex<T: ExerciseSearchable> {
         let scored: [(Indexed, Int, Int)] = indexed.compactMap { entry in
             var total = 0
             for term in terms {
-                let s = ExerciseSearch.termScore(term, name: entry.name, keywords: entry.keywords)
+                let s = max(ExerciseSearch.termScore(term, name: entry.name, keywords: entry.keywords),
+                            ExerciseSearch.termScore(term, name: entry.localizedName, keywords: []))
                 if s == 0 { return nil }          // every term must match (AND)
                 total += s
             }

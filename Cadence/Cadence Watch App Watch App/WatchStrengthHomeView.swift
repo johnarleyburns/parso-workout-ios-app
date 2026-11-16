@@ -140,7 +140,7 @@ struct WatchStrengthHomeView: View {
         return HStack(spacing: 8) {
             WatchExerciseProgressRing(presentation: presentation)
             HStack(spacing: 4) {
-                Text(exercise.name)
+                Text(exercise.name.localizedExerciseName)
                     .font(.body)
                     .lineLimit(presentation.exerciseNameMaxLines, reservesSpace: true)
                     .multilineTextAlignment(.leading)

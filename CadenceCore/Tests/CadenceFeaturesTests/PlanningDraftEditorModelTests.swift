@@ -25,7 +25,7 @@ final class PlanningDraftEditorModelTests: XCTestCase {
     func testEmptyDraftCannotStartOrSchedule() throws {
         let model = try seeded([], context: try makeContext())
         XCTAssertTrue(model.isEmpty)
-        XCTAssertFalse(model.canStartOrSchedule)
+        XCTAssertFalse(model.canStart)
         XCTAssertFalse(model.needsDiscardConfirmation)
     }
 
@@ -37,7 +37,7 @@ final class PlanningDraftEditorModelTests: XCTestCase {
         XCTAssertFalse(model.canMove(id: ids[2], by: -1))
         model.removeExercise(id: ids[0])
         XCTAssertEqual(try persisted(model).exercises.map(\.name), ["C", "B"])
-        XCTAssertTrue(model.canStartOrSchedule)
+        XCTAssertTrue(model.canStart)
     }
 
     func testSetEditsPersistAndKeepAtLeastOneSet() throws {
@@ -102,7 +102,7 @@ final class PlanningDraftEditorModelTests: XCTestCase {
         XCTAssertTrue(model.needsDiscardConfirmation)
         XCTAssertTrue(model.discard())
         XCTAssertTrue(model.isDiscarded)
-        XCTAssertFalse(model.canStartOrSchedule)
+        XCTAssertFalse(model.canStart)
         XCTAssertNil(try store.currentDraft(in: context))
     }
 }

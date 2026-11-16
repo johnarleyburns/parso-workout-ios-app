@@ -268,7 +268,6 @@ public enum ScheduledWorkoutStore {
 
 public enum ScheduledWorkoutStoreError: Error, Equatable, Sendable {
     case unsupportedPayloadVersion(Int)
-    case dateMustBeTodayOrFuture
     case notACardioPayload
 }
 
@@ -277,10 +276,8 @@ extension ScheduledWorkoutStoreError: LocalizedError {
         switch self {
         case .unsupportedPayloadVersion(let version):
             return "This workout was saved by an unsupported version (payload \(version))."
-        case .dateMustBeTodayOrFuture:
-            return "Choose today or a future date for a planned workout."
         case .notACardioPayload:
-            return "This scheduled item is not a cardio workout."
+            return "This saved draft is not a cardio workout."
         }
     }
 }

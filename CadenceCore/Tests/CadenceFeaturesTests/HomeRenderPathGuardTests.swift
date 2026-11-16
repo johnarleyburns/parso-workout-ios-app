@@ -56,17 +56,21 @@ final class HomeRenderPathGuardTests: XCTestCase {
         try assertClean("var body: some View", file: "HomeMuscleMapView.swift")
     }
 
-    /// Issue #619: the Cardio picker renders an injected, value-only weekly
-    /// credit display. The whole file is scanned (not one body) so no helper
-    /// view can aggregate, fetch, or reach HealthKit either. The lowercase
-    /// `cardio` / `sessions` tokens above name HomeView's `@Query` arrays and
-    /// are left out here because the picker's own user copy says "cardio";
-    /// every persistence/HealthKit/aggregation API token is still banned.
-
     /// Both Home entry points into the start-mode picker (the Start Workout
     /// sheet and the Cardio tile sheet) pass the already-published dashboard
-    /// credit rather than letting the picker compute its own.
+    /// credit rather than letting the picker compute its own. The lowercase
+    /// `cardio` token is excluded below because SF Symbols names it directly
+    /// (the "Other" row's "figure.mixed.cardio" icon) — every real
+    /// persistence/HealthKit/aggregation API token is still banned.
     func testFullCardioCatalogHasNoPersistenceTraversal() throws {
-        try assertClean("var body: some View", file: "CardioTypePickerView.swift")
+        let file = "CardioTypePickerView.swift"
+        let source = try body(of: "var body: some View", in: file)
+            .split(separator: "\n").filter { !$0.trimmingCharacters(in: .whitespaces).hasPrefix("//") }
+            .joined(separator: "\n")
+        for token in Self.forbidden where token != "cardio" {
+            let pattern = "\\b\(token)\\b"
+            XCTAssertNil(source.range(of: pattern, options: .regularExpression),
+                         "body in \(file) references forbidden persistence API `\(token)`")
+        }
     }
 }

@@ -30,7 +30,6 @@ struct WatchRootView: View {
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
     @State private var showingCardio = false
-    @State private var showingWorkoutChoice = false
     private let launchRequests = WatchLaunchRequests.shared
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -152,12 +151,7 @@ struct WatchRootView: View {
                 plannedStrengthDestination
             }
             .navigationDestination(item: $resumingSession) { session in WatchStrengthView(resuming: session) }
-            .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthStartView() }
-            .navigationDestination(isPresented: $showingWorkoutChoice) {
-                WatchWorkoutChoiceView(
-                    onStrength: { showingWorkoutChoice = false; startingQuickLift = true },
-                    onCardio: { showingWorkoutChoice = false; showingCardio = true })
-            }
+            .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthView(title: "Strength") }
             .navigationDestination(isPresented: $showingCardio) {
                 WatchCardioPickerView(types: cardioTypes, destination: { ct in AnyView(cardioSetupView(for: ct)) }, onSuggest: { startSuggestedCardio($0) })
             }
@@ -280,16 +274,14 @@ struct WatchRootView: View {
                 Label("Rest day", systemImage: "bed.double.fill").font(.headline)
                 if let advice { WatchCoachLineView(line: advice) }
                 Text("Recovery supports progress.").font(.caption2).foregroundStyle(.secondary)
-                Button("Start another workout") { showingWorkoutChoice = true }
+                Button("Start another workout") { startingQuickLift = true }
                     .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
                     .accessibilityHint(Text("Choose strength or cardio"))
                     .accessibilityIdentifier("watch.rest.startAnother")
             }
         case .unplanned:
-            WatchReadyCard(
-                syncReminder: presentation.syncReminder,
-                onStrength: { startingQuickLift = true },
-                onCardio: { showingCardio = true })
+            EmptyView()
+
         }
     }
 

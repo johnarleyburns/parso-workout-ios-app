@@ -20,6 +20,7 @@ struct HomeWorkoutStartControls: View {
                 ForEach(HomeStrengthStartChoice.allCases) { Text($0.title).tag($0) }
             }
             .pickerStyle(.menu)
+            .accessibilityIdentifier("home.start.strengthSource")
             Button {
                 switch strength {
                 case .quickStart: onQuickStart()
@@ -28,6 +29,7 @@ struct HomeWorkoutStartControls: View {
                 }
             } label: { Label("Strength", systemImage: "dumbbell.fill").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("home.start.strength")
             Menu {
                 ForEach(HomeRecentCardioChoices.recent(recentCardio)) { type in
                     Button { cardio = type } label: {
@@ -46,10 +48,12 @@ struct HomeWorkoutStartControls: View {
                 }
             }
             .accessibilityLabel("Cardio workout")
+            .accessibilityIdentifier("home.start.cardioSource")
             Button {
                 if let cardio { onCardio(cardio) } else { onMoreCardio() }
             } label: { Label("Cardio", systemImage: "figure.run").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("home.start.cardio")
         }
         .onAppear { cardio = HomeRecentCardioChoices.recent(recentCardio).first }
         .sheet(isPresented: $showingPrevious) {

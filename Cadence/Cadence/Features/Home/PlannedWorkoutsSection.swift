@@ -45,9 +45,6 @@ enum HomePlannedWorkoutsSection {
         item(rowInput(record))
     }
 
-    /// Flattens a scheduled workout into `ScheduledWorkoutWatchBridge`'s pure,
-    /// SwiftData-free input shape (issue: surface manually scheduled workouts
-    /// on Watch Today).
 }
 
 struct PlannedWorkoutsListView: View {

@@ -55,15 +55,15 @@ extension HomeView {
                 // the start sheet. Clear every Home-owned presentation layer
                 // so the user always lands back on Home after saving.
                 path = NavigationPath()
-                selectWorkoutPresented = false
-                weightsStartPresented = false
+                workoutControlsPresented = false
+                strengthDraftPresented = false
                 scheduledWorkoutBeingStarted = nil
             }
             .onReceive(NotificationCenter.default.publisher(for: .scheduledWorkoutStartRequested)) { note in
                 guard let request = note.object as? ScheduledWorkoutStartRequest else { return }
                 path = NavigationPath()
-                selectWorkoutPresented = false
-                weightsStartPresented = false
+                workoutControlsPresented = false
+                strengthDraftPresented = false
                 consumeScheduledWorkoutStart(request)
             }
             .onReceive(NotificationCenter.default.publisher(for: .scheduledCardioStartRequested)) { note in
@@ -73,14 +73,14 @@ extension HomeView {
                     return
                 }
                 path = NavigationPath()
-                selectWorkoutPresented = false
-                weightsStartPresented = false
+                workoutControlsPresented = false
+                strengthDraftPresented = false
                 start(WorkoutType(rawValue: request.type.rawValue) ?? .other)
             }
             .onReceive(NotificationCenter.default.publisher(for: .cadenceStartTodaysWorkout)) { _ in
                 _ = CadencePlatformRequestStore.consumeStartWorkout()
                 guard active.liveWorkout.active == nil else { return }
-                selectWorkoutPresented = true
+                workoutControlsPresented = true
             }
             .modifier(PlanningDraftStartReceiver { plan in
                 guard active.liveWorkout.active == nil else {

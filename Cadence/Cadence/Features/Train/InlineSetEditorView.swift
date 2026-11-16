@@ -285,7 +285,7 @@ struct InlineSetEditorView: View {
                 .decide(for: .loggedSet(isPersonalBest: isPR))?.kind {
                 Haptics.play(kind)
             }
-            onSave(SetDraft(weightString: config.nonWeighted ? "0" : weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID))
+            onSave(SetDraft(weightString: config.nonWeighted ? "0" : weightText, unit: config.unit, reps: result.reps, rpe: result.rpe.map { Int($0) }, bodyweight: config.bodyweight, performerID: performerID, repsWereEdited: draft.didEditReps))
         }) {
             Text("Log Set").frame(maxWidth: .infinity)
         }

@@ -4,79 +4,78 @@ import CadenceCore
 import CadenceFeatures
 
 struct HomeWorkoutStartControls: View {
-    let recentCardio: [WorkoutType]
     let onQuickStart: () -> Void
     let onSuggested: () -> Void
     let onPreviousStart: (EditablePlan) -> Void
     let onCardio: (WorkoutType) -> Void
-    let onMoreCardio: () -> Void
-    @State private var strength: HomeStrengthStartChoice = .quickStart
-    @State private var cardio: WorkoutType?
+    let onCustomCardio: (String, Bool) -> Void
+    @State private var selection: Selection = .strength(.suggested)
     @State private var showingPrevious = false
+    @State private var showingCustomCardio = false
 
-    var body: some View {
-        VStack(spacing: 24) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Strength").font(.headline).accessibilityAddTraits(.isHeader)
-                Menu {
-                    Picker("Strength workout", selection: $strength) {
-                        ForEach(HomeStrengthStartChoice.allCases) { Text($0.title).tag($0) }
-                    }
-                } label: {
-                    sourceLabel(strength.title)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Strength workout")
-                .accessibilityValue(strength.title)
-                .accessibilityIdentifier("home.start.strengthSource")
+    private enum Selection: Hashable {
+        case strength(HomeStrengthStartChoice)
+        case cardio(WorkoutType)
 
-                Button {
-                    switch strength {
-                    case .quickStart: onQuickStart()
-                    case .suggested: onSuggested()
-                    case .previous: showingPrevious = true
-                    }
-                } label: {
-                    Label("Start strength", systemImage: "dumbbell.fill")
-                        .cadenceActionLabel(alignment: .center)
-                }
-                .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
-                .accessibilityIdentifier("home.start.strength")
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Cardio").font(.headline).accessibilityAddTraits(.isHeader)
-                Menu {
-                    ForEach(HomeRecentCardioChoices.recent(recentCardio)) { type in
-                        Button { cardio = type } label: {
-                            if cardio == type {
-                                Label(type.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(type.displayName)
-                            }
-                        }
-                    }
-                    Button("More…", action: onMoreCardio)
-                } label: {
-                    sourceLabel(cardio?.displayName ?? String(localized: "More…"))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Cardio workout")
-                .accessibilityValue(cardio?.displayName ?? String(localized: "More…"))
-                .accessibilityIdentifier("home.start.cardioSource")
-
-                Button {
-                    if let cardio { onCardio(cardio) } else { onMoreCardio() }
-                } label: {
-                    Label("Start cardio", systemImage: "figure.run")
-                        .cadenceActionLabel(alignment: .center)
-                }
-                .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
-                .accessibilityIdentifier("home.start.cardio")
+        var title: String {
+            switch self {
+            case .strength(.suggested): return String(localized: "Suggested Strength")
+            case .strength(.previous): return String(localized: "Previous Strength")
+            case .strength(.quickStart): return String(localized: "Custom Strength")
+            case .cardio(.other): return String(localized: "Custom Cardio")
+            case .cardio(let type): return type.displayName
             }
         }
+
+        var symbol: String {
+            switch self {
+            case .strength(.suggested): return "wand.and.stars"
+            case .strength(.previous): return "clock.arrow.circlepath"
+            case .strength(.quickStart): return "dumbbell.fill"
+            case .cardio(let type): return type.symbol
+            }
+        }
+    }
+
+    private var cardioChoices: [WorkoutType] {
+        [.hiit] + WorkoutType.allCases.filter { $0 != .weights && $0 != .hiit }
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Menu {
+                Section {
+                    choice(.strength(.suggested))
+                    choice(.strength(.previous))
+                    choice(.strength(.quickStart))
+                }
+                Section {
+                    ForEach(cardioChoices) { type in choice(.cardio(type)) }
+                }
+            } label: {
+                sourceLabel(selection.title)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Workout type")
+            .accessibilityValue(selection.title)
+            .accessibilityIdentifier("home.start.workoutSource")
+
+            Button {
+                switch selection {
+                case .strength(.suggested): onSuggested()
+                case .strength(.previous): showingPrevious = true
+                case .strength(.quickStart): onQuickStart()
+                case .cardio(.other): showingCustomCardio = true
+                case .cardio(let type): onCardio(type)
+                }
+            } label: {
+                Label("Start Workout", systemImage: "activity.exercise")
+                    .cadenceActionLabel(alignment: .center)
+            }
+            .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
+            .accessibilityIdentifier("home.start.workout")
+        }
         .glassGroup(spacing: 12)
-        .onAppear { cardio = HomeRecentCardioChoices.recent(recentCardio).first }
         .sheet(isPresented: $showingPrevious) {
             NavigationStack {
                 HomePreviousStrengthWorkouts { plan in
@@ -85,6 +84,21 @@ struct HomeWorkoutStartControls: View {
                 }
             }
         }
+        .sheet(isPresented: $showingCustomCardio) {
+            NavigationStack {
+                OtherCardioEntryView { description, gps in
+                    showingCustomCardio = false
+                    onCustomCardio(description, gps)
+                }
+            }
+        }
+    }
+
+    private func choice(_ option: Selection) -> some View {
+        Button { selection = option } label: {
+            Label(option.title, systemImage: option.symbol)
+        }
+        .accessibilityAddTraits(selection == option ? .isSelected : [])
     }
 
     private func sourceLabel(_ title: String) -> some View {

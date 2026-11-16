@@ -55,7 +55,7 @@ extension HomeView {
             }
             .sheet(isPresented: $workoutControlsPresented, onDismiss: presentPendingSuggestedWorkout) {
                 NavigationStack {
-                    HomeWorkoutStartControls(recentCardio: recentCardioTypes,
+                    HomeWorkoutStartControls(
                         onQuickStart: {
                             workoutControlsPresented = false
                             startQuickStartStrength()
@@ -63,7 +63,10 @@ extension HomeView {
                         onSuggested: { workoutControlsPresented = false; openTodaySuggestion() },
                         onPreviousStart: { plan in workoutControlsPresented = false; handleEditorStart(plan) },
                         onCardio: { type in workoutControlsPresented = false; start(type) },
-                        onMoreCardio: { workoutControlsPresented = false; openFullCardioPicker() })
+                        onCustomCardio: { description, gps in
+                            workoutControlsPresented = false
+                            startOtherCardio(description: description, gps: gps)
+                        })
                     .padding()
                 }
             }

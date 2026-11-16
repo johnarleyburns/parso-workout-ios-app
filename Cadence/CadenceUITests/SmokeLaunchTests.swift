@@ -7,8 +7,9 @@ final class SmokeLaunchTests: CadenceUITestCase {
     func testIPhoneStrengthWorkoutPlansLogsAndCompletes() {
         let app = XCUIApplication.launched(seeds: ["person.Sam"])
         XCTAssertEqual(app.state, .runningForeground)
-        XCTAssertTrue(app.buttons["home.start.strength"].waitForExistence(timeout: 25))
-        XCTAssertTrue(app.buttons["home.start.cardio"].exists)
+        XCTAssertTrue(app.buttons["home.start.workout"].waitForExistence(timeout: 25))
+        XCTAssertTrue(app.buttons["home.start.workoutSource"].exists)
+        XCTAssertFalse(app.buttons["home.start.cardio"].exists)
         XCTAssertFalse(app.buttons["selectWorkout.startWorkout"].exists)
         XCTAssertFalse(app.buttons["editor.schedule"].exists)
         XCTAssertTrue(app.startEmptyStrengthWorkout())

@@ -37,7 +37,7 @@ extension HomeView {
             }
             .background { CadenceGlassBackdrop(tint: .green) }
             .navigationTitle(surface.title)
-            .navigationBarTitleDisplayMode(surface == .today ? .inline : .large)
+            .navigationBarTitleDisplayMode(.large)
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowThisWeek)) { _ in
                 guard surface != .today else { return }
                 withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo("week.top", anchor: .top) }

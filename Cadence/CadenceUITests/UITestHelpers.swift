@@ -108,7 +108,7 @@ extension XCUIApplication {
     func goToTab(_ label: String) {
         popToHome()
         switch label {
-        case "Today":
+        case "Today", "Workout":
             return  // activity (step count + weekly tiles) lives on Home now
         case "More":
             XCTFail("More was retired; use Settings or the dedicated Today surface")
@@ -135,7 +135,9 @@ extension XCUIApplication {
     @discardableResult
     func startQuickStartStrength() -> Bool {
         popToHome()
-        guard buttons["home.start.strength"].waitTap(timeout: 15) else { return false }
+        guard buttons["home.start.workoutSource"].waitTap(timeout: 15) else { return false }
+        guard buttons["Custom Strength"].waitTap(timeout: 5) else { return false }
+        guard buttons["home.start.workout"].waitTap(timeout: 15) else { return false }
         if buttons["prehr.start"].waitForExistence(timeout: 3) { buttons["prehr.start"].tap() }
         skipCountdown()
         return buttons["session.addExercise"].waitForExistence(timeout: 25)
@@ -325,7 +327,7 @@ extension XCUIApplication {
         // Today first when a caller started from another primary tab.
         let homeTab = buttons["tab.today"]
         if homeTab.exists && homeTab.isHittable { homeTab.tap() }
-        let homeMarker = descendants(matching: .any)["home.start.strength"]
+        let homeMarker = descendants(matching: .any)["home.start.workout"]
         var guardCount = 0
         while !homeMarker.exists && guardCount < 8 {
             let back = navigationBars.buttons.element(boundBy: 0)

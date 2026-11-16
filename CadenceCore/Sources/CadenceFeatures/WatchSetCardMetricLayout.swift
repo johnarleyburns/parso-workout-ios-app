@@ -16,4 +16,8 @@ public enum WatchSetCardMetricLayout: Equatable, Sendable {
     public static func fields(isAccessibilitySize: Bool) -> Self {
         isAccessibilitySize ? .stacked : .twoColumns
     }
+
+    public static func crownStep(weightFocused: Bool, nonWeighted: Bool, weightStep: Double) -> Double {
+        weightFocused && !nonWeighted ? weightStep : 1
+    }
 }

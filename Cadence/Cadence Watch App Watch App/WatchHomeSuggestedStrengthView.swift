@@ -15,7 +15,16 @@ struct WatchHomeSuggestedStrengthView: View {
         List {
             if let launch {
                 Text(launch.title).font(.headline)
-                ForEach(launch.exerciseNames, id: \.self) { Text($0).font(.footnote) }
+                ForEach(launch.exerciseNames, id: \.self) { name in
+                    HStack {
+                        Text(name).font(.footnote)
+                        Spacer()
+                        NavigationLink {
+                            WatchSuggestedExerciseInfoView(name: name)
+                        } label: { Image(systemName: "info.circle") }
+                        .accessibilityLabel("\(name) details")
+                    }
+                }
                 if !citationIDs.isEmpty {
                     WatchCoachLineView(line: WatchCoachLine(text: "Workout sources", citationIDs: citationIDs))
                 }

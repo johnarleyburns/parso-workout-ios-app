@@ -189,8 +189,6 @@ struct WatchRootView: View {
             } else {
                 WatchHomeStartControls(pendingCardio: watchManager.pendingCardioCompletions,
                     cardioDestination: { AnyView(cardioSetupView(for: $0)) },
-                    fullCardioDestination: { AnyView(WatchCardioPickerView(types: cardioTypes,
-                        destination: { AnyView(cardioSetupView(for: $0)) }, onSuggest: { startSuggestedCardio($0) })) },
                     onMoreCardio: { showingCardio = true })
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())

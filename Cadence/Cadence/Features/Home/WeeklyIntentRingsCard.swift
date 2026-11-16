@@ -9,7 +9,7 @@ struct WeeklyIntentRingsCard: View {
     @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 104
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 16) {
             ZStack {
                 ring(display.strengthRing, diameter: ringDiameter, lineWidth: max(8, ringDiameter * 0.11))
                 ring(display.cardioRing, diameter: ringDiameter * 0.62, lineWidth: max(8, ringDiameter * 0.11))
@@ -39,12 +39,12 @@ struct WeeklyIntentRingsCard: View {
     private func legend(_ ring: WeeklyIntentRingDisplay, title: String, identifierPrefix: String,
                         onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
-            VStack(spacing: 0) {
+            VStack(spacing: 4) {
                 Text(title)
-                    .font(.caption2.weight(.semibold))
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(CadenceTheme.weeklyTint(ring.tintRole))
                 Text(ring.valueText)
-                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .font(.headline.monospacedDigit())
                     .foregroundStyle(CadenceTheme.weeklyTint(ring.tintRole))
                     .multilineTextAlignment(.center)
             }

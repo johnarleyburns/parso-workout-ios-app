@@ -6,7 +6,6 @@ import CadenceFeatures
 struct WatchHomeStartControls: View {
     let pendingCardio: [WatchCardioCompletion]
     let cardioDestination: (CardioType) -> AnyView
-    let fullCardioDestination: () -> AnyView
     let onMoreCardio: () -> Void
     @Environment(\.modelContext) private var context
     @State private var strength: HomeStrengthStartChoice = .quickStart
@@ -14,38 +13,61 @@ struct WatchHomeStartControls: View {
     @State private var recent: [CardioType] = []
 
     var body: some View {
-        VStack(spacing: 4) {
-            Picker("Strength workout", selection: $strength) {
-                ForEach(HomeStrengthStartChoice.allCases) { Text($0.title).tag($0) }
+        VStack(spacing: 12) {
+            VStack(spacing: 4) {
+                selectorTitle("Strength")
+                Picker("Strength workout", selection: $strength) {
+                    ForEach(HomeStrengthStartChoice.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.wheel)
+                .labelsHidden()
+                .frame(height: 60)
+                .accessibilityIdentifier("watch.strengthPicker")
+
+                NavigationLink {
+                    switch strength {
+                    case .quickStart: WatchStrengthView(title: "Strength")
+                    case .suggested: WatchHomeSuggestedStrengthView()
+                    case .previous: WatchPreviousListView()
+                    }
+                } label: {
+                    startLabel("Start strength")
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .accessibilityIdentifier("watch.startStrength")
             }
-            .pickerStyle(.navigationLink)
-            NavigationLink {
-                switch strength {
-                case .quickStart: WatchStrengthView(title: "Strength")
-                case .suggested: WatchHomeSuggestedStrengthView()
-                case .previous: WatchPreviousListView()
+
+            VStack(spacing: 4) {
+                selectorTitle("Cardio")
+                Picker("Cardio workout", selection: $cardio) {
+                    ForEach(recent) { type in
+                        Text(type.displayName).tag(Optional(type))
+                    }
+                    Text("More…").tag(Optional<CardioType>.none)
                 }
-            } label: { Label("Strength", systemImage: "dumbbell.fill") }
-                .buttonStyle(WatchPillStyle(kind: .primary))
-            NavigationLink {
-                WatchHomeCardioChoices(recent: recent, selection: $cardio,
-                                       fullCatalog: fullCardioDestination)
-            } label: {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("Cardio workout").font(.caption2).foregroundStyle(.secondary)
-                    Text(cardio?.displayName ?? "More..")
+                .pickerStyle(.wheel)
+                .labelsHidden()
+                .frame(height: 60)
+                .accessibilityIdentifier("watch.cardioPicker")
+
+                if let cardio {
+                    NavigationLink { cardioDestination(cardio) } label: {
+                        startLabel("Start cardio")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .accessibilityIdentifier("watch.startCardio")
+                } else {
+                    Button(action: onMoreCardio) { startLabel("Start cardio") }
+                        .buttonStyle(.borderedProminent)
+                        .tint(.green)
+                        .accessibilityIdentifier("watch.startCardio")
                 }
-            }
-            if let cardio {
-                NavigationLink { cardioDestination(cardio) } label: {
-                    Label("Cardio", systemImage: "figure.run")
-                }
-                .buttonStyle(WatchCardioPillStyle())
-            } else {
-                Button(action: onMoreCardio) { Label("Cardio", systemImage: "figure.run") }
-                    .buttonStyle(WatchCardioPillStyle())
             }
         }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 2)
         .task {
             var descriptor = FetchDescriptor<WatchCardioHistoryRecord>(sortBy: [SortDescriptor(\.start, order: .reverse)])
             descriptor.fetchLimit = WatchSync.CardioHistorySnapshot.maxLiveItems
@@ -55,27 +77,17 @@ struct WatchHomeStartControls: View {
             cardio = recent.first
         }
     }
-}
 
-private struct WatchHomeCardioChoices: View {
-    let recent: [CardioType]
-    @Binding var selection: CardioType?
-    let fullCatalog: () -> AnyView
-    @Environment(\.dismiss) private var dismiss
+    private func selectorTitle(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(.secondary)
+            .accessibilityAddTraits(.isHeader)
+    }
 
-    var body: some View {
-        List {
-            ForEach(recent) { type in
-                Button { selection = type; dismiss() } label: {
-                    HStack {
-                        Text(type.displayName)
-                        Spacer()
-                        if selection == type { Image(systemName: "checkmark") }
-                    }
-                }
-            }
-            NavigationLink(destination: fullCatalog) { Text("More..") }
-        }
-        .navigationTitle("Cardio workout")
+    private func startLabel(_ workout: LocalizedStringKey) -> some View {
+        Label(workout, systemImage: "play.fill")
+            .font(.caption.bold())
+            .frame(maxWidth: .infinity, minHeight: 28)
     }
 }

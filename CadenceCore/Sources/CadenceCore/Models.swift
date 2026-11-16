@@ -403,8 +403,7 @@ public final class Exercise {
         case .kettlebell:
             if isLateral { return .isolateralKettlebell }
             if Exercise.isSingleKettlebellMovement(name) { return .singleKettlebell }
-            // Phase 4: most two-kettlebell movements (clean, press, front squat, etc.)
-            // use dual-kettlebell accounting — entered weight = one bell, doubled.
+            // Preserve stored movement classification; all bell modes use entered total weight.
             return .dualKettlebell
         case .machine, .cable, .band, .plyometric:
             return nil
@@ -429,12 +428,12 @@ public final class Exercise {
         switch mode {
         case .barbell: return (rawWeightKg + bar)
         case .bodyweight: return rawWeightKg
-        case .dualDumbbell: return rawWeightKg * 2.0
+        case .dualDumbbell: return rawWeightKg
         case .singleDumbbell: return rawWeightKg
-        case .isolateralDumbbell: return rawWeightKg * 2.0
-        case .dualKettlebell: return rawWeightKg * 2.0
+        case .isolateralDumbbell: return rawWeightKg
+        case .dualKettlebell: return rawWeightKg
         case .singleKettlebell: return rawWeightKg
-        case .isolateralKettlebell: return rawWeightKg * 2.0
+        case .isolateralKettlebell: return rawWeightKg
         }
     }
 
@@ -1018,17 +1017,17 @@ public final class SetEntry {
         case .bodyweight:
             return weight * loadMultiplier
         case .dualDumbbell:
-            return weight * 2.0
+            return weight
         case .singleDumbbell:
             return weight * 1.0
         case .isolateralDumbbell:
-            return weight * 2.0
+            return weight
         case .dualKettlebell:
-            return weight * 2.0
+            return weight
         case .singleKettlebell:
             return weight * 1.0
         case .isolateralKettlebell:
-            return weight * 2.0
+            return weight
         }
     }
 }

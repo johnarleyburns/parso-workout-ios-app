@@ -14,7 +14,10 @@ extension WatchRootView {
     }
 
     var cardioTypes: [CardioType] {
-        [.run, .walk, .cycle, .swim, .hiit, .boxing, .rowing, .other]
+        HomeWorkoutStartChoice.cardioChoices.compactMap { choice in
+            guard case .cardio(let type) = choice else { return nil }
+            return type.cardioType
+        }
     }
 
     var sessionOwnership: WatchSessionOwnership.Verdict {

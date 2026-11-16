@@ -20,8 +20,8 @@ final class WatchSmokeTests: XCTestCase {
                        "Watch app terminated or failed to reach the foreground during cold launch")
         // A fresh simulator clone may show the Heart Rate Access boundary first.
         app.passHealthBoundaryIfShown()
-        XCTAssertTrue(app.buttons["watch.startStrength"].waitForExistence(timeout: 15),
-                      "Today launcher did not show the Quick lift tile")
+        XCTAssertTrue(app.buttons["watch.startWorkout"].waitForExistence(timeout: 15),
+                      "Watch launcher did not show Start")
         snapshot(app, "T1-today")
 
         XCTAssertTrue(app.tapButton("watch.settings"), "Today did not expose Settings")
@@ -35,8 +35,11 @@ final class WatchSmokeTests: XCTestCase {
         app.launch()
         app.passHealthBoundaryIfShown()
 
-        XCTAssertTrue(app.tapButton("watch.startStrength", scrollAttempts: 4),
-                      "Today launcher did not show Quick lift")
+        let workoutPicker = app.pickerWheels.firstMatch
+        XCTAssertTrue(workoutPicker.waitForExistence(timeout: 10), "Workout wheel did not appear")
+        workoutPicker.adjust(toPickerWheelValue: "Custom Strength")
+        XCTAssertTrue(app.tapButton("watch.startWorkout", scrollAttempts: 4),
+                      "Watch launcher did not show Start")
         XCTAssertTrue(app.tapButton("watchStrength.custom"), "Strength start screen did not show Custom")
         XCTAssertTrue(app.buttons["watchStrength.repPattern.12-10-8"].waitForExistence(timeout: 10),
                       "Custom setup did not show rep-pattern options")
@@ -161,7 +164,7 @@ final class WatchSmokeTests: XCTestCase {
                       "Monitoring state did not appear before a BPM sample")
         XCTAssertTrue(app.descendants(matching: .any)["watch.phoneWorkout.bpm"].waitForExistence(timeout: 15),
                       "BPM did not replace the monitoring state")
-        XCTAssertFalse(app.buttons["watch.startStrength"].exists,
+        XCTAssertFalse(app.buttons["watch.startWorkout"].exists,
                        "Phone-owned workout screen offered a second workout")
     }
 

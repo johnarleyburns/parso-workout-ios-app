@@ -158,6 +158,7 @@
       }
     },
     "Suggested Strength" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en-GB" : {
           "stringUnit" : {
@@ -210,6 +211,7 @@
       }
     },
     "Previous Strength" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en-GB" : {
           "stringUnit" : {
@@ -262,6 +264,7 @@
       }
     },
     "Custom Strength" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en-GB" : {
           "stringUnit" : {
@@ -314,6 +317,7 @@
       }
     },
     "Custom Cardio" : {
+      "extractionState" : "manual",
       "localizations" : {
         "en-GB" : {
           "stringUnit" : {

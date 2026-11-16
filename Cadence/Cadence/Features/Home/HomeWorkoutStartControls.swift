@@ -9,55 +9,25 @@ struct HomeWorkoutStartControls: View {
     let onPreviousStart: (EditablePlan) -> Void
     let onCardio: (WorkoutType) -> Void
     let onCustomCardio: (String, Bool) -> Void
-    @State private var selection: Selection = .strength(.suggested)
+    @State private var selection: HomeWorkoutStartChoice = .strength(.suggested)
     @State private var showingPrevious = false
     @State private var showingCustomCardio = false
-
-    private enum Selection: Hashable {
-        case strength(HomeStrengthStartChoice)
-        case cardio(WorkoutType)
-
-        var title: String {
-            switch self {
-            case .strength(.suggested): return String(localized: "Suggested Strength")
-            case .strength(.previous): return String(localized: "Previous Strength")
-            case .strength(.quickStart): return String(localized: "Custom Strength")
-            case .cardio(.other): return String(localized: "Custom Cardio")
-            case .cardio(let type): return type.displayName
-            }
-        }
-
-        var symbol: String {
-            switch self {
-            case .strength(.suggested): return "wand.and.stars"
-            case .strength(.previous): return "clock.arrow.circlepath"
-            case .strength(.quickStart): return "dumbbell.fill"
-            case .cardio(let type): return type.symbol
-            }
-        }
-    }
-
-    private var cardioChoices: [WorkoutType] {
-        [.hiit] + WorkoutType.allCases.filter { $0 != .weights && $0 != .hiit }
-    }
 
     var body: some View {
         VStack(spacing: 12) {
             Menu {
                 Section {
-                    choice(.strength(.suggested))
-                    choice(.strength(.previous))
-                    choice(.strength(.quickStart))
+                    ForEach(HomeWorkoutStartChoice.strengthChoices) { choice($0) }
                 }
                 Section {
-                    ForEach(cardioChoices) { type in choice(.cardio(type)) }
+                    ForEach(HomeWorkoutStartChoice.cardioChoices) { choice($0) }
                 }
             } label: {
                 sourceLabel(selection.title)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Workout type")
-            .accessibilityValue(selection.title)
+            .accessibilityValue(Text(LocalizedStringKey(selection.title)))
             .accessibilityIdentifier("home.start.workoutSource")
 
             Button {
@@ -94,16 +64,16 @@ struct HomeWorkoutStartControls: View {
         }
     }
 
-    private func choice(_ option: Selection) -> some View {
+    private func choice(_ option: HomeWorkoutStartChoice) -> some View {
         Button { selection = option } label: {
-            Label(option.title, systemImage: option.symbol)
+            Label(LocalizedStringKey(option.title), systemImage: option.symbol)
         }
         .accessibilityAddTraits(selection == option ? .isSelected : [])
     }
 
     private func sourceLabel(_ title: String) -> some View {
         HStack(spacing: 12) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.up.chevron.down")
                 .foregroundStyle(.secondary)

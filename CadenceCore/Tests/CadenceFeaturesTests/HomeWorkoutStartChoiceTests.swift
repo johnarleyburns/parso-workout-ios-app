@@ -1,4 +1,5 @@
 import XCTest
+import CadenceCore
 @testable import CadenceFeatures
 
 final class HomeWorkoutStartChoiceTests: XCTestCase {
@@ -8,4 +9,18 @@ final class HomeWorkoutStartChoiceTests: XCTestCase {
                        ["run", "walk", "cycle"])
         XCTAssertEqual(HomeRecentCardioChoices.recent([String]()), [])
     }
+    func testUnifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
+        let choices = HomeWorkoutStartChoice.allChoices
+        XCTAssertEqual(choices.map(\.title), [
+            "Suggested Strength", "Previous Strength", "Custom Strength", "HIIT",
+            "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Custom Cardio"
+        ])
+        XCTAssertEqual(Set(choices.map(\.id)).count, choices.count)
+        for type in WorkoutType.allCases where type != .weights {
+            XCTAssertTrue(choices.contains(.cardio(type)))
+        }
+        XCTAssertFalse(choices.contains(.cardio(.weights)))
+        XCTAssertTrue(choices.allSatisfy { !$0.symbol.isEmpty })
+    }
+
 }

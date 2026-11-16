@@ -20,19 +20,18 @@ public enum WeeklyIntentPresenter {
         WeeklyIntentDisplay(
             strengthRing: ring(completed: strength.completed, target: strength.target,
                                valueText: strength.displayText,
-                               label: String(localized: "Weekly strength sets", bundle: .module)),
+                               label: String(localized: "Weekly strength sets", bundle: .module),
+                               tint: WeeklyActivityColor.strength(strength.completed)),
             cardioRing: ring(completed: cardio.completed, target: cardio.target,
                              valueText: cardio.displayText,
-                             label: String(localized: "Weekly cardio minutes", bundle: .module)))
+                             label: String(localized: "Weekly cardio minutes", bundle: .module),
+                             tint: WeeklyActivityColor.cardio(cardio.completed)))
     }
 
     private static func ring(completed: Double, target: Double, valueText: String,
-                             label: String) -> WeeklyIntentRingDisplay {
+                             label: String, tint: WeeklySetTintRole) -> WeeklyIntentRingDisplay {
         let raw = target > 0 ? completed / target : 0
         let normalized = raw.isFinite ? min(max(raw, 0), 1) : 0
-        // Same ratio cut points as WeeklyCardioProgress (minimum / target).
-        let tint: WeeklySetTintRole = normalized < (WeeklyCardioProgress.minimum / WeeklyCardioProgress.target)
-            ? .red : (normalized < 1 ? .yellow : .green)
         return WeeklyIntentRingDisplay(normalizedProgress: normalized, tintRole: tint,
                                        valueText: valueText, accessibilityLabel: label,
                                        accessibilityValue: valueText)

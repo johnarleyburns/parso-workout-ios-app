@@ -45,7 +45,7 @@ struct WeeklyIntentRingsCard: View {
                     .foregroundStyle(CadenceTheme.weeklyTint(ring.tintRole))
                 Text(ring.valueText)
                     .font(.caption.monospacedDigit().weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(CadenceTheme.weeklyTint(ring.tintRole))
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)

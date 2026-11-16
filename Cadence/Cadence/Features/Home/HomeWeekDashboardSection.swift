@@ -59,7 +59,8 @@ struct HomeWeekDashboardSection: View {
                 sectionCard {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("Muscle coverage").font(.headline).foregroundStyle(.primary)
+                            Text("Muscle coverage").font(.headline)
+                                .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(dashboard.strength.completed)))
                             Spacer()
                             Text(dashboard.volumeCoverage.displayText)
                                 .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
@@ -74,13 +75,13 @@ struct HomeWeekDashboardSection: View {
                 sectionCard {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text("Cardio").font(.headline)
+                            Text("Cardio").font(.headline).foregroundStyle(cardioTint)
                             Spacer()
                             Text(dashboard.cardio.displayText)
-                                .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
+                                .font(.subheadline.weight(.semibold)).foregroundStyle(cardioTint)
                         }
                         ProgressView(value: dashboard.cardio.normalized)
-                            .tint(dashboard.cardio.isAtOrAboveTarget ? .green : .yellow)
+                            .tint(cardioTint)
                         Button(action: onSuggestCardio) {
                             Label("Suggest Workout", systemImage: "sparkles")
                                 .frame(maxWidth: .infinity)
@@ -281,18 +282,14 @@ struct HomeWeekDashboardSection: View {
     /// min" against 80 minutes on the clock. The weighting is real public-health
     /// arithmetic, so the fix is to show it rather than hide it.
     private var cardioTint: Color {
-        switch WeeklyCardioProgress.tintRole(for: dashboard.cardioDetail.moderateEquivalentMinutes) {
-        case .red: return .red
-        case .yellow: return .yellow
-        case .green: return .green
-        }
+        CadenceTheme.weeklyTint(WeeklyCardioProgress.tintRole(for: dashboard.cardioDetail.moderateEquivalentMinutes))
     }
 
     private var cardioMinutes: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Cardio Minutes")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.teal)
+                .foregroundStyle(cardioTint)
                 .accessibilityIdentifier("home.week.cardioHeading")
             HStack {
                 Text("Actual exercise").font(.caption)

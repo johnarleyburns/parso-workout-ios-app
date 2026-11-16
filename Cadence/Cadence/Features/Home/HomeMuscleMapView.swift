@@ -21,6 +21,10 @@ struct HomeMuscleMapView: View {
         HomeDashboardPresenter.sortedVolumeRows(volumeRows ?? dashboard.volume)
     }
 
+    private var cardioTint: Color {
+        CadenceTheme.weeklyTint(WeeklyActivityColor.cardio(dashboard.cardioDetail.moderateEquivalentMinutes))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Muscle view", selection: $selectedPanel) {
@@ -44,7 +48,9 @@ struct HomeMuscleMapView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(WeeklySetProgress.formattedSets(totals))")
                     .font(.title2.weight(.bold)).monospacedDigit()
-                Text("/ \(target) sets").font(.caption).foregroundStyle(.secondary)
+                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
+                Text("/ \(target) sets").font(.caption)
+                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
                 Spacer()
                 Button {
                     onOpenCardio()
@@ -54,7 +60,7 @@ struct HomeMuscleMapView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.pink)
+                .foregroundStyle(cardioTint)
             }
             legend
         }

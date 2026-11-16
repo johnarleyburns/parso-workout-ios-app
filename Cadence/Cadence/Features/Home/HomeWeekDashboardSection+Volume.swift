@@ -56,6 +56,7 @@ extension HomeWeekDashboardSection {
         switch zone.tintRole {
         case .red: return .red
         case .yellow: return .yellow
+        case .lightGreen: return CadenceTheme.weeklyTint(.lightGreen)
         case .green: return .green
         }
     }

@@ -3,9 +3,9 @@ import HealthKit
 @testable import Cadence_Watch_App_Watch_App
 
 struct WatchHomeChromeTests {
-    @Test("The launcher uses its product name as the native navigation title")
-    func launcherNavigationTitleIsCladiron() {
-        #expect(WatchHomeChrome.navigationTitle == "Cladiron")
+    @Test("The launcher describes its purpose in the native navigation title")
+    func launcherNavigationTitleIsWorkout() {
+        #expect(WatchHomeChrome.navigationTitle == "Workout")
     }
     @Test("The full home catalog records and recovers elliptical and stair workouts correctly")
     @MainActor

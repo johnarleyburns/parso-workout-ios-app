@@ -21,9 +21,9 @@ struct CompactExerciseRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(exercise.name).font(.headline)
                 Spacer(minLength: 4)
-                if let exerciseInfo {
+                Group {
                     NavigationLink {
-                        ExerciseDetailView(exercise: exerciseInfo)
+                        SuggestedExerciseInfoView(name: exercise.name, initial: exerciseInfo)
                     } label: {
                         Image(systemName: "info.circle")
                             .font(.headline)

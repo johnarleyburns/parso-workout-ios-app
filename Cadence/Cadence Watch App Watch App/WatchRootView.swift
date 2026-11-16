@@ -187,7 +187,6 @@ struct WatchRootView: View {
             WatchSessionOwnershipCard(verdict: sessionOwnership)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
-            // A workout explicitly sent from the phone takes precedence over coaching content.
             WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
             if resumableStrengthSession != nil {
                 heroCard
@@ -196,11 +195,8 @@ struct WatchRootView: View {
             } else {
                 WatchHomeStartControls(pendingCardio: watchManager.pendingCardioCompletions,
                     cardioDestination: { AnyView(cardioSetupView(for: $0)) },
-                    fullCardioDestination: {
-                        AnyView(WatchCardioPickerView(types: cardioTypes,
-                            destination: { AnyView(cardioSetupView(for: $0)) },
-                            onSuggest: { startSuggestedCardio($0) }))
-                    },
+                    fullCardioDestination: { AnyView(WatchCardioPickerView(types: cardioTypes,
+                        destination: { AnyView(cardioSetupView(for: $0)) }, onSuggest: { startSuggestedCardio($0) })) },
                     onMoreCardio: { showingCardio = true })
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())

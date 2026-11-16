@@ -49,9 +49,6 @@ extension SessionView {
     }
     func handleSessionDisappear() {
         if isManualLog { cleanupEmptyLog() }
-        raiseToTalkMonitor.stop()
-        quickTalkCapture.stop()
-        quickTalkDelayTask?.cancel()
     }
     func handleSessionAppear() {
         // Backstop only (not activity): the app-level coordinator owns expiry.
@@ -62,23 +59,6 @@ extension SessionView {
         if expandedExerciseID == nil {
             expandedExerciseID = initiallyExpandedExerciseID
         }
-        if isActiveSession && settings.raiseToTalk {
-            raiseToTalkMonitor.start()
-        }
-    }
-    func handleRaiseToTalkSettingChange(_ enabled: Bool) {
-        if enabled && isActiveSession {
-            raiseToTalkMonitor.start()
-        } else {
-            raiseToTalkMonitor.stop()
-        }
-    }
-    func handleRaiseToTalkChange(_ raised: Bool) {
-        guard settings.raiseToTalk, isActiveSession else { return }
-        guard let pending = quickTalkPending ?? cache.state.contexts.first?.pendingSets.first else { return }
-        let context = quickTalkContext(for: pending)
-        guard let context, let exercise = exerciseForID(context.exerciseID) else { return }
-        quickTalkPressing(pending, exercise: exercise, pressing: raised)
     }
     func handleExercisePickerSelection(_ exercise: Exercise) {
         let isAlreadyInWorkout = session.exercisesInOrder.contains { $0.id == exercise.id }
@@ -299,14 +279,6 @@ extension SessionView {
         applyLiveActivityAction(request.action, token: request.token)
     }
 
-    func quickTalkContext(for pending: SessionRenderModel.PendingSetDisplay) -> SessionRenderModel.ExerciseContext? {
-        for context in cache.state.contexts {
-            for candidate in context.pendingSets where candidate.id == pending.id {
-                return context
-            }
-        }
-        return cache.state.contexts.first
-    }
 
     func compactSummary(for ctx: SessionRenderModel.ExerciseContext) -> String {
         SessionRenderModel.compactSummary(context: ctx, unit: settings.unit)
@@ -322,18 +294,6 @@ extension SessionView {
     }
 }
 
-struct QuickTalkNotificationModifier: ViewModifier {
-    let isActive: Bool
-    let isEnabled: Bool
-    @Binding var isPresented: Bool
-
-    func body(content: Content) -> some View {
-        content.onReceive(NotificationCenter.default.publisher(for: .cadenceQuickTalkRequested)) { _ in
-            guard isActive, isEnabled else { return }
-            isPresented = true
-        }
-    }
-}
 
 struct SessionCooldownConfirmationModifier: ViewModifier {
     @Binding var isPresented: Bool

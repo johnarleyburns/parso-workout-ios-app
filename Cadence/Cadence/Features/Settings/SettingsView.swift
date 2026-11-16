@@ -54,19 +54,7 @@ struct SettingsView: View {
                     }
                 }
                 .accessibilityIdentifier("settings.restAlertMode")
-                Toggle("Quick Talk voice logging", isOn: $settings.voiceLoggingEnabled)
-                    .accessibilityIdentifier("settings.voiceLoggingEnabled")
-                Toggle("Require review before voice logging", isOn: $settings.voiceConfirmationRequired)
-                    .disabled(!settings.voiceLoggingEnabled)
-                    .accessibilityIdentifier("settings.voiceConfirmationRequired")
-                Toggle("Smarter understanding (Apple Intelligence)", isOn: $settings.smarterVoiceUnderstanding)
-                    .disabled(!settings.voiceLoggingEnabled)
-                    .accessibilityIdentifier("settings.smarterVoiceUnderstanding")
-                Toggle("Raise to talk", isOn: $settings.raiseToTalk)
-                    .disabled(!settings.voiceLoggingEnabled)
-                    .accessibilityIdentifier("settings.raiseToTalk")
-                Text("While a workout is active, raise the phone to start Quick Talk. The motion shortcut is off by default.")
-                    .font(.footnote).foregroundStyle(.secondary)
+
             }
 
             settingsSection(String(localized: "Health & Sensors"),

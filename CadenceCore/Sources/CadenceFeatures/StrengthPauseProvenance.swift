@@ -1,13 +1,13 @@
 import Foundation
 
 /// Why a Watch strength session is paused. Only explicit user actions set
-/// `.userControl` / `.quickTalk`; a HealthKit `.paused` transition nobody asked
+/// `.userControl`; a HealthKit `.paused` transition nobody asked
 /// for is `.healthKitExternal`. App lifecycle, wrist wake, HR, and
 /// WatchConnectivity events never produce a pause or a resume.
 public enum WatchPauseOrigin: String, Codable, Sendable, Equatable {
-    case userControl, quickTalk, healthKitExternal, recovery
+    case userControl, healthKitExternal, recovery
 
-    public var isUserInitiated: Bool { self == .userControl || self == .quickTalk }
+    public var isUserInitiated: Bool { self == .userControl }
 }
 
 /// Pure pause-provenance state machine (headless-testable).
@@ -78,7 +78,7 @@ public struct StrengthPauseProvenance: Equatable, Sendable {
     public var statusCopy: String? {
         switch origin {
         case nil: return nil
-        case .userControl, .quickTalk: return "Paused by you. Tap Resume to continue."
+        case .userControl: return "Paused by you. Tap Resume to continue."
         case .healthKitExternal: return "Paused by watchOS, not by you. Tap Resume to continue."
         case .recovery: return "Restored as paused after a restart. Tap Resume to continue."
         }

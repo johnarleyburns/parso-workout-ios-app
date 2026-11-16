@@ -14,12 +14,6 @@ final class StrengthPauseProvenanceTests: XCTestCase {
         XCTAssertNil(p.origin)
     }
 
-    func testQuickTalkPause() {
-        var p = StrengthPauseProvenance()
-        XCTAssertTrue(p.userPause(.quickTalk))
-        XCTAssertEqual(p.origin, .quickTalk)
-        XCTAssertTrue(p.statusCopy!.contains("by you"))
-    }
 
     func testNonUserOriginCannotBeSetAsUserPause() {
         var p = StrengthPauseProvenance()

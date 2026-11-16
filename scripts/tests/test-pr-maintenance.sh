@@ -11,6 +11,14 @@ source .github/scripts/pr-maintenance.sh
 fails=0
 eq() { [[ "$2" == "$3" ]] && echo "ok   $1" || { echo "FAIL $1: expected '$3' got '$2'"; fails=$((fails+1)); }; }
 
+# Pausing issue admission must not strand the owner's already-created PRs.
+eq "PR maintenance has its own pause control" \
+  "$(rg -c 'vars.CLAUDE_PR_MAINTENANCE_ENABLED' .github/workflows/pr-maintenance.yml)" 1
+eq "PR maintenance is independent of issue admission" \
+  "$(rg -c 'vars.CLAUDE_PIPELINE_AUTO_ENABLED' .github/workflows/pr-maintenance.yml || echo 0)" 0
+eq "issue admission retains its authoritative brake" \
+  "$(rg -c 'CLAUDE_PIPELINE_AUTO_ENABLED:-false' .github/scripts/admit-one-stranded-issue.sh)" 1
+
 # decide <draft> <state> <val> <automerge> <stopped> <attempts>
 eq "behind+success+automerge -> update once"       "$(decide false behind success true false 0)" update-branch
 eq "behind+success -> update before merge"         "$(decide false behind success false false 0)" update-branch

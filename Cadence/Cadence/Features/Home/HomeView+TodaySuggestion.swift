@@ -135,13 +135,18 @@ extension HomeView {
     }
 
     func openTodaySuggestion() {
-        guard let plan = todaySuggestedPlan else {
-            requestSuggestedWorkout(.strength)
-            return
+        Task { @MainActor in
+            // Check the cache's local-day boundary at the tap, including when
+            // the app has stayed open across midnight with an old preview.
+            if let hit = await HomeTodayCache.suggestionStore.peekDisplayable() {
+                todaySuggestedPlan = nil
+                pendingSuggestedWorkoutPlan = nil
+                suggestedWorkoutPlan = hit.plan.makePlan()
+            } else {
+                todaySuggestedPlan = nil
+                requestSuggestedWorkout(.strength)
+            }
         }
-        todaySuggestedPlan = nil
-        pendingSuggestedWorkoutPlan = nil
-        suggestedWorkoutPlan = plan
     }
 
     /// Applies a freshly available Today suggestion immediately if nothing is

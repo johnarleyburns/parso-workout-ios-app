@@ -12,8 +12,8 @@ struct HomeView: View {
         var title: String {
             switch self {
             case .today: return String(localized: "Today")
-            case .strength: return String(localized: "Strength")
-            case .cardio: return String(localized: "Cardio")
+            case .strength: return String(localized: "Strength this week")
+            case .cardio: return String(localized: "Cardio this week")
             }
         }
     }
@@ -44,7 +44,7 @@ struct HomeView: View {
     /// First-frame durable display restore phase; gates all history-derived Today work.
     @State var todayDisplayRestoreState: TodayDisplayRestoreState = .notStarted
     @State var logPickerPresented = false
-    @State var selectWorkoutPresented = false
+    @State var workoutControlsPresented = false
     @State var recoveryOptionsPresented = false
     @State private var ownedPath = NavigationPath()
     private let externalPath: Binding<NavigationPath>?
@@ -82,11 +82,10 @@ struct HomeView: View {
     @State var pendingPlan: EditablePlan?
     @State var captureHR = false
     @State var cardioPickerPresented = false
-    @State var weightsStartPresented = false
+    @State var strengthDraftPresented = false
     @State var fillGapsPresented = false
     @State var cardioGoalFor: CardioType?
     @State var cardioRecommendation: CoachSession?
-    @State var scheduleCardioType: WorkoutType?
     @State var warnAddOn: (session: CoachSession, status: CoachAddOnStatus)?
     @State var outdoorGoalMeters: Double?
     @State var showAlternatives = false

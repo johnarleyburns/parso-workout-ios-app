@@ -13,7 +13,6 @@ extension HomeView {
                 suggestedStrengthPreview.editedPlan = edited
                 handleSuggestedStrength(.start)
             },
-            onScheduled: { handleSuggestedStrength(.scheduleSucceeded) },
             onSuggestAnother: { edited in
                 suggestedStrengthPreview.editedPlan = edited
                 handleSuggestedStrength(.suggestAnother)
@@ -22,10 +21,6 @@ extension HomeView {
     }
 
     func handleSuggestedStrength(_ action: SuggestedStrengthAction) {
-        if case .scheduleSucceeded = action, !suggestedStrengthPreview.isSchedulePresented {
-            // The editor presents scheduling itself; mark it so the reducer accepts success.
-            _ = suggestedStrengthPreview.reduce(.schedule)
-        }
         let effect = suggestedStrengthPreview.reduce(action)
         perform(suggestedStrengthEffect: effect)
     }
@@ -40,8 +35,6 @@ extension HomeView {
                 await Task.yield()
                 handleEditorStart(plan)
             }
-        case .dismissAfterSchedule:
-            suggestedWorkoutPlan = nil
         case .cancelPresentation:
             suggestedStrengthAlternativeTask?.cancel()
             suggestedStrengthAlternativeTask = nil

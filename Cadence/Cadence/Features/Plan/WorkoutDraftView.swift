@@ -20,7 +20,7 @@ extension Notification.Name {
     static let cadenceStartPlanningDraft = Notification.Name("cadence.startPlanningDraft")
 }
 
-/// The persistent, unscheduled Workout Draft. Every edit goes through
+/// The persistent, saved Workout Draft. Every edit goes through
 /// `PlanningDraftEditorModel`, which saves before publishing.
 struct WorkoutDraftView: View {
     @Environment(\.modelContext) private var context
@@ -32,9 +32,7 @@ struct WorkoutDraftView: View {
     @State private var model: PlanningDraftEditorModel?
     @State private var loadError: String?
     @State private var confirmDiscard = false
-    @State private var schedulePresented = false
     /// Stable per sheet presentation so a retried or double-tapped save is idempotent.
-    @State private var scheduleOperationID = UUID()
     @State private var titleText = ""
 
     var body: some View {
@@ -102,15 +100,7 @@ struct WorkoutDraftView: View {
             Button("Discard draft", role: .destructive) { discard(model) }
             Button("Keep draft", role: .cancel) {}
         } message: {
-            Text("This removes \(model.exerciseCountText) from your unscheduled draft. It can't be undone.")
-        }
-        .sheet(isPresented: $schedulePresented) {
-            ScheduleWorkoutSheet(title: model.plan.title) { date in
-                _ = try PlanningDraftCoordinator.makeStore().schedule(
-                    draftID: model.draft.id, for: date, operationID: scheduleOperationID, in: context)
-                NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
-                dismiss()
-            }
+            Text("This removes \(model.exerciseCountText) from your saved draft. It can't be undone.")
         }
     }
 
@@ -225,15 +215,10 @@ struct WorkoutDraftView: View {
 
     private func actions(_ model: PlanningDraftEditorModel) -> some View {
         HStack(spacing: 12) {
-            Button { model.flush(); scheduleOperationID = UUID(); schedulePresented = true } label: {
-                Text("Schedule workout").frame(maxWidth: .infinity, minHeight: 44)
-            }
-            .buttonStyle(.bordered).disabled(!model.canStartOrSchedule)
-            .accessibilityIdentifier("planningDraft.schedule")
             Button { start(model) } label: {
                 Text("Start now").frame(maxWidth: .infinity, minHeight: 44)
             }
-            .buttonStyle(.borderedProminent).disabled(!model.canStartOrSchedule)
+            .buttonStyle(.borderedProminent).disabled(!model.canStart)
             .accessibilityIdentifier("planningDraft.startNow")
         }
         .padding(.horizontal).padding(.vertical, 8).background(.bar)

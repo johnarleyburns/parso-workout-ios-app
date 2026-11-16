@@ -26,7 +26,7 @@ final class WeeklyIntentPresenterTests: XCTestCase {
         let d = WeeklyIntentPresenter.make(strength: progress(20, 12, "20 of 12 sets"), cardio: progress(0, 150))
         XCTAssertEqual(d.strengthRing.normalizedProgress, 1.0)
         XCTAssertEqual(d.strengthRing.valueText, "20 of 12 sets")
-        XCTAssertEqual(d.strengthRing.tintRole, .green)
+        XCTAssertEqual(d.strengthRing.tintRole, .yellow)
     }
 
     func testZeroHistoryRendersZeroNotNil() {

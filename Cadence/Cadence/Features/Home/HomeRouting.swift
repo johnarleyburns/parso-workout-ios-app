@@ -139,7 +139,7 @@ enum HomeRouteFailure: Identifiable {
     var message: String {
         switch self {
         case .scheduledWorkout:
-            String(localized: "This scheduled workout could not be read. It is still saved, and you can try opening it again or edit it from Planned Workouts.")
+            String(localized: "This saved workout draft could not be read. It is still saved; try opening it again from Saved drafts.")
         }
     }
 }

@@ -5,7 +5,6 @@ import CadenceFeatures
 struct CardioGoalSheet: View {
     let type: CardioType
     let recommendation: CoachSession?
-    let onSchedule: ((Date) async throws -> Void)?
     let onStart: (_ goalMeters: Double?, _ indoors: Bool) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -17,7 +16,6 @@ struct CardioGoalSheet: View {
     @State private var useHR: Bool
     @State private var indoors = true
     @State private var selectedGoalMeters: Double?
-    @State private var schedulePresented = false
 
     private let presets: [(label: String, meters: Double)] = [
         ("5K", 5000), ("10K", 10000), (String(localized: "Half Marathon"), 21097), (String(localized: "Marathon"), 42195),
@@ -25,11 +23,9 @@ struct CardioGoalSheet: View {
 
     init(type: CardioType,
          recommendation: CoachSession? = nil,
-         onSchedule: ((Date) async throws -> Void)? = nil,
          onStart: @escaping (Double?, Bool) -> Void) {
         self.type = type
         self.recommendation = recommendation
-        self.onSchedule = onSchedule
         self.onStart = onStart
         let ws = WorkoutSettings.default
         self._preWorkoutCountdown = State(initialValue: ws.preWorkoutCountdown)
@@ -62,18 +58,6 @@ struct CardioGoalSheet: View {
                     .accessibilityIdentifier("goal.none")
                     .listRowBackground(Color.clear)
 
-                    if onSchedule != nil {
-                        Button {
-                            schedulePresented = true
-                        } label: {
-                            Label("Schedule \(type.displayName)", systemImage: "calendar.badge.plus")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .accessibilityIdentifier("goal.schedule")
-                        .listRowBackground(Color.clear)
-                    }
 
                     Menu {
                         Button("Indoors") { indoors = true }
@@ -161,11 +145,6 @@ struct CardioGoalSheet: View {
                 }
             }
             .onAppear { loadSettings() }
-            .sheet(isPresented: $schedulePresented) {
-                if let onSchedule {
-                    ScheduleWorkoutSheet(title: type.displayName, onSave: onSchedule)
-                }
-            }
         }
     }
 

@@ -75,17 +75,14 @@ struct WorkoutPlanEditor: View {
     @State var planVolumePerformerStates: [String: LiveWorkoutVolumeState] = [:]
     @State private var planVolumeExpanded = false
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
-    @State var schedulePresented = false
     @State var sendToWatchResultPresented = false
     @State var sendToWatchSucceeded = false
     @Environment(AppModel.self) var model
     @State var suggestExerciseFailed = false
     @State private var discardEditPresented = false
     let allowsStart: Bool
-    let allowsSchedule: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
-         allowsSchedule: Bool = true,
          onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil,
          suggestedStrength: SuggestedStrengthEditorHooks? = nil,
          onStart: @escaping (EditablePlan) -> Void) {
@@ -96,7 +93,6 @@ struct WorkoutPlanEditor: View {
         self._isEditing = State(initialValue: startInEditMode)
         self._originalPlan = State(initialValue: plan)
         self.allowsStart = allowsStart
-        self.allowsSchedule = allowsSchedule
 
         let ws = WorkoutSettings.default
         self._restSeconds = State(initialValue: ws.restSeconds)
@@ -115,7 +111,6 @@ struct WorkoutPlanEditor: View {
                 } else if allowsStart {
                     startButton
                     sendToWatchButton
-                    if allowsSchedule { scheduleButton }
                 }
 
                 if let rationale = plan.recommendationRationale {
@@ -273,11 +268,6 @@ struct WorkoutPlanEditor: View {
                 plateRounding: $plateRounding,
                 useHR: $useHR)
         }
-        .sheet(isPresented: $schedulePresented) {
-            ScheduleWorkoutSheet(title: plan.title) { date in
-                try schedule(plan: plan, for: date)
-            }
-        }
         .sheet(item: $exclusionExercise) { exercise in
             ExerciseSuggestionExclusionSheet(exercise: exercise, onExcluded: {
                 regenerateAfterExcluding(exercise)
@@ -313,15 +303,6 @@ struct WorkoutPlanEditor: View {
         }
     }
 
-    private func schedule(plan: EditablePlan, for date: Date) throws {
-        _ = try ScheduledWorkoutStore.schedule(plan: plan, for: date, in: modelContext)
-        NotificationCenter.default.post(name: .scheduledWorkoutCreated, object: nil)
-        if let hooks = suggestedStrength {
-            hooks.onScheduled()
-        } else {
-            dismiss()
-        }
-    }
 
     /// Regenerates the whole suggested plan from scratch now that `exercise`
     /// is excluded — never a patch that just deletes the row and leaves

@@ -12,13 +12,13 @@ final class SuggestedStrengthPreviewTests: XCTestCase {
 
     func testActionsAreExposedInRequiredOrder() {
         let c = SuggestedStrengthActionContract.ordered
-        XCTAssertEqual(c.map(\.title), ["Start this Workout", "Schedule this Workout", "Suggest another", "Cancel"])
-        XCTAssertEqual(c.map(\.action), [.start, .schedule, .suggestAnother, .cancel])
+        XCTAssertEqual(c.map(\.title), ["Start this Workout", "Suggest another", "Cancel"])
+        XCTAssertEqual(c.map(\.action), [.start, .suggestAnother, .cancel])
     }
 
     func testAccessibilityIdentifiersAreStable() {
         XCTAssertEqual(SuggestedStrengthActionContract.ordered.map(\.accessibilityIdentifier),
-                       ["suggestedStrength.start", "suggestedStrength.schedule",
+                       ["suggestedStrength.start",
                         "suggestedStrength.another", "suggestedStrength.cancel"])
     }
 
@@ -28,7 +28,6 @@ final class SuggestedStrengthPreviewTests: XCTestCase {
             XCTAssertEqual(s.reduce(action), .cancelPresentation)
             XCTAssertNil(s.plan)
             XCTAssertFalse(s.isRegenerating)
-            XCTAssertFalse(s.isSchedulePresented)
         }
     }
 
@@ -47,20 +46,6 @@ final class SuggestedStrengthPreviewTests: XCTestCase {
         XCTAssertEqual(s.reduce(.start), .dismissThenStart(edited))
     }
 
-    func testScheduleFlow() {
-        let p = plan(["Bench Press"])
-        var s = SuggestedStrengthPreviewState(plan: p)
-        XCTAssertEqual(s.reduce(.schedule), .none)
-        XCTAssertTrue(s.isSchedulePresented)
-        XCTAssertEqual(s.plan, p)
-        XCTAssertEqual(s.reduce(.scheduleCancelled), .none)
-        XCTAssertFalse(s.isSchedulePresented)
-        XCTAssertEqual(s.plan, p)
-
-        _ = s.reduce(.schedule)
-        XCTAssertEqual(s.reduce(.scheduleSucceeded), .dismissAfterSchedule)
-        XCTAssertEqual(s.reduce(.scheduleSucceeded), .none)
-    }
 
     func testSuggestAnotherRetainsPlanAndRequestsExclusion() {
         let token = UUID()
@@ -110,7 +95,7 @@ final class SuggestedStrengthPreviewTests: XCTestCase {
     }
 
     func testOnlySuggestedStrengthGetsPreviewActions() {
-        for p in [WorkoutPlanEditorPresentation.manual, .library, .previousWorkout, .scheduled] {
+        for p in [WorkoutPlanEditorPresentation.manual, .library, .previousWorkout] {
             XCTAssertFalse(p.showsSuggestedPreviewActions)
         }
         XCTAssertTrue(WorkoutPlanEditorPresentation.suggestedStrength.showsSuggestedPreviewActions)

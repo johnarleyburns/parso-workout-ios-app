@@ -10,10 +10,10 @@ final class WatchWeekRingsTests: XCTestCase {
         XCTAssertEqual(tone(0), .red)
         XCTAssertEqual(tone(1), .yellow)
         XCTAssertEqual(tone(19.9), .yellow)
-        XCTAssertEqual(tone(20), .lightBlue)
-        XCTAssertEqual(tone(59), .lightBlue)
-        XCTAssertEqual(tone(60), .green)
-        XCTAssertEqual(tone(90), .green)
+        XCTAssertEqual(tone(127), .yellow)
+        XCTAssertEqual(tone(128), .lightGreen)
+        XCTAssertEqual(tone(191), .lightGreen)
+        XCTAssertEqual(tone(192), .green)
     }
 
     func testProgressClampsAndHandlesZeroTarget() {
@@ -33,7 +33,7 @@ final class WatchWeekRingsTests: XCTestCase {
                                             cardioMinutes: 200, updatedAt: Date())
         let rings = WatchWeekRings.rings(from: summary)
         XCTAssertEqual(rings[0].tone, .yellow)
-        XCTAssertEqual(rings[1].tone, .lightBlue)
+        XCTAssertEqual(rings[1].tone, .lightGreen)
         XCTAssertEqual(rings[1].displayValue, 200)
     }
 

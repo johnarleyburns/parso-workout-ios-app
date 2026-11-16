@@ -50,7 +50,8 @@ struct WatchWeekView: View {
             Text(title).font(.caption2.weight(.semibold)).foregroundStyle(Self.color(ring.tone))
             Text("\(ring.displayValue)").font(.system(.title3, design: .rounded).weight(.bold))
                 .monospacedDigit()
-            Text(unit).font(.caption2).foregroundStyle(.secondary)
+                .foregroundStyle(Self.color(ring.tone))
+            Text(unit).font(.caption2).foregroundStyle(Self.color(ring.tone))
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -62,8 +63,8 @@ struct WatchWeekView: View {
         switch tone {
         case .red: .red
         case .yellow: .yellow
-        case .lightBlue: Color(red: 0.45, green: 0.78, blue: 1.0)
-        case .green: .green
+        case .lightGreen: Color(red: 0.56, green: 0.85, blue: 0.40)
+        case .green: Color(red: 0.10, green: 0.55, blue: 0.22)
         }
     }
 
@@ -71,7 +72,7 @@ struct WatchWeekView: View {
         switch tone {
         case .red: String(localized: "None yet")
         case .yellow: String(localized: "Below minimum")
-        case .lightBlue: String(localized: "Between minimum and upper limit")
+        case .lightGreen: String(localized: "Between minimum and upper limit")
         case .green: String(localized: "At or above upper limit")
         }
     }

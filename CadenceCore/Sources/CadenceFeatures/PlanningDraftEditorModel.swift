@@ -35,11 +35,11 @@ public final class PlanningDraftEditorModel {
 
     // MARK: Derived state
 
-    public static let statusText = "Unscheduled · saved automatically"
+    public static let statusText = "Draft · saved automatically"
     public static let emptyMessage = "No exercises yet. Tap Find exercises to add some."
 
     public var isEmpty: Bool { plan.exercises.isEmpty }
-    public var canStartOrSchedule: Bool { !isEmpty && !isDiscarded }
+    public var canStart: Bool { !isEmpty && !isDiscarded }
     public var needsDiscardConfirmation: Bool { !isEmpty }
     public var exerciseCountText: String { PlanningDraftSummary.countText(plan.exercises.count) }
     public var displayTitle: String { pendingTitle ?? plan.title }

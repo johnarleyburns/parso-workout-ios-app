@@ -29,7 +29,8 @@ enum CadenceTheme {
         switch role {
         case .red: .red
         case .yellow: .yellow
-        case .green: .green
+        case .lightGreen: Color(red: 0.56, green: 0.85, blue: 0.40)
+        case .green: Color(red: 0.10, green: 0.55, blue: 0.22)
         }
     }
 }

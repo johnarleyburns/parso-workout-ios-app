@@ -25,20 +25,16 @@ enum HomePlannedWorkoutsSection {
 
     nonisolated static func item(_ input: PlannedWorkoutRowInput) -> PlannedWorkoutsPresenter.Item {
         let detail: String
-        let day = input.date.formatted(date: .abbreviated, time: .omitted)
-        let time = ScheduledWorkoutDate.hasExplicitTime(input.date)
-            ? "\(day) · \(input.date.formatted(date: .omitted, time: .shortened))"
-            : day
         if let cardio = try? ScheduledWorkoutStore.decodeCardioType(input.payloadData,
                                                                     version: input.payloadVersion) {
-            detail = [time, cardio.displayName].joined(separator: " · ")
+            detail = cardio.displayName
         } else if let plan = try? ScheduledWorkoutStore.decode(input.payloadData,
                                                                version: input.payloadVersion) {
             let sets = plan.exercises.reduce(0) { $0 + $1.sets.count }
             let body = String(localized: "Exercises: \(plan.exercises.count) · Sets: \(sets)")
-            detail = [time, body].joined(separator: " · ")
+            detail = body
         } else {
-            detail = [time, String(localized: "Workout plan")].joined(separator: " · ")
+            detail = String(localized: "Workout draft")
         }
         return PlannedWorkoutsPresenter.Item(id: input.id, date: input.date,
                                              title: input.title, detail: detail,
@@ -49,14 +45,6 @@ enum HomePlannedWorkoutsSection {
         item(rowInput(record))
     }
 
-    /// Flattens a scheduled workout into `ScheduledWorkoutWatchBridge`'s pure,
-    /// SwiftData-free input shape (issue: surface manually scheduled workouts
-    /// on Watch Today).
-    nonisolated static func watchBridgeInput(_ record: ScheduledWorkout) -> ScheduledWorkoutWatchBridge.Input {
-        ScheduledWorkoutWatchBridge.Input(id: record.id, date: record.scheduledDate, title: record.title,
-                                          payloadData: record.payloadData, payloadVersion: record.payloadVersion,
-                                          status: record.status)
-    }
 }
 
 struct PlannedWorkoutsListView: View {
@@ -64,7 +52,6 @@ struct PlannedWorkoutsListView: View {
     @Query(sort: [SortDescriptor(\ScheduledWorkout.scheduledDate),
                   SortDescriptor(\ScheduledWorkout.title)])
     private var records: [ScheduledWorkout]
-    @State private var rescheduleRecord: ScheduledWorkout?
     @State private var projectedItems: [PlannedWorkoutsPresenter.Item] = []
     @State private var failedStartRecordID: UUID?
 
@@ -81,20 +68,14 @@ struct PlannedWorkoutsListView: View {
     var body: some View {
         List {
             let items = projectedItems
-            let today = PlannedWorkoutsPresenter.today(items)
-            let todayIDs = Set(today.map(\.id))
-            let future = PlannedWorkoutsPresenter.todayAndFuture(items).filter { !todayIDs.contains($0.id) }
-            let overdue = PlannedWorkoutsPresenter.overdue(items)
-            if !today.isEmpty { itemSection(String(localized: "Today"), items: today) }
-            if !future.isEmpty { itemSection(String(localized: "Upcoming"), items: future) }
-            if !overdue.isEmpty { itemSection(String(localized: "Past planned workouts"), items: overdue) }
-            if today.isEmpty && future.isEmpty && overdue.isEmpty {
-                ContentUnavailableView("No planned workouts", systemImage: "calendar",
-                                       description: Text("Schedule a workout from Workout Plan View."))
+            if items.isEmpty {
+                Text("No saved workout drafts.")
+            } else {
+                itemSection("Drafts — start anytime", items: items)
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Planned Workouts")
+        .navigationTitle("Saved drafts")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: projectionSignature) {
             let inputs = records.map(HomePlannedWorkoutsSection.rowInput)
@@ -103,13 +84,6 @@ struct PlannedWorkoutsListView: View {
             }.value
             guard !Task.isCancelled else { return }
             projectedItems = projected
-        }
-        .sheet(item: $rescheduleRecord) { record in
-            ScheduleWorkoutSheet(title: record.title) { date in
-                _ = try ScheduledWorkoutStore.reschedule(recordID: record.id,
-                                                         to: date,
-                                                         in: context)
-            }
         }
         .alert("Couldn't open this workout", isPresented: Binding(
             get: { failedStartRecordID != nil },
@@ -122,7 +96,7 @@ struct PlannedWorkoutsListView: View {
                 }
                 Button("Close", role: .cancel) { failedStartRecordID = nil }
             } message: {
-                Text("The saved workout could not be read. Try again, or reschedule/delete it from this list if the problem continues.")
+                Text("The saved workout could not be read. Try again, or delete it from this list if the problem continues.")
             }
     }
 
@@ -139,7 +113,7 @@ struct PlannedWorkoutsListView: View {
                                 Text(item.detail).font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text(item.status == .started ? "IN PROGRESS" : "SCHEDULED")
+                            Text(item.status == .started ? "IN PROGRESS" : "DRAFT")
                                 .font(.caption2.weight(.bold)).foregroundStyle(.teal)
                         }
                         HStack {
@@ -147,8 +121,6 @@ struct PlannedWorkoutsListView: View {
                                 start(record)
                             }
                             .buttonStyle(.borderedProminent)
-                            Button("Reschedule") { rescheduleRecord = record }
-                                .buttonStyle(.bordered)
                             Button("Delete", role: .destructive) {
                                 _ = try? ScheduledWorkoutStore.cancel(recordID: record.id, in: context)
                             }

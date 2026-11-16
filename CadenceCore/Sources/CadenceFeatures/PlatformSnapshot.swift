@@ -80,7 +80,6 @@ public struct CadenceTodaySnapshot: Codable, Equatable, Sendable {
 public enum CadencePlatformRequestStore {
     private static let startKey = "cadence.platform.startWorkout.requestedAt"
     private static let logKey = "cadence.platform.logSet.request"
-    private static let quickTalkKey = "cadence.platform.quickTalk.requestedAt"
     private static let liveActivityActionKey = "cadence.platform.liveActivity.action"
     private static let thisWeekSectionKey = "cadence.platform.thisWeek.section"
 
@@ -158,16 +157,7 @@ public enum CadencePlatformRequestStore {
         return ThisWeekDestination(rawValue: raw)
     }
 
-    public static func requestQuickTalk(defaults: UserDefaults? = nil) {
-        store(defaults).set(Date(), forKey: quickTalkKey)
-    }
 
-    public static func consumeQuickTalk(defaults: UserDefaults? = nil) -> Bool {
-        let defaults = store(defaults)
-        guard defaults.object(forKey: quickTalkKey) != nil else { return false }
-        defaults.removeObject(forKey: quickTalkKey)
-        return true
-    }
 
     public static func requestLiveActivity(_ action: LiveActivityAction,
                                            token: String? = nil,

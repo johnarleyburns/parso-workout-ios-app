@@ -4,13 +4,12 @@ import CadenceCore
 import CadenceFeatures
 
 /// Watch redesign §5 S1–S5 — the Set Card. Replaces the 12-control scrolling keypad: two big
-/// pre-filled numbers, progress dots, one button. The Crown adjusts the outlined number (weight by
-/// default, D-W4); Double Tap logs; holding Log set starts Quick Talk (D12). Everything rare —
-/// warm-up, plate step, this workout's sets, Last set, dictation — is one level down in More.
+/// pre-filled numbers, exercise progress, one button. The Crown adjusts the outlined number (weight by
+/// default, D-W4); Double Tap logs. Everything rare —
+/// warm-up, plate step, this workout's sets, Last set — is one level down in More.
 struct WatchSetKeypadView: View {
     @Bindable var bindableModel: WatchStrengthFlowModel
     var model: WatchStrengthFlowModel { bindableModel }
-    let talk: WatchQuickTalkController
 
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -20,13 +19,11 @@ struct WatchSetKeypadView: View {
     @State private var weightStep: Double
     @State private var showingMore = false
     @State private var showingLifters = false
-    @State private var holdStartedTalk = false
     @State private var isLogging = false
     @State private var toastLastTime: String?
 
-    init(model: WatchStrengthFlowModel, talk: WatchQuickTalkController) {
+    init(model: WatchStrengthFlowModel) {
         self.bindableModel = model
-        self.talk = talk
         self._weightStep = State(initialValue: model.unit == .pounds ? 5 : 2.5)
     }
 
@@ -35,14 +32,17 @@ struct WatchSetKeypadView: View {
     var body: some View {
         if let card = model.setCardState {
             VStack(spacing: 3) {
-                Text(card.exerciseName)
-                    .font(.footnote.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityAddTraits(.isHeader)
-                // Dots and (with partners) who is lifting share one row, so the card fits under the title.
                 HStack(spacing: 6) {
-                    WatchSetDots(dots: card.dots)
+                    WatchExerciseProgressRing(presentation: card.exerciseProgress)
+                    Text(card.exerciseName)
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(2, reservesSpace: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityLabel(card.exerciseProgress.accessibilityLabel)
+                        .accessibilityAddTraits(.isHeader)
+                }
+                if card.lifterText != nil {
+                  HStack(spacing: 6) {
                     if let lifter = card.lifterText {
                         Spacer(minLength: 0)
                         Button { showingLifters = true } label: {
@@ -57,17 +57,12 @@ struct WatchSetKeypadView: View {
                         .accessibilityIdentifier("watchStrength.lifterChip")
                         .accessibilityHint(Text("Choose who lifts next"))
                     }
+                  }
                 }
                 fields(card)
                 if !isLuminanceReduced {
                     logButton(card)
                     // The teaching hint gives way to the lifter row when partners take the space.
-                    if WatchQuickTalkController.isEnabled, card.lifterText == nil {
-                        Text(talk.isPhoneReachable ? "Hold to talk" : "iPhone not nearby — dictate in ⋯")
-                            .font(.caption2).foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .accessibilityHidden(true)
-                    }
                 }
             }
             .padding(.horizontal, 4)
@@ -93,10 +88,11 @@ struct WatchSetKeypadView: View {
             .navigationBarTitleDisplayMode(.inline)
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
-                                  by: focus == .weight ? weightStep : 1,
+                                  by: WatchSetCardMetricLayout.crownStep(weightFocused: focus == .weight,
+                                                                       nonWeighted: card.isNonWeighted, weightStep: weightStep),
                                   sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
             .sheet(isPresented: $showingMore) {
-                NavigationStack { WatchSetMoreView(model: model, talk: talk, weightStep: $weightStep) }
+                NavigationStack { WatchSetMoreView(model: model, weightStep: $weightStep) }
             }
             .sheet(isPresented: $showingLifters) {
                 NavigationStack { WatchPartnersView(model: model) }
@@ -115,19 +111,25 @@ struct WatchSetKeypadView: View {
                                       hint: Text("Select weight, then use the plus and minus buttons or turn the Digital Crown"),
                                       onFocus: { focus = .weight })
             .accessibilityIdentifier("watchWeight.current")
-        let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps,
+        let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps || card.isNonWeighted,
                                     accessibilityName: Text("Reps"),
                                     hint: Text("Select reps, then use the plus and minus buttons or turn the Digital Crown"),
                                     onFocus: { focus = .reps })
             .accessibilityIdentifier("watchReps.current")
         if card.isNonWeighted {
             VStack(spacing: 4) {
-                Label("Non-weighted movement", systemImage: "figure.strengthtraining.traditional")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, minHeight: 28)
-                    .accessibilityIdentifier("watchSet.nonWeighted")
-                reps
+                HStack(spacing: 4) {
+                    Text("Non-\nWeighted")
+                        .font(.caption2.weight(.semibold))
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.5)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .accessibilityLabel("Non-weighted movement")
+                        .accessibilityIdentifier("watchSet.nonWeighted")
+                    reps
+                }
                 adjustmentControls(card)
             }
         } else if WatchSetCardMetricLayout.fields(isAccessibilitySize: dynamicTypeSize >= .accessibility1) == .stacked {
@@ -191,7 +193,7 @@ struct WatchSetKeypadView: View {
     }
 
     private var crownRange: ClosedRange<Double> {
-        focus == .weight && !isCurrentExerciseNonWeighted ? increment.range : 1...50
+        focus == .weight && !isCurrentExerciseNonWeighted ? increment.range : 1...100
     }
 
     private var isCurrentExerciseNonWeighted: Bool {
@@ -201,11 +203,10 @@ struct WatchSetKeypadView: View {
 
     // MARK: Effort + More
 
-    // MARK: Log (tap / Double Tap) and hold-to-talk
+    // MARK: Log (tap / Double Tap)
 
     private func logButton(_ card: WatchSetCardState) -> some View {
         Button {
-            if holdStartedTalk { holdStartedTalk = false; return }
             log()
         } label: {
             if isLogging {
@@ -217,21 +218,6 @@ struct WatchSetKeypadView: View {
         .buttonStyle(WatchPillStyle(kind: .primary))
         .disabled(isLogging)
         .handGestureShortcut(.primaryAction)
-        .simultaneousGesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in
-            guard WatchQuickTalkController.isEnabled else { return }
-            guard talk.isPhoneReachable else { showingMore = true; return }
-            holdStartedTalk = true
-            talk.startListening()
-        })
-        .simultaneousGesture(DragGesture(minimumDistance: 0).onEnded { value in
-            guard holdStartedTalk else { return }
-            // Slide well off the button to cancel; otherwise release sends the clip.
-            if abs(value.translation.width) > 60 || abs(value.translation.height) > 60 {
-                talk.cancelListening()
-            } else {
-                talk.finishListening()
-            }
-        })
         .accessibilityIdentifier("logSetButton")
     }
 
@@ -250,10 +236,8 @@ struct WatchSetKeypadView: View {
 
 struct WatchSetMoreView: View {
     @Bindable var model: WatchStrengthFlowModel
-    let talk: WatchQuickTalkController
     @Binding var weightStep: Double
     @Environment(\.dismiss) private var dismiss
-    @State private var dictation = ""
     @State private var confirmRemove = false
     @State private var showingExactWeight = false
     @State private var showingExactReps = false
@@ -298,16 +282,6 @@ struct WatchSetMoreView: View {
                 }
             }
             Section {
-                if WatchQuickTalkController.isEnabled, !talk.isPhoneReachable {
-                    TextField("Dictate a set", text: $dictation)
-                        .onSubmit {
-                            let text = dictation
-                            dictation = ""
-                            dismiss()
-                            talk.handle(transcript: text, source: .dictation)
-                        }
-                        .accessibilityIdentifier("watchSet.dictate")
-                }
                 Button {
                     WatchHaptics.success()
                     if model.logLastSet() != nil, let payload = model.lastSyncPayload { WatchSyncSender.send(payload) }

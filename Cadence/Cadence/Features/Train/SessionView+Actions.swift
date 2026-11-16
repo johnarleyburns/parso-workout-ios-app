@@ -25,13 +25,6 @@ extension SessionView {
         }
         ToolbarItem(placement: .topBarTrailing) {
             HStack(spacing: 12) {
-                if active.strengthSession?.id == session.id {
-                    Button { voiceLoggingPresented = true } label: {
-                        Image(systemName: "mic")
-                    }
-                    .accessibilityIdentifier("session.quickTalk")
-                    .accessibilityLabel("Quick Talk voice logging")
-                }
                 if let plan {
                     NavigationLink {
                         RoutineDetailView(plan: plan, onEditorStart: { _ in })
@@ -74,71 +67,6 @@ extension SessionView {
         }
     }
 
-    func applyVoiceAction(_ action: VoiceResolvedAction) {
-        recordActivity()
-        switch action {
-        case .logSet(let exercise, let weightKg, let reps, let rpe, let warmup, let performer):
-            guard let ex = session.exercisesInOrder.first(where: {
-                $0.name.caseInsensitiveCompare(exercise.name) == .orderedSame
-            }) else { return }
-            addSet(to: ex, weightKg: max(0, weightKg ?? 0), reps: reps, rpe: rpe,
-                   isWarmup: warmup, usesBodyweight: isBodyweight(ex), note: nil,
-                   performedBy: performer.isOwner ? nil : allPeople.first {
-                       !$0.isMe && $0.name.caseInsensitiveCompare(performer.name) == .orderedSame
-                   })
-        case .repeatLastSet(let exercise, let performer, let adjustKg):
-            guard let ex = session.exercisesInOrder.first(where: {
-                $0.name.caseInsensitiveCompare(exercise.name) == .orderedSame
-            }) else { return }
-            let performerID = performer.isOwner ? nil : allPeople.first {
-                !$0.isMe && $0.name.caseInsensitiveCompare(performer.name) == .orderedSame
-            }?.id
-            guard let last = session.orderedSets.last(where: { setPerformedBy($0, performerID: performerID) && $0.exercise?.id == ex.id }) else { return }
-            addSet(to: ex, weightKg: max(0, last.weight + (adjustKg ?? 0)), reps: last.reps,
-                   rpe: last.rpe, isWarmup: last.isWarmup, usesBodyweight: last.usesBodyweight,
-                   note: nil, performedBy: performer.isOwner ? nil : people(for: performerID))
-        case .adjustNext(_, let deltaKg):
-            voiceWeightAdjustmentKg += deltaKg
-        case .addExercise(let name):
-            guard let ex = try? WorkoutRepository.findOrCreateExercise(named: name, in: context) else { return }
-            _ = try? WorkoutRepository.addAdHocExercise(ex, to: session, in: context)
-            openInlineEditor(for: ex)
-        case .switchExercise(let name):
-            guard let currentContext = cache.state.contexts.first,
-                  let current = exerciseForID(currentContext.exerciseID),
-                  let replacement = try? WorkoutRepository.findOrCreateExercise(named: name, in: context),
-                  current.id != replacement.id else { return }
-            _ = try? WorkoutRepository.changeExercise(in: session, from: current, to: replacement, in: context)
-            recordActivity()
-        case .setPerformer(let performer):
-            voicePerformerWasProvided = true
-            voicePerformerID = performer.isOwner ? nil : allPeople.first {
-                !$0.isMe && $0.name.caseInsensitiveCompare(performer.name) == .orderedSame
-            }?.id
-        case .addPartner(let name):
-            guard let person = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) else { return }
-            var ids = explicitRosterIDs()
-            if !ids.contains(person.id.uuidString) { ids.append(person.id.uuidString) }
-            session.activePartnerIDs = normalizedRosterIDs(ids)
-            try? context.save()
-        case .rest(let seconds):
-            rest.start(seconds: seconds ?? settings.restSeconds)
-            active.restEndsAt = rest.endsAt
-            syncRestAlarm(to: rest.endsAt)
-        case .skipRest:
-            rest.skip()
-            active.restEndsAt = nil
-            syncRestAlarm(to: nil)
-        case .pause: active.pause(origin: .manual)
-        case .resume: active.resume()
-        case .undo:
-            guard let last = session.orderedSets.last else { return }
-            try? WorkoutRepository.deleteSet(last, in: context)
-            try? context.save()
-        case .startWorkout, .finishWorkout:
-            break
-        }
-    }
     @ViewBuilder
     func plannedCard(_ name: String) -> some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {

@@ -182,10 +182,10 @@ extension HomeView {
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
-        if selectWorkoutPresented || weightsStartPresented || cardioPickerPresented {
+        if workoutControlsPresented || strengthDraftPresented || cardioPickerPresented {
             pendingSuggestedWorkoutRequest = request
-            selectWorkoutPresented = false
-            weightsStartPresented = false
+            workoutControlsPresented = false
+            strengthDraftPresented = false
             cardioPickerPresented = false
         } else {
             generateAndOpenPersonalizedWorkout(request)
@@ -193,10 +193,10 @@ extension HomeView {
     }
 
     func presentSuggestedCardio(_ input: CardioSuggestionInput) {
-        if selectWorkoutPresented || weightsStartPresented || cardioPickerPresented {
+        if workoutControlsPresented || strengthDraftPresented || cardioPickerPresented {
             pendingSuggestedCardioInput = input
-            selectWorkoutPresented = false
-            weightsStartPresented = false
+            workoutControlsPresented = false
+            strengthDraftPresented = false
             cardioPickerPresented = false
         } else {
             generateAndOpenSuggestedCardio(input)
@@ -207,7 +207,7 @@ extension HomeView {
     /// where a queued suggestion becomes presentable, so the old sheet and its
     /// NavigationStack are gone before the chooser is constructed.
     func presentPendingSuggestedWorkout() {
-        guard !selectWorkoutPresented, !weightsStartPresented, !cardioPickerPresented else { return }
+        guard !workoutControlsPresented, !strengthDraftPresented, !cardioPickerPresented else { return }
         if let request = pendingSuggestedWorkoutRequest {
             pendingSuggestedWorkoutRequest = nil
             generateAndOpenPersonalizedWorkout(request)
@@ -295,7 +295,7 @@ extension HomeView {
     func chooseManualWorkout(_ modality: SuggestedWorkoutModality) {
         switch modality {
         case .strength:
-            weightsStartPresented = true
+            strengthDraftPresented = true
         case .cardio:
             cardioPickerPresented = true
         }

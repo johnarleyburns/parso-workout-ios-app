@@ -9,11 +9,11 @@ final class WatchRedesignTests: XCTestCase {
 
     // MARK: - Set Card
 
-    func testDotsFollowThePlanAndGrowPastIt() {
-        XCTAssertEqual(WatchSetCardBuilder.makeDots(planned: 5, completed: 2),
-                       [.done, .done, .current, .upcoming, .upcoming])
-        XCTAssertEqual(WatchSetCardBuilder.makeDots(planned: 2, completed: 3), [.done, .done, .done, .current])
-        XCTAssertEqual(WatchSetCardBuilder.makeDots(planned: 0, completed: 0), [.current])
+    func testRingUsesTheExerciseListProgressPolicy() {
+        let state = card(current: 100, reps: 5, prefill: 100, prefillReps: 5)
+        XCTAssertEqual(state.exerciseProgress.exerciseName, state.exerciseName)
+        XCTAssertEqual(state.exerciseProgress.completedSetCount, 0)
+        XCTAssertEqual(state.exerciseProgress.exerciseNameMaxLines, 2)
     }
 
     func testLogTitleEchoesOnlyAChangedSet() {
@@ -74,7 +74,9 @@ final class WatchRedesignTests: XCTestCase {
         model.startLogSet(for: exercise)
 
         let state = try XCTUnwrap(model.setCardState)
-        XCTAssertEqual(state.dots, [.current, .upcoming])
+        XCTAssertEqual(state.exerciseProgress.completedSetCount, 0)
+        XCTAssertEqual(state.exerciseProgress.plannedSetCount, 2)
+        XCTAssertEqual(state.exerciseProgress.progress, 0)
         XCTAssertEqual(model.prefillReps, 5)
         XCTAssertFalse(state.echoesChange)
 
@@ -183,51 +185,6 @@ final class WatchRedesignTests: XCTestCase {
                                                  counts: ["swim": 9, "row": 4, "run": 4])
         XCTAssertEqual(order.tiles, ["swim", "run", "row", "cycle"])
         XCTAssertEqual(order.more, ["boxing", "hiit"])
-    }
-
-    // MARK: - Quick Talk
-
-    private let talk = WatchQuickTalkPlanner.Context(unit: .kilograms, currentExercise: "Bench Press",
-                                                     exercises: ["Bench Press", "Back Squat"],
-                                                     performers: ["Sam"], activePerformer: nil)
-
-    func testExactSetLogAppliesImmediately() {
-        guard case .apply(let action, let summary) = WatchQuickTalkPlanner.outcome(for: "100 kg for 5", context: talk) else {
-            return XCTFail("an exact set log saves now (D4)")
-        }
-        guard case .logSet(_, let kg, let reps, _, _, _) = action else { return XCTFail("logSet expected") }
-        XCTAssertEqual(kg, 100)
-        XCTAssertEqual(reps, 5)
-        XCTAssertTrue(summary.contains("Bench Press"))
-    }
-
-    func testSetWithoutAUnitIsReviewedNotSaved() {
-        guard case .review(let items) = WatchQuickTalkPlanner.outcome(for: "100 for 5", context: talk) else {
-            return XCTFail("an inferred set log is reviewed, never saved silently")
-        }
-        XCTAssertEqual(items.count, 1)
-    }
-
-    func testMultiCommandPhraseIsReviewedLineByLine() {
-        guard case .review(let items) = WatchQuickTalkPlanner.outcome(for: "switch to back squat, Sam's turn", context: talk) else {
-            return XCTFail("commands other than an exact set log are reviewed")
-        }
-        XCTAssertEqual(items.count, 2)
-    }
-
-    func testNonsenseIsNotUnderstood() {
-        guard case .notUnderstood = WatchQuickTalkPlanner.outcome(for: "la la la", context: talk) else {
-            return XCTFail("nothing usable was heard")
-        }
-        XCTAssertEqual(WatchQuickTalkPlanner.examples(unit: .pounds).count, 4)
-    }
-
-    func testHeardLogStoresTextOnly() {
-        let defaults = UserDefaults(suiteName: "heard-\(UUID().uuidString)")!
-        WatchHeardLogStore.append(HeardVoiceEntry(transcript: "100 for 5", confidence: .exact, appliedAutomatically: true), defaults)
-        XCTAssertEqual(WatchHeardLogStore.load(defaults).entries.map(\.transcript), ["100 for 5"])
-        WatchHeardLogStore.clear(defaults)
-        XCTAssertTrue(WatchHeardLogStore.load(defaults).entries.isEmpty)
     }
 
     // MARK: - Helpers

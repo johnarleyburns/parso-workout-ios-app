@@ -11,7 +11,6 @@ struct TimerCardioSetup: Identifiable {
 struct TimerCardioSetupView: View {
     let type: CardioType
     var suggestedMinutes: Int? = nil
-    var onSchedule: ((Date) async throws -> Void)? = nil
     var onSaved: (CardioWorkout) -> Void = { _ in }
 
     @Environment(AppSettings.self) private var settings
@@ -20,14 +19,11 @@ struct TimerCardioSetupView: View {
     @State private var preWorkoutCountdown: Int
     @State private var useHR: Bool
     @State private var indoors = true
-    @State private var schedulePresented = false
 
     init(type: CardioType, suggestedMinutes: Int? = nil,
-         onSchedule: ((Date) async throws -> Void)? = nil,
          onSaved: @escaping (CardioWorkout) -> Void = { _ in }) {
         self.type = type
         self.suggestedMinutes = suggestedMinutes
-        self.onSchedule = onSchedule
         self.onSaved = onSaved
         let ws = WorkoutSettings.default
         self._preWorkoutCountdown = State(initialValue: ws.preWorkoutCountdown)
@@ -75,17 +71,6 @@ struct TimerCardioSetupView: View {
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .accessibilityIdentifier("timerCardio.start")
 
-                if onSchedule != nil {
-                    Button {
-                        schedulePresented = true
-                    } label: {
-                        Label("Schedule \(type.displayName)", systemImage: "calendar.badge.plus")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, minHeight: 50)
-                    }
-                    .buttonStyle(.bordered)
-                    .accessibilityIdentifier("timerCardio.schedule")
-                }
 
                 if type.usesGPS {
                     Menu {
@@ -121,11 +106,6 @@ struct TimerCardioSetupView: View {
                 }
             }
             .onAppear { loadSettings() }
-            .sheet(isPresented: $schedulePresented) {
-                if let onSchedule {
-                    ScheduleWorkoutSheet(title: type.displayName, onSave: onSchedule)
-                }
-            }
         }
     }
 

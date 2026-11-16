@@ -21,7 +21,7 @@ extension HomeView {
     }
 
     func openFillGapsFromStartWorkout() {
-        selectWorkoutPresented = false
+        workoutControlsPresented = false
         fillGapsPresented = true
     }
 }

@@ -25,7 +25,6 @@ struct ExerciseCardView: View {
     let onTapSet: (SessionRenderModel.SetDisplay) -> Void
     let onTapPending: (SessionRenderModel.PendingSetDisplay) -> Void
     let onLogPending: (SessionRenderModel.PendingSetDisplay) -> Void
-    let onTalkPressing: (SessionRenderModel.PendingSetDisplay, Bool) -> Void
     let onRepeat: () -> Void
     let onAddSet: () -> Void
     let onChangeExercise: () -> Void
@@ -332,8 +331,6 @@ struct ExerciseCardView: View {
                     .accessibilityIdentifier("session.set.log.\(context.name).\(pending.setIndex + 1)")
                     .accessibilityHint("Logs the next uncompleted set.")
                     .accessibilityAction(named: "Log set") { onLogPending(pending) }
-                    .onLongPressGesture(minimumDuration: 0.35, maximumDistance: 44,
-                                        pressing: { onTalkPressing(pending, $0) }, perform: {})
             }
         }
         .padding(.vertical, 2)

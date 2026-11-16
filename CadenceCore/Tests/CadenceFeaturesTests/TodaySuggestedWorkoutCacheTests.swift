@@ -96,6 +96,17 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
     }
 
+    func testSuggestedPickerDisplayLookupRejectsYesterday() async {
+        let clock = Clock(date(2026, 3, 7, 23, 59, 59))
+        let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { clock.date })
+        await store.save(Self.payload(), fingerprint: "same-inputs")
+        let today = await store.peekDisplayable()
+        XCTAssertNotNil(today)
+        clock.date = date(2026, 3, 8, 0, 0, 0)
+        let yesterday = await store.peekDisplayable()
+        XCTAssertNil(yesterday)
+    }
+
     func testInvalidateAndFingerprintChangeMiss() async {
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { Date() })
         await store.save(Self.payload(), fingerprint: "f")

@@ -47,7 +47,16 @@ import Testing
         #expect(files.count > 10)
         let pattern = try Regex(#"minimumScaleFactor\(\s*(0?\.\d+|0)\s*\)"#)
         for file in files {
-            let text = try String(contentsOf: file, encoding: .utf8)
+            var text = try String(contentsOf: file, encoding: .utf8)
+            // Field-testing a explicitly requires the two-line non-weighted
+            // placeholder to fit inside the existing weight-number area.
+            // This exception is confined to that one label; other live text
+            // must still reflow and cannot introduce a numeric shrink factor.
+            if file.lastPathComponent == "WatchSetKeypadView.swift" {
+                let allowed = ".minimumScaleFactor(0.5)"
+                #expect(text.components(separatedBy: allowed).count <= 2)
+                text = text.replacingOccurrences(of: allowed, with: "")
+            }
             #expect(text.firstMatch(of: pattern) == nil,
                     "\(file.lastPathComponent) shrinks text with minimumScaleFactor < 1")
         }

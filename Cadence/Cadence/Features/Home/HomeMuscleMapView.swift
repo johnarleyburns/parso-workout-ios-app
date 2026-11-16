@@ -21,6 +21,10 @@ struct HomeMuscleMapView: View {
         HomeDashboardPresenter.sortedVolumeRows(volumeRows ?? dashboard.volume)
     }
 
+    private var cardioTint: Color {
+        CadenceTheme.weeklyTint(WeeklyActivityColor.cardio(dashboard.cardioDetail.moderateEquivalentMinutes))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Muscle view", selection: $selectedPanel) {
@@ -44,7 +48,9 @@ struct HomeMuscleMapView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(WeeklySetProgress.formattedSets(totals))")
                     .font(.title2.weight(.bold)).monospacedDigit()
-                Text("/ \(target) sets").font(.caption).foregroundStyle(.secondary)
+                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
+                Text("/ \(target) sets").font(.caption)
+                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
                 Spacer()
                 Button {
                     onOpenCardio()
@@ -54,7 +60,7 @@ struct HomeMuscleMapView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.pink)
+                .foregroundStyle(cardioTint)
             }
             legend
         }
@@ -175,7 +181,8 @@ struct HomeMuscleMapView: View {
                         HStack {
                             Text(row.displayName)
                             Spacer()
-                            Text(row.rangeText).font(.caption).foregroundStyle(.secondary)
+                            Text("\(WeeklySetProgress.formattedSets(row.sets))/12")
+                                .font(.caption).foregroundStyle(.secondary)
                         }
                         ProgressView(value: row.normalized)
                             .tint(muscleColor(for: MuscleHeatPresenter.level(sets: row.sets, target: 12)))
@@ -183,7 +190,7 @@ struct HomeMuscleMapView: View {
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(row.displayName), \(row.rangeText)")
+                .accessibilityLabel("\(row.displayName), \(WeeklySetProgress.formattedSets(row.sets)) of 12 sets this week")
                 .accessibilityIdentifier("home.week.muscleMap.list.\(row.group.rawValue)")
                 .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
                 .listRowBackground(Color.clear)

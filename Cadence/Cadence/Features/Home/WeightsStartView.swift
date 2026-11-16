@@ -59,8 +59,6 @@ struct WeightsStartView: View {
                         Text("Muscle coverage").font(.headline)
                             .accessibilityAddTraits(.isHeader)
                         Spacer()
-                        Text(dashboard.volumeCoverage.displayText)
-                            .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                     }
                     .listRowBackground(Color.clear)
                     HomeMuscleMapView(dashboard: dashboard, volumeRows: nil,

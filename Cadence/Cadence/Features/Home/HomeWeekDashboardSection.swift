@@ -62,8 +62,6 @@ struct HomeWeekDashboardSection: View {
                             Text("Muscle coverage").font(.headline)
                                 .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(dashboard.strength.completed)))
                             Spacer()
-                            Text(dashboard.volumeCoverage.displayText)
-                                .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                         }
                         muscleMapSummary
                     }

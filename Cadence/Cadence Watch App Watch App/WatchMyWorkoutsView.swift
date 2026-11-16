@@ -12,6 +12,7 @@ struct WatchMyWorkoutsView: View {
     /// Bumped by the manager only after a phone cardio-history snapshot is durably stored.
     var cardioHistoryRevision: Int = 0
     var distanceUnit: DistanceUnitPreference = .kilometers
+    let onStartSentCardio: (WatchSync.TodayPlan.Session) -> Void
     @Environment(\.modelContext) private var context
     @State private var history: [WatchMyWorkouts.HistoryInput] = []
     @State private var cardio: [WatchMyWorkouts.CardioInput] = []
@@ -20,7 +21,8 @@ struct WatchMyWorkoutsView: View {
 
     var body: some View {
         List {
-            if rows.isEmpty {
+            WatchSentWorkoutsSection(onStartCardio: onStartSentCardio)
+            if rows.isEmpty && WatchSentWorkoutStore.shared.pending.isEmpty {
                 Text("No workouts yet. Planned and completed workouts appear here.")
                     .font(.caption2).foregroundStyle(.secondary)
             }

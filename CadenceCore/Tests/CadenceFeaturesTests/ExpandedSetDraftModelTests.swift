@@ -3,6 +3,17 @@ import XCTest
 import CadenceCore
 
 final class ExpandedSetDraftModelTests: XCTestCase {
+    func testOnlyExplicitRepEntryMarksRepsEdited() {
+        var draft = ExpandedSetDraftModel(weight: 20, reps: 6, rpe: nil, unit: .kilograms)
+        XCTAssertFalse(draft.didEditReps)
+        draft.adjustWeight(by: 5)
+        XCTAssertFalse(draft.didEditReps)
+        draft.setReps(10)
+        XCTAssertTrue(draft.didEditReps)
+        var stepped = ExpandedSetDraftModel(weight: 20, reps: 6, rpe: nil, unit: .kilograms)
+        stepped.adjustReps(by: 1)
+        XCTAssertTrue(stepped.didEditReps)
+    }
     func testAllIncrementsAdjustExactlyAndClamp() {
         for unit in MeasurementUnitPreference.allCases {
             for increment in ExpandedSetDraftModel.increments(for: unit) {

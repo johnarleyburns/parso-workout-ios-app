@@ -6,6 +6,7 @@ import CadenceFeatures
 struct WatchHomeStartControls: View {
     let pendingCardio: [WatchCardioCompletion]
     let cardioDestination: (CardioType) -> AnyView
+    let fullCardioDestination: () -> AnyView
     let onMoreCardio: () -> Void
     @Environment(\.modelContext) private var context
     @State private var strength: HomeStrengthStartChoice = .quickStart
@@ -26,12 +27,15 @@ struct WatchHomeStartControls: View {
                 }
             } label: { Label("Strength", systemImage: "dumbbell.fill") }
                 .buttonStyle(WatchPillStyle(kind: .primary))
-            Picker("Cardio workout", selection: $cardio) {
-                ForEach(recent) { Text($0.displayName).tag(Optional($0)) }
-                Text("More..").tag(Optional<CardioType>.none)
+            NavigationLink {
+                WatchHomeCardioChoices(recent: recent, selection: $cardio,
+                                       fullCatalog: fullCardioDestination)
+            } label: {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("Cardio workout").font(.caption2).foregroundStyle(.secondary)
+                    Text(cardio?.displayName ?? "More..")
+                }
             }
-            .pickerStyle(.navigationLink)
-            .onChange(of: cardio) { _, next in if next == nil { onMoreCardio() } }
             if let cardio {
                 NavigationLink { cardioDestination(cardio) } label: {
                     Label("Cardio", systemImage: "figure.run")
@@ -50,5 +54,28 @@ struct WatchHomeStartControls: View {
             recent = HomeRecentCardioChoices.recent((mirrored + local).sorted { $0.0 > $1.0 }.map(\.1))
             cardio = recent.first
         }
+    }
+}
+
+private struct WatchHomeCardioChoices: View {
+    let recent: [CardioType]
+    @Binding var selection: CardioType?
+    let fullCatalog: () -> AnyView
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            ForEach(recent) { type in
+                Button { selection = type; dismiss() } label: {
+                    HStack {
+                        Text(type.displayName)
+                        Spacer()
+                        if selection == type { Image(systemName: "checkmark") }
+                    }
+                }
+            }
+            NavigationLink(destination: fullCatalog) { Text("More..") }
+        }
+        .navigationTitle("Cardio workout")
     }
 }

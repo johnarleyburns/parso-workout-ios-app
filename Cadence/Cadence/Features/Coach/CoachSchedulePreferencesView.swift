@@ -31,21 +31,10 @@ struct CoachSchedulePreferencesView: View {
                 }
                 .accessibilityIdentifier("settings.coach.age")
 
-                Stepper("Daily step target: \(settings.coachSchedulePreferences.dailyStepTarget)",
-                        value: Binding(get: {
-                            settings.coachSchedulePreferences.dailyStepTarget
-                        }, set: { value in
-                            settings.coachSchedulePreferences = settings.coachSchedulePreferences.withDailyStepTarget(value)
-                        }), in: 2_000...20_000, step: 500)
-                    .accessibilityIdentifier("settings.coach.stepTarget")
-
-                if let citation = CitationRegistry.citation(forId: "saintMauriceSteps2020") {
-                    CitationLink(citation: citation, compact: true)
-                }
             } header: {
                 Text("Coach Settings")
             } footer: {
-                Text("Your coach uses goal and experience to tailor insights. Steps target is 8,000/day by default; the fixed health floor is 4,000/day.")
+                Text("Your coach uses goal and experience to tailor insights.")
             }
 
             Section {

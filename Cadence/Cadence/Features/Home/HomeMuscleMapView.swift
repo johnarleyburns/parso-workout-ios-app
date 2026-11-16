@@ -44,7 +44,9 @@ struct HomeMuscleMapView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(WeeklySetProgress.formattedSets(totals))")
                     .font(.title2.weight(.bold)).monospacedDigit()
-                Text("/ \(target) sets").font(.caption).foregroundStyle(.secondary)
+                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
+                Text("/ \(target) sets").font(.caption)
+                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
                 Spacer()
                 Button {
                     onOpenCardio()
@@ -54,7 +56,8 @@ struct HomeMuscleMapView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.pink)
+                .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.cardio(
+                    dashboard.cardioDetail.moderateEquivalentMinutes)))
             }
             legend
         }

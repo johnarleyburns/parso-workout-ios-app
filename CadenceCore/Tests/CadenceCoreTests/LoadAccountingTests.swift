@@ -3,6 +3,19 @@ import SwiftData
 @testable import CadenceCore
 
 final class LoadAccountingTests: XCTestCase {
+    func testAllBellModesUseTotalForIsometricAndIsolateralMovements() throws {
+        let context = try makeContext()
+        for mode: LoadAccountingMode in [.dualDumbbell, .singleDumbbell, .isolateralDumbbell,
+                                         .dualKettlebell, .singleKettlebell, .isolateralKettlebell] {
+            let exercise = Exercise(name: "Isometric Biceps Curl", loadAccountingMode: mode)
+            context.insert(exercise)
+            let set = SetEntry(weight: 40, reps: 10, exercise: exercise,
+                               loadMultiplier: 2, loadAccountingMode: mode.rawValue)
+            context.insert(set)
+            XCTAssertEqual(exercise.prospectiveEffectiveLoadKg(rawWeightKg: 40), 40)
+            XCTAssertEqual(set.effectiveLoadKg, 40)
+        }
+    }
 
     // MARK: - Setup
 

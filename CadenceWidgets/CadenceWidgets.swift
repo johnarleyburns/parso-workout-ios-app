@@ -345,17 +345,6 @@ struct SkipRestFromLiveActivityIntent: LiveActivityIntent {
     }
 }
 
-struct WidgetTalkIntent: AppIntent {
-    static let title: LocalizedStringResource = "Talk to log a set"
-    static let description = IntentDescription("Open Quick Talk in the active workout.")
-    static var openAppWhenRun: Bool { true }
-
-    func perform() async throws -> some IntentResult {
-        CadencePlatformRequestStore.requestQuickTalk()
-        return .result()
-    }
-}
-
 @available(iOS 18.0, *)
 struct CadenceStartControl: ControlWidget {
     var body: some ControlWidgetConfiguration {
@@ -384,20 +373,6 @@ struct CadenceLogSetControl: ControlWidget {
     }
 }
 
-@available(iOS 18.0, *)
-struct CadenceTalkControl: ControlWidget {
-    var body: some ControlWidgetConfiguration {
-        StaticControlConfiguration(kind: "CadenceTalkControl") {
-            ControlWidgetButton(action: WidgetTalkIntent()) {
-                Label("Talk", systemImage: "mic.fill")
-            }
-            .tint(.green)
-        }
-        .displayName("Talk to log")
-        .description("Open Quick Talk for hands-free logging.")
-    }
-}
-
 @main
 struct CadenceWidgets: WidgetBundle {
     var body: some Widget {
@@ -407,7 +382,6 @@ struct CadenceWidgets: WidgetBundle {
         if #available(iOS 18.0, *) {
             CadenceStartControl()
             CadenceLogSetControl()
-            CadenceTalkControl()
         }
     }
 }

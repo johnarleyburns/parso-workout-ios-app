@@ -200,9 +200,6 @@ struct HomeWeekDashboardSection: View {
                 // resolved when the sheet is built, keeping the tap path cheap
                 // and giving repeated taps a new sheet identity.
                 selectedMuscleSelection = MuscleDetailSelection(group: group)
-            },
-            onOpenCardio: {
-                withAnimation(.easeInOut(duration: 0.18)) { detailSelection.select(.cardio) }
             })
         .sheet(item: $selectedMuscleSelection) { selection in
             let currentSets = selectedVolume[selection.group] ?? 0

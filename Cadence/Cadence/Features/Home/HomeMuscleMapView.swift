@@ -10,7 +10,6 @@ struct HomeMuscleMapView: View {
     var isLoading = false
     @Binding var selectedPanel: MuscleMapPanel
     let onSelect: (MuscleGroup) -> Void
-    let onOpenCardio: () -> Void
 
     private enum MapMetrics {
         static let displayHeight: CGFloat = 440
@@ -19,10 +18,6 @@ struct HomeMuscleMapView: View {
 
     private var rows: [HomeDashboardState.VolumeRow] {
         HomeDashboardPresenter.sortedVolumeRows(volumeRows ?? dashboard.volume)
-    }
-
-    private var cardioTint: Color {
-        CadenceTheme.weeklyTint(WeeklyActivityColor.cardio(dashboard.cardioDetail.moderateEquivalentMinutes))
     }
 
     var body: some View {
@@ -52,15 +47,6 @@ struct HomeMuscleMapView: View {
                 Text("/ \(target) sets").font(.caption)
                     .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
                 Spacer()
-                Button {
-                    onOpenCardio()
-                } label: {
-                    Label("Cardio \(Int(dashboard.cardioDetail.moderateEquivalentMinutes.rounded())) min",
-                          systemImage: "heart.fill")
-                        .font(.caption.weight(.semibold))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(cardioTint)
             }
             legend
         }

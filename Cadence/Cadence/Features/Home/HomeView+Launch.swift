@@ -214,6 +214,7 @@ extension HomeView {
         if let parked = model.parkedCardio.session {
             Button { reopenParkedCardio() } label: {
                 Label("Return to \(parked.type.displayName) (paused)", systemImage: "arrow.up.circle.fill")
+                    .font(.headline)
                     .frame(maxWidth: .infinity, minHeight: 44)
             }
             .buttonStyle(.borderedProminent)

@@ -42,7 +42,7 @@ extension HomeView {
         Group {
             if let session = resumeSession {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("In progress").font(.caption).foregroundStyle(.secondary)
+                    Text("In progress").font(.subheadline).foregroundStyle(.secondary)
                     Text(session.title.isEmpty ? String(localized: "Workout") : session.title)
                         .font(.headline)
                     Button {
@@ -54,7 +54,8 @@ extension HomeView {
                         Label("Resume workout", systemImage: "play.fill")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .font(.headline)
+                    .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
                     .accessibilityIdentifier("home.resumeStrength")
                 }
             }

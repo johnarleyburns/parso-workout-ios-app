@@ -19,6 +19,18 @@ extension HomeView {
                 onPreviousStart: handleEditorStart,
                 onCardio: { start($0) },
                 onMoreCardio: { openFullCardioPicker() })
+            if let quickRepeat = TodayQuickRepeatPresenter.make(sessions: sessions, hasActiveOrResumableSession: false) {
+                Button(quickRepeat.title) {
+                    if let session = sessions.first(where: { $0.id == quickRepeat.sessionID }) {
+                        workoutEditorPlan = .from(session: session)
+                    }
+                }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundStyle(CadenceTheme.link)
+                .frame(maxWidth: .infinity)
+                .accessibilityIdentifier("home.repeatLastWorkout")
+            }
         }
     }
 

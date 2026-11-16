@@ -12,8 +12,8 @@ struct HomeView: View {
         var title: String {
             switch self {
             case .today: return String(localized: "Today")
-            case .strength: return String(localized: "Strength")
-            case .cardio: return String(localized: "Cardio")
+            case .strength: return String(localized: "Strength this week")
+            case .cardio: return String(localized: "Cardio this week")
             }
         }
     }

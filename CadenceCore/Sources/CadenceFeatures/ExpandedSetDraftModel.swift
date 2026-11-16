@@ -12,6 +12,7 @@ public struct ExpandedSetDraftModel: Equatable, Sendable {
     public let unit: MeasurementUnitPreference
     public private(set) var weight: Double
     public private(set) var reps: Int
+    public private(set) var didEditReps = false
     public private(set) var effort: Double?
     public private(set) var effortMode: WatchEffortMode
     public private(set) var hasSubmitted = false
@@ -58,10 +59,12 @@ public struct ExpandedSetDraftModel: Equatable, Sendable {
     /// Retargets the rep count outright — used when the editor switches to a
     /// different performer mid-entry (field test 2026-08-19 #2).
     public mutating func setReps(_ value: Int) {
+        didEditReps = true
         reps = min(max(value, Self.minReps), Self.maxReps)
     }
 
     public mutating func adjustReps(by amount: Int) {
+        didEditReps = true
         reps = min(max(reps + amount, Self.minReps), Self.maxReps)
     }
 

@@ -65,7 +65,6 @@ struct HomeWeekDashboardSection: View {
                             Text(dashboard.volumeCoverage.displayText)
                                 .font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
                         }
-                        fillGapsButton
                         muscleMapSummary
                     }
                 }
@@ -82,13 +81,6 @@ struct HomeWeekDashboardSection: View {
                         }
                         ProgressView(value: dashboard.cardio.normalized)
                             .tint(cardioTint)
-                        Button(action: onSuggestCardio) {
-                            Label("Suggest Workout", systemImage: "sparkles")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(.teal)
-                        .accessibilityIdentifier("cardio.suggestWorkout")
                         cardioMinutes
                         if let dose = dashboard.activityDose { activityDose(dose) }
                     }
@@ -116,19 +108,6 @@ struct HomeWeekDashboardSection: View {
             guard !selectionStillExists else { return }
             selectedVolumePerformerKey = next.first?.id
         }
-    }
-
-    private var fillGapsButton: some View {
-        let behind = HomeDashboardPresenter.gapTiers(from: displayedVolumeRows)
-        return NavigationLink {
-            MuscleGroupQuickStartView(tiers: behind, onStart: onStartWorkout, onPlan: onPlanWorkout)
-        } label: {
-            Label("Suggest Workout", systemImage: "sparkles")
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.bordered)
-        .tint(CadenceTheme.accent)
-        .accessibilityIdentifier("strength.suggestWorkout")
     }
 
 

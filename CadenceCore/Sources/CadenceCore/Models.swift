@@ -493,6 +493,8 @@ public enum ExerciseCategory: String, CaseIterable, Codable, Sendable, Identifia
 
 @Model
 public final class WorkoutSession {
+    /// Explicit rep preferences for this workout, keyed by performer. Additive for old stores.
+    public var setEntryRepOverridesJSON: String = ""
     public var id: UUID = UUID()
     public var title: String = ""
     public var date: Date = Date()

@@ -503,8 +503,8 @@ public final class WatchStrengthFlowModel {
         let prescribed = (session.map { SessionViewModel.isPrescribedMovement(exercise.name, session: $0) } == true)
             ? (session?.prescribedLoadKg ?? 0)
             : 0
-        currentReps = Double(resolved.reps)
-        if let weight = resolved.weightKg {
+        currentReps = Double(session.flatMap { WorkoutEntryPreference.reps(in: $0, performerID: performerID) } ?? resolved.reps)
+        if let weight = history.lastWeightThisSessionKg ?? resolved.weightKg {
             currentWeight = weight
         } else if prescribed > 0 {
             currentWeight = prescribed
@@ -612,6 +612,10 @@ public final class WatchStrengthFlowModel {
                 previous: priorOwnerSamples + earlierOwnerSamples,
                 rule: prRule, formula: prFormula)
 
+            if !isWarmupSet, Int(currentReps) != Int(prefillReps) {
+                WorkoutEntryPreference.setReps(Int(currentReps), in: session,
+                                               performerID: performer?.isMe == true ? nil : performer?.id)
+            }
             let set = try WorkoutRepository.addSet(
                 to: session, exercise: exercise, weightKg: currentWeight,
                 reps: Int(currentReps), rpe: resolvedEffortRPE, isWarmup: isWarmupSet,

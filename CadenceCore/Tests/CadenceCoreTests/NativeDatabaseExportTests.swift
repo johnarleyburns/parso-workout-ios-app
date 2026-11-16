@@ -23,6 +23,7 @@ final class NativeDatabaseExportTests: XCTestCase {
                            updatedAt: date, session: session, exercise: exercise,
                            performedBy: person)
         session.sets = [set]
+        session.setEntryRepOverridesJSON = #"{"owner":10}"#
         exercise.sets = [set]
         person.sets = [set]
 

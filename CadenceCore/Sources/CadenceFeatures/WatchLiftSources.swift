@@ -51,6 +51,14 @@ public struct WatchLiftLaunch: Equatable, Sendable {
     public var exerciseNames: [String]
     public var repLadder: [Int]
     public var planPayload: WatchPlanPayload?
+
+    public init(title: String, exerciseNames: [String], repLadder: [Int],
+                planPayload: WatchPlanPayload? = nil) {
+        self.title = title
+        self.exerciseNames = exerciseNames
+        self.repLadder = repLadder
+        self.planPayload = planPayload
+    }
 }
 
 public struct WatchPreviousWorkout: Equatable, Sendable, Identifiable {

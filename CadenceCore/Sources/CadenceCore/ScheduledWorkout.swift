@@ -64,4 +64,3 @@ public enum ScheduledWorkoutStatus: String, Codable, CaseIterable, Sendable {
     case completed
     case cancelled
 }
-

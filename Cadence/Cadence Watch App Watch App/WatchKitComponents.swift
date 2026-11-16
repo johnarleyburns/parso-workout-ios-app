@@ -222,30 +222,24 @@ struct WatchReceiptRow: View {
     }
 }
 
-/// Progress dots for the Set Card (done / current / upcoming).
-struct WatchSetDots: View {
-    let dots: [WatchSetDot]
+/// Shared set-progress ring for the exercise list and active set entry.
+struct WatchExerciseProgressRing: View {
+    let presentation: WatchWorkoutExerciseRowPresentation
 
     var body: some View {
-        HStack(spacing: 4) {
-            ForEach(Array(dots.enumerated()), id: \.offset) { _, dot in
-                Circle()
-                    .fill(color(dot))
-                    .frame(width: 6, height: 6)
-                    .scaleEffect(dot == .current ? 1.35 : 1)
-                    .shadow(color: dot == .current ? WatchTone.accent.opacity(0.8) : .clear, radius: 3)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: dot)
+        ZStack {
+            Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
+            if presentation.isPlanned {
+                Circle().trim(from: 0, to: presentation.progress)
+                    .stroke(WatchTone.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
             }
+            Text("\(presentation.completedSetCount)")
+                .font(.caption.monospacedDigit().weight(.semibold))
+                .lineLimit(1)
+                .foregroundStyle(presentation.isPlanned ? WatchTone.accent : Color.secondary)
         }
-        .accessibilityElement()
-        .accessibilityLabel(Text("Set \((dots.firstIndex(of: .current) ?? 0) + 1) of \(dots.count)"))
-    }
-
-    private func color(_ dot: WatchSetDot) -> Color {
-        switch dot {
-        case .done: WatchTone.accent
-        case .current: WatchTone.accentBright
-        case .upcoming: Color.white.opacity(0.25)
-        }
+        .frame(width: 32, height: 32)
+        .accessibilityHidden(true)
     }
 }

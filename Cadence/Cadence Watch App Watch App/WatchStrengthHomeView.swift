@@ -138,20 +138,7 @@ struct WatchStrengthHomeView: View {
             plannedSetCount: model.plannedWorkingSets(for: exercise).count
         )
         return HStack(spacing: 8) {
-            ZStack {
-                Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
-                if presentation.isPlanned {
-                    Circle().trim(from: 0, to: presentation.progress)
-                        .stroke(WatchTone.accent, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                }
-                Text("\(presentation.completedSetCount)")
-                    .font(.caption.monospacedDigit().weight(.semibold))
-                    .lineLimit(1)
-                    .foregroundStyle(presentation.isPlanned ? WatchTone.accent : Color.secondary)
-            }
-            .frame(width: 32, height: 32)
-            .accessibilityHidden(true)
+            WatchExerciseProgressRing(presentation: presentation)
             HStack(spacing: 4) {
                 Text(exercise.name)
                     .font(.body)

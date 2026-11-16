@@ -13,12 +13,11 @@ extension HomeView {
             todayHeroCard
         } else {
             HomeWorkoutStartControls(
-                recentCardio: recentCardioTypes,
                 onQuickStart: { startQuickStartStrength() },
                 onSuggested: { openTodaySuggestion() },
                 onPreviousStart: handleEditorStart,
                 onCardio: { start($0) },
-                onMoreCardio: { openFullCardioPicker() })
+                onCustomCardio: { startOtherCardio(description: $0, gps: $1) })
             if let quickRepeat = TodayQuickRepeatPresenter.make(sessions: sessions, hasActiveOrResumableSession: false) {
                 Button(quickRepeat.title) {
                     if let session = sessions.first(where: { $0.id == quickRepeat.sessionID }) {

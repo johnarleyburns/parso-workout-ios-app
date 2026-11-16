@@ -27,6 +27,24 @@ final class CitationIntegrityTests: XCTestCase {
         }
     }
 
+    func testCatalogReferencesResolveWithReasonsOutsideCoachingPools() {
+        let citations = ExerciseCatalogEvidence.citations
+        XCTAssertEqual(citations.count, 15)
+        XCTAssertEqual(Set(citations.map(\.id)).count, citations.count)
+        XCTAssertEqual(Set(citations.map(\.id)), Set(ExerciseCatalogEvidence.usageReasons.keys))
+        for citation in citations {
+            XCTAssertEqual(CitationRegistry.citation(forId: citation.id), citation)
+            let databaseID = "exdb." + String(citation.id.dropFirst("catalog.".count))
+            XCTAssertEqual(CitationRegistry.citation(forId: databaseID)?.url, citation.url)
+            XCTAssertEqual(CitationRegistry.usageReason(forId: databaseID),
+                           CitationRegistry.usageReason(forId: citation.id))
+            XCTAssertFalse((CitationRegistry.usageReason(forId: citation.id) ?? "").isEmpty)
+            XCTAssertTrue(citation.url.hasPrefix("https://"))
+            XCTAssertFalse(CitationRegistry.all.contains { $0.id == citation.id })
+            if citation.year == 0 { XCTAssertFalse(citation.shortText.contains("(0)")) }
+        }
+    }
+
     func testEveryCitationHasUrl() {
         for c in CitationRegistry.all {
             XCTAssertFalse(c.url.isEmpty, "Citation \(c.id) has no URL")

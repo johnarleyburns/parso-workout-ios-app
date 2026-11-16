@@ -3,7 +3,7 @@ import CadenceCore
 
 public struct WorkoutConfigurationSpec: Equatable {
     public enum CardioKind: Equatable {
-        case run, walk, cycle, swim, hiit, boxing, rowing, other, strength
+        case run, walk, cycle, swim, hiit, boxing, rowing, elliptical, stairClimber, other, strength
     }
     public enum Location: Equatable, Hashable {
         case indoor, outdoor, pool(lapLength: Double), openWater
@@ -48,6 +48,8 @@ public struct WorkoutConfigurationSpec: Equatable {
         case "hiit": self.kind = .hiit; self.location = .indoor
         case "boxing": self.kind = .boxing; self.location = .indoor
         case "rowing": self.kind = .rowing; self.location = .indoor
+        case "elliptical": self.kind = .elliptical; self.location = .indoor
+        case "stairclimber", "stair_climber", "stairs": self.kind = .stairClimber; self.location = .indoor
         case "other": self.kind = .other; self.location = .indoor
         default: self.kind = .strength; self.location = .indoor
         }

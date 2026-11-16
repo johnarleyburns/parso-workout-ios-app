@@ -32,7 +32,7 @@ struct ShareCardRenderer {
                         .foregroundStyle(.white.opacity(0.9))
                     Spacer()
                 }
-                Text(exerciseName)
+                Text(exerciseName.localizedExerciseName)
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundStyle(.white)
                     .lineLimit(2)

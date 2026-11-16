@@ -1117,12 +1117,12 @@ public enum CoachPlanOptimizer {
         case .forearms: return ["Wrist Curl", "Farmer's Walk", "Barbell Shrug"]
         case .abdominals: return ["Cable Crunch", "Plank", "Hanging Leg Raise"]
         case .calves: return ["Standing Calf Raise", "Seated Calf Raise", "Calf Press on Leg Press"]
-        case .tibialis: return ["Standing Calf Raise", "Seated Calf Raise"]
+        case .tibialis: return ["Standing Toe Raise", "Band-Resisted Ankle Dorsiflexion", "Machine Tibialis Dorsiflexion"]
         case .adductors: return ["Thigh Adductor", "Front Squat", "Leg Press"]
         case .abductors: return ["Thigh Abductor", "Hip Thrust"]
-        case .hipFlexors: return ["Hanging Leg Raise", "Plank"]
-        case .neck: return ["Neck Flexion", "Barbell Shrug"]
-        case .rotatorCuff: return ["Cable External Rotation", "Dumbbell Lateral Raise"]
+        case .hipFlexors: return ["Hanging Leg Raise", "Seated Hip Flexion", "Hip Flexion with Band"]
+        case .neck: return ["Resisted Neck Rotation Isometric", "Four-Way Neck Machine", "Lying Face Up Plate Neck Resistance"]
+        case .rotatorCuff: return ["External Rotation with Cable", "External Rotation", "Internal Rotation with Band"]
         }
     }
 

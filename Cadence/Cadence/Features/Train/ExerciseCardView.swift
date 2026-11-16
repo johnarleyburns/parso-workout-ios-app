@@ -85,7 +85,7 @@ struct ExerciseCardView: View {
                         .font(.caption.weight(.bold)).foregroundStyle(.secondary).frame(width: 14)
                     VStack(alignment: .leading, spacing: 3) {
                         HStack(spacing: 6) {
-                            Text(context.name).font(.headline).lineLimit(1)
+                            Text(context.name.localizedExerciseName).font(.headline).lineLimit(1)
                             if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
                         }
                         if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(context.hasPartners ? 3 : 2) }

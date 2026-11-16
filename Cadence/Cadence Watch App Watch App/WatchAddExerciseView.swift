@@ -219,7 +219,7 @@ struct WatchAddExerciseView: View {
             feedback = nil
             selectedEntry = exercise
         } label: {
-            Text(WatchAddExercisePresentation.rowTitle(for: exercise.name))
+            Text(WatchAddExercisePresentation.rowTitle(for: exercise.name.localizedExerciseName))
                 .lineLimit(WatchAddExercisePresentation.exerciseNameMaxLines, reservesSpace: true)
                 .multilineTextAlignment(.leading)
                 .frame(maxWidth: .infinity,

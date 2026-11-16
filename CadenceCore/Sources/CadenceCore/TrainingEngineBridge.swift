@@ -106,6 +106,7 @@ extension TrainingEngineBridge {
         let title: String
         let type: String
         let url: String
+        let reason: String?
     }
 
     /// Records are sorted by the stable DB++ exercise id before crossing the
@@ -115,6 +116,34 @@ extension TrainingEngineBridge {
             .sorted { $0.exerciseId < $1.exerciseId }
             .compactMap(record(from:)) ?? []
     }
+
+    struct LocalizedExerciseNames: Sendable {
+        struct Translation: Sendable {
+            let preferred: String
+            let aliases: [String]
+        }
+        let canonical: String
+        let englishName: String
+        let englishAliases: [String]
+        let translations: [String: Translation]
+    }
+
+    /// Package localization types stay inside the bridge; presentation consumes
+    /// immutable strings and never changes exercise identities.
+    static let localizedExerciseNames: [LocalizedExerciseNames] = {
+        guard let database = shared?.database else { return [] }
+        return database.allExercises.values.sorted { $0.exerciseId < $1.exerciseId }.compactMap { exercise in
+            guard let canonical = sourceString(exercise, "name") else { return nil }
+            return LocalizedExerciseNames(
+                canonical: canonical,
+                englishName: exercise.preferredName(locale: Locale(identifier: "en")),
+                englishAliases: exercise.localizedNames?["en"]?.aliases ?? [],
+                translations: (exercise.localizedNames ?? [:]).mapValues {
+                    LocalizedExerciseNames.Translation(preferred: $0.preferred,
+                        aliases: $0.aliases + $0.searchOnly)
+                })
+        }
+    }()
 
     /// Reads a scalar source field without exposing DB++'s JSON representation.
     static func sourceString(
@@ -182,7 +211,9 @@ extension TrainingEngineBridge {
                   case let .string(type)? = reference["type"],
                   case let .string(url)? = reference["url"]
             else { return nil }
-            return EvidenceReference(title: title, type: type, url: url)
+            let reason: String?
+            if case let .string(value)? = reference["reason"] { reason = value } else { reason = nil }
+            return EvidenceReference(title: title, type: type, url: url, reason: reason)
         }
     }
 

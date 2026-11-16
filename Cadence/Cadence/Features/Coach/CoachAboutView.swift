@@ -68,6 +68,8 @@ struct CoachAboutView: View {
                 Text("Every insight and recommendation cites one of these studies. Tap \"The science\" on any coach card to see which one and why.")
             }
 
+            ExerciseCatalogReferencesSection()
+
             Section {
                 Text("Coaching, not medical advice.")
                     .font(.caption).foregroundStyle(.tertiary)

@@ -143,7 +143,7 @@ struct WatchAddExercisePreview: View {
             .accessibilityLabel(WatchAddExercisePresentation.backAccessibilityLabel)
             .accessibilityIdentifier("watchAddExercise.previewChevron")
 
-            Text(entry.name)
+            Text(entry.name.localizedExerciseName)
                 .font(.headline)
                 .lineLimit(WatchAddExercisePresentation.exerciseNameMaxLines)
                 .multilineTextAlignment(.leading)

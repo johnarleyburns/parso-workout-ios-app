@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/johnarleyburns/free-exercise-db-plusplus.git",
       "state" : {
-        "revision" : "5df25621e7ccccacb1f6497f5894fd6ec8157c37",
-        "version" : "1.18.2"
+        "revision" : "b78149ce41d63afd74bacc299c38a6da09b55da4",
+        "version" : "1.19.0"
       }
     },
     {

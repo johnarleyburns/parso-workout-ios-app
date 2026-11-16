@@ -116,4 +116,16 @@ final class ExerciseSearchTests: XCTestCase {
         let found = try WorkoutRepository.searchExercises("cable", in: ctx)
         XCTAssertTrue(found.contains { $0.id == ex.id })
     }
+    func testCatalogEnglishAliasFindsCanonicalExercise() {
+        let results = ExerciseSearch.rank("Banded March", over: ExerciseLibrary.starter)
+        XCTAssertTrue(results.contains { $0.sourceExerciseID == "Hip_Flexion_with_Band" })
+    }
+
+    func testReleasedNamesSearchInGermanAndChineseWithoutChangingIdentity() {
+        let german = ExerciseSearchIndex(ExerciseLibrary.starter, locale: Locale(identifier: "de"))
+        XCTAssertTrue(german.rank("Zehenheben").contains { $0.sourceExerciseID == "Standing_Toe_Raise" })
+        let chinese = ExerciseSearchIndex(ExerciseLibrary.starter, locale: Locale(identifier: "zh-Hans"))
+        XCTAssertTrue(chinese.rank("胫骨").contains { $0.sourceExerciseID == "Single-Leg_Tib_Bar_Raise" })
+    }
+
 }

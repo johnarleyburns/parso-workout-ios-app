@@ -45,7 +45,7 @@ struct WorkoutSummaryExerciseRow: View {
 
     private var headline: some View {
         HStack {
-            Text(line.name).font(.subheadline.weight(.semibold))
+            Text(line.name.localizedExerciseName).font(.subheadline.weight(.semibold))
                 .frame(maxWidth: .infinity, alignment: .leading)
             if let top = line.topSetWeightKg {
                 Text(WorkoutSummaryPresenter.topLabel(topKg: top,

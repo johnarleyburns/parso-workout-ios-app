@@ -47,11 +47,19 @@ final class MuscleMapLayoutTests: XCTestCase {
         XCTAssertEqual(visible, Set(MuscleGroup.allCases))
     }
 
+    func testSpecializedGroupsUseTheirOwnDefaultMapColours() {
+        for group in [MuscleGroup.hipFlexors, .tibialis, .neck, .rotatorCuff] {
+            XCTAssertEqual(MuscleMapLayout.colourGroup(for: group,
+                visibleGroups: MuscleGroup.defaultTracked), group)
+            XCTAssertTrue(MuscleMapLayout.callouts.contains { $0.group == group })
+        }
+    }
+
     func testVisibleCalloutsCanMatchTheVolumeScope() {
         let visible = MuscleMapLayout.callouts(
             for: .back,
             visibleGroups: MuscleGroup.defaultTracked)
-        XCTAssertFalse(visible.contains { $0.group == .rotatorCuff })
+        XCTAssertTrue(visible.contains { $0.group == .rotatorCuff })
         XCTAssertTrue(visible.contains { $0.group == .lats })
     }
 }

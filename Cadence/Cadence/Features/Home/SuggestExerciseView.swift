@@ -85,7 +85,7 @@ struct SuggestExerciseView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(exercise.name).font(.title3.weight(.semibold))
+                    Text(exercise.name.localizedExerciseName).font(.title3.weight(.semibold))
                     Spacer()
                     Group {
                         NavigationLink {

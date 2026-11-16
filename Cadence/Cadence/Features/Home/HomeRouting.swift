@@ -164,7 +164,7 @@ struct PlannedWorkoutDetailView: View {
                 Section("Exercises") {
                     ForEach(plan.exercises) { exercise in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(exercise.name)
+                            Text(exercise.name.localizedExerciseName)
                             Text("\(exercise.sets.count) sets").font(.caption).foregroundStyle(.secondary)
                             if !exercise.notes.isEmpty {
                                 Text(exercise.notes).font(.caption).foregroundStyle(.secondary)

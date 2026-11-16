@@ -23,9 +23,11 @@ extension ExercisePickerView {
     /// wrapping removable chips. Mode and the secondary dimension live in `filterMenu`.
     var browseControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if trimmedQuery.isEmpty && selectedTab == .browse { primaryFacetRow }
-            if filterState.hasFacets { activeConstraintChips }
-            if !trimmedQuery.isEmpty && filterState.hasFacets {
+            if isFind {
+                primaryFacetRow
+            } else if trimmedQuery.isEmpty && selectedTab == .browse { primaryFacetRow }
+            if !isFind && filterState.hasFacets { activeConstraintChips }
+            if !isFind && !trimmedQuery.isEmpty && filterState.hasFacets {
                 Button { clearFacets() } label: {
                     Label("Search all exercises", systemImage: "magnifyingglass")
                         .frame(minHeight: ExerciseFilterAccessibility.minimumHitTarget.cgFloat)
@@ -40,6 +42,7 @@ extension ExercisePickerView {
     }
 
     var showsBrowseControls: Bool {
+        if isFind { return findScope == .equipment || findScope == .muscleGroup }
         if trimmedQuery.isEmpty { return selectedTab == .browse }
         return filterState.hasFacets
     }
@@ -50,20 +53,24 @@ extension ExercisePickerView {
             HStack(spacing: 8) {
                 switch browseMode {
                 case .byMuscleGroup:
-                    chip("All", active: selectedGroup == nil) { selectedGroup = nil }
-                        .accessibilityIdentifier("picker.filter.all")
+                    if !isFind {
+                        chip("All", active: selectedGroup == nil) { selectedGroup = nil }
+                            .accessibilityIdentifier("picker.filter.all")
+                    }
                     ForEach(availableGroups) { group in
                         chip(group.displayName, active: selectedGroup == group) {
-                            selectedGroup = (selectedGroup == group) ? nil : group
+                            selectedGroup = isFind ? group : ((selectedGroup == group) ? nil : group)
                         }
                         .accessibilityIdentifier("picker.filter.\(group.rawValue)")
                     }
                 case .byEquipment:
-                    chip("All", active: selectedEquipment == nil) { selectedEquipment = nil }
-                        .accessibilityIdentifier("picker.equip.all")
+                    if !isFind {
+                        chip("All", active: selectedEquipment == nil) { selectedEquipment = nil }
+                            .accessibilityIdentifier("picker.equip.all")
+                    }
                     ForEach(availableEquipment) { eq in
                         chip(eq.displayName, active: selectedEquipment == eq) {
-                            selectedEquipment = (selectedEquipment == eq) ? nil : eq
+                            selectedEquipment = isFind ? eq : ((selectedEquipment == eq) ? nil : eq)
                         }
                         .accessibilityIdentifier("picker.equip.\(eq.rawValue)")
                     }
@@ -109,32 +116,42 @@ extension ExercisePickerView {
         .accessibilityAddTraits(.isSelected)
     }
 
-    /// Secondary controls (browse mode and the other dimension) in a compact menu.
+    /// Find has one scope menu; modal pickers retain their existing facet controls.
     var filterMenu: some View {
         Menu {
-            if trimmedQuery.isEmpty && selectedTab == .browse {
-                Picker("Browse by", selection: $browseMode) {
-                    Text("Muscle Group").tag(BrowseMode.byMuscleGroup)
-                    Text("Equipment").tag(BrowseMode.byEquipment)
+            if isFind {
+                Picker("Show exercises", selection: Binding(
+                    get: { findScope }, set: { selectFindScope($0) })) {
+                    ForEach(FindScope.allCases) { scope in
+                        Text(scope.title).tag(scope)
+                    }
                 }
-            }
-            if !trimmedQuery.isEmpty || browseMode == .byEquipment, selectedTab == .browse || !trimmedQuery.isEmpty {
-                Picker("Muscle group", selection: $selectedGroup) {
-                    Text("Any").tag(MuscleGroup?.none)
-                    ForEach(menuGroups) { Text($0.displayName).tag(Optional($0)) }
+                .pickerStyle(.inline)
+            } else {
+                if trimmedQuery.isEmpty && selectedTab == .browse {
+                    Picker("Browse by", selection: $browseMode) {
+                        Text("Muscle Group").tag(BrowseMode.byMuscleGroup)
+                        Text("Equipment").tag(BrowseMode.byEquipment)
+                    }
                 }
-            }
-            if !trimmedQuery.isEmpty || (browseMode == .byMuscleGroup && selectedGroup != nil) {
-                Picker("Equipment", selection: $selectedEquipment) {
-                    Text("Any").tag(Equipment?.none)
-                    ForEach(menuEquipment) { Text($0.displayName).tag(Optional($0)) }
+                if !trimmedQuery.isEmpty || browseMode == .byEquipment, selectedTab == .browse || !trimmedQuery.isEmpty {
+                    Picker("Muscle group", selection: $selectedGroup) {
+                        Text("Any").tag(MuscleGroup?.none)
+                        ForEach(menuGroups) { Text($0.displayName).tag(Optional($0)) }
+                    }
                 }
-            }
-            if filterState.hasFacets {
-                Button("Clear all", role: .destructive) { clearAll() }
+                if !trimmedQuery.isEmpty || (browseMode == .byMuscleGroup && selectedGroup != nil) {
+                    Picker("Equipment", selection: $selectedEquipment) {
+                        Text("Any").tag(Equipment?.none)
+                        ForEach(menuEquipment) { Text($0.displayName).tag(Optional($0)) }
+                    }
+                }
+                if filterState.hasFacets {
+                    Button("Clear all", role: .destructive) { clearAll() }
+                }
             }
         } label: {
-            Label("Filter", systemImage: filterState.hasFacets
+            Label(isFind ? findScope.title : String(localized: "Filter"), systemImage: filterState.hasFacets
                   ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
                 .frame(minWidth: 44, minHeight: 44)
         }
@@ -159,6 +176,7 @@ extension ExercisePickerView {
     }
 
     func clearFacets() {
+        if isFind { selectFindScope(.all); return }
         var state = filterState
         state.clearFacets()
         selectedGroup = state.group; selectedEquipment = state.equipment
@@ -234,7 +252,7 @@ extension ExercisePickerView {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 6) {
-                        Text(ex.name)
+                        Text(ex.localizedDisplayName)
                         if ex.isCustom {
                             Text("Custom").font(.caption2).foregroundStyle(.secondary)
                         }

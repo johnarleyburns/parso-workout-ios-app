@@ -26,18 +26,20 @@ extension HomeView {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Color.clear.frame(height: 0).id("week.top")
                     if surface == .today {
                         dashboardTopContent
                     } else {
                         thisWeekContent
                     }
                 }
-                .padding()
+                .id("week.top")
+                .padding(.horizontal)
+                .padding(.top, 4)
+                .padding(.bottom)
             }
             .background { CadenceGlassBackdrop(tint: .green) }
             .navigationTitle(surface.title)
-            .navigationBarTitleDisplayMode(surface == .today ? .inline : .large)
+            .navigationBarTitleDisplayMode(.large)
             .onReceive(NotificationCenter.default.publisher(for: .cadenceShowThisWeek)) { _ in
                 guard surface != .today else { return }
                 withAnimation(.easeInOut(duration: 0.25)) { proxy.scrollTo("week.top", anchor: .top) }

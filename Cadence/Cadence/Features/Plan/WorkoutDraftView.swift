@@ -172,7 +172,7 @@ struct WorkoutDraftView: View {
                               model: PlanningDraftEditorModel) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(exercise.name).font(.headline).frame(maxWidth: .infinity, alignment: .leading)
+                Text(exercise.name.localizedExerciseName).font(.headline).frame(maxWidth: .infinity, alignment: .leading)
                 iconButton("chevron.up", "Move \(exercise.name) up", "planningDraft.moveUp.\(index)",
                            enabled: model.canMove(id: exercise.id, by: -1)) {
                     model.moveExercise(id: exercise.id, by: -1)

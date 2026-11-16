@@ -17,7 +17,14 @@ public enum ExerciseEvidence {
         "review_or_position": String(localized: "Review / position statement", bundle: .module),
         "training_intervention": String(localized: "Training intervention", bundle: .module),
         "randomized_controlled_trial": String(localized: "Randomized controlled trial", bundle: .module),
+        "clinical_exercise_guide": String(localized: "Clinical exercise guide", bundle: .module),
+        "manufacturer_exercise_guide": String(localized: "Equipment demonstration", bundle: .module),
     ]
+
+    public static let usageReasons: [String: String] = Dictionary(uniqueKeysWithValues:
+        TrainingEngineBridge.evidenceReferences.compactMap { id, reference in
+            reference.reason.map { ("exdb.\(id)", $0) }
+        })
 
     public static let patterns: [String: PatternEvidence] = TrainingEngineBridge.evidencePatterns
         .mapValues { pattern in PatternEvidence(

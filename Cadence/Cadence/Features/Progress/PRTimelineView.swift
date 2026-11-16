@@ -103,7 +103,7 @@ struct PRTimelineView: View {
     @ViewBuilder private func prRow(_ row: PRTimelinePresenter.Row, event: PREvent?) -> some View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 1) {
-                Text(row.exerciseName).font(.subheadline)
+                Text(row.exerciseName.localizedExerciseName).font(.subheadline)
                 Text(row.deltaLabel ?? "first-ever record")
                     .font(.caption).foregroundStyle(.secondary)
             }

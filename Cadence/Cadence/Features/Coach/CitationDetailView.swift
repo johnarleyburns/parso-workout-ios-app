@@ -37,7 +37,7 @@ struct CitationDetailBody: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 12) {
-                    Label(String(citation.year), systemImage: "calendar")
+                    if citation.year > 0 { Label(String(citation.year), systemImage: "calendar") }
                     Label(citation.source, systemImage: "book.closed")
                 }
                 .font(.caption)
@@ -58,7 +58,7 @@ struct CitationDetailBody: View {
         if let url = URL(string: citation.url) {
             Section {
                 Link(destination: url) {
-                    Label("Read the paper", systemImage: "arrow.up.right.square")
+                    Label("Read the source", systemImage: "arrow.up.right.square")
                 }
                 .accessibilityIdentifier("\(idPrefix).link")
             }

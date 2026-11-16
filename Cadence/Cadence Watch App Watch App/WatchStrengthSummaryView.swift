@@ -16,7 +16,7 @@ struct WatchStrengthSummaryView: View {
                                                        phoneReachable: false, transferError: nil)
 
     var body: some View {
-        ScrollView {
+        WatchSummaryScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(WatchTone.accent)
@@ -26,6 +26,7 @@ struct WatchStrengthSummaryView: View {
                 (Text(verbatim: "\(model.durationText) · ") + Text("\(model.setCount) sets")
                     + Text(verbatim: " · \(model.weightValue(model.volume)) \(model.unit.abbreviation)"))
                     .font(.caption2).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityLabel(Text("Duration \(model.durationText)") + Text(verbatim: ", ") + Text("\(model.setCount) sets"))
                 WatchSummaryHeartRateBlock(presentation: presentation, profile: intensityProfile,
                                            pending: watchManager.strengthCompletionOutbox.failedRecoverably
@@ -36,6 +37,7 @@ struct WatchStrengthSummaryView: View {
                 if watchManager.strengthCompletionOutbox.failedRecoverably || model.completionHeartRateOmitted {
                     Text("Heart rate is saved on this watch and will retry sending to iPhone.")
                         .font(.caption2).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .accessibilityIdentifier("watchSummary.hrRetained")
                 }
                 if case .failed = receipt.iPhone {
@@ -52,7 +54,6 @@ struct WatchStrengthSummaryView: View {
                 .handGestureShortcut(.primaryAction)
                 .accessibilityIdentifier("watchSummary.done")
             }
-            .padding(.horizontal, 4)
         }
         .task {
             sendEnd(force: false)

@@ -63,6 +63,7 @@ public enum StarterLibraryReconciliation {
 public enum CatalogWarmup {
     public static func warm() {
         _ = TrainingEngineBridge.shared
+        _ = ExerciseNameLocalizer.shared.localizedExerciseCount
         _ = ExerciseLibrary.starter.count
         _ = ExerciseLibrary.template(matching: "Bench Press")
         _ = VolumeCredit.direct

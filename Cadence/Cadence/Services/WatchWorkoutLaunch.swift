@@ -29,6 +29,8 @@ enum WatchWorkoutLaunch {
         case "swim": return .swimming
         case "walk": return .walking
         case "rowing": return .rowing
+        case "elliptical": return .elliptical
+        case "stairClimber", "stairclimber", "stair_climber", "stairs": return .stairClimbing
         case "other": return .other
         default: return .functionalStrengthTraining
         }

@@ -63,6 +63,7 @@ struct ExercisePickerView: View {
     /// the "good match" suggestion — recomputed only when the debounced query
     /// changes, never on a redraw (field test 2026-08-19 #4).
     @State var outcome = ExercisePickerSearch.Outcome.empty
+    @State var findScope: FindScope = .all
     @State var selectedTab: PickerTab = .browse
     @State var selectedGroup: MuscleGroup?
     @State var selectedEquipment: Equipment?
@@ -158,16 +159,16 @@ struct ExercisePickerView: View {
             return facetIndex.equipment(for: group)
         case .byEquipment:
             return Equipment.allCases.filter { !facetIndex.exercises(forEquipment: $0).isEmpty }
+                .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
         }
     }
 
-    /// The groups offered in the browse chip row. Tracked groups lead (they are
-    /// what most people browse for); the rest follow in canonical order rather than
-    /// being hidden, since browsing is discovery, not programming.
+    /// Available muscle groups, sorted by their localized display names.
     var availableGroups: [MuscleGroup] {
         switch browseMode {
         case .byMuscleGroup:
             return MuscleGroup.canonicalOrder.filter { !facetIndex.exercises(for: $0).isEmpty }
+                .sorted { $0.displayName.localizedStandardCompare($1.displayName) == .orderedAscending }
         case .byEquipment:
             guard let eq = selectedEquipment else { return [] }
             return facetIndex.muscleGroups(forEquipment: eq)
@@ -189,20 +190,6 @@ struct ExercisePickerView: View {
 
     var showsGrouped: Bool {
         selectedTab == .browse && trimmedQuery.isEmpty && selectedGroup == nil && selectedEquipment == nil
-    }
-
-    var showsFilterChips: Bool {
-        selectedTab == .browse && trimmedQuery.isEmpty
-    }
-
-    var showsSubFilter: Bool {
-        showsFilterChips && browseMode == .byMuscleGroup
-            && selectedGroup != nil && availableEquipment.count > 1
-    }
-
-    var showsSubFilterInverted: Bool {
-        showsFilterChips && browseMode == .byEquipment
-            && selectedEquipment != nil && availableGroups.count > 0
     }
 
     var sectionTitle: String {
@@ -248,7 +235,7 @@ struct ExercisePickerView: View {
                     // The tab and browse-mode segmented controls live in the
                     // List so they share the rows' horizontal margins; outside
                     // it they spanned wider than the exercise rows.
-                    if trimmedQuery.isEmpty { tabPicker }
+                    if !isFind && trimmedQuery.isEmpty { tabPicker }
 
                     if !catalog.isLoaded {
                         Section {
@@ -281,7 +268,7 @@ struct ExercisePickerView: View {
                                 VStack(alignment: .leading) {
                                     Text("Found a good match")
                                         .font(.subheadline.weight(.medium))
-                                    Text(match.name)
+                                    Text(match.localizedDisplayName)
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
@@ -307,7 +294,7 @@ struct ExercisePickerView: View {
                             } description: {
                                 Text("The popular list is empty for this catalog.")
                             } actions: {
-                                Button("Browse all exercises") { browseAll = true }
+                                Button("Browse all exercises") { if isFind { selectFindScope(.all) } else { browseAll = true } }
                             }
                         }
                     } else if catalog.isLoaded, filtered.isEmpty, !showsGrouped {
@@ -322,7 +309,7 @@ struct ExercisePickerView: View {
                         Section(sectionTitle) { ForEach(filtered) { exerciseRow($0) } }
                         if selectedTab == .popular, !browseAll, trimmedQuery.isEmpty {
                             Section {
-                                Button { browseAll = true } label: {
+                                Button { if isFind { selectFindScope(.all) } else { browseAll = true } } label: {
                                     Label("Browse all exercises", systemImage: "square.grid.2x2")
                                 }
                                 .accessibilityIdentifier("picker.browseAll")
@@ -343,7 +330,7 @@ struct ExercisePickerView: View {
                         prompt: "Search name, muscle, or equipment")
             .navigationDestination(for: ExerciseDetailRoute.self) { routeDestination($0) }
             .toolbar {
-                if selectedTab == .browse || !trimmedQuery.isEmpty {
+                if isFind || selectedTab == .browse || !trimmedQuery.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) { filterMenu }
                 }
                 if !isFind {
@@ -356,6 +343,7 @@ struct ExercisePickerView: View {
         .accessibilityIdentifier(isFind ? "find.root" : "picker.search")
         .task(id: newestExercise.first?.updatedAt) {
             search = await ExercisePickerSearch.load(from: context.container)
+            if isFind { selectFindScope(findScope) }
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 outcome = search.outcome(for: query)
             }
@@ -364,6 +352,7 @@ struct ExercisePickerView: View {
         .onChange(of: selectedEquipment) { _, _ in refreshSearchResults() }
         .onChange(of: selectedGroup) { _, _ in
             refreshSearchResults()
+            guard !isFind else { return }
             // Group is the primary filter only by muscle group; in the equipment-first
             // flow it narrows, so the selected equipment must be preserved.
             if ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(
@@ -372,10 +361,13 @@ struct ExercisePickerView: View {
             }
         }
         .onChange(of: selectedTab) { _, newTab in
+            guard !isFind else { return }
             if newTab == .browse { selectedEquipment = nil; selectedGroup = nil }
             if newTab != .browse { selectedGroup = nil; selectedEquipment = nil }
         }
-        .onChange(of: browseMode) { _, _ in selectedEquipment = nil; selectedGroup = nil }
+        .onChange(of: browseMode) { _, _ in
+            if !isFind { selectedEquipment = nil; selectedGroup = nil }
+        }
         .task(id: query) {
             if query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 outcome = .empty

@@ -166,6 +166,8 @@ struct WatchCardioSessionView: View {
         case .hiit: return .hiit
         case .boxing: return .boxing
         case .rowing: return .rowing
+        case .elliptical: return .elliptical
+        case .stairClimber: return .stairClimber
         case .other: return .other
         case .strength: return .other
         }

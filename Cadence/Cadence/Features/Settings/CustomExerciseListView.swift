@@ -113,7 +113,7 @@ struct CustomExerciseListView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ex.name).font(.body.weight(.medium))
+                    Text(ex.localizedDisplayName).font(.body.weight(.medium))
                     Text("No muscles set")
                         .font(.caption)
                         .foregroundStyle(.orange)
@@ -132,7 +132,7 @@ struct CustomExerciseListView: View {
                     Text("Matches: ")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    Text(match.name)
+                    Text(match.localizedDisplayName)
                         .font(.caption.weight(.medium))
                     Spacer()
                 }
@@ -163,7 +163,7 @@ struct CustomExerciseListView: View {
         Button { editExercise = ex } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(ex.name).font(.body.weight(.medium))
+                    Text(ex.localizedDisplayName).font(.body.weight(.medium))
 
                     HStack(spacing: 6) {
                         if let cat = ex.categoryValue {

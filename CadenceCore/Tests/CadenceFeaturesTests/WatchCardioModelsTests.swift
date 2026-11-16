@@ -52,6 +52,17 @@ final class WatchCardioModelsTests: XCTestCase {
         XCTAssertEqual(spec.kind, .rowing)
     }
 
+    func testEllipticalAndStairsKeepTheirTypesAndUseIndoorSetup() {
+        let elliptical = WorkoutConfigurationSpec(for: "elliptical")
+        XCTAssertEqual(elliptical.kind, .elliptical)
+        XCTAssertEqual(elliptical.location, .indoor)
+        for raw in ["stairClimber", "stair_climber", "stairs"] {
+            let stairs = WorkoutConfigurationSpec(for: raw)
+            XCTAssertEqual(stairs.kind, .stairClimber)
+            XCTAssertEqual(stairs.location, .indoor)
+        }
+    }
+
     func testSpecForOther() {
         let spec = WorkoutConfigurationSpec(for: "other")
         XCTAssertEqual(spec.kind, .other)

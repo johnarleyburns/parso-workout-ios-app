@@ -120,7 +120,9 @@ struct WatchCardioSetupView: View {
         case .cycle: return String(localized: "Cycle")
         case .swim: return String(localized: "Swim")
         case .rowing: return String(localized: "Rowing")
-        case .other: return String(localized: "Other")
+        case .elliptical: return String(localized: "Elliptical")
+        case .stairClimber: return String(localized: "Stairs")
+        case .other: return String(localized: "Custom Cardio")
         default: return String(localized: "Setup")
         }
     }
@@ -132,7 +134,7 @@ struct WatchCardioSetupView: View {
         case .cycle: return String(localized: "Start cycle")
         case .swim: return String(localized: "Start swim")
         case .rowing: return String(localized: "Start row")
-        case .other: return String(localized: "Start other")
+        case .elliptical, .stairClimber, .other: return String(localized: "Start")
         default: return String(localized: "Start")
         }
     }

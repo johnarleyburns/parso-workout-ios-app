@@ -59,6 +59,7 @@ struct CoachResearchUpdatesView: View {
                 } footer: {
                     Text("Every study the coaching engine cites, ordered by author. Tap any entry to read why the Coach uses it and open the paper.")
                 }
+                ExerciseCatalogReferencesSection()
             }
         }
         .navigationTitle("Coach Research Updates")
@@ -140,7 +141,24 @@ private struct BibliographyRow: View {
             .padding(.vertical, 2)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(citation.authors), \(String(citation.year)). \(citation.title). \(usageReason ?? "")")
+        .accessibilityLabel("\(citation.shortText). \(citation.title). \(usageReason ?? "")")
         .accessibilityIdentifier("coach.bibliography.\(citation.id)")
+    }
+}
+
+
+/// Catalog provenance remains separate from coaching-prescription studies.
+struct ExerciseCatalogReferencesSection: View {
+    var body: some View {
+        Section {
+            ForEach(ExerciseCatalogEvidence.citations) { citation in
+                BibliographyRow(citation: citation)
+                    .id("coach.bibliography.anchor.\(citation.id)")
+            }
+        } header: {
+            Text("Exercise catalog references")
+        } footer: {
+            Text("Movement definitions and muscle-role evidence. Clinical guides and equipment demonstrations identify exercises; they do not establish a measured half-set equivalence.")
+        }
     }
 }

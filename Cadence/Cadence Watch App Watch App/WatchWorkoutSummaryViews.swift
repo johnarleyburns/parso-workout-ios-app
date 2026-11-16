@@ -3,6 +3,55 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 
+/// Bound summary content to the visible Watch width before laying out charts
+/// and text. Long labels must grow vertically, never widen the scroll content.
+struct WatchSummaryScrollView<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        ScrollView {
+            content()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 6)
+                .containerRelativeFrame(.horizontal, alignment: .leading)
+        }
+    }
+}
+
+/// Keep compact metrics on one row when they fit; long translations and larger
+/// text sizes put the value below its label instead of clipping either edge.
+struct WatchSummaryMetricRow: View {
+    let label: String
+    let value: String
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 6) {
+                caption.fixedSize()
+                Spacer(minLength: 0)
+                metric.fixedSize()
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                caption.fixedSize(horizontal: false, vertical: true)
+                metric.fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(Text(value))
+    }
+
+    private var caption: some View {
+        Text(label).font(.caption).foregroundStyle(.secondary)
+    }
+
+    private var metric: some View {
+        Text(value).font(.system(.caption, design: .monospaced).bold()).monospacedDigit()
+    }
+}
+
 /// Shared static HR content (chart, avg/max, credit rows, coverage) for completion and history.
 struct WatchSummaryHeartRateBlock: View {
     let presentation: WatchWorkoutSummaryPresentation
@@ -21,6 +70,8 @@ struct WatchSummaryHeartRateBlock: View {
                             summary: storedSummary, sampleCount: presentation.hrSamples.count, pending: true)
                         : coverage
                     Text(shown.text).font(.caption2).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityLabel(shown.accessibilityLabel)
                         .accessibilityIdentifier("watchSummary.hrCoverage")
                 }
@@ -40,9 +91,10 @@ struct WatchHistoricalWorkoutSummaryView: View {
 
     var body: some View {
         let p = presentation
-        ScrollView {
+        WatchSummaryScrollView {
             VStack(alignment: .leading, spacing: 8) {
                 Text(p.title).font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
                 (Text(p.start, format: .dateTime.month().day()) + Text(verbatim: " · \(Self.format(p.durationSeconds))"))
                     .font(.caption2).foregroundStyle(.secondary)
                 if p.kind == .strength {
@@ -67,13 +119,14 @@ struct WatchHistoricalWorkoutSummaryView: View {
                 if p.kind == .strength {
                     ForEach(Array(p.exercises.enumerated()), id: \.offset) { _, exercise in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(exercise.name).font(.footnote.weight(.semibold))
+                            Text(exercise.name.localizedExerciseName).font(.footnote.weight(.semibold))
+                                .fixedSize(horizontal: false, vertical: true)
                             Text(exercise.setTexts.joined(separator: " · ")).font(.caption2).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                 }
             }
-            .padding(.horizontal, 4)
         }
         .navigationTitle(p.title)
         .accessibilityIdentifier("watch.historySummary")

@@ -14,6 +14,8 @@ extension WatchWorkoutManager {
         case "swim": return .swimming
         case "walk": return .walking
         case "rowing": return .rowing
+        case "elliptical": return .elliptical
+        case "stairClimber", "stairclimber", "stair_climber", "stairs": return .stairClimbing
         case "other": return .other
         default: return .functionalStrengthTraining
         }
@@ -236,6 +238,8 @@ extension WatchWorkoutManager {
         case .swimming: return "swim"
         case .walking: return "walk"
         case .rowing: return "rowing"
+        case .elliptical: return "elliptical"
+        case .stairClimbing: return "stairClimber"
         case .other: return "other"
         default: return "strength"
         }

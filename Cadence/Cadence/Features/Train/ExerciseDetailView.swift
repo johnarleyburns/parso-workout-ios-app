@@ -66,7 +66,7 @@ struct ExerciseDetailView: View {
             }
             .padding()
         }
-        .navigationTitle(exercise.name)
+        .navigationTitle(exercise.name.localizedExerciseName)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {

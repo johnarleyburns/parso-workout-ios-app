@@ -148,7 +148,7 @@ struct ExcludedExercisesView: View {
                         addPresented = false
                     } label: {
                         HStack {
-                            Text(exercise.name)
+                            Text(exercise.name.localizedExerciseName)
                             Spacer()
                             if alreadyExcluded {
                                 Image(systemName: "checkmark")
@@ -173,7 +173,7 @@ struct ExcludedExercisesView: View {
     private func exclusionRow(_ exclusion: ExerciseSuggestionExclusion) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text(exclusion.exerciseNameSnapshot)
+                Text(exclusion.exerciseNameSnapshot.localizedExerciseName)
                 Text(exclusion.reason.displayName)
                     .font(.caption)
                     .foregroundStyle(.secondary)

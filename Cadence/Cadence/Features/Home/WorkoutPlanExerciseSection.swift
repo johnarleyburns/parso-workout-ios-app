@@ -70,7 +70,7 @@ struct WorkoutPlanExerciseSection: View {
 
     private var header: some View {
         HStack {
-            Text(exercise.name).font(.headline)
+            Text(exercise.name.localizedExerciseName).font(.headline)
             Spacer()
             Group {
                 Button { showInfo = true } label: {

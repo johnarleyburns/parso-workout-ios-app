@@ -4,79 +4,54 @@ import CadenceCore
 import CadenceFeatures
 
 struct HomeWorkoutStartControls: View {
-    let recentCardio: [WorkoutType]
     let onQuickStart: () -> Void
     let onSuggested: () -> Void
     let onPreviousStart: (EditablePlan) -> Void
     let onCardio: (WorkoutType) -> Void
-    let onMoreCardio: () -> Void
-    @State private var strength: HomeStrengthStartChoice = .quickStart
-    @State private var cardio: WorkoutType?
+    let onCustomCardio: (String, Bool) -> Void
+    @AppStorage(HomeWorkoutStartChoice.selectionStorageKey)
+    private var selectedChoiceID = HomeWorkoutStartChoice.defaultChoice.id
+
+    private var selection: HomeWorkoutStartChoice {
+        get { HomeWorkoutStartChoice.restored(from: selectedChoiceID) }
+        nonmutating set { selectedChoiceID = newValue.id }
+    }
     @State private var showingPrevious = false
+    @State private var showingCustomCardio = false
 
     var body: some View {
-        VStack(spacing: 24) {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Strength").font(.headline).accessibilityAddTraits(.isHeader)
-                Menu {
-                    Picker("Strength workout", selection: $strength) {
-                        ForEach(HomeStrengthStartChoice.allCases) { Text($0.title).tag($0) }
-                    }
-                } label: {
-                    sourceLabel(strength.title)
+        VStack(spacing: 12) {
+            Menu {
+                Section {
+                    ForEach(HomeWorkoutStartChoice.strengthChoices) { choice($0) }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Strength workout")
-                .accessibilityValue(strength.title)
-                .accessibilityIdentifier("home.start.strengthSource")
-
-                Button {
-                    switch strength {
-                    case .quickStart: onQuickStart()
-                    case .suggested: onSuggested()
-                    case .previous: showingPrevious = true
-                    }
-                } label: {
-                    Label("Start strength", systemImage: "dumbbell.fill")
-                        .cadenceActionLabel(alignment: .center)
+                Section {
+                    ForEach(HomeWorkoutStartChoice.cardioChoices) { choice($0) }
                 }
-                .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
-                .accessibilityIdentifier("home.start.strength")
+            } label: {
+                sourceLabel(selection.title)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Workout type")
+            .accessibilityValue(Text(LocalizedStringKey(selection.title)))
+            .accessibilityIdentifier("home.start.workoutSource")
 
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Cardio").font(.headline).accessibilityAddTraits(.isHeader)
-                Menu {
-                    ForEach(HomeRecentCardioChoices.recent(recentCardio)) { type in
-                        Button { cardio = type } label: {
-                            if cardio == type {
-                                Label(type.displayName, systemImage: "checkmark")
-                            } else {
-                                Text(type.displayName)
-                            }
-                        }
-                    }
-                    Button("More…", action: onMoreCardio)
-                } label: {
-                    sourceLabel(cardio?.displayName ?? String(localized: "More…"))
+            Button {
+                switch selection {
+                case .strength(.suggested): onSuggested()
+                case .strength(.previous): showingPrevious = true
+                case .strength(.quickStart): onQuickStart()
+                case .cardio(.other): showingCustomCardio = true
+                case .cardio(let type): onCardio(type)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Cardio workout")
-                .accessibilityValue(cardio?.displayName ?? String(localized: "More…"))
-                .accessibilityIdentifier("home.start.cardioSource")
-
-                Button {
-                    if let cardio { onCardio(cardio) } else { onMoreCardio() }
-                } label: {
-                    Label("Start cardio", systemImage: "figure.run")
-                        .cadenceActionLabel(alignment: .center)
-                }
-                .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
-                .accessibilityIdentifier("home.start.cardio")
+            } label: {
+                Label("Start Workout", systemImage: "activity.exercise")
+                    .cadenceActionLabel(alignment: .center)
             }
+            .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
+            .accessibilityIdentifier("home.start.workout")
         }
         .glassGroup(spacing: 12)
-        .onAppear { cardio = HomeRecentCardioChoices.recent(recentCardio).first }
         .sheet(isPresented: $showingPrevious) {
             NavigationStack {
                 HomePreviousStrengthWorkouts { plan in
@@ -85,11 +60,26 @@ struct HomeWorkoutStartControls: View {
                 }
             }
         }
+        .sheet(isPresented: $showingCustomCardio) {
+            NavigationStack {
+                OtherCardioEntryView { description, gps in
+                    showingCustomCardio = false
+                    onCustomCardio(description, gps)
+                }
+            }
+        }
+    }
+
+    private func choice(_ option: HomeWorkoutStartChoice) -> some View {
+        Button { selection = option } label: {
+            Label(LocalizedStringKey(option.title), systemImage: option.symbol)
+        }
+        .accessibilityAddTraits(selection == option ? .isSelected : [])
     }
 
     private func sourceLabel(_ title: String) -> some View {
         HStack(spacing: 12) {
-            Text(title)
+            Text(LocalizedStringKey(title))
                 .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.up.chevron.down")
                 .foregroundStyle(.secondary)

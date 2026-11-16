@@ -169,7 +169,7 @@ struct HomeMuscleDetailSheet: View {
                         ForEach(history.exercises) { exercise in
                             VStack(alignment: .leading, spacing: 7) {
                                 HStack {
-                                    Text(exercise.name).font(.subheadline.weight(.semibold))
+                                    Text(exercise.name.localizedExerciseName).font(.subheadline.weight(.semibold))
                                     Spacer()
                                     Text(exercise.isDirect ? "Direct" : "Indirect")
                                         .font(.caption.weight(.semibold))

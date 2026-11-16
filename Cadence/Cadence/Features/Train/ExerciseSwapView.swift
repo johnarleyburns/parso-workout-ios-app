@@ -107,7 +107,7 @@ struct ExerciseSwapView: View {
     private func row(_ result: ExerciseSimilarity.Result) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             HStack {
-                Text(result.candidate.name)
+                Text(result.candidate.name.localizedExerciseName)
                 Spacer()
                 Text("\(Int((result.score * 100).rounded()))%")
                     .font(.caption.monospacedDigit()).foregroundStyle(.secondary)

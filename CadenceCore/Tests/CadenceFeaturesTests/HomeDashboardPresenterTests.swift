@@ -167,7 +167,7 @@ final class HomeDashboardPresenterTests: XCTestCase {
         let tracked = Double(MuscleGroup.defaultTracked.count)
         XCTAssertEqual(state.volume.count, MuscleGroup.defaultTracked.count)
         XCTAssertEqual(state.volumeCoverage.completed, 8.0 / tracked, accuracy: 0.001)
-        XCTAssertEqual(state.volumeCoverage.displayText, "0.5 sets")
+        XCTAssertEqual(state.volumeCoverage.displayText, "0.4 sets")
         XCTAssertEqual(state.volumeCoverage.normalized, 8.0 / tracked / 12.0, accuracy: 0.001)
     }
 
@@ -208,11 +208,11 @@ final class HomeDashboardPresenterTests: XCTestCase {
 
     /// An untracked group is noise at zero and information once it has work in it.
     func testUntrackedGroupAppearsOnlyOnceTrained() {
-        let quiet = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4])
+        let quiet = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4], tracked: [.chest])
         XCTAssertFalse(quiet.contains { $0.group == .neck })
         XCTAssertFalse(quiet.contains { $0.group == .tibialis })
 
-        let trained = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4, .neck: 2])
+        let trained = HomeDashboardPresenter.volumeRows(setsByGroup: [.chest: 4, .neck: 2], tracked: [.chest])
         let neck = trained.first { $0.group == .neck }
         XCTAssertNotNil(neck)
         XCTAssertEqual(neck?.sets, 2)
@@ -240,8 +240,9 @@ final class HomeDashboardPresenterTests: XCTestCase {
         let rows = try dashboard(chestSets: 4, now: Date()).volume
         XCTAssertEqual(rows.map(\.displayName),
                        ["Abductors", "Abs", "Adductors", "Biceps", "Calves", "Chest",
-                        "Forearms", "Glutes", "Hamstrings", "Lats", "Lower Back",
-                        "Mid Back", "Quads", "Shoulders", "Traps", "Triceps"])
+                        "Forearms", "Glutes", "Hamstrings", "Hip Flexors", "Lats", "Lower Back",
+                        "Mid Back", "Neck", "Quads", "Rotator Cuff", "Shoulders", "Tibialis",
+                        "Traps", "Triceps"])
         XCTAssertTrue(rows.allSatisfy { $0.displayName.first?.isUppercase == true })
         XCTAssertTrue(rows.allSatisfy { !$0.displayName.contains("_") })
     }

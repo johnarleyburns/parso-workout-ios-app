@@ -19,7 +19,7 @@ if package_data is None:
     raise SystemExit("DB++ package checkout is unavailable; run swift build --package-path CadenceCore first")
 data = json.loads(package_data.read_text())
 refs = data["metadata"]["evidence"]["references"]
-labels = {"systematic_review": "Systematic review", "experimental": "Experimental study", "meta_regression": "Meta-regression", "review_or_position": "Review / position statement", "training_intervention": "Training intervention", "randomized_controlled_trial": "Randomized controlled trial"}
+labels = {"systematic_review": "Systematic review", "experimental": "Experimental study", "meta_regression": "Meta-regression", "review_or_position": "Review / position statement", "training_intervention": "Training intervention", "randomized_controlled_trial": "Randomized controlled trial", "clinical_exercise_guide": "Clinical exercise guide", "manufacturer_exercise_guide": "Equipment demonstration"}
 lines = ["## Movement evidence (generated — do not hand-edit)", "", "These references back the DB++ muscle-role attributions, rather than coaching decisions. This block is regenerated from the bundled snapshot.", "", "<!-- BEGIN exercise-evidence -->"]
 for key in sorted(refs):
     ref = refs[key]

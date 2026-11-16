@@ -34,7 +34,7 @@ struct WatchSetKeypadView: View {
             VStack(spacing: 3) {
                 HStack(spacing: 6) {
                     WatchExerciseProgressRing(presentation: card.exerciseProgress)
-                    Text(card.exerciseName)
+                    Text(card.exerciseName.localizedExerciseName)
                         .font(.footnote.weight(.semibold))
                         .lineLimit(2, reservesSpace: true)
                         .frame(maxWidth: .infinity, alignment: .leading)

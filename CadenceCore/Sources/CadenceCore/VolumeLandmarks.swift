@@ -33,10 +33,9 @@ public enum VolumeLandmarks {
     ///
     /// These preserve the spread the coarse body-part table had — large regions
     /// 8/16/22, arms 6/14/20, small muscles 6/12/18 — and extend it to the groups
-    /// the retired `BodyPart` used to hide inside `legs` and `back`. The groups the coach does
-    /// not target by default (`MuscleGroup.defaultTracked` excludes them) get
-    /// deliberately low bands, so a user who opts one in is not told to run a
-    /// training block for it.
+    /// the retired `BodyPart` used to hide inside `legs` and `back`. Specialized
+    /// groups retain deliberately low bands alongside the larger tracked groups,
+    /// so including them does not imply a dedicated training block.
     ///
     /// Conservative starting points anchored on the weekly-volume dose-response
     /// work (`volumeDoseResponse`, `pellandDoseResponse2026`), not validated

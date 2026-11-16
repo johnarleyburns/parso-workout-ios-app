@@ -23,11 +23,12 @@ public struct Citation: Equatable, Hashable, Sendable, Identifiable {
 
     /// A compact one-line attribution, e.g. "Schoenfeld et al. (2021), Sports".
     public var shortText: String {
-        guard !authors.isEmpty else { return "\(source) (\(year))" }
+        guard !authors.isEmpty else { return year > 0 ? "\(source) (\(year))" : source }
         let lead = authors.contains("&") || authors.contains(",")
             ? "\(authors.split(separator: " ").first.map(String.init) ?? authors) et al."
             : authors
-        return "\(lead) (\(year)), \(source)"
+        let date = year > 0 ? " (\(year))" : ""
+        return "\(lead)\(date), \(source)"
     }
 }
 
@@ -819,7 +820,9 @@ public enum CitationRegistry {
     /// reasons. Movement evidence is generated from DB++ and resolves through
     /// this fall-through without changing that curated one-to-one contract.
     public static func citation(forId id: String) -> Citation? {
-        all.first { $0.id == id } ?? ExerciseEvidence.citationsByID[id]
+        all.first { $0.id == id }
+            ?? ExerciseEvidence.citationsByID[id]
+            ?? ExerciseCatalogEvidence.citations.first { $0.id == id }
     }
 
     // MARK: - Bibliography (Coach Research Updates)
@@ -905,7 +908,7 @@ public enum CitationRegistry {
 
     /// Resolve the user-facing "why we use it" line for a citation id, if present.
     public static func usageReason(forId id: String) -> String? {
-        usageReasons[id]
+        usageReasons[id] ?? ExerciseCatalogEvidence.usageReasons[id] ?? ExerciseEvidence.usageReasons[id]
     }
 
     /// All citations, sorted by first author surname (scientific convention). The

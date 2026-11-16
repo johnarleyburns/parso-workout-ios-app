@@ -23,4 +23,23 @@ final class HomeWorkoutStartChoiceTests: XCTestCase {
         XCTAssertTrue(choices.allSatisfy { !$0.symbol.isEmpty })
     }
 
+    func testEveryChoiceRestoresFromPersistedSelection() throws {
+        let suiteName = "HomeWorkoutStartChoiceTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let key = HomeWorkoutStartChoice.selectionStorageKey
+        for choice in HomeWorkoutStartChoice.allChoices {
+            defaults.set(choice.id, forKey: key)
+            let reopened = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+            let saved = try XCTUnwrap(reopened.string(forKey: key))
+            XCTAssertEqual(HomeWorkoutStartChoice.restored(from: saved), choice)
+        }
+    }
+
+    func testMissingOrObsoleteSelectionUsesSuggestedStrength() {
+        for identifier in ["", "cardio.removedActivity", "strength.removedSource", "cardio.weights"] {
+            XCTAssertEqual(HomeWorkoutStartChoice.restored(from: identifier), .strength(.suggested))
+        }
+    }
+
 }

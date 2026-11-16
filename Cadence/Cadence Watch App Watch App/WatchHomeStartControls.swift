@@ -4,11 +4,18 @@ import CadenceFeatures
 
 struct WatchHomeStartControls: View {
     let cardioDestination: (CardioType) -> AnyView
-    @State private var selection: HomeWorkoutStartChoice = .strength(.suggested)
+    @AppStorage(HomeWorkoutStartChoice.selectionStorageKey)
+    private var selectedChoiceID = HomeWorkoutStartChoice.defaultChoice.id
+
+    private var selection: HomeWorkoutStartChoice {
+        get { HomeWorkoutStartChoice.restored(from: selectedChoiceID) }
+        nonmutating set { selectedChoiceID = newValue.id }
+    }
 
     var body: some View {
         VStack(spacing: 5) {
-            Picker("Workout type", selection: $selection) {
+            Picker("Workout type", selection: Binding(
+                get: { selection }, set: { selection = $0 })) {
                 ForEach(HomeWorkoutStartChoice.allChoices) { option in
                     Label(LocalizedStringKey(option.title), systemImage: option.symbol)
                         .tag(option)

@@ -27,6 +27,15 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     case strength(HomeStrengthStartChoice)
     case cardio(WorkoutType)
 
+    public static let selectionStorageKey = "home.workoutStartChoice"
+    public static let defaultChoice: Self = .strength(.suggested)
+
+    /// Persist stable identities rather than localized labels or list positions.
+    /// Unknown values fall back safely if a future release removes a choice.
+    public static func restored(from identifier: String) -> Self {
+        allChoices.first { $0.id == identifier } ?? defaultChoice
+    }
+
     public static let strengthChoices: [Self] = [.strength(.suggested), .strength(.previous), .strength(.quickStart)]
     public static let cardioChoices: [Self] = ([WorkoutType.hiit] + WorkoutType.allCases.filter {
         $0 != .weights && $0 != .hiit

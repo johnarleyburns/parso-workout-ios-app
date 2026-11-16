@@ -9,7 +9,13 @@ struct HomeWorkoutStartControls: View {
     let onPreviousStart: (EditablePlan) -> Void
     let onCardio: (WorkoutType) -> Void
     let onCustomCardio: (String, Bool) -> Void
-    @State private var selection: HomeWorkoutStartChoice = .strength(.suggested)
+    @AppStorage(HomeWorkoutStartChoice.selectionStorageKey)
+    private var selectedChoiceID = HomeWorkoutStartChoice.defaultChoice.id
+
+    private var selection: HomeWorkoutStartChoice {
+        get { HomeWorkoutStartChoice.restored(from: selectedChoiceID) }
+        nonmutating set { selectedChoiceID = newValue.id }
+    }
     @State private var showingPrevious = false
     @State private var showingCustomCardio = false
 

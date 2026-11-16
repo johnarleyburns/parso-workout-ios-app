@@ -37,10 +37,14 @@ final class PlanningDraftPromotionTests: XCTestCase {
         try context.fetch(FetchDescriptor<PlanningDraft>()).filter(\.isVisible).count
     }
 
-    private var future: Date { Calendar.current.date(byAdding: .day, value: 3, to: Date())! }
-
-
-
+    func testUndecodablePayloadPreservesDraftOnStart() throws {
+        let context = try makeContext(), store = PlanningDraftStore()
+        let draft = try richDraft(store, context)
+        draft.payloadVersion = 99
+        XCTAssertThrowsError(try store.start(draftID: draft.id, operationID: UUID(), in: context))
+        XCTAssertNil(draft.deletedAt)
+        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 0)
+    }
 
     func testStartMapsPlanAndIsIdempotent() throws {
         let context = try makeContext(), store = PlanningDraftStore()

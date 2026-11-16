@@ -5,10 +5,6 @@ import CadenceCore
 // pre-filled numbers, progress dots, one button. Pure state so the watch view only maps it.
 
 /// One progress dot: logged, the set you're on, or still to come in the plan.
-public enum WatchSetDot: Equatable, Sendable {
-    case done, current, upcoming
-}
-
 /// Which number the Digital Crown adjusts (decision D-W4: weight by default).
 public enum WatchSetCardField: Equatable, Sendable {
     case weight, reps
@@ -28,7 +24,7 @@ public struct WatchCoachLine: Equatable, Sendable {
 
 public struct WatchSetCardState: Equatable, Sendable {
     public let exerciseName: String
-    public let dots: [WatchSetDot]
+    public let exerciseProgress: WatchWorkoutExerciseRowPresentation
     /// Weight in the user's display unit, formatted ("100", "102.5").
     public let weightText: String
     public let unitText: String
@@ -77,7 +73,6 @@ public enum WatchSetCardBuilder {
                             isNonWeighted: Bool = false,
                             isLastSet: Bool = false,
                             othersRemain: Bool = false) -> WatchSetCardState {
-        let dots = makeDots(planned: plannedWorkingSets.count, completed: completedWorkingSets)
         let weightText = isNonWeighted ? "—" : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
         let changed = isNonWeighted
             ? currentReps != prefillReps
@@ -106,7 +101,9 @@ public enum WatchSetCardBuilder {
         }
         return WatchSetCardState(
             exerciseName: exerciseName,
-            dots: dots,
+            exerciseProgress: WatchWorkoutExerciseRowPresentation(
+                exerciseName: exerciseName, completedSetCount: completedWorkingSets,
+                plannedSetCount: plannedWorkingSets.count),
             weightText: weightText,
             unitText: unit.abbreviation,
             reps: currentReps,
@@ -119,16 +116,6 @@ public enum WatchSetCardBuilder {
             effortText: effortText,
             isWarmup: isWarmup,
             isNonWeighted: isNonWeighted)
-    }
-
-    /// Done / current / upcoming. Without a plan there is one dot per logged set plus the current one.
-    public static func makeDots(planned: Int, completed: Int) -> [WatchSetDot] {
-        let total = max(planned, completed + 1)
-        return (0..<total).map { index in
-            if index < completed { return .done }
-            if index == completed { return .current }
-            return .upcoming
-        }
     }
 
     /// The plan's explanation for this set, only when the prefill really came from the plan.

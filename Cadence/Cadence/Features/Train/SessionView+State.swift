@@ -140,8 +140,7 @@ extension SessionView {
         setEditorRoute = nil
     }
     func recordInlineSet(for exercise: Exercise, draft: SetDraft) {
-        if inlineEditingSetID == nil,
-           let initial = inlineEditorConfig(), draft.reps != initial.reps {
+        if draft.repsWereEdited {
             WorkoutEntryPreference.setReps(draft.reps, in: session, performerID: draft.performerID)
         }
         let enteredKg = SessionViewModel.canonicalKg(input: draft.weightString, unit: draft.unit,

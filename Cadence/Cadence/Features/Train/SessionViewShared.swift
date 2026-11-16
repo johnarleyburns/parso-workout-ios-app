@@ -11,6 +11,7 @@ struct SetDraft {
     var rpe: Int?
     var bodyweight: Bool
     var performerID: UUID?
+    var repsWereEdited = false
 }
 
 struct InlineEditorConfig: Equatable {

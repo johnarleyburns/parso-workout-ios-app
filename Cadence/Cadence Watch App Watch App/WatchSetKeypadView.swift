@@ -93,7 +93,8 @@ struct WatchSetKeypadView: View {
             .navigationBarTitleDisplayMode(.inline)
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
-                                  by: focus == .weight ? weightStep : 1,
+                                  by: WatchSetCardMetricLayout.crownStep(weightFocused: focus == .weight,
+                                                                       nonWeighted: card.isNonWeighted, weightStep: weightStep),
                                   sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
             .sheet(isPresented: $showingMore) {
                 NavigationStack { WatchSetMoreView(model: model, talk: talk, weightStep: $weightStep) }
@@ -115,7 +116,7 @@ struct WatchSetKeypadView: View {
                                       hint: Text("Select weight, then use the plus and minus buttons or turn the Digital Crown"),
                                       onFocus: { focus = .weight })
             .accessibilityIdentifier("watchWeight.current")
-        let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps,
+        let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps || card.isNonWeighted,
                                     accessibilityName: Text("Reps"),
                                     hint: Text("Select reps, then use the plus and minus buttons or turn the Digital Crown"),
                                     onFocus: { focus = .reps })
@@ -197,7 +198,7 @@ struct WatchSetKeypadView: View {
     }
 
     private var crownRange: ClosedRange<Double> {
-        focus == .weight && !isCurrentExerciseNonWeighted ? increment.range : 1...50
+        focus == .weight && !isCurrentExerciseNonWeighted ? increment.range : 1...100
     }
 
     private var isCurrentExerciseNonWeighted: Bool {

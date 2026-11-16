@@ -7,6 +7,11 @@ import CadenceCore
 /// layout is shared with the Watch view so its scale and accessibility layout
 /// rules remain headlessly testable.
 @Suite struct WatchSetCardMetricTextTests {
+    @Test func nonWeightedCrownAlwaysUsesOneRepSteps() {
+        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: true, weightStep: 5) == 1)
+        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: false, weightStep: 5) == 5)
+        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: false, nonWeighted: false, weightStep: 5) == 1)
+    }
     private func card(lbs: Double, reps: Int) -> WatchSetCardState {
         WatchSetCardBuilder.make(
             exerciseName: "Squat", plannedWorkingSets: [], completedWorkingSets: 0,

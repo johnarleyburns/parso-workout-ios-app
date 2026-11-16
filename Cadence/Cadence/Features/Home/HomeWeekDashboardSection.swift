@@ -73,7 +73,7 @@ struct HomeWeekDashboardSection: View {
                 sectionCard {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack {
-                            Text("Cardio").font(.headline)
+                            Text("Cardio").font(.headline).foregroundStyle(cardioTint)
                             Spacer()
                             Text(dashboard.cardio.displayText)
                                 .font(.subheadline.weight(.semibold)).foregroundStyle(cardioTint)
@@ -287,7 +287,7 @@ struct HomeWeekDashboardSection: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Cardio Minutes")
                 .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.teal)
+                .foregroundStyle(cardioTint)
                 .accessibilityIdentifier("home.week.cardioHeading")
             HStack {
                 Text("Actual exercise").font(.caption)

@@ -13,7 +13,7 @@ struct WatchCardioSummaryView: View {
     @Environment(AppSettings.self) private var watchSettings
 
     var body: some View {
-        ScrollView {
+        WatchSummaryScrollView {
           VStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28)).foregroundStyle(.green)
@@ -35,8 +35,10 @@ struct WatchCardioSummaryView: View {
                 .buttonStyle(.borderedProminent).tint(.green)
             if watchManager.phoneSyncState.isInProgress {
                 Text("Syncing to iPhone…").font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else if !watchManager.pendingCardioCompletions.isEmpty {
                 Text("Will sync when iPhone is available").font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Button("Discard") { onDiscard() }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
@@ -48,13 +50,6 @@ struct WatchCardioSummaryView: View {
     }
 
     private func summaryRow(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            Spacer(minLength: 6)
-            Text(value)
-                .font(.system(.caption, design: .monospaced).bold())
-                .monospacedDigit()
-        }
-        .padding(.horizontal, 20)
+        WatchSummaryMetricRow(label: label, value: value)
     }
 }

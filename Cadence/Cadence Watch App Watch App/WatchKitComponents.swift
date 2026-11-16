@@ -197,9 +197,13 @@ struct WatchReceiptRow: View {
             icon.frame(width: 22)
             VStack(alignment: .leading, spacing: 1) {
                 Text(title).font(.footnote.weight(.semibold))
-                if let detail { Text(detail).font(.caption2).foregroundStyle(.secondary) }
+                    .fixedSize(horizontal: false, vertical: true)
+                if let detail {
+                    Text(detail).font(.caption2).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .accessibilityElement(children: .combine)
     }

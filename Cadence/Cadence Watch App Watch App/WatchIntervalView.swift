@@ -183,7 +183,7 @@ struct WatchIntervalView: View {
     // MARK: - Summary
 
     private var summaryView: some View {
-        ScrollView {
+        WatchSummaryScrollView {
           VStack(spacing: 8) {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 28))

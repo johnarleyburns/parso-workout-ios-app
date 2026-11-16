@@ -24,20 +24,12 @@ struct WatchCardioCompletionSummaryContent<Extra: View>: View {
         VStack(spacing: 8) {
             row(durationLabel, Self.formatTime(summary.duration))
             WatchSummaryHeartRateBlock(presentation: shared, profile: profile)
-                .padding(.horizontal, 20)
             extraRows()
         }
     }
 
     private func row(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            Spacer(minLength: 6)
-            Text(value)
-                .font(.system(.caption, design: .monospaced).bold())
-                .monospacedDigit()
-        }
-        .padding(.horizontal, 20)
+        WatchSummaryMetricRow(label: label, value: value)
     }
 
     private static func formatTime(_ interval: TimeInterval) -> String {

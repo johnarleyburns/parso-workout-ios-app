@@ -78,6 +78,7 @@ struct WatchHeartRateSection: View {
                 }
                 if let note = WatchStrengthHRCoverage.unclassifiedNote(summary: summary) {
                     Text(note).font(.caption2).foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityIdentifier("watchSummary.hrUnclassified")
                 }
@@ -86,12 +87,6 @@ struct WatchHeartRateSection: View {
     }
 
     private func row(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-            Spacer(minLength: 6)
-            Text(value)
-                .font(.system(.caption, design: .monospaced).bold())
-                .monospacedDigit()
-        }
+        WatchSummaryMetricRow(label: label, value: value)
     }
 }

@@ -167,9 +167,6 @@ extension SessionView {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 logPendingSet(pending, for: ex)
             },
-            onTalkPressing: { pending, pressing in
-                quickTalkPressing(pending, exercise: exerciseForID(ctx.exerciseID), pressing: pressing)
-            },
             onRepeat: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }

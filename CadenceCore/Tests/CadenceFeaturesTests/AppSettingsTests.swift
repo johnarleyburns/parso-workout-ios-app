@@ -86,8 +86,6 @@ final class AppSettingsTests: XCTestCase {
         src.userAge = 41
         src.warmupMinutes = 7
         src.celebrationStyle = .quiet
-        src.voiceLoggingEnabled = false
-        src.voiceLanguage = "es-ES"
         src.restAlertMode = .alarm
         src.coachSchedulePreferences = src.coachSchedulePreferences.withDesiredSetsPerExercise(4)
         let snapshot = src.exportPreferences()
@@ -100,8 +98,6 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(dst.userAge, 41)
         XCTAssertEqual(dst.warmupMinutes, 7)
         XCTAssertEqual(dst.celebrationStyle, .quiet)
-        XCTAssertFalse(dst.voiceLoggingEnabled)
-        XCTAssertEqual(dst.voiceLanguage, "es-ES")
         XCTAssertEqual(dst.restAlertMode, .alarm)
         XCTAssertEqual(dst.coachSchedulePreferences.desiredSetsPerExercise, 4)
     }

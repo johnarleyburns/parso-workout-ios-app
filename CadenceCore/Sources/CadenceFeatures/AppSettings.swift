@@ -70,11 +70,6 @@ public final class AppSettings {
         self.autoEndOnIdle = defaults.object(forKey: "settings.autoEndOnIdle") as? Bool ?? true
         self.workoutSounds = defaults.object(forKey: "settings.workoutSounds") as? Bool ?? true
         self.celebrationStyle = Self.read(defaults, "settings.celebrationStyle", CelebrationStyle.self) ?? .full
-        self.voiceLoggingEnabled = defaults.object(forKey: "settings.voiceLoggingEnabled") as? Bool ?? true
-        self.voiceConfirmationRequired = defaults.object(forKey: "settings.voiceConfirmationRequired") as? Bool ?? true
-        self.voiceLanguage = defaults.string(forKey: "settings.voiceLanguage")
-        self.smarterVoiceUnderstanding = defaults.object(forKey: "settings.smarterVoiceUnderstanding") as? Bool ?? true
-        self.raiseToTalk = defaults.object(forKey: "settings.raiseToTalk") as? Bool ?? false
         self.restAlertMode = Self.read(defaults, "settings.restAlertMode", RestAlertMode.self) ?? .inAppOnly
         self.preWorkoutCountdown = defaults.object(forKey: "settings.preWorkoutCountdown") as? Int ?? 10
         // Coach engine inputs (strength-pivot P3, D4): personalize insights. Full
@@ -167,14 +162,6 @@ public final class AppSettings {
     /// Play a bell at workout/phase transitions (batch 7 item 9; opt-out).
     public var workoutSounds: Bool { didSet { defaults.set(workoutSounds, forKey: "settings.workoutSounds") } }
     public var celebrationStyle: CelebrationStyle { didSet { defaults.set(celebrationStyle.rawValue, forKey: "settings.celebrationStyle") } }
-    public var voiceLoggingEnabled: Bool { didSet { defaults.set(voiceLoggingEnabled, forKey: "settings.voiceLoggingEnabled") } }
-    public var voiceConfirmationRequired: Bool { didSet { defaults.set(voiceConfirmationRequired, forKey: "settings.voiceConfirmationRequired") } }
-    public var voiceLanguage: String? { didSet { defaults.set(voiceLanguage, forKey: "settings.voiceLanguage") } }
-    public var smarterVoiceUnderstanding: Bool { didSet { defaults.set(smarterVoiceUnderstanding, forKey: "settings.smarterVoiceUnderstanding") } }
-    /// Opt-in motion shortcut: raising the phone starts the same hold-to-talk
-    /// capture path. It is off by default because motion sensing has a battery
-    /// cost and should never surprise a user during ordinary navigation.
-    public var raiseToTalk: Bool { didSet { defaults.set(raiseToTalk, forKey: "settings.raiseToTalk") } }
     public var restAlertMode: RestAlertMode { didSet { defaults.set(restAlertMode.rawValue, forKey: "settings.restAlertMode") } }
     /// Get-ready countdown before a workout starts (seconds; 0 disables).
     public var preWorkoutCountdown: Int { didSet { defaults.set(preWorkoutCountdown, forKey: "settings.preWorkoutCountdown") } }
@@ -366,10 +353,8 @@ public extension AppSettings {
             idleTimeoutMinutes: idleTimeoutMinutes, gpsHighAccuracy: gpsHighAccuracy, autoPause: autoPause,
             intervalColorBlind: intervalColorBlind, spokenCues: spokenCues, plateRounding: plateRounding,
             autoSaveHealth: autoSaveHealth, autoEndOnIdle: autoEndOnIdle, workoutSounds: workoutSounds,
-            celebrationStyle: celebrationStyle.rawValue, voiceLoggingEnabled: voiceLoggingEnabled,
-            voiceConfirmationRequired: voiceConfirmationRequired, voiceLanguage: voiceLanguage,
-            smarterVoiceUnderstanding: smarterVoiceUnderstanding,
-            restAlertMode: restAlertMode.rawValue, raiseToTalk: raiseToTalk,
+            celebrationStyle: celebrationStyle.rawValue,
+            restAlertMode: restAlertMode.rawValue,
             preWorkoutCountdown: preWorkoutCountdown, trainingGoal: trainingGoal.rawValue,
             experienceLevel: experienceLevel.rawValue, preferredWorkoutStyle: preferredWorkoutStyle.rawValue,
             useHRMonitoring: useHRMonitoring,
@@ -401,11 +386,6 @@ public extension AppSettings {
         if let v = p.autoEndOnIdle { autoEndOnIdle = v }
         if let v = p.workoutSounds { workoutSounds = v }
         if let v = p.celebrationStyle.flatMap(CelebrationStyle.init(rawValue:)) { celebrationStyle = v }
-        if let v = p.voiceLoggingEnabled { voiceLoggingEnabled = v }
-        if let v = p.voiceConfirmationRequired { voiceConfirmationRequired = v }
-        if let v = p.voiceLanguage { voiceLanguage = v }
-        if let v = p.smarterVoiceUnderstanding { smarterVoiceUnderstanding = v }
-        if let v = p.raiseToTalk { raiseToTalk = v }
         if let v = p.restAlertMode.flatMap(RestAlertMode.init(rawValue:)) { restAlertMode = v }
         if let v = p.preWorkoutCountdown { preWorkoutCountdown = v }
         if let v = p.trainingGoal.flatMap(TrainingGoal.init(rawValue:)) { trainingGoal = v }

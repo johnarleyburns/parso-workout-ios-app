@@ -177,9 +177,6 @@ struct RootTabView: View {
                 NotificationCenter.default.post(name: .cadenceLiveActivityActionRequested,
                                                 object: request)
             }
-            if CadencePlatformRequestStore.consumeQuickTalk() {
-                NotificationCenter.default.post(name: .cadenceQuickTalkRequested, object: nil)
-            }
         }
         .alert("Workout ended automatically", isPresented: Binding(
             get: { model.autoEndedCardio != nil && !model.phoneCardioHasLiveView },

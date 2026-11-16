@@ -13,7 +13,6 @@ struct WatchStrengthView: View {
     @State private var flowModel: WatchStrengthFlowModel?
     @State private var shouldStopWorkoutOnDisappear = false
     @State private var page: Page = .main
-    @State private var talk = WatchQuickTalkController()
     @State private var moment: Moment?
 
     enum Page: Hashable { case controls, main, plan, heart }
@@ -122,19 +121,6 @@ struct WatchStrengthView: View {
             guard id != nil, let model = flowModel else { return }
             showMoment(model)
         }
-        .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkTogglePause)) { _ in
-            watchManager.recordStrengthMeaningfulActivity(watchManager.isPaused ? .userResume : .userPause)
-            watchManager.userToggleStrengthPause(origin: .quickTalk)
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .watchQuickTalkFinish)) { _ in
-            finishWorkout()
-        }
-        .onChange(of: WatchLaunchRequests.shared.talkRequest) { _, _ in
-            // D-W5: the Action Button during a workout = Talk.
-            guard flowModel != nil else { return }
-            page = .main
-            talk.startListening()
-        }
         .navigationBarBackButtonHidden(true)
         .ownsWatchWorkoutSession()
     }
@@ -175,7 +161,6 @@ struct WatchStrengthView: View {
 
             ZStack {
                 mainPage(model)
-                WatchQuickTalkOverlay(talk: talk, unit: model.unit)
                 if let moment { momentView(moment) }
             }
             .tag(Page.main)
@@ -200,9 +185,9 @@ struct WatchStrengthView: View {
     private func mainPage(_ model: WatchStrengthFlowModel) -> some View {
         switch model.stage {
         case .keypad:
-            WatchSetKeypadView(model: model, talk: talk)
+            WatchSetKeypadView(model: model)
         case .rest:
-            WatchRestView(model: model, talk: talk)
+            WatchRestView(model: model)
         case .addExercise:
             WatchAddExerciseView(model: model)
         case .partners:
@@ -299,7 +284,6 @@ struct WatchStrengthView: View {
         if let id = m.session?.id {
             watchManager.beginStrengthInactivityTracking(sessionID: id, explicitResume: resumingSession != nil)
         }
-        talk.bind(model: m, unit: watchSettings.unit)
         page = m.exerciseList.isEmpty ? .plan : .main
         if resumingSession == nil, m.beginWarmup() {
             page = .main

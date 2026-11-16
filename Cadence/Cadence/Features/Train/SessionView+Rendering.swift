@@ -102,7 +102,6 @@ extension SessionView {
         .toolbar { toolbarContent }
         .overlay { sessionTopOverlay }
         .overlay(alignment: .bottom) {
-            quickTalkOverlay
             if isActiveSession && !settings.hasSeenFirstSetCoachMark &&
                session.orderedSets.isEmpty && !cache.state.contexts.isEmpty {
                 FirstSetCoachMark {
@@ -122,29 +121,8 @@ extension SessionView {
         .task(id: refreshSignature, refreshSession)
         .onAppear(perform: handleSessionAppear)
         .onDisappear(perform: handleSessionDisappear)
-        .onChange(of: settings.raiseToTalk) { _, enabled in
-            handleRaiseToTalkSettingChange(enabled)
-        }
-        .onChange(of: raiseToTalkMonitor.isRaised) { _, raised in
-            handleRaiseToTalkChange(raised)
-        }
         .sheet(isPresented: $pickerPresented) {
             ExercisePickerView(onPick: handleExercisePickerSelection)
-        }
-        .sheet(isPresented: $voiceLoggingPresented) {
-            VoiceLoggingSheet(
-                currentExercise: cache.state.contexts.first(where: { !$0.pendingSets.isEmpty })
-                    .flatMap { exerciseForID($0.exerciseID) }?.name,
-                exercises: session.exercisesInOrder.map(\.name),
-                performers: roster.map(\.name),
-                activePerformer: voicePerformerWasProvided
-                    ? (voicePerformerID.flatMap(people(for:))?.name ?? "Me") : nil,
-                unit: settings.unit,
-                bodyweight: cache.state.contexts.first(where: { !$0.pendingSets.isEmpty })
-                    .flatMap { exerciseForID($0.exerciseID) }.map(isBodyweight) ?? false,
-                smarterVoiceUnderstanding: settings.smarterVoiceUnderstanding,
-                initialPhrase: quickTalkTranscript,
-                onAction: applyVoiceAction)
         }
         .sheet(item: $suggestExerciseRequest, content: suggestedExerciseSheet)
         .sheet(item: $swapTarget) { target in
@@ -210,9 +188,6 @@ extension SessionView {
                                                        onStart: startCooldown))
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onAppear(perform: startWatchIfNeeded)
-        .modifier(QuickTalkNotificationModifier(isActive: isActiveSession,
-                                                 isEnabled: settings.voiceLoggingEnabled,
-                                                 isPresented: $voiceLoggingPresented))
         .onReceive(NotificationCenter.default.publisher(for: .cadenceLiveActivityActionRequested), perform: handleLiveActivityRequest)
         .onDisappear(perform: handleSessionDisappear)
         // Keep the Date publisher closure explicit. Passing the method as a

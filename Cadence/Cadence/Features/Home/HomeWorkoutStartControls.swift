@@ -30,15 +30,25 @@ struct HomeWorkoutStartControls: View {
             } label: { Label("Strength", systemImage: "dumbbell.fill").frame(maxWidth: .infinity) }
                 .buttonStyle(.borderedProminent)
                 .accessibilityIdentifier("home.start.strength")
-            Picker("Cardio workout", selection: $cardio) {
+            Menu {
                 ForEach(HomeRecentCardioChoices.recent(recentCardio)) { type in
-                    Text(type.displayName).tag(Optional(type))
+                    Button { cardio = type } label: {
+                        if cardio == type {
+                            Label(type.displayName, systemImage: "checkmark")
+                        } else {
+                            Text(type.displayName)
+                        }
+                    }
                 }
-                Text("More..").tag(Optional<WorkoutType>.none)
+                Button("More..", action: onMoreCardio)
+            } label: {
+                HStack {
+                    Text(cardio?.displayName ?? "More..")
+                    Image(systemName: "chevron.up.chevron.down")
+                }
             }
-            .pickerStyle(.menu)
+            .accessibilityLabel("Cardio workout")
             .accessibilityIdentifier("home.start.cardioSource")
-            .onChange(of: cardio) { _, next in if next == nil { onMoreCardio() } }
             Button {
                 if let cardio { onCardio(cardio) } else { onMoreCardio() }
             } label: { Label("Cardio", systemImage: "figure.run").frame(maxWidth: .infinity) }

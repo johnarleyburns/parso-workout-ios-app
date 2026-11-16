@@ -54,6 +54,12 @@ macOS jobs use GitHub-hosted runner capacity without a shared job-level concurre
 CI only performs host SwiftPM tests and generic physical-device-target builds/archives. `scripts/check-ci-no-simulators.sh` rejects simulator-bearing CI commands statically, and `xcodebuild-safe.sh` rejects simulator destinations and `xcodebuild test` at runtime when `GITHUB_ACTIONS=true`. Local smoke targets remain local-only.
 
 ## Emergency pause
+
+Issue intake and PR maintenance have independent controls. Set
+`CLAUDE_PIPELINE_AUTO_ENABLED=false` to pause issue admission/reservations without
+stranding existing PRs. Set `CLAUDE_PR_MAINTENANCE_ENABLED=false` to stop automatic
+PR maintenance as well; an owner-requested manual maintenance run remains allowed.
+
 Disable the *Claude PR Maintenance* and *Claude PR Conflict Repair* workflows in the Actions tab (or remove the secret `CLAUDE_WORKFLOW_TOKEN`: maintenance then fails loudly).
 
 ## Backlog bootstrap

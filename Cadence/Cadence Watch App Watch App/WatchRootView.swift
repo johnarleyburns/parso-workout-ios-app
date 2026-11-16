@@ -129,7 +129,8 @@ struct WatchRootView: View {
                 WatchMyWorkoutsView(plan: watchManager.todayPlan,
                                     pendingCardioCompletions: watchManager.pendingCardioCompletions,
                                     cardioHistoryRevision: watchManager.cardioHistoryRevision,
-                                    distanceUnit: watchAppSettings.distanceUnit)
+                                    distanceUnit: watchAppSettings.distanceUnit,
+                                    onStartSentCardio: startPlannedCardio)
             }
             .tabViewStyle(.page)
             .navigationTitle(WatchHomeChrome.navigationTitle)
@@ -181,7 +182,6 @@ struct WatchRootView: View {
             WatchSessionOwnershipCard(verdict: sessionOwnership)
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets())
-            WatchSentWorkoutsSection(onStartCardio: startPlannedCardio)
             if resumableStrengthSession != nil {
                 heroCard
                     .listRowBackground(Color.clear)

@@ -56,7 +56,7 @@ extension HomeView {
             .sheet(isPresented: $selectWorkoutPresented, onDismiss: presentPendingSuggestedWorkout) {
                 SelectWorkoutView(
                     onEditorStart: { plan in selectWorkoutPresented = false; handleEditorStart(plan) },
-                    onScheduleStrength: {
+                    onCreateDraft: {
                         selectWorkoutPresented = false
                         workoutEditorPlan = .empty(warmup: settings.warmupMinutes,
                                                    cooldown: settings.cooldownMinutes)
@@ -66,7 +66,7 @@ extension HomeView {
                         logPickerPresented = true
                     },
                     onStartCardio: { type in selectWorkoutPresented = false; start(type) },
-                    onScheduleCardio: { type in selectWorkoutPresented = false; scheduleCardioType = type },
+
                     onOtherCardio: { description, gps in
                         selectWorkoutPresented = false
                         startOtherCardio(description: description, gps: gps)
@@ -85,16 +85,8 @@ extension HomeView {
             .fullScreenCover(item: $outdoorType, onDismiss: releaseCardioWorkout) { OutdoorCardioView(type: $0, customTitle: otherCardioTitle, goalMeters: outdoorGoalMeters, captureHR: captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
             .sheet(item: $timerCardioSetup, onDismiss: releaseCardioWorkout) { setup in
                 TimerCardioSetupView(type: setup.type, suggestedMinutes: setup.suggestedMinutes,
-                                     onSchedule: { date in
-                                         try scheduleCardioWorkout(WorkoutType(rawValue: setup.type.rawValue) ?? .other,
-                                                                   for: date)
-                                     },
+
                                      onSaved: { _ in workoutSaved(); releaseCardioWorkout() })
-            }
-            .sheet(item: $scheduleCardioType) { type in
-                ScheduleWorkoutSheet(title: type.displayName) { date in
-                    try scheduleCardioWorkout(type, for: date)
-                }
             }
             .sheet(isPresented: $showAlternatives) {
                 NavigationStack {
@@ -164,7 +156,7 @@ extension HomeView {
                         mode: .start,
                         recentCardioTypes: recentCardioTypes,
                         onSelect: { type in cardioPickerPresented = false; start(type) },
-                        onSchedule: { type in cardioPickerPresented = false; scheduleCardioType = type },
+
                         onOtherCardio: { desc, gps in cardioPickerPresented = false; startOtherCardio(description: desc, gps: gps) },
                         onSuggestCardio: { requestSuggestedWorkout(.cardio) },
                         weeklyCredit: CardioWeeklyCreditPresenter.make(detail: dashboard.cardioDetail))
@@ -221,13 +213,7 @@ extension HomeView {
                                 launchSuggestedCardio(selected)
                             }
                         },
-                        onSchedule: { selected in
-                            suggestedCardio = nil
-                            Task { @MainActor in
-                                await Task.yield()
-                                scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
-                            }
-                        },
+
                         onSuggestAnother: { suggestAnotherCardio(skipping: $0) },
                         onExclude: { selected in
                             if let id = selected.protocolID {
@@ -249,13 +235,7 @@ extension HomeView {
                                     launchSuggestedCardio(selected)
                                 }
                             },
-                            onSchedule: { selected in
-                                todayCardioReviewPresented = false
-                                Task { @MainActor in
-                                    await Task.yield()
-                                    scheduleCardioType = WorkoutType(rawValue: selected.type.rawValue)
-                                }
-                            },
+
                             onSuggestAnother: { suggestAnotherTodayCardio($0) })
                     }
                 }
@@ -309,10 +289,7 @@ extension HomeView {
             }
             // Optional distance goal before a run/walk/cycle (batch 8).
             .sheet(item: $cardioGoalFor) { type in
-                CardioGoalSheet(type: type, recommendation: cardioRecommendation, onSchedule: { date in
-                    try scheduleCardioWorkout(WorkoutType(rawValue: type.rawValue) ?? .other,
-                                              for: date)
-                }) { goal, indoors in
+                CardioGoalSheet(type: type, recommendation: cardioRecommendation) { goal, indoors in
                     outdoorGoalMeters = goal
                     cardioGoalFor = nil
                     cardioTracksGPS = indoors ? false : nil
@@ -320,9 +297,7 @@ extension HomeView {
                 }
             }
             .sheet(item: $intervalType) { wType in
-                IntervalSetupView(type: wType, onSchedule: { date in
-                    try scheduleCardioWorkout(wType, for: date)
-                }) { plan in
+                IntervalSetupView(type: wType) { plan in
                     intervalType = nil
                     let useHR = settings.useHRMonitoring
                     let launch = IntervalLaunch(plan: plan, saveType: wType.cardioType ?? .hiit, captureHR: useHR)
@@ -337,9 +312,7 @@ extension HomeView {
             }
             .fullScreenCover(item: $intervalLaunch, onDismiss: releaseCardioWorkout) { IntervalView(plan: $0.plan, saveType: $0.saveType, captureHR: $0.captureHR, onSaved: { _ in workoutSaved(); releaseCardioWorkout() }) }
             .fullScreenCover(isPresented: $swimPresented, onDismiss: releaseCardioWorkout) {
-                SwimRecordView(onSchedule: { date in
-                    try scheduleCardioWorkout(.swim, for: date)
-                }, onSaved: { _ in workoutSaved(); releaseCardioWorkout() })
+                SwimRecordView( onSaved: { _ in workoutSaved(); releaseCardioWorkout() })
             }
             .confirmationDialog(
                 "This is more load than planned today.",

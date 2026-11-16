@@ -37,38 +37,13 @@ final class PlanningDraftPromotionTests: XCTestCase {
         try context.fetch(FetchDescriptor<PlanningDraft>()).filter(\.isVisible).count
     }
 
-    private var future: Date { Calendar.current.date(byAdding: .day, value: 3, to: Date())! }
-
-    func testScheduleCreatesOneRowRetiresDraftAndIsIdempotent() throws {
+    func testUndecodablePayloadPreservesDraftOnStart() throws {
         let context = try makeContext(), store = PlanningDraftStore()
         let draft = try richDraft(store, context)
-        let op = UUID()
-        let first = try store.schedule(draftID: draft.id, for: future, operationID: op, in: context)
-        let again = try store.schedule(draftID: draft.id, for: future, operationID: op, in: context)
-        XCTAssertTrue(first === again)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<ScheduledWorkout>()).count, 1)
-        XCTAssertEqual(try visible(context), 0)
-        let plan = try ScheduledWorkoutStore.decode(first.payloadData, version: first.payloadVersion)
-        XCTAssertEqual(plan.exercises.map(\.name), ["Bench Press", "Row"])
-        XCTAssertEqual(plan.exercises[0].performerPlans.count, 1)
-    }
-
-    func testScheduleSaveFailurePreservesDraft() throws {
-        let context = try makeContext()
-        let draft = try richDraft(PlanningDraftStore(), context)
-        let failing = PlanningDraftStore(save: { _ in throw Boom() })
-        XCTAssertThrowsError(try failing.schedule(draftID: draft.id, for: future, operationID: UUID(), in: context))
+        draft.payloadVersion = 99
+        XCTAssertThrowsError(try store.start(draftID: draft.id, operationID: UUID(), in: context))
         XCTAssertNil(draft.deletedAt)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<ScheduledWorkout>()).filter { $0.modelContext != nil }.count, 0)
-    }
-
-    func testSchedulePastDateAndMissingDraftFail() throws {
-        let context = try makeContext(), store = PlanningDraftStore()
-        let draft = try richDraft(store, context)
-        let past = Calendar.current.date(byAdding: .day, value: -3, to: Date())!
-        XCTAssertThrowsError(try store.schedule(draftID: draft.id, for: past, operationID: UUID(), in: context))
-        XCTAssertNil(draft.deletedAt)
-        XCTAssertThrowsError(try store.schedule(draftID: UUID(), for: future, operationID: UUID(), in: context))
+        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 0)
     }
 
     func testStartMapsPlanAndIsIdempotent() throws {
@@ -113,14 +88,6 @@ final class PlanningDraftPromotionTests: XCTestCase {
         XCTAssertEqual(try visible(context), 0)
     }
 
-    func testUndecodablePayloadPreservesDraft() throws {
-        let context = try makeContext(), store = PlanningDraftStore()
-        let draft = try richDraft(store, context)
-        draft.payloadVersion = 99
-        XCTAssertThrowsError(try store.start(draftID: draft.id, operationID: UUID(), in: context))
-        XCTAssertThrowsError(try store.schedule(draftID: draft.id, for: future, operationID: UUID(), in: context))
-        XCTAssertNil(draft.deletedAt)
-    }
 
     func testDiscardByIDRetiresAndFailureRestores() throws {
         let context = try makeContext()

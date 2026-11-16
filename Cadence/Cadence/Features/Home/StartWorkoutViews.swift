@@ -7,10 +7,9 @@ import CadenceFeatures
 /// is always explicit.
 struct StartWorkoutView: View {
     let onEditorStart: (EditablePlan) -> Void
-    let onScheduleStrength: () -> Void
+    let onCreateDraft: () -> Void
     let onLogWorkout: () -> Void
     let onStartCardio: (WorkoutType) -> Void
-    let onScheduleCardio: (WorkoutType) -> Void
     let onOtherCardio: (_ description: String, _ gps: Bool) -> Void
     let recentCardioTypes: [WorkoutType]
     /// Home's cached weekly cardio credit, shown at the top of the Cardio picker.
@@ -28,7 +27,7 @@ struct StartWorkoutView: View {
                         NavigationLink {
                             PickWorkoutView(
                                 onEditorStart: onEditorStart,
-                                onScheduleStrength: onScheduleStrength,
+                                onCreateDraft: onCreateDraft,
                                 onLogWorkout: onLogWorkout,
                                 onFillGaps: onFillGaps)
                         } label: {
@@ -42,7 +41,6 @@ struct StartWorkoutView: View {
                                 mode: .start,
                                 recentCardioTypes: recentCardioTypes,
                                 onSelect: onStartCardio,
-                                onSchedule: onScheduleCardio,
                                 onOtherCardio: onOtherCardio,
                                 onSuggestCardio: onSuggestCardio,
                                 weeklyCredit: weeklyCardioCredit)
@@ -111,7 +109,7 @@ struct StartWorkoutView: View {
 /// not appear here; Today owns the reviewed coach suggestion.
 struct PickWorkoutView: View {
     let onEditorStart: (EditablePlan) -> Void
-    let onScheduleStrength: () -> Void
+    let onCreateDraft: () -> Void
     let onLogWorkout: () -> Void
     var onFillGaps: (() -> Void)? = nil
     @Environment(\.dismiss) private var dismiss
@@ -149,12 +147,12 @@ struct PickWorkoutView: View {
 
                 Button {
                     dismiss()
-                    onScheduleStrength()
+                    onCreateDraft()
                 } label: {
-                    pickActionLabel(String(localized: "Schedule Workout"), symbol: "calendar.badge.plus")
+                    pickActionLabel(String(localized: "Create Draft"), symbol: "square.and.pencil")
                 }
                 .buttonStyle(.bordered)
-                .accessibilityIdentifier("pickWorkout.schedule")
+                .accessibilityIdentifier("pickWorkout.createDraft")
 
                 Button {
                     dismiss()

@@ -7,33 +7,10 @@ public enum PlanningDraftPromotionError: Error, Equatable, Sendable {
 }
 
 /// Atomic promotion of a Planning Draft. The operation ID becomes the id of the
-/// created `ScheduledWorkout` / `WorkoutSession`, so a repeated call (double
+/// created `WorkoutSession`, so a repeated call (double
 /// tap, retry after interruption) returns the original row instead of making a
 /// second one. Every failure restores the draft and removes unsaved inserts.
 extension PlanningDraftStore {
-    @discardableResult
-    public func schedule(draftID: UUID, for date: Date, operationID: UUID,
-                         calendar: Calendar = .current, originDevice: String = "iphone",
-                         in context: ModelContext) throws -> ScheduledWorkout {
-        if let existing = try context.fetch(FetchDescriptor<ScheduledWorkout>(
-            predicate: #Predicate { $0.id == operationID })).first { return existing }
-        let draft = try requireVisibleDraft(draftID, in: context)
-        let plan = try PlanningDraftCodec.decode(draft)
-        let scheduled = try ScheduledWorkoutStore.make(plan: plan, for: date, promotionID: operationID,
-                                                       calendar: calendar, originDevice: originDevice)
-        context.insert(scheduled)
-        let previous = (draft.deletedAt, draft.updatedAt)
-        let stamp = now()
-        draft.deletedAt = stamp
-        draft.updatedAt = stamp
-        do { try save(context) } catch {
-            context.delete(scheduled)
-            (draft.deletedAt, draft.updatedAt) = previous
-            throw error
-        }
-        return scheduled
-    }
-
     @discardableResult
     public func start(draftID: UUID, operationID: UUID,
                       in context: ModelContext) throws -> WorkoutSession {

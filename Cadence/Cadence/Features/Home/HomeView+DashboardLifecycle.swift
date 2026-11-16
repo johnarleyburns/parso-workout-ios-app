@@ -57,7 +57,6 @@ extension HomeView {
                 path = NavigationPath()
                 selectWorkoutPresented = false
                 weightsStartPresented = false
-                scheduleCardioType = nil
                 scheduledWorkoutBeingStarted = nil
             }
             .onReceive(NotificationCenter.default.publisher(for: .scheduledWorkoutStartRequested)) { note in
@@ -190,8 +189,7 @@ extension HomeView {
     /// still shows as a second row rather than being suppressed).
     func watchTodayPlan(from decision: CoachDecision, suggestedStrength: EditablePlan?) -> WatchSync.TodayPlan {
         let base = CoachWatchTodayBridge.todayPlan(from: decision, suggestedStrength: suggestedStrength)
-        let inputs = scheduledWorkouts.map(HomePlannedWorkoutsSection.watchBridgeInput)
-        return ScheduledWorkoutWatchBridge.merge(scheduledSessions: ScheduledWorkoutWatchBridge.todaySessions(inputs), into: base)
+        return base
     }
 }
 

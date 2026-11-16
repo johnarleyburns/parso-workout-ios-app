@@ -17,12 +17,6 @@ extension HomeWeekDashboardSection {
                     .font(.subheadline).foregroundStyle(.secondary)
                 weeklyCardioProgress
             }
-            if dashboard.cardioDetail.unclassifiedMinutes > 0 {
-                Label(CardioMinutesDisplay.unclassified(dashboard.cardioDetail.unclassifiedMinutes),
-                      systemImage: "info.circle")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             if dashboard.cardioDetail.zoneMinutes.values.contains(where: { $0 > 0 }) {
                 trainingZoneSummary
             }

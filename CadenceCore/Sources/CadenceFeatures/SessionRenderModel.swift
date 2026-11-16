@@ -434,8 +434,9 @@ public enum SessionRenderModel {
                             formula: formula)
                         rows.append(PendingSetDisplay(
                             performerID: performer.performerID, performerName: performer.label,
-                            setIndex: index, targetReps: resolved.reps,
-                            targetWeightKg: resolved.weightKg, kind: resolved.kind))
+                            setIndex: index, targetReps: resolved.kind == .warmup ? resolved.reps
+                                : (WorkoutEntryPreference.reps(in: session, performerID: performer.performerID) ?? resolved.reps),
+                            targetWeightKg: performerSets.last?.weight ?? resolved.weightKg, kind: resolved.kind))
                     }
                 }
                 pendingByPerformer.append((performer.performerID, rows))

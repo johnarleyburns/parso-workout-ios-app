@@ -10,6 +10,7 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
+        .library(name: "CadencePortability", targets: ["CadencePortability"]),
         .library(name: "CadenceCore", targets: ["CadenceCore"]),
         // Foundation-only planning domain; builds and tests on Linux.
         .library(name: "CadencePlanning", targets: ["CadencePlanning"]),
@@ -29,6 +30,13 @@ let package = Package(
     targets: [
         // Foundation ONLY — never SwiftUI, SwiftData, HealthKit, UIKit,
         // WatchConnectivity, CoreLocation, StoreKit, or app model types.
+        .target(name: "CadencePortability", dependencies: [
+            "CadenceCore",
+            .product(name: "FreeExerciseDBPlusPlus", package: "free-exercise-db-plusplus"),
+            .product(name: "FreeExerciseDBPlusPlusFIT", package: "free-exercise-db-plusplus")
+        ], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadencePortabilityTests", dependencies: ["CadencePortability"],
+                    swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadencePlanning", swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
             name: "CadenceCore",
@@ -36,11 +44,6 @@ let package = Package(
                 "CadencePlanning",
                 .product(
                     name: "FreeExerciseDBPlusPlus",
-                    package: "free-exercise-db-plusplus"
-                ),
-                // Garmin FIT codec boundary (GarminFITBridge only).
-                .product(
-                    name: "FreeExerciseDBPlusPlusFIT",
                     package: "free-exercise-db-plusplus"
                 )
             ],

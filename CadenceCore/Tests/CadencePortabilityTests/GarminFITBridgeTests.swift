@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
-@testable import CadenceCore
+import CadenceCore
+@testable import CadencePortability
 
 /// Deterministic, headless coverage of the Garmin FIT bridge (issue #530).
 /// Uses FIT bytes produced by DB++ v1.18.2's `GarminFITAdapter`; no network,

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import CadenceCore
 import FreeExerciseDBPlusPlus
 import FreeExerciseDBPlusPlusFIT
 

@@ -20,6 +20,7 @@
 		PW0000010000000000000001 /* CadenceWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = PW0000020000000000000001 /* CadenceWidgets.appex */; };
 		PW0000030000000000000001 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = PW0000040000000000000001 /* WidgetKit.framework */; };
 		PW0000050000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = PW0000060000000000000001 /* CadenceFeatures */; };
+		FA95D08A8A1F2D7841013F4B /* CadencePortability in Frameworks */ = {isa = PBXBuildFile; productRef = 3D816059BC331487C83CF02D /* CadencePortability */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -216,6 +217,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA95D08A8A1F2D7841013F4B /* CadencePortability in Frameworks */,
 				8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */,
 				CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */,
 				CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */,
@@ -344,6 +346,7 @@
 			);
 			name = Cadence;
 			packageProductDependencies = (
+				3D816059BC331487C83CF02D /* CadencePortability */,
 				8D78A55B2FD28A6200AE7C2F /* CadenceCore */,
 				CAFEFEA70000000000000000 /* CadenceFeatures */,
 				CAFEF1180000000000000000 /* CadenceFixtures */,
@@ -1386,6 +1389,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
 			productName = CadenceFeatures;
+		};
+		3D816059BC331487C83CF02D /* CadencePortability */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadencePortability;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

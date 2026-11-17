@@ -201,3 +201,121 @@ or device acceptance result has been produced.
 - Full repository SwiftData tests, generic Apple builds, the extended Watch UI
   flow, phone/Watch hardware rendering, and device acceptance remain pending on a
   Mac. No simulator was launched and nothing was pushed.
+
+## Second follow-up: Watch Set Card simplification + Suggest fix
+
+Nine more field-testing items on the same Set Card and its Plan page, same
+no-push local PR.
+
+The inline "−5 / … / +5" row is gone. "…" moved to the top-left toolbar and
+now opens RPE entry directly — the former "More" screen (Warm-up set, Adjust
+weight, Adjust reps, Exact value, This workout, Log as last set, Remove
+exercise) is deleted outright, not just hidden; RPE was the only thing left
+in it. − and + now live in the bottom toolbar as plain icons, stepping the
+focused value by the same amount as before. The Crown's weight step is a
+fixed 0.5 (either unit) instead of a customizable 5 lb/2.5 kg plate jump, so
+small/decimal corrections are reachable without a separate exact-entry sheet.
+The Log Set button's text is now always "Log set" — it no longer echoes the
+entered values or flags "Last set"/"Last set for you". The Plan page (the
+exercise list swiped to from the Set Card) is titled plainly "Exercises"
+instead of the started workout's name, and its "Suggest exercise" row is now
+"Suggest".
+
+**Capability changes, not just relabeling:** removing the old More screen
+drops the ability to delete one already-logged set from the Watch mid-workout
+(the old "This workout" section) — no replacement exists after this change.
+Removing an exercise is still possible, but only via the long-press gesture
+already on the Plan page row (pre-existing, unrelated to this change); the
+duplicate "Remove exercise" entry that lived in More is gone.
+
+**"Suggest" never resolving:** `WatchSuggestedExerciseShellTests.swift` had
+one test for a *missing* phone context (`.unavailable`) and none for the
+happy path. Added
+`testRealisticContextResolvesPastCalculatingInsteadOfHangingForever`, built
+from the same realistic context shape `WatchSingleExerciseSuggestionAssemblerTests`
+already proves the assembler accepts. Could not execute it here: everything
+that imports `SuggestedWorkoutGenerator.swift` — including this new test and
+the pre-existing `WatchSingleExerciseSuggestionSessionTests` that already use
+the real generator — fails to build on Linux for a reason unrelated to
+SwiftData: `String(localized:bundle:)` does not exist in swift-corelibs-
+Foundation on this toolchain (confirmed with a two-line repro script, not
+just inferred from a build log). Reading `WatchSuggestedExerciseShell` →
+`WatchSingleExerciseSuggestionSession` → `WatchSingleExerciseSuggestionAssembler`
+→ `WatchSingleExerciseSuggestionContext` end to end found no defect — each
+stage is already covered and passes elsewhere (the session resolves
+correctly with the real generator in `testInitialResultMatchesSharedGenerator`;
+the assembler accepts a realistic context in
+`WatchSingleExerciseSuggestionAssemblerTests`). I did not ship a speculative
+fix for a defect I could not locate or reproduce. If this still hangs on a
+device after a Mac test run of the new regression passes, the next step is a
+device trace of `shell.phase`/`session.state` transitions, since nothing in
+the engine chain explains a permanent hang from here.
+
+| Requirement | Production entry | Automated coverage / device check |
+| --- | --- | --- |
+| Remove inline −5/…/+5 row; "…" to top-left toolbar; − / + to bottom toolbar | `WatchSetKeypadView` toolbar | Rendered device check 13 |
+| Log Set text always reads "Log set" | `WatchSetCardBuilder.make` → `WatchSetKeypadView.logButton` | `WatchRedesignTests.testLogTitleAlwaysReadsLogSetEvenWhenTheSetEchoesAChange`, `WatchStrengthFlowModelTests.testSetCardNextLifterSkipsCompleted`; check 13 |
+| Delete the More screen; "…" opens RPE directly | `WatchSetKeypadView` → `WatchRPEPickerSheet` | Extended single Watch XCUITest flow; check 14 |
+| Crown: no plate snap, 0.5 lock, true decimal | `WatchSetCardMetricLayout.crownStep`/`weightStep` | `WatchSetCardMetricTextTests.weightCrownLocksToAHalfUnitDecimalStepNotAPlateJump`; check 15 |
+| Plan page titled "Exercises"; "Suggest" rename | `WatchStrengthHomeView.planList` | Extended single Watch XCUITest flow; check 13 |
+| "Suggest" resolves instead of hanging forever | `WatchSuggestedExerciseShell.calculate` → `WatchSingleExerciseSuggestionSession` | `WatchSuggestedExerciseShellTests.testRealisticContextResolvesPastCalculatingInsteadOfHangingForever` (Mac-only, see above); check 16 |
+
+### Validation
+
+- PASS: `swiftc -parse` on all 8 changed-and-still-present Swift files (the
+  other 5 touched files were deletions).
+- PASS: 5 isolated Swift package tests on Linux (a scratch package containing
+  only `WatchSetCardMetricLayout.swift` + `WatchRPESelection.swift`, which use
+  no `bundle: .module` strings and no SwiftData) — the crown step is 0.5 for
+  weight/1 for reps, and `WatchRPESelection.apply` is unchanged by this PR.
+- BLOCKED on Linux, same as before: everything touching `WatchSetCard.swift`
+  (uses `bundle: .module`) or `SuggestedWorkoutGenerator.swift` (uses
+  `String(localized:bundle:)`, absent from swift-corelibs-Foundation) needs a
+  Mac. This includes the new/edited tests in `WatchRedesignTests.swift`,
+  `WatchStrengthFlowModelTests.swift`, and `WatchSuggestedExerciseShellTests.swift`.
+- PASS: test-pyramid, design-token, history-safety, Watch handler-isolation
+  guardrails; `git diff --check`.
+- Localization coverage guard output is byte-identical before/after this
+  commit (diffed directly) — zero new catalog-side failures. This is because
+  the guard only validates keys already present in the `.xcstrings` files; the
+  two new source strings ("Exercises", "Suggest") aren't registered there yet
+  and need the same Mac-only `scripts/sync-localization-catalogs.sh` pass the
+  rest of this branch's new strings are waiting on.
+- Deleted five now-dead files (and their tests) whose only callers were the
+  removed More screen: `WatchSetEntryViews.swift` (`WatchNumericEntrySheet`,
+  `WatchWeightAdjustSection`, `WatchRepsAdjustSection`), `WatchSetEntryParser.swift`,
+  `WatchNumericEntry.swift`, `WatchSetCardAdjustmentLayout.swift`. Also removed
+  `WatchRPESelection.rowText`/`.coachGuidance` and `WatchSetDetailsSection`
+  (dead once the RPE sheet is reached directly). Confirmed via repo-wide grep
+  that nothing else referenced any of them before deleting.
+- The single allowed Watch XCUITest was extended in place (no new `func`):
+  swapped the plate-picker/"This workout"-delete/Remove-exercise-via-More
+  assertions for the new toolbar + direct-RPE-sheet flow and a long-press
+  removal on the Plan page; added assertions for the "Exercises" title and
+  "Suggest" label.
+
+### Device verification (owner: app maintainer; pending)
+
+13. Open a strength Set Card. Confirm no "−5 / … / +5" row; "…" sits top-left,
+    − and + sit bottom-left/bottom-right as plain icons. Turn the Crown through
+    a decimal value (e.g. 135.5) and confirm it lands exactly there, not
+    rounded to a 5 lb/2.5 kg step. Log a set with changed weight/reps and with
+    the last planned set — in both cases the button still reads "Log set".
+    Swipe to the Plan page and confirm its title reads "Exercises" (not the
+    workout's name) and its suggestion row reads "Suggest".
+14. Tap "…" and confirm it opens RPE entry directly (no intermediate list, no
+    "Set Details" title). Pick an RPE and confirm it's applied and the sheet
+    closes; reopen and swipe down to cancel without changing anything. Confirm
+    there is no way to delete a single already-logged set from the Watch, and
+    that removing the current exercise is reachable only via long-press on the
+    Plan page row.
+15. On Mountain Climbers (or another non-weighted movement), confirm the
+    Crown's step is unaffected (still reps-only) and the bottom-bar − / +
+    still adjust reps, never weight.
+16. Start a workout, add an exercise, tap "Suggest", and confirm it resolves
+    to a candidate (or a clear "no result"/"needs sync" message) rather than
+    showing "Finding an exercise…" indefinitely. If it still hangs, capture a
+    device log of the Watch app around that moment — the production code path
+    does not explain a permanent hang on its own.
+
+The same no-push constraint remains in effect through this section too.

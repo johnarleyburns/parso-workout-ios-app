@@ -1035,14 +1035,14 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertFalse(m.hasOutstandingWorkingSet(for: ex, performerIndex: 1))
     }
 
-    func testSetCardNextLifterSkipsCompletedAndSaysLastSetForYou() {
+    func testSetCardNextLifterSkipsCompleted() {
         let (m, exs) = plannedPartnerModel(counts: [2, 1, 2])
         for _ in 0..<3 { logNormal(m, exs[0]); m.finishRest() }   // Me1, P1, P2(1)
         // Selected: Me (2nd set, last for Me); Partner 1 is complete, Partner 2 remains.
         XCTAssertEqual(m.currentPerformerIndex, 0)
         let card = m.setCardState
         XCTAssertEqual(card?.lifterText, "Me · then Partner 2")
-        XCTAssertEqual(card?.logTitle, "Last set for you")
+        XCTAssertEqual(card?.logTitle, "Log set", "the primary action always reads \"Log set\"")
     }
 
     func testManualSelectionDoesNotOrphanPlannedPerformer() {

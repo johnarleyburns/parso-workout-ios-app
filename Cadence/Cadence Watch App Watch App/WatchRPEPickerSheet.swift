@@ -19,30 +19,3 @@ struct WatchRPEPickerSheet: View {
         }
     }
 }
-
-/// "Set details" section of More: the RPE row plus the coach guidance moved off the set card.
-struct WatchSetDetailsSection: View {
-    let model: WatchStrengthFlowModel
-    @Binding var showingRPEPicker: Bool
-
-    var body: some View {
-        Section("Set details") {
-            Button { showingRPEPicker = true } label: {
-                HStack {
-                    Text("RPE")
-                    Spacer()
-                    Text(WatchRPESelection.rowText(mode: model.effortMode, value: model.effortValue))
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .accessibilityIdentifier("watchEffort.value")
-            if let line = WatchRPESelection.coachGuidance(from: model.setCardState?.planLine) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Coach guidance").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
-                    WatchCoachLineView(line: line)
-                }
-                .accessibilityElement(children: .contain)
-            }
-        }
-    }
-}

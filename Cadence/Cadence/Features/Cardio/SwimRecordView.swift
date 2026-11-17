@@ -4,6 +4,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Pool swim recorder (round4b feedback #3): time + lap count only — no GPS,
 /// distance, or calorie estimate. Set a lap goal, start the clock, tap to count

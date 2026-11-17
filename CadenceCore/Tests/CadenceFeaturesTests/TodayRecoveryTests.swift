@@ -1,5 +1,6 @@
 import XCTest
 import SwiftData
+import CadencePhoneFeatures
 @testable import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures

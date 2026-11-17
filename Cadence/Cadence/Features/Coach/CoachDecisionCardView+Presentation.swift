@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension CoachDecisionCardView {
     var isCompleteState: Bool {

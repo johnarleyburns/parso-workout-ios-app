@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct ReadinessCheckInView: View {
     @Environment(\.dismiss) private var dismiss

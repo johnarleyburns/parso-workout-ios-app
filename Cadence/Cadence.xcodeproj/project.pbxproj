@@ -23,6 +23,7 @@
 		FA95D08A8A1F2D7841013F4B /* CadencePortability in Frameworks */ = {isa = PBXBuildFile; productRef = 3D816059BC331487C83CF02D /* CadencePortability */; };
 		928CA8503F20073F252C61BA /* CadenceWorkoutFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = B5A131A6D00201A09D276956 /* CadenceWorkoutFeatures */; };
 		913CAA0F1FE6ECCE19AE77FF /* CadenceWorkoutFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = C0EB814A816767E25BE7BAB7 /* CadenceWorkoutFeatures */; };
+		4B43A67B46A8C80AB8ED5493 /* CadencePhoneFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = EB5C5D9A22E3FE8914679A93 /* CadencePhoneFeatures */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -220,6 +221,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				928CA8503F20073F252C61BA /* CadenceWorkoutFeatures in Frameworks */,
+				4B43A67B46A8C80AB8ED5493 /* CadencePhoneFeatures in Frameworks */,
 				FA95D08A8A1F2D7841013F4B /* CadencePortability in Frameworks */,
 				8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */,
 				CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */,
@@ -351,6 +353,7 @@
 			name = Cadence;
 			packageProductDependencies = (
 				B5A131A6D00201A09D276956 /* CadenceWorkoutFeatures */,
+				EB5C5D9A22E3FE8914679A93 /* CadencePhoneFeatures */,
 				3D816059BC331487C83CF02D /* CadencePortability */,
 				8D78A55B2FD28A6200AE7C2F /* CadenceCore */,
 				CAFEFEA70000000000000000 /* CadenceFeatures */,
@@ -1410,6 +1413,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
 			productName = CadenceWorkoutFeatures;
+		};
+		EB5C5D9A22E3FE8914679A93 /* CadencePhoneFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadencePhoneFeatures;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

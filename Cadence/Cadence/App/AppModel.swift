@@ -10,6 +10,7 @@ import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import os
+import CadencePhoneFeatures
 #if DEBUG
 import CadenceFixtures
 #endif

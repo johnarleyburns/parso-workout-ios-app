@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Every study behind one coaching output, listed vertically on one scrolling
 /// screen (field test 2026-08-18 #10, decision **D9**). Reached from a single

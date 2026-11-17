@@ -40,7 +40,7 @@ sync CadenceWatchWidgets CadenceWatchWidgets/Localizable.xcstrings
 sync CadenceCore CadenceCore/Sources/CadenceCore/Resources/Localizable.xcstrings
 # Runtime modules use the original CadenceFeatures localization bundle.
 feature_files=()
-while IFS= read -r file; do feature_files+=("$file"); done < <(stringsdata CadenceFeatures; stringsdata CadenceWorkoutFeatures)
+while IFS= read -r file; do feature_files+=("$file"); done < <(stringsdata CadenceFeatures; stringsdata CadenceWorkoutFeatures; stringsdata CadencePhoneFeatures)
 [ "${#feature_files[@]}" -gt 0 ] || { echo "no feature stringsdata" >&2; exit 1; }
 xcrun xcstringstool sync CadenceCore/Sources/CadenceFeatures/Resources/Localizable.xcstrings --stringsdata "${feature_files[@]}"
 

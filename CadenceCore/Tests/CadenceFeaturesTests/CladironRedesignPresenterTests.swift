@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class CladironRedesignPresenterTests: XCTestCase {
     func testWeightSuggestionCopyUsesOwnerGrammar() {

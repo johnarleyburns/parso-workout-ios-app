@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class StrengthInactivityPolicyTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_000_000)

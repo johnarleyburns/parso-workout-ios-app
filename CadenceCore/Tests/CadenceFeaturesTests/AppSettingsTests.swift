@@ -3,6 +3,7 @@ import Foundation
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// AppSettings (the "SettingsStore" lift, test-pyramid Phase 2) is now headlessly
 /// testable via its injected `UserDefaults`. Covers persistence, defaults, and the

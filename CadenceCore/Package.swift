@@ -11,6 +11,7 @@ let package = Package(
     ],
     products: [
         .library(name: "CadenceWorkoutFeatures", targets: ["CadenceWorkoutFeatures"]),
+        .library(name: "CadencePhoneFeatures", targets: ["CadencePhoneFeatures"]),
         .library(name: "CadencePortability", targets: ["CadencePortability"]),
         .library(name: "CadenceCore", targets: ["CadenceCore"]),
         // Foundation-only planning domain; builds and tests on Linux.
@@ -76,6 +77,11 @@ let package = Package(
         ),
         .target(name: "CadenceWorkoutFeatures", dependencies: ["CadenceCore", "CadenceFeatures"],
                 swiftSettings: [.swiftLanguageMode(.v6)]),
+        // Phone-only dashboards, backup/export, assessment presentation and
+        // full plan editing. Never linked into the Watch target.
+        .target(name: "CadencePhoneFeatures",
+                dependencies: ["CadenceCore", "CadenceFeatures", "CadenceWorkoutFeatures"],
+                swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(name: "CadencePlatformTests", dependencies: ["CadenceFeatures"],
                     swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
@@ -92,7 +98,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CadenceFeaturesTests",
-            dependencies: ["CadenceFeatures", "CadenceWorkoutFeatures", "CadenceFixtures"],
+            dependencies: ["CadenceFeatures", "CadenceWorkoutFeatures", "CadencePhoneFeatures", "CadenceFixtures"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class PlatformReadinessTests: XCTestCase {
     func testReadinessPresenterKeepsSafetyCopySeparate() {

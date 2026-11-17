@@ -4,6 +4,7 @@ import MapKit
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Warm-up/cool-down, interval, heart-rate and route sections of `WorkoutSummaryView`.
 extension WorkoutSummaryView {

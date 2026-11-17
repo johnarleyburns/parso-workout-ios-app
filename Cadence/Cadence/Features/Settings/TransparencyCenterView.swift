@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// A plain-language inventory of automatic work and the controls available for
 /// it. This is intentionally a settings destination: transient banners explain

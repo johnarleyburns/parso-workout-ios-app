@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// One planned exercise as a Home-rhythm card. Editable outside a `List`, so
 /// per-set deletion is an explicit destructive button rather than a swipe

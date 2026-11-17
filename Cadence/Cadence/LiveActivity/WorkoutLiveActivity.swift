@@ -3,6 +3,7 @@ import Foundation
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import OSLog
+import CadencePhoneFeatures
 
 /// Best-effort lock-screen status for an active iPhone workout. The embedded
 /// Watch app deliberately keeps using HKWorkoutSession, whose system workout

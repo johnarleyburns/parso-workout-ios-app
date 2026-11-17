@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 private struct WindowSource: HealthHeartRateSource {
     var samples: [HealthHeartSample]

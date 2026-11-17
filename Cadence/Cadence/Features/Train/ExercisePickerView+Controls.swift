@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension ExercisePickerView {
     /// Browse / Recents / Popular: the single primary scope. Hidden while searching,

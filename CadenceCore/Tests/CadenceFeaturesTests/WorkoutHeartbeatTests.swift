@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Launch-blockers Phase 1e: the UserDefaults-backed liveness heartbeat.
 @MainActor

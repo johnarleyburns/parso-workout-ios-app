@@ -4,6 +4,7 @@ import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadenceFixtures
+import CadencePhoneFeatures
 
 /// The single highest-value test gained from the whole test-pyramid exercise:
 /// `HomeCoachModel.Signature` is the equatable key that decides when the entire

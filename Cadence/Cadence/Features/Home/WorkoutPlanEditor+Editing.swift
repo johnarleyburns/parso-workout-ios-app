@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension WorkoutPlanEditor {
     /// Fills every partner's plan from *their* history for the owner's

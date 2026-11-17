@@ -3,6 +3,7 @@ import Charts
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// A deliberately small exercise-level drill-down. The Progress tab remains
 /// the overview; this view answers the common follow-up question without

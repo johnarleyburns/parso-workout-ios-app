@@ -1,5 +1,6 @@
 import XCTest
 import Foundation
+import CadencePhoneFeatures
 
 /// Structural guard: Home render functions must read only precomputed value
 /// snapshots / UI state, never live persistence or history traversal.

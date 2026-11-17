@@ -1,5 +1,6 @@
 import XCTest
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 

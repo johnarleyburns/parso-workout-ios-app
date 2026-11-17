@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Launch-blockers Phase 1e: crash/upgrade recovery. A workout is NEVER lost —
 /// the candidate is adopted paused with the dead gap excluded from elapsed,

@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// The zero-privacy-cost growth loop (revenue plan Phase 6, decision D6): a
 /// branded PR card the user can render to a PNG and share. **No account, no

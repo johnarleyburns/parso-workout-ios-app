@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct ExerciseCardView: View {
     let context: SessionRenderModel.ExerciseContext

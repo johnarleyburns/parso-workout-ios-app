@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// A read-only preview of a planned (future) day (issue 7): the day's planned
 /// sessions with their rep prescription and a cited rationale. Deliberately has NO

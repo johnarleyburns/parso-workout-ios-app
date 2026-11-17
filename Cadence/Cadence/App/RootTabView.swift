@@ -4,6 +4,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct RootTabView: View {
     enum Tab: Hashable { case home, strength, cardio, progress, settings, search }

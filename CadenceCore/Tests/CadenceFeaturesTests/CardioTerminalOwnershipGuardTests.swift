@@ -1,5 +1,6 @@
 import XCTest
 import Foundation
+import CadencePhoneFeatures
 
 /// Architecture guard (issue #488): automatic cardio/interval pause/end is owned by durable
 /// coordinators (`PhoneCardioInactivityCoordinator` via `AppModel`, and the Watch manager's

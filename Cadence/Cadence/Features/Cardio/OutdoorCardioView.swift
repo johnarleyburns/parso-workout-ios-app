@@ -5,6 +5,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Purpose-built outdoor GPS screen for Run / Walk / Cycle (field-testing §05).
 /// Live map with a growing route polyline, big distance + pace, HR/zone, and

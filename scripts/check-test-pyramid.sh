@@ -44,9 +44,9 @@ count_tests_in_files() {
 
 # ── 1. CadenceFeatures import ban ────────────────────────────────────────────
 banned='^[[:space:]]*import[[:space:]]+(SwiftUI|HealthKit|StoreKit|UIKit|CoreBluetooth|CoreLocation)([[:space:]]|$)'
-if grep -rEn "$banned" "$FEATURES_SRC" "$ROOT/CadenceCore/Sources/CadenceWorkoutFeatures" >/dev/null 2>&1; then
+if grep -rEn "$banned" "$FEATURES_SRC" "$ROOT/CadenceCore/Sources/CadenceWorkoutFeatures" "$ROOT/CadenceCore/Sources/CadencePhoneFeatures" >/dev/null 2>&1; then
   echo "❌ CadenceFeatures imports a platform-UI framework — return a semantic enum instead:"
-  grep -rEn "$banned" "$FEATURES_SRC" "$ROOT/CadenceCore/Sources/CadenceWorkoutFeatures"
+  grep -rEn "$banned" "$FEATURES_SRC" "$ROOT/CadenceCore/Sources/CadenceWorkoutFeatures" "$ROOT/CadenceCore/Sources/CadencePhoneFeatures"
   fail=1
 fi
 

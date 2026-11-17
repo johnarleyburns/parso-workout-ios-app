@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 // View-layer mapping of `AssessmentTrend` to SwiftUI `Color`/SF Symbols. The
 // pure `AssessmentDisplay` formatting lives in `CadenceFeatures` (test-pyramid

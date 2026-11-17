@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Test-results card of `ProgressAnalyticsView`.
 extension ProgressAnalyticsView {

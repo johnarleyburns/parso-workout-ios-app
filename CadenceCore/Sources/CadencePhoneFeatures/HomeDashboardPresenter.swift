@@ -1,0 +1,400 @@
+import CadenceFeatures
+import Foundation
+import CadenceCore
+import CadenceWorkoutFeatures
+
+public struct HomeDashboardState: Sendable, Equatable {
+    public struct ProfileContext: Sendable, Equatable {
+        public let goal: String
+        public let experience: String
+        public let ageText: String
+    }
+    public struct Progress: Sendable, Equatable {
+        public let completed: Double
+        public let target: Double
+        public let displayText: String
+        public let normalized: Double
+
+        public init(completed: Double, target: Double, displayText: String, normalized: Double) {
+            self.completed = completed
+            self.target = target
+            self.displayText = displayText
+            self.normalized = normalized
+        }
+
+        public var isAtOrAboveTarget: Bool { completed >= target }
+    }
+
+    /// One muscle group's progress toward the weekly set target.
+    ///
+    /// This is the only per-muscle list Home shows. It replaced the pair of rows
+    /// that measured the same thing at two resolutions — a coarse eight-bucket
+    /// `Volume` and a fine `Muscles` — with the one resolution the evidence
+    /// actually supports (DB++ adoption, decision D5).
+    public struct VolumeRow: Sendable, Equatable, Identifiable {
+        public let group: MuscleGroup
+        public let displayName: String
+        /// Scientific name, e.g. "Gluteus Maximus".
+        public let scientificName: String
+        public let sets: Double
+        public let zone: WeeklySetZone
+        public let rangeText: String
+        /// 0…1, clamped — the fraction of the 12-set scale completed.
+        public let normalized: Double
+        /// False for a group the user does not track: shown because it has volume,
+        /// not because the coach targets it (decision D4).
+        public let isTracked: Bool
+        public let citationID: String
+        public var id: MuscleGroup { group }
+
+        public init(group: MuscleGroup, displayName: String, scientificName: String,
+                    sets: Double, zone: WeeklySetZone, rangeText: String,
+                    normalized: Double, isTracked: Bool, citationID: String) {
+            self.group = group
+            self.displayName = displayName
+            self.scientificName = scientificName
+            self.sets = sets
+            self.zone = zone
+            self.rangeText = rangeText
+            self.normalized = normalized
+            self.isTracked = isTracked
+            self.citationID = citationID
+        }
+    }
+
+    /// The weekly aerobic total, broken out so "158 of 150 min" from 80 logged
+    /// minutes is explainable rather than alarming (field test 2026-08-19 #7).
+    public struct CardioDetail: Sendable, Equatable {
+        public let loggedMinutes: Double
+        public let easyMinutes: Double
+        public let moderateMinutes: Double
+        public let vigorousMinutes: Double
+        public let moderateEquivalentMinutes: Double
+        public let targetMinutes: Double
+        public let citationID: String
+        public let citationIDs: [String]
+        public let belowModerateMinutes: Double
+        public let unclassifiedMinutes: Double
+        public let zoneMinutes: [TrainingZone: Double]
+        public let algorithmVersion: CardioAlgorithmVersion
+
+        public init(loggedMinutes: Double, easyMinutes: Double, moderateMinutes: Double,
+                    vigorousMinutes: Double, moderateEquivalentMinutes: Double,
+                    targetMinutes: Double, citationID: String,
+                    citationIDs: [String] = [],
+                    belowModerateMinutes: Double? = nil,
+                    unclassifiedMinutes: Double = 0,
+                    zoneMinutes: [TrainingZone: Double] = [:],
+                    algorithmVersion: CardioAlgorithmVersion = .legacy) {
+            self.loggedMinutes = loggedMinutes
+            self.easyMinutes = easyMinutes
+            self.moderateMinutes = moderateMinutes
+            self.vigorousMinutes = vigorousMinutes
+            self.moderateEquivalentMinutes = moderateEquivalentMinutes
+            self.targetMinutes = targetMinutes
+            self.citationID = citationID
+            self.citationIDs = citationIDs.isEmpty ? [citationID] : citationIDs
+            self.belowModerateMinutes = belowModerateMinutes ?? easyMinutes
+            self.unclassifiedMinutes = unclassifiedMinutes
+            self.zoneMinutes = zoneMinutes
+            self.algorithmVersion = algorithmVersion
+        }
+
+        /// The one-line "why is this bigger than what I did" explanation.
+        public var summary: String {
+            let logged = Self.format(loggedMinutes)
+            let equivalent = Self.format(moderateEquivalentMinutes)
+            guard vigorousMinutes > 0 || easyMinutes > 0 else {
+                return String(localized: "\(logged) min logged this week.", bundle: FeatureLocalization.bundle)
+            }
+            return String(localized: "\(logged) min exercised produces \(equivalent) moderate-equivalent guideline credit.", bundle: FeatureLocalization.bundle)
+        }
+
+        public var explanation: String {
+            String(localized: "Public-health guidance counts 150 moderate-equivalent minutes a week. Vigorous work counts double. With resting HR, moderate is 40–<60% heart-rate reserve; without it, the app uses 50–<70% of maximum HR so its Z2 time receives moderate credit. Below-moderate activity receives no guideline credit.", bundle: FeatureLocalization.bundle)
+        }
+
+        /// One row per intensity actually trained, for the expanded card.
+        public var lines: [(label: String, minutes: String, credit: String)] {
+            var rows: [(String, String, String)] = []
+            if belowModerateMinutes > 0 {
+                rows.append((String(localized: "Below moderate", bundle: FeatureLocalization.bundle), "\(Self.format(belowModerateMinutes)) min",
+                             "0 min credited"))
+            }
+            if moderateMinutes > 0 {
+                rows.append((String(localized: "Moderate", bundle: FeatureLocalization.bundle), "\(Self.format(moderateMinutes)) min",
+                             String(localized: "\(Self.format(moderateMinutes)) min credited", bundle: FeatureLocalization.bundle)))
+            }
+            if vigorousMinutes > 0 {
+                rows.append((String(localized: "Vigorous", bundle: FeatureLocalization.bundle), "\(Self.format(vigorousMinutes)) min",
+                             String(localized: "\(Self.format(vigorousMinutes * 2)) min credited", bundle: FeatureLocalization.bundle)))
+            }
+            return rows
+        }
+
+        static func format(_ value: Double) -> String { String(Int(value.rounded())) }
+    }
+    public let profileContext: ProfileContext
+    public let strength: Progress
+    public let cardio: Progress
+    /// Mean capped weekly sets across the tracked muscle groups.
+    public let volumeCoverage: Progress
+    /// Every tracked muscle group, plus any untracked one the user actually
+    /// trained this week, ordered alphabetically by displayed name.
+    public let volume: [VolumeRow]
+    public let cardioDetail: CardioDetail
+    public let activityDose: WeeklyActivitySummary?
+    public let suggestions: [HomeSuggestion]
+}
+
+public struct HomeSuggestion: Sendable, Equatable, Identifiable {
+    public enum Category: Int, Sendable, Equatable { case safety, weeklyDeficit, volumeRecovery, planAction, progress }
+    public enum Tone: String, Sendable, Equatable {
+        case positive
+        case warning
+        case neutral
+    }
+    public let id: String
+    public let category: Category
+    public let title: String
+    public let message: String
+    public let citationID: String?
+    public let sourceClaimKey: String
+    public let priority: Int
+    public let confidence: Int
+
+    public init(id: String, category: Category, title: String, message: String,
+                citationID: String?, sourceClaimKey: String, priority: Int, confidence: Int) {
+        self.id = id
+        self.category = category
+        self.title = title
+        self.message = message
+        self.citationID = citationID
+        self.sourceClaimKey = sourceClaimKey
+        self.priority = priority
+        self.confidence = confidence
+    }
+
+    /// Presentation tone for the Home warning list.
+    public var tone: Tone {
+        switch category {
+        case .safety, .weeklyDeficit, .volumeRecovery: return .warning
+        case .progress, .planAction: return .neutral
+        }
+    }
+}
+
+public enum HomeDashboardPresenter {
+    /// The first warning is fully visible; the rest are behind Show more.
+    public static func visibleSuggestions(_ suggestions: [HomeSuggestion], expanded: Bool) -> [HomeSuggestion] {
+        expanded ? suggestions : Array(suggestions.prefix(1))
+    }
+
+    public static func make(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences,
+                            goal: TrainingGoal, experience: ExperienceLevel,
+                            userAge: Int?, liveVolumeDelta: [MuscleGroup: Double] = [:],
+                            weeklyCardio: WeeklyCardioSummary? = nil,
+                            activityDose: WeeklyActivitySummary? = nil,
+                            restoredWeeklySetsByMuscle: [String: Double]? = nil) -> HomeDashboardState {
+        let balance = snapshot.decision.weeklyBalance
+        // Weekly sets, not days per week: frequency is not an independent
+        // indicator of training impact (O'Donovan/Lee et al. 2022).
+        // Before the coach pipeline produces real facts (cold launch), the
+        // durably cached same-day counts avoid a "0 of N sets" flash.
+        let strengthSets = restoredWeeklySetsByMuscle?.values.reduce(0, +)
+            ?? snapshot.facts.weeklySetsByGroup.values.reduce(0, +)
+        let strengthTarget = Double(max(1, schedule.trackedMuscleGroups.count)) * 12
+        let strength = HomeDashboardState.Progress(completed: strengthSets, target: strengthTarget,
+            displayText: String(localized: "\(Int(strengthSets.rounded())) of \(Int(strengthTarget)) sets", bundle: FeatureLocalization.bundle),
+            normalized: min(1, strengthSets / strengthTarget))
+        let cardioCredit = weeklyCardio?.moderateEquivalentMinutes ?? balance.moderateEquivalentMinutes
+        let cardioTarget = weeklyCardio?.guidelineTarget ?? WeeklyCardioProgress.target
+        let cardio = HomeDashboardState.Progress(completed: cardioCredit, target: cardioTarget,
+            displayText: String(localized: "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit", bundle: FeatureLocalization.bundle),
+            normalized: min(1, max(0, cardioCredit / cardioTarget)))
+        // Home's visible volume must use the same explicit Monday-to-now
+        // boundary as the Strength and Cardio rows. DB++'s observation is still
+        // used by coaching/adherence, but merging it here allowed a stale or
+        // differently-windowed engine projection to make this card look like
+        // it contained multiple weeks of muscle volume.
+        let volume: [HomeDashboardState.VolumeRow]
+        if let restoredWeeklySetsByMuscle {
+            volume = volumeRows(setsByMuscle: restoredWeeklySetsByMuscle, tracked: schedule.trackedMuscleGroups)
+        } else {
+            var currentWeekVolume = snapshot.facts.weeklySetsByGroup
+            for (group, delta) in liveVolumeDelta where delta != 0 {
+                currentWeekVolume[group, default: 0] += delta
+            }
+            volume = volumeRows(setsByGroup: currentWeekVolume, tracked: schedule.trackedMuscleGroups)
+        }
+        // Averaged over the TRACKED rows only, so half a set of incidental neck
+        // work cannot drag the headline number down.
+        let averageSets = averageCappedSets(volume.filter(\.isTracked).map(\.sets))
+        let volumeCoverage = HomeDashboardState.Progress(
+            completed: averageSets, target: WeeklySetProgress.maximum,
+            displayText: String(localized: "\(format(averageSets)) sets", bundle: FeatureLocalization.bundle),
+            normalized: WeeklySetProgress.normalized(averageSets))
+        let cardioDetail = HomeDashboardState.CardioDetail(
+            loggedMinutes: weeklyCardio?.actualMinutes ?? balance.loggedAerobicMinutes,
+            easyMinutes: weeklyCardio?.belowModerateMinutes ?? balance.easyMinutesLogged,
+            moderateMinutes: weeklyCardio?.moderateMinutes ?? balance.moderateMinutesLogged,
+            vigorousMinutes: weeklyCardio?.vigorousMinutes ?? balance.vigorousMinutesLogged,
+            moderateEquivalentMinutes: cardioCredit,
+            targetMinutes: cardioTarget,
+            citationID: CitationRegistry.piercy2018PhysicalActivityGuidelines.id,
+            citationIDs: [
+                CitationRegistry.piercy2018PhysicalActivityGuidelines.id,
+                CitationRegistry.swainLeutholtz1997HRR.id,
+                CitationRegistry.mezzani2013AerobicIntensity.id,
+                CitationRegistry.acsmGarber2011AerobicGuidelines.id
+            ],
+            belowModerateMinutes: weeklyCardio?.belowModerateMinutes,
+            unclassifiedMinutes: weeklyCardio?.unclassifiedMinutes ?? 0,
+            zoneMinutes: weeklyCardio?.zoneMinutes ?? [:],
+            algorithmVersion: weeklyCardio?.algorithmVersion ?? .legacy)
+        return .init(profileContext: .init(goal: goal.displayName, experience: experience.displayName,
+                                           ageText: userAge.map(String.init) ?? String(localized: "Age not set", bundle: FeatureLocalization.bundle)),
+                     strength: strength, cardio: cardio, volumeCoverage: volumeCoverage,
+                     volume: volume,
+                     cardioDetail: cardioDetail, activityDose: activityDose,
+                     suggestions: suggestions(snapshot: snapshot, schedule: schedule))
+    }
+
+    /// Compatibility helper for callers that still provide an engine observation.
+    /// The Home card intentionally uses the app facts as its source of truth:
+    /// `TrainingFacts.weeklySetsByGroup` is explicitly Monday-to-now and includes
+    /// both catalog and app-created exercises. The engine remains available for
+    /// coaching/adherence surfaces, but must not widen this visible week window.
+    public static func weeklyVolume(engine: [MuscleGroup: Double]?,
+                                    facts: [MuscleGroup: Double]) -> [MuscleGroup: Double] {
+        _ = engine
+        return facts
+    }
+
+    /// The tracked groups still short of a productive week (zero, below the
+    /// minimum, or building), most behind first. Uncapped so Fill the Gaps
+    /// addresses every gap the muscle-group list shows.
+    public static func gapGroups(from rows: [HomeDashboardState.VolumeRow]) -> [MuscleGroup] {
+        rows
+            .filter { $0.isTracked && ($0.zone == .belowMinimum || $0.zone == .building) }
+            .sorted { $0.normalized == $1.normalized
+                ? MuscleGroup.canonicalIndex($0.group) < MuscleGroup.canonicalIndex($1.group)
+                : $0.normalized < $1.normalized }
+            .map(\.group)
+    }
+
+    /// Gap groups split by severity, in priority order: no sets at all (missing),
+    /// some but under the minimum, then at/above minimum but under recommended.
+    public struct GapTiers: Equatable, Sendable {
+        public var missing: [MuscleGroup]
+        public var belowMinimum: [MuscleGroup]
+        public var belowRecommended: [MuscleGroup]
+        public init(missing: [MuscleGroup] = [], belowMinimum: [MuscleGroup] = [],
+                    belowRecommended: [MuscleGroup] = []) {
+            self.missing = missing
+            self.belowMinimum = belowMinimum
+            self.belowRecommended = belowRecommended
+        }
+        public var all: [MuscleGroup] { missing + belowMinimum + belowRecommended }
+    }
+
+    public static func gapTiers(from rows: [HomeDashboardState.VolumeRow]) -> GapTiers {
+        let ordered = Set(gapGroups(from: rows))
+        let byGroup = Dictionary(rows.map { ($0.group, $0) }, uniquingKeysWith: { a, _ in a })
+        let groups = gapGroups(from: rows).filter(ordered.contains)
+        var t = GapTiers()
+        for g in groups {
+            guard let r = byGroup[g] else { continue }
+            if r.zone == .building { t.belowRecommended.append(g) }
+            else if r.sets <= 0 { t.missing.append(g) }
+            else { t.belowMinimum.append(g) }
+        }
+        return t
+    }
+
+    /// Every tracked muscle group, plus any untracked group the user has actually
+    /// trained, alphabetically by displayed name.
+    public static func volumeRows(setsByGroup: [MuscleGroup: Double],
+                                  tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked)
+    -> [HomeDashboardState.VolumeRow] {
+        MuscleGroup.allCases.compactMap { group -> HomeDashboardState.VolumeRow? in
+            let sets = setsByGroup[group] ?? 0
+            let isTracked = tracked.contains(group)
+            // An untracked group with no work is noise: the coach does not target
+            // it and the user has not trained it, so it does not need a row.
+            guard isTracked || sets > 0 else { return nil }
+            let zone = WeeklySetProgress.zone(for: sets)
+            return .init(group: group,
+                         displayName: group.displayName,
+                         scientificName: group.scientificName,
+                         sets: sets,
+                         zone: zone,
+                         rangeText: zone.displayText,
+                         normalized: WeeklySetProgress.normalized(sets),
+                         isTracked: isTracked,
+                         citationID: CitationRegistry.iversenTimeEfficient2021.id)
+        }
+        .sorted {
+            let order = $0.displayName.localizedCaseInsensitiveCompare($1.displayName)
+            return order == .orderedSame ? $0.group.rawValue < $1.group.rawValue
+                                         : order == .orderedAscending
+        }
+    }
+
+    /// Convenience for callers holding a raw-value-keyed tally.
+    public static func volumeRows(setsByMuscle: [String: Double],
+                                  tracked: Set<MuscleGroup> = MuscleGroup.defaultTracked)
+    -> [HomeDashboardState.VolumeRow] {
+        var byGroup: [MuscleGroup: Double] = [:]
+        for (id, sets) in setsByMuscle {
+            guard let group = MuscleGroup.canonical(id) else { continue }
+            byGroup[group, default: 0] += sets
+        }
+        return volumeRows(setsByGroup: byGroup, tracked: tracked)
+    }
+
+    /// This Week's detailed volume list: largest weekly set count first, with
+    /// a stable alphabetical tie-break so it does not jump between renders.
+    public static func sortedVolumeRows(_ rows: [HomeDashboardState.VolumeRow])
+    -> [HomeDashboardState.VolumeRow] {
+        rows.sorted {
+            if $0.sets != $1.sets { return $0.sets > $1.sets }
+            let nameOrder = $0.displayName.localizedStandardCompare($1.displayName)
+            return nameOrder == .orderedSame
+                ? $0.group.rawValue < $1.group.rawValue
+                : nameOrder == .orderedAscending
+        }
+    }
+
+    private static func suggestions(snapshot: CoachSnapshot, schedule: CoachSchedulePreferences) -> [HomeSuggestion] {
+        var candidates: [HomeSuggestion] = snapshot.decision.warnings.map {
+            .init(id: $0.id, category: .safety, title: String(localized: "Recovery note", bundle: FeatureLocalization.bundle), message: $0.message,
+                  citationID: $0.citationIds.first, sourceClaimKey: "warning:\($0.id)", priority: 100, confidence: 100)
+        }
+        // Every insight carries a citation. Attention insights are warnings;
+        // info insights (trends, what's going well, coaching advice) are shown
+        // as neutral progress observations ranked after the warnings, so the
+        // card is not empty on a day with nothing urgent. The cold-start
+        // placeholder is excluded: it is onboarding, not an observation.
+        candidates += snapshot.insights.filter { $0.kind != .coldStart }.map { insight in
+            let category: HomeSuggestion.Category = insight.severity == .attention ? .volumeRecovery : .progress
+            return .init(id: insight.id, category: category, title: insight.title, message: insight.message,
+                         citationID: insight.citation.id, sourceClaimKey: "insight:\(insight.id)",
+                         priority: insight.severity.rawValue, confidence: snapshot.decision.confidence.rawValue)
+        }
+        var seen = Set<String>()
+        return candidates.filter { seen.insert($0.sourceClaimKey).inserted }.sorted {
+            ($0.category.rawValue, -$0.priority, -$0.confidence, $0.id) <
+            ($1.category.rawValue, -$1.priority, -$1.confidence, $1.id)
+        }
+    }
+
+    private static func format(_ value: Double) -> String {
+        value.rounded() == value ? String(Int(value)) : String(format: "%.1f", value)
+    }
+
+    private static func averageCappedSets(_ sets: [Double]) -> Double {
+        guard !sets.isEmpty else { return 0 }
+        return sets.map { min(max($0, 0), WeeklySetProgress.maximum) }.reduce(0, +) / Double(sets.count)
+    }
+}

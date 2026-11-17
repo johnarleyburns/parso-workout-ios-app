@@ -4,6 +4,7 @@ import AVFoundation
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @main
 @MainActor

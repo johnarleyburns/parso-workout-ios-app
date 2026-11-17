@@ -53,6 +53,27 @@ class ModuleBoundaries(unittest.TestCase):
             self.assertNotIn('import SwiftData', path.read_text())
             self.assertNotIn('import CadenceCore', path.read_text())
 
+    def test_phone_features_is_phone_only_and_shared_watch_runtime_is_untouched(self):
+        self.assertIn('CadencePhoneFeatures', self.targets)
+        self.assertNotIn('CadencePhoneFeatures', self.closure('CadenceWorkoutFeatures'))
+        self.assertIn('CadenceWorkoutFeatures', self.closure('CadencePhoneFeatures'))
+        # Things the research doc says must stay in the shared runtime, not
+        # move to the phone-only module: Watch set-default parity, partner
+        # isolation, generation and durable HR/sync pipes.
+        for name in (
+            'WatchStrengthFlowModel', 'WatchSetDefaultSnapshot',
+            'WatchSetDefaultSnapshotPersistence', 'PerformerSetPlanner',
+            'PartnerPlanResolver', 'WatchHeartRateOutbox',
+            'WatchSingleExerciseSuggestionAssembler', 'WatchSync',
+        ):
+            self.assertTrue((SOURCES / f'CadenceWorkoutFeatures/{name}.swift').exists(), name)
+        project = (ROOT / 'Cadence/Cadence.xcodeproj/project.pbxproj').read_text()
+        for block in re.findall(r'isa = PBXNativeTarget;.*?\n\t\t};', project, re.S):
+            if re.search(r'\n\s*name = Cadence;', block):
+                self.assertIn('/* CadencePhoneFeatures */', block)
+            elif re.search(r'\n\s*name = "Cadence Watch App Watch App";', block):
+                self.assertNotIn('CadencePhoneFeatures', block)
+
 
 if __name__ == '__main__':
     unittest.main()

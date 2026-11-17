@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Training partners and performer order, as a Home-rhythm card
 /// (field test 2026-08-18 #5 — the plan editor left `List` behind).

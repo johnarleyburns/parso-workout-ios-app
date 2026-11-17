@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Settings entry point for the same current, on-device insight list shown from
 /// Home. It computes lazily when opened, so Settings does not add coach work to

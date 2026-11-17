@@ -4,6 +4,7 @@ import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadenceFixtures
+import CadencePhoneFeatures
 
 @MainActor
 final class ProgressPresenterTests: XCTestCase {

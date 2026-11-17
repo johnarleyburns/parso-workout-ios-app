@@ -5,6 +5,7 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 import UniformTypeIdentifiers
 import os
+import CadencePhoneFeatures
 
 /// Full data export + JSON restore (FR-6.2). Includes Coach preferences.
 ///

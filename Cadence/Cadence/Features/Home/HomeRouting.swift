@@ -4,6 +4,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {

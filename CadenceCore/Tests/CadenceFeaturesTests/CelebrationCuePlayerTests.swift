@@ -1,6 +1,7 @@
 import XCTest
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Pins the testable seam that the app's celebration-firing call sites
 /// (SessionView+SetActions, InlineSetEditorView, IntervalCues.completed(),

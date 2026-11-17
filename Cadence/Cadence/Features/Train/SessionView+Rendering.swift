@@ -4,6 +4,7 @@ import UIKit
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 extension SessionView {
     @ViewBuilder
     var scrollContent: some View {

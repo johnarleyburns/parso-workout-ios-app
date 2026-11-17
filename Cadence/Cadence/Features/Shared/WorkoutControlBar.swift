@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// The shared in-workout control pair (field-testing Round 4 A1/A2): a big
 /// Pause/Resume toggle and a big End button that routes through an

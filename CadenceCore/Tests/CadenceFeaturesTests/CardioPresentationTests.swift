@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 private final class Loc: LocationTracking {
     var fixes: [LocationFix] = []

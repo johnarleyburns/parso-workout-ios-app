@@ -4,6 +4,7 @@ import Charts
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 private struct ProgressSessionSignature: Equatable {
     let id: UUID; let date: Date
     let updatedAt: Date
@@ -362,7 +363,7 @@ struct ProgressAnalyticsView: View {
                     Spacer(); Text("light \(pct(i.light))").foregroundStyle(.secondary)
                 }
                 .font(.caption2).padding(.top, 5)
-                Text(intensityRead(i, goal: settings.trainingGoal))
+                Text(ProgressPresenter.intensityRead(i, goal: settings.trainingGoal))
                     .font(.caption).foregroundStyle(.secondary).padding(.top, 8)
             } else {
                 emptyNote(String(localized: "Log the weight on your sets and we'll show how your work splits across heavy, moderate, and light loads \u{2014} and whether that matches your goal's rep range."))
@@ -371,10 +372,6 @@ struct ProgressAnalyticsView: View {
     }
 
     private func pct(_ f: Double) -> String { "\(Int((f * 100).rounded()))%" }
-
-    private func intensityRead(_ i: IntensityDistribution, goal: TrainingGoal) -> String {
-        ProgressPresenter.intensityRead(i, goal: goal)
-    }
 
     // MARK: - §5 Effort + Frequency
 
@@ -385,16 +382,12 @@ struct ProgressAnalyticsView: View {
                     Text(String(format: "%.1f", rir)).font(.title2.weight(.semibold))
                     Text(" RIR").font(.caption).foregroundStyle(.secondary)
                 }
-                Text(effortRead(rir, goal: settings.trainingGoal))
+                Text(ProgressPresenter.effortRead(rir, goal: settings.trainingGoal))
                     .font(.caption2).foregroundStyle(.secondary).padding(.top, 3)
             } else {
                 emptyNote(String(localized: "Log RPE on your sets to track how close to failure you train."))
             }
         }
         .accessibilityIdentifier("progress.effortCard")
-    }
-
-    private func effortRead(_ rir: Double, goal: TrainingGoal) -> String {
-        ProgressPresenter.effortRead(rir, goal: goal)
     }
 }

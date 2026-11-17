@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 

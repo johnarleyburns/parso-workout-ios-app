@@ -1,18 +1,23 @@
 name: PR Swift Validation
-# Read-only: no write token, no release/signing secrets. Runs the shared
-# scripts/ci-validate.sh so issue agent, repair agent and CI cannot drift.
+# Independent workspaces overlap host tests and the optimized device build.
+# Keep validate as the required aggregate check used by branch protection.
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      benchmark_tests:
+        description: Compare serial XCTest with bounded parallel workers on this SHA
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: pr-validation-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  validate:
+  host-tests:
     runs-on: xcode-27
     timeout-minutes: 90
     steps:
@@ -25,8 +30,44 @@ jobs:
           test -n "$XCODE"
           sudo xcode-select -s "$XCODE"
           xcodebuild -version
-      - name: Validate (shell, YAML, automation tests, Swift tests, builds, guardrails)
-        run: bash scripts/ci-validate.sh
+      - uses: ./.github/actions/build-cache
+        with:
+          scope: host
+      - name: Static and automation checks
+        run: bash scripts/ci-validate.sh --fast
+      - name: Host tests and owned warnings
+        run: bash scripts/ci-validate.sh --tests
+      - name: Upload host test transcript
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: pr-validation-tests-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-swift-test.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  app-build:
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select stable Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: ./.github/actions/build-cache
+        id: cache
+        with:
+          scope: device
+      - name: Optimized iPhone and embedded Watch build with guardrails
+        env:
+          CADENCE_DERIVED_DATA: ${{ steps.cache.outputs.derived-data }}
+          CADENCE_SOURCE_PACKAGES: ${{ steps.cache.outputs.source-packages }}
+        run: bash scripts/ci-validate.sh --build
       - name: Upload build transcript
         if: always()
         uses: actions/upload-artifact@v7
@@ -35,3 +76,44 @@ jobs:
           path: ${{ runner.temp }}/ci-validate-build.log
           if-no-files-found: ignore
           retention-days: 7
+
+  validate:
+    needs: [host-tests, app-build]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both validation jobs
+        env:
+          HOST_TESTS: ${{ needs.host-tests.result }}
+          APP_BUILD: ${{ needs.app-build.result }}
+        run: |
+          test "$HOST_TESTS" = success && test "$APP_BUILD" = success
+
+  test-benchmark:
+    if: github.event_name == 'workflow_dispatch' && inputs.benchmark_tests
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select stable Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: ./.github/actions/build-cache
+        with:
+          scope: host
+      - name: Benchmark identical suite and SHA
+        run: bash scripts/benchmark-host-tests.sh
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: host-test-benchmark-${{ github.run_id }}
+          path: ${{ runner.temp }}/cadence-test-benchmark
+          if-no-files-found: ignore
+          retention-days: 14

@@ -1,0 +1,38 @@
+name: Host Test Benchmark
+# Performance evidence lives outside the required PR critical path.
+on:
+  schedule:
+    - cron: '17 8 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: host-test-benchmark
+  cancel-in-progress: false
+jobs:
+  benchmark:
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Select stable Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+      - uses: ./.github/actions/build-cache
+        with:
+          scope: host
+      - name: Benchmark exact SHA and full search workload
+        run: bash scripts/benchmark-host-tests.sh
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: host-test-benchmark-${{ github.run_id }}
+          path: ${{ runner.temp }}/cadence-test-benchmark
+          if-no-files-found: ignore
+          retention-days: 14

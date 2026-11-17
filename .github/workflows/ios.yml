@@ -36,25 +36,14 @@ jobs:
       - name: Accept Xcode License
         run: sudo xcodebuild -license accept
 
-      - name: Cache SPM
-        uses: actions/cache@v6
+      - uses: ./.github/actions/build-cache
         with:
-          path: |
-            ~/.swiftpm
-            CadenceCore/.build
-          key: spm-core-${{ hashFiles('CadenceCore/Package.resolved') }}
-          restore-keys: spm-core-
+          scope: host
 
-      - name: Run SwiftPM package tests
+      - name: Run static checks and SwiftPM package tests
         run: |
-          set -eo pipefail
-          swift package resolve --package-path CadenceCore
-          swift build --package-path CadenceCore 2>&1 | tee swift-build.log
-          swift test --package-path CadenceCore 2>&1 | tee swift-test.log
-
-      - name: Check owned warnings
-        if: always()
-        run: bash scripts/check-owned-warnings.sh swift-build.log swift-test.log
+          bash scripts/ci-validate.sh --fast
+          bash scripts/ci-validate.sh --tests
 
       - name: Check warning classifier fixtures
         run: bash scripts/test-check-owned-warnings.sh
@@ -86,15 +75,13 @@ jobs:
   # shared CPU). The reliable CI gate is core-tests (host SwiftPM package tests +
   # guardrails). UI smoke runs locally via `make smoke` and `make watch-smoke`.
 
-  testflight-build:
+  archive:
     permissions:
       contents: read
-      issues: write
-      pull-requests: read
-      actions: read
     outputs:
       stage: ${{ steps.stage.outputs.stage }}
-    needs: core-tests
+      build-number: ${{ steps.version.outputs.build-number }}
+    # Runs alongside core-tests; upload is a downstream job requiring both.
     runs-on: xcode-27
     # Archives can legitimately be slower than a compile, but must not consume
     # a permit forever if Xcode or an external signing service stops responding.
@@ -118,60 +105,30 @@ jobs:
       - name: Accept Xcode License
         run: sudo xcodebuild -license accept
 
-      - name: Import Certificate
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          set -eo pipefail
-          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security set-keychain-settings -lut 21600 build.keychain
-          echo -n "$APPLE_CERTIFICATE" | base64 --decode -o certificate.p12
-          security import certificate.p12 \
-            -P "$APPLE_CERTIFICATE_PASSWORD" \
-            -A -t cert -f pkcs12 \
-            -k build.keychain
-          security set-key-partition-list \
-            -S apple-tool:,apple: \
-            -s -k "$KEYCHAIN_PASSWORD" build.keychain
-
-      - name: Import Provisioning Profiles
-        env:
-          PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
-          WATCH_PROVISIONING_PROFILE_BASE64: ${{ secrets.WATCH_PROVISIONING_PROFILE_BASE64 }}
-          WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.WIDGET_PROVISIONING_PROFILE_BASE64 }}
-          WATCH_WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.WATCH_WIDGET_PROVISIONING_PROFILE_BASE64 }}
-        run: |
-          set -eo pipefail
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode \
-            -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_App_Store.mobileprovision"
-          echo -n "$WATCH_PROVISIONING_PROFILE_BASE64" | base64 --decode \
-            -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Watch_App_Store.mobileprovision"
-          echo -n "$WIDGET_PROVISIONING_PROFILE_BASE64" | base64 --decode \
-            -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Widgets_App_Store.mobileprovision"
-          echo -n "$WATCH_WIDGET_PROVISIONING_PROFILE_BASE64" | base64 --decode \
-            -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Watch_Widgets_App_Store.mobileprovision"
-
-      - name: Cache SPM
-        uses: actions/cache@v6
+      - uses: ./.github/actions/release-signing
         with:
-          path: |
-            ~/.swiftpm
-            ~/Library/Developer/Xcode/DerivedData/*/SourcePackages
-          key: spm-${{ hashFiles('CadenceCore/Package.resolved') }}
-          restore-keys: spm-
+          certificate: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+          phone-profile: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          watch-profile: ${{ secrets.WATCH_PROVISIONING_PROFILE_BASE64 }}
+          widget-profile: ${{ secrets.WIDGET_PROVISIONING_PROFILE_BASE64 }}
+          watch-widget-profile: ${{ secrets.WATCH_WIDGET_PROVISIONING_PROFILE_BASE64 }}
+
+      - uses: ./.github/actions/build-cache
+        id: cache
+        with:
+          scope: archive
 
       - name: Resolve Swift packages
         run: |
           xcodebuild -resolvePackageDependencies \
             -project Cadence/Cadence.xcodeproj \
-            -scheme Cadence
+            -scheme Cadence \
+            -clonedSourcePackagesDirPath "${{ steps.cache.outputs.source-packages }}"
 
       - name: Set App/TestFlight Build Number
+        id: version
         run: |
           set -eo pipefail
           # CFBundleVersion is the number shown by AboutView and must remain
@@ -179,6 +136,7 @@ jobs:
           # run_number is a separate UI identifier and must not be used here.
           BUILD=$(git rev-list --count HEAD)
           echo "BUILD_NUMBER=$BUILD" >> "$GITHUB_ENV"
+          echo "build-number=$BUILD" >> "$GITHUB_OUTPUT"
           echo "App/TestFlight build number (About screen): $BUILD"
           {
             echo "### App/TestFlight build"
@@ -192,17 +150,6 @@ jobs:
           set -eo pipefail
           echo "MKT_VERSION=1.1.$BUILD_NUMBER" >> "$GITHUB_ENV"
           echo "Marketing version: 1.1.$BUILD_NUMBER (build $BUILD_NUMBER)"
-
-      - name: Write App Store Connect API Key
-        env:
-          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
-          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-        run: |
-          set -eo pipefail
-          mkdir -p ~/.appstoreconnect/private_keys
-          echo "$APPSTORE_API_PRIVATE_KEY" \
-            > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
-          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
 
       - name: Archive
         id: archive
@@ -226,6 +173,9 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath ./build/Cadence.xcarchive \
+            -derivedDataPath "${{ steps.cache.outputs.derived-data }}" \
+            -clonedSourcePackagesDirPath "${{ steps.cache.outputs.source-packages }}" \
+            -showBuildTimingSummary \
             MARKETING_VERSION="$MKT_VERSION" \
             CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             IPHONEOS_DEPLOYMENT_TARGET=27.0 \
@@ -296,6 +246,113 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
+      - name: Upload archive diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: archive-diagnostics-${{ github.run_id }}
+          path: build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Package signed archive
+        id: package
+        run: tar -cf "$RUNNER_TEMP/Cadence.xcarchive.tar" -C build Cadence.xcarchive
+
+      - name: Retain signed archive for gated upload
+        id: handoff
+        uses: actions/upload-artifact@v7
+        with:
+          name: signed-archive-${{ github.run_id }}-${{ github.sha }}
+          path: ${{ runner.temp }}/Cadence.xcarchive.tar
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
+
+      - name: Record archive stage
+        id: stage
+        if: always()
+        env:
+          ARCHIVE: ${{ steps.archive.outcome }}
+          WARNINGS: ${{ steps.warnings.outcome }}
+          PACKAGE: ${{ steps.package.outcome }}
+          HANDOFF: ${{ steps.handoff.outcome }}
+        run: |
+          stage=setup
+          if [[ "$WARNINGS" == failure ]]; then stage=warnings
+          elif [[ "$ARCHIVE" == failure ]]; then stage=archive
+          elif [[ "$PACKAGE" == failure || "$HANDOFF" == failure ]]; then stage=handoff
+          elif [[ "$HANDOFF" == success ]]; then stage=archived
+          fi
+          echo "stage=$stage" >> "$GITHUB_OUTPUT"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          security delete-keychain build.keychain || true
+          rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8
+
+  testflight-build:
+    needs: [core-tests, archive]
+    runs-on: xcode-27
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+      actions: read
+    outputs:
+      stage: ${{ steps.stage.outputs.stage }}
+    env:
+      BUILD_NUMBER: ${{ needs.archive.outputs.build-number }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Select supported release Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - name: Accept Xcode License
+        run: sudo xcodebuild -license accept
+
+      - uses: ./.github/actions/release-signing
+        with:
+          certificate: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          keychain-password: ${{ secrets.KEYCHAIN_PASSWORD }}
+          phone-profile: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          watch-profile: ${{ secrets.WATCH_PROVISIONING_PROFILE_BASE64 }}
+          widget-profile: ${{ secrets.WIDGET_PROVISIONING_PROFILE_BASE64 }}
+          watch-widget-profile: ${{ secrets.WATCH_WIDGET_PROVISIONING_PROFILE_BASE64 }}
+
+      - name: Write App Store Connect API Key
+        env:
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+        run: |
+          set -eo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "$APPSTORE_API_PRIVATE_KEY" \
+            > ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+          chmod 600 ~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8
+
+      - name: Download signed archive
+        uses: actions/download-artifact@v8
+        with:
+          name: signed-archive-${{ github.run_id }}-${{ github.sha }}
+          path: ${{ runner.temp }}/signed-archive
+
+      - name: Restore signed archive
+        run: |
+          mkdir -p build
+          tar -xf "$RUNNER_TEMP/signed-archive/Cadence.xcarchive.tar" -C build
+
       - name: Export IPA
         id: export
         run: |
@@ -344,21 +401,10 @@ jobs:
           ASC_KEY_PATH: /Users/runner/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPSTORE_API_KEY_ID }}.p8
         run: bash .github/scripts/record-testflight-delivery.sh
 
-      - name: Upload archive diagnostics
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: archive-diagnostics-${{ github.run_id }}
-          path: build.log
-          if-no-files-found: ignore
-          retention-days: 7
-
-      - name: Record failing stage
+      - name: Record upload stage
         id: stage
         if: always()
         env:
-          ARCHIVE: ${{ steps.archive.outcome }}
-          WARNINGS: ${{ steps.warnings.outcome }}
           EXPORT: ${{ steps.export.outcome }}
           UPLOAD: ${{ steps.upload.outcome }}
         run: |
@@ -366,22 +412,20 @@ jobs:
           if [[ "$UPLOAD" == success ]]; then stage=uploaded
           elif [[ "$UPLOAD" == failure ]]; then stage=upload
           elif [[ "$EXPORT" == failure ]]; then stage=export
-          elif [[ "$WARNINGS" == failure ]]; then stage=warnings
-          elif [[ "$ARCHIVE" == failure ]]; then stage=archive
           fi
           echo "stage=$stage" >> "$GITHUB_OUTPUT"
 
       - name: Cleanup
         if: always()
         run: |
-          security delete-keychain build.keychain
+          security delete-keychain build.keychain || true
           rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8
 
   # Records the post-merge outcome on the merged PR. Uses only GITHUB_TOKEN with
   # issue/PR comment scope and no release secrets. "Uploaded" means Xcode's
   # accepted the build; Apple processing / tester availability is NOT claimed.
   deployment-report:
-    needs: [core-tests, testflight-build]
+    needs: [core-tests, archive, testflight-build]
     if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -397,7 +441,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TESTS: ${{ needs.core-tests.result }}
           BUILD: ${{ needs.testflight-build.result }}
-          STAGE: ${{ needs.testflight-build.outputs.stage }}
+          STAGE: ${{ needs.testflight-build.outputs.stage || needs.archive.outputs.stage }}
           SHA: ${{ github.sha }}
         run: |
           if [[ "$TESTS" != success ]]; then
@@ -408,6 +452,7 @@ jobs:
             case "$STAGE" in
               archive) status="FAILED at archive compilation (code-related: see build log artifact; not a signing issue unless the log says so)" ;;
               warnings) status="FAILED at the owned archive warning gate (code-related: fix the application-owned compiler warning; not a signing or App Store Connect problem)" ;;
+              handoff) status="FAILED while retaining the signed archive for the gated upload job" ;;
               export) status="FAILED at IPA export (check provisioning profiles/ExportOptions; owner action may be needed)" ;;
               upload) status="FAILED at TestFlight upload (check App Store Connect API credentials/status; owner action may be needed)" ;;
               *) status="FAILED before archive (setup: certificates, profiles, package resolution; job result: $BUILD)" ;;

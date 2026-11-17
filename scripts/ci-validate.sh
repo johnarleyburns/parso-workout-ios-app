@@ -2,56 +2,64 @@
 # Single source of truth for PR validation. Used by the PR Swift Validation
 # workflow, the issue agent and the repair agent so the three cannot drift.
 # Runs everything headless: no simulator is booted.
-# Usage: scripts/ci-validate.sh [--fast]   (--fast = static checks only)
+# Usage: scripts/ci-validate.sh [--fast|--tests|--build]
+# Default: all stages sequentially for issue/repair callers. CI splits runners.
 set -euo pipefail
 cd "${CI_VALIDATE_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 step() { echo "::group::$*"; echo "=== $* ==="; }
 endstep() { echo "::endgroup::"; }
 
-step "Shell syntax"
-while IFS= read -r f; do
-  bash -n "$f" || { echo "Shell syntax error: $f" >&2; exit 1; }
-done < <(git ls-files '*.sh')
-endstep
+mode="${1:---all}"
+case "$mode" in --all|--fast|--tests|--build) ;; *) echo "Unknown validation mode: $mode" >&2; exit 2 ;; esac
+if [[ "$mode" == --all || "$mode" == --fast ]]; then
+  step "Shell syntax"
+  while IFS= read -r f; do
+    bash -n "$f" || { echo "Shell syntax error: $f" >&2; exit 1; }
+  done < <(git ls-files '*.sh')
+  endstep
 
-step "Workflow YAML"
-while IFS= read -r f; do
-  ruby -ryaml -e 'YAML.safe_load(File.read(ARGV[0]), aliases: true)' "$f" \
-    || { echo "Invalid workflow YAML: $f" >&2; exit 1; }
-done < <(git ls-files '.github/workflows/*.yml')
-endstep
+  step "Workflow YAML"
+  while IFS= read -r f; do
+    ruby -ryaml -e 'YAML.safe_load(File.read(ARGV[0]), aliases: true)' "$f" \
+      || { echo "Invalid workflow YAML: $f" >&2; exit 1; }
+  done < <(git ls-files '.github/workflows/*.yml' '.github/actions/*/action.yml')
+  endstep
 
-step "TestFlight crash collector"
-ruby -c .github/scripts/testflight-crash-intake.rb
-ruby scripts/tests/test-testflight-crash-intake.rb
-endstep
+  step "TestFlight crash collector"
+  ruby -c .github/scripts/testflight-crash-intake.rb
+  ruby scripts/tests/test-testflight-crash-intake.rb
+  endstep
 
-step "Automation regression tests"
-bash scripts/tests/test-xcodebuild-platform.sh
-bash scripts/tests/test-issue-pr-policy.sh
-bash scripts/tests/test-issue-pr-introspection.sh
-bash scripts/tests/test-issue-backlog-order.sh
-bash scripts/tests/test-release-repair-policy.sh
-bash scripts/tests/test-testflight-delivery-body.sh
-bash scripts/tests/test-testflight-reconciler-discovery.sh
-if [[ -f scripts/tests/test-xcodebuild-safe.sh ]]; then
-  /bin/bash scripts/tests/test-xcodebuild-safe.sh
+  step "Automation regression tests"
+  python3 scripts/tests/test_ci_throughput.py
+  bash scripts/tests/test-xcodebuild-platform.sh
+  bash scripts/tests/test-issue-pr-policy.sh
+  bash scripts/tests/test-issue-pr-introspection.sh
+  bash scripts/tests/test-issue-backlog-order.sh
+  bash scripts/tests/test-release-repair-policy.sh
+  bash scripts/tests/test-testflight-delivery-body.sh
+  bash scripts/tests/test-testflight-reconciler-discovery.sh
+  if [[ -f scripts/tests/test-xcodebuild-safe.sh ]]; then
+    /bin/bash scripts/tests/test-xcodebuild-safe.sh
+  fi
+  if [[ -f scripts/tests/test-pr-maintenance.sh && -f .github/scripts/pr-maintenance.sh ]]; then
+    bash scripts/tests/test-pr-maintenance.sh
+  fi
+  endstep
+
 fi
-if [[ -f scripts/tests/test-pr-maintenance.sh && -f .github/scripts/pr-maintenance.sh ]]; then
-  bash scripts/tests/test-pr-maintenance.sh
+[[ "$mode" == --fast ]] && exit 0
+
+if [[ "$mode" == --all || "$mode" == --tests ]]; then
+step "Swift package tests (includes production-flow harness once)"
+test_log="${RUNNER_TEMP:-/tmp}/ci-swift-test.log"
+bash scripts/ci-test.sh 2>&1 | tee "$test_log"
+bash scripts/check-owned-warnings.sh "$test_log"
+bash scripts/test-check-owned-warnings.sh
+endstep
 fi
-endstep
-
-[[ "${1:-}" == "--fast" ]] && exit 0
-
-step "Swift package tests"
-swift test --package-path CadenceCore --parallel
-endstep
-
-step "Production-flow harness"
-bash scripts/run-verification-harness.sh
-endstep
+[[ "$mode" == --tests ]] && exit 0
 
 step "iPhone + embedded Watch build"
 # Release configuration, same as the release archive, so deprecation warnings
@@ -62,7 +70,10 @@ step "iPhone + embedded Watch build"
 build_log="${RUNNER_TEMP:-/tmp}/ci-validate-build.log"
 rm -f "$build_log"
 bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
-  -configuration Release -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$build_log"
+  -configuration Release -destination 'generic/platform=iOS' \
+  -derivedDataPath "${CADENCE_DERIVED_DATA:-$PWD/.build/ci-derived-device}" \
+  -clonedSourcePackagesDirPath "${CADENCE_SOURCE_PACKAGES:-$PWD/.build/ci-source-packages}" \
+  -showBuildTimingSummary CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$build_log"
 endstep
 
 step "Owned warning gate (app build)"

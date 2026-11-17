@@ -1,0 +1,38 @@
+name: Cadence build cache
+description: Restore compiled outputs scoped to toolchain, platform and build role
+inputs:
+  scope:
+    description: host, device (unsigned Release), or archive (signed Release)
+    required: true
+outputs:
+  derived-data:
+    description: Stable repository-specific DerivedData directory
+    value: ${{ steps.identity.outputs.derived-data }}
+  source-packages:
+    description: Stable repository-specific package checkout directory
+    value: ${{ steps.identity.outputs.source-packages }}
+runs:
+  using: composite
+  steps:
+    - name: Compute build cache identity
+      id: identity
+      shell: bash
+      env:
+        CACHE_SCOPE: ${{ inputs.scope }}
+      run: python3 scripts/ci-cache-key.py "$CACHE_SCOPE" >> "$GITHUB_OUTPUT"
+    - name: Cache host build outputs
+      if: inputs.scope == 'host'
+      uses: actions/cache@v6
+      with:
+        path: CadenceCore/.build
+        key: ${{ steps.identity.outputs.key }}
+        restore-keys: ${{ steps.identity.outputs.prefix }}
+    - name: Cache device build outputs
+      if: inputs.scope != 'host'
+      uses: actions/cache@v6
+      with:
+        path: |
+          ${{ steps.identity.outputs.derived-data }}
+          ${{ steps.identity.outputs.source-packages }}
+        key: ${{ steps.identity.outputs.key }}
+        restore-keys: ${{ steps.identity.outputs.prefix }}

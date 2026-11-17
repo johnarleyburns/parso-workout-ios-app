@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Hermetic production-flow harness (issue #306). Headless: no simulator, network,
-# signing secrets, HealthKit hardware or real sleeps. Used by the issue worker
-# and by scripts/ci-validate.sh (so PR validation runs it).
+# signing secrets, HealthKit hardware or real sleeps. Optional focused command;
+# the normal package suite already includes these tests once.
 # Usage: scripts/run-verification-harness.sh [--self-test]
 #   --self-test  also proves the harness FAILS when a production binding is
 #                removed (mutation applied to a throwaway copy of the package).
@@ -11,11 +11,9 @@ export HARNESS_ARTIFACT_DIR="${HARNESS_ARTIFACT_DIR:-$PWD/.harness-artifacts}"
 mkdir -p "$HARNESS_ARTIFACT_DIR"
 FILTER='ProductionFlowHarnessTests'
 
-run() { swift test --package-path "$1" --filter "$FILTER"; }
+run() { swift test --package-path "$1" --no-parallel --filter "$FILTER"; }
 
-echo "=== harness run 1 ==="
-run CadenceCore
-echo "=== harness run 2 (determinism) ==="
+echo "=== focused harness run ==="
 run CadenceCore
 
 if [[ "${1:-}" == "--self-test" ]]; then

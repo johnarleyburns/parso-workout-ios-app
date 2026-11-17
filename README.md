@@ -44,7 +44,7 @@ Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBlueto
 
 ```sh
 swift build --package-path CadenceCore
-swift test --package-path CadenceCore # CadenceCore + CadenceFeatures package tests
+bash scripts/ci-test.sh              # full CadenceCore + CadenceFeatures host tests
 make test                            # same package test suite
 make all-tests                       # package tests + iPhone/watch simulator smoke tests
 open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
@@ -62,17 +62,31 @@ in plans or CI; use `swift test --package-path CadenceCore` instead. See
 
 Local git hooks are versioned in `scripts/git-hooks`. Install them with
 `bash scripts/install-git-hooks.sh`: pre-commit runs only
-`swift test --package-path CadenceCore` and never boots a simulator. Pre-push
+`bash scripts/ci-test.sh` and never boots a simulator. Pre-push
 runs no tests. Run the simulator smoke suite explicitly with `make all-tests`
 before a release, TestFlight submission, or field-testing build; the smoke
 suite remains a release gate rather than a commit-time action.
 
-**Timing notes:** `swift test` takes ~50s and `xcodebuild build` ~20s. The
-pre-commit hook is intentionally host-only; allow at least 300s when scripting
-`git commit` for the package suite. The pre-release smoke suite can take longer
-because it builds and launches the pinned iPhone and Watch targets. CI workflows
-should budget ≥5 min for the core-tests job and ≥10 min for any local
-smoke/xcodebuild jobs.
+**Build/test turnaround:** PR validation overlaps the host suite and the optimized
+iPhone/Watch build in separate runners; `validate` succeeds only when both pass.
+Host XCTest runs serially by default to avoid per-case scheduling overhead;
+`CADENCE_TEST_MODE=parallel CADENCE_TEST_WORKERS=3 bash scripts/ci-test.sh` enables
+a bounded comparison. The production-flow harness runs once in the normal suite;
+its focused command is optional. The search regression retains all queries with
+one repetition normally; the weekly/manual Host Test Benchmark lane runs the full
+10-repetition workload and compares serial/parallel suite timings on one SHA.
+
+Preserve local `.build` and repo-specific DerivedData for incremental builds.
+CI compiled caches are separated by Xcode/Swift version, architecture, role,
+package inputs and commit. Main-branch tests and archiving overlap; export/upload
+runs only after both succeed. The signed archive crosses jobs in a run-and-SHA
+bound tar artifact retained for one day, preserving symlinks and permissions;
+release dSYMs retain their existing 90-day lifetime. TestFlight processing and
+tester availability still require App Store Connect reconciliation.
+
+The [shared-light-module research](docs/architecture/shared-light-modules.md)
+records a staged way to remove FIT and phone-only dependencies from Watch/widgets
+without copying models or workout policies. That extraction is follow-up work.
 
 ## TestFlight and human QA
 

@@ -376,7 +376,7 @@ class CrashSymbolicationTest < Minitest::Test
 end
 
 class ReleaseWorkflowTest < Minitest::Test
-  def test_dsyms_retained_and_nothing_else_uploaded
+  def test_dsyms_retained_and_only_short_lived_release_handoff_is_allowed
     wf=YAML.safe_load(File.read(File.join(__dir__,'../../.github/workflows/ios.yml')),aliases:true)
     uploads=wf['jobs'].values.flat_map { |j| j['steps'] || [] }.select { |st| st['uses'].to_s.start_with?('actions/upload-artifact') }
     step=uploads.find { |st| st['with']['name']=='testflight-dsyms-${{ env.BUILD_NUMBER }}' }
@@ -384,7 +384,18 @@ class ReleaseWorkflowTest < Minitest::Test
     assert_equal 'build/Cadence.xcarchive/dSYMs',step['with']['path']
     assert_equal 90,step['with']['retention-days']
     assert_equal 'error',step['with']['if-no-files-found']
-    uploads.each { |st| refute_match(/xcarchive(?!\/dSYMs)|\.ipa|output|mobileprovision/i,st['with']['path'].to_s) unless st.equal?(step) }
+    # Parallel tests/archive use one run+SHA-bound tar handoff. It has a
+    # one-day lifetime, unlike the 90-day dSYM evidence. No general archive,
+    # IPA, provisioning profile or credential upload is permitted.
+    handoff=uploads.find { |st| st['with']['name']=='signed-archive-${{ github.run_id }}-${{ github.sha }}' }
+    refute_nil handoff
+    assert_equal '${{ runner.temp }}/Cadence.xcarchive.tar',handoff['with']['path']
+    assert_equal 1,handoff['with']['retention-days']
+    assert_equal 'error',handoff['with']['if-no-files-found']
+    uploads.each do |st|
+      next if st.equal?(step) || st.equal?(handoff)
+      refute_match(/xcarchive(?!\/dSYMs)|\.ipa|output|mobileprovision|\.p8|\.p12|keychain/i,st['with']['path'].to_s)
+    end
     intake=YAML.safe_load(File.read(File.join(__dir__,'../../.github/workflows/testflight-crash-intake.yml')),aliases:true)
     assert_equal 'xcode-27',intake['jobs']['collect']['runs-on']
     assert_equal 'read',intake['permissions']['actions']

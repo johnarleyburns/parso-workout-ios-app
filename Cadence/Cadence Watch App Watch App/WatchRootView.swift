@@ -30,6 +30,7 @@ struct WatchRootView: View {
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
     @State private var showingCardio = false
+    @State private var launcherPage = 0
     @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
     private let launchRequests = WatchLaunchRequests.shared
 
@@ -124,17 +125,17 @@ struct WatchRootView: View {
     private var launcher: some View {
         NavigationStack {
             // Page 1 is Today; swipe left for This Week (HIG: peer pages in a page-style TabView).
-            TabView {
-                launcherList
-                WatchWeekView(summary: watchManager.weekSummary, overlays: watchManager.weekLocalOverlays, currentWeekKey: WatchWorkoutManager.currentWeekKey())
+            TabView(selection: $launcherPage) {
+                launcherList.tag(0)
+                WatchWeekView(summary: watchManager.weekSummary, overlays: watchManager.weekLocalOverlays, currentWeekKey: WatchWorkoutManager.currentWeekKey()).tag(1)
                 WatchMyWorkoutsView(plan: watchManager.todayPlan,
                                     pendingCardioCompletions: watchManager.pendingCardioCompletions,
                                     cardioHistoryRevision: watchManager.cardioHistoryRevision,
                                     distanceUnit: watchAppSettings.distanceUnit,
-                                    onStartSentCardio: startPlannedCardio)
+                                    onStartSentCardio: startPlannedCardio).tag(2)
             }
             .tabViewStyle(.page)
-            .navigationTitle(WatchHomeChrome.navigationTitle)
+            .navigationTitle(launcherTitle)
             .task(id: sessionOwnership) {
                 if case .endNow(let startedAt) = sessionOwnership {
                     watchManager.endAbandonedSession(startedAt: startedAt)
@@ -168,6 +169,14 @@ struct WatchRootView: View {
         }
     }
 
+    private var launcherTitle: String {
+        switch launcherPage {
+        case 1: String(localized: "This Week")
+        case 2: String(localized: "My Workouts")
+        default: WatchHomeChrome.navigationTitle
+        }
+    }
+
     private var launcherList: some View {
         List {
             if needsHealthAccess {
@@ -195,7 +204,7 @@ struct WatchRootView: View {
         }
         .listStyle(.plain)
         .modifier(WatchHomeStartNavigation(selection: $homeSelection,
-            showsModeButtons: resumableStrengthSession == nil,
+            showsModeButtons: launcherPage == 0 && resumableStrengthSession == nil,
             cardioDestination: { AnyView(cardioSetupView(for: $0)) }))
     }
 

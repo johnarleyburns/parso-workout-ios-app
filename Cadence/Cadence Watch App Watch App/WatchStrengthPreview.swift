@@ -8,6 +8,7 @@ import CadenceFeatures
 struct WatchStrengthPreview: View {
     let launch: WatchLiftLaunch
     var citationIDs: [String] = []
+    @Environment(AppSettings.self) private var settings
     @Environment(WatchWorkoutManager.self) private var manager
     @Query(filter: #Predicate<Person> { !$0.isMe }, sort: \Person.name) private var people: [Person]
     @State private var setup: WatchStrengthPreviewSetup
@@ -64,7 +65,23 @@ struct WatchStrengthPreview: View {
                 }
                 ForEach(Array(launch.exerciseNames.enumerated()), id: \.offset) { _, name in
                     HStack {
-                        Text(name.localizedExerciseName).font(.footnote)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(name.localizedExerciseName).font(.footnote)
+                            let prepared = setup.preparedLaunch(from: launch)
+                            if let prescription = prepared.planPayload?.strength?.prescriptions.first(where: {
+                                $0.exerciseName.caseInsensitiveCompare(name) == .orderedSame
+                            }) {
+                                ForEach(Array(prescription.sets.enumerated()), id: \.offset) { _, set in
+                                    let load = PlanFormatting.loadLabel(targetWeightKg: set.targetWeightKg,
+                                        isBodyweight: ExerciseLoading.isBodyweight(named: name), unit: settings.unit)
+                                    Text(verbatim: "\(set.targetReps) × \(load)")
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                            } else if !prepared.repLadder.isEmpty {
+                                Text(verbatim: prepared.repLadder.map(String.init).joined(separator: "-"))
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
                         Spacer()
                         NavigationLink {
                             WatchSuggestedExerciseInfoView(name: name)
@@ -117,9 +134,7 @@ struct WatchPrimaryStartButton: View {
         Button(action: action) {
             Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
         }
-        .buttonStyle(.borderedProminent)
-        .buttonBorderShape(.capsule)
-        .tint(.accentColor)
+        .buttonStyle(WatchPillStyle(kind: .primary))
         .controlSize(.regular)
     }
 }

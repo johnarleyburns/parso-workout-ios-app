@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 
@@ -7,6 +8,7 @@ import CadenceFeatures
 struct WatchHomeSuggestedStrengthView: View {
     @Environment(WatchWorkoutManager.self) private var manager
     @Environment(AppSettings.self) private var settings
+    @Environment(\.modelContext) private var context
     @State private var launch: WatchLiftLaunch?
     @State private var citationIDs: [String] = []
     @State private var finished = false
@@ -26,7 +28,7 @@ struct WatchHomeSuggestedStrengthView: View {
             let ready = WatchSuggestResolver.resolve(envelope: manager.coachSuggestionEnvelope,
                 now: manager.coachClock(), historyState: manager.coachHistoryState)
             if let synced = ready.launch {
-                launch = synced
+                launch = prefilled(synced)
                 finished = true
                 return
             }
@@ -50,12 +52,30 @@ struct WatchHomeSuggestedStrengthView: View {
                             PlannedSetPrescription(targetReps: exercise.repRange.lowerBound)
                         })
                 }
-                launch = WatchLiftLaunch(title: "Personalized Strength", exerciseNames: names, repLadder: [],
+                let generated = WatchLiftLaunch(title: "Personalized Strength", exerciseNames: names, repLadder: [],
                     planPayload: WatchPlanPayload(title: "Personalized Strength",
                         strength: .init(exerciseNames: names, prescriptions: prescriptions)))
+                launch = prefilled(generated)
                 citationIDs = option.citationIDs
             }
             finished = true
         }
     }
+    private func prefilled(_ source: WatchLiftLaunch) -> WatchLiftLaunch {
+        let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
+        let synced = WatchSetDefaultSnapshotPersistence().load()
+        return WatchStrengthPreviewSetup.prefilledSuggestion(source) { name in
+            let local = exercises.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+                .map { WorkoutRepository.lastTimeSets(for: $0, performedBy: nil, excluding: nil)
+                    .filter { !$0.isWarmup } } ?? []
+            if !local.isEmpty {
+                return .init(lastSets: local.map { .init(weightKg: $0.weight, reps: $0.reps) })
+            }
+            if let last = synced?.history(exerciseKey: name, performerID: "owner").lastPriorWorkingSet {
+                return .init(lastSets: [.init(weightKg: last.weight, reps: last.reps)])
+            }
+            return .empty
+        }
+    }
+
 }

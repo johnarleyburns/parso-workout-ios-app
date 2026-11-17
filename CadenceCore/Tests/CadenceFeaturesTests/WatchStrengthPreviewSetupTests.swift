@@ -4,6 +4,20 @@ import CadenceCore
 @testable import CadenceFeatures
 
 final class WatchStrengthPreviewSetupTests: XCTestCase {
+    func testSuggestedPreviewSeedsTargetsAndKeepsThemThroughStart() {
+        let source = WatchLiftLaunch(title: "Personalized", exerciseNames: ["Squat"], repLadder: [],
+            planPayload: .init(strength: .init(exerciseNames: ["Squat"], prescriptions: [
+                .init(exerciseName: "Squat", sets: (0..<3).map { _ in .init(targetReps: 6) })])))
+        let prepared = WatchStrengthPreviewSetup.prefilledSuggestion(source) { _ in
+            .init(lastSets: [.init(weightKg: 90, reps: 8)])
+        }
+        let setup = WatchStrengthPreviewSetup(launch: prepared)
+        let started = setup.preparedLaunch(from: prepared)
+        XCTAssertEqual(started.planPayload?.strength?.prescriptions.first?.sets.map(\.targetReps), [8, 8, 8])
+        XCTAssertEqual(started.planPayload?.strength?.prescriptions.first?.sets.map(\.targetWeightKg), [90, 90, 90])
+        XCTAssertNil(source.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg)
+    }
+
     func testRepDefaultsReplaceEveryExercisePrescriptionWithoutChangingLoadsOrSource() {
         let prescriptions = ["Squat", "Row"].map {
             PlannedExercisePrescription(exerciseName: $0, sets: [.init(targetReps: 8, targetWeightKg: 25)])

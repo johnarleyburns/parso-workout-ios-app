@@ -1161,6 +1161,16 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let payload = try XCTUnwrap(m.endSessionPayload())
         XCTAssertNotNil(payload[WatchStrengthHeartRate.transportKey])
         XCTAssertEqual(m.recordedHeartRate, dense)
+        let session = try XCTUnwrap(m.session)
+        XCTAssertEqual(session.hrSamplePoints, dense)
+        let freshContext = ModelContext(container)
+        let id = session.id
+        let stored = try XCTUnwrap(freshContext.fetch(FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.id == id })).first)
+        let historical = WatchWorkoutHistorySummary.make(session: stored)
+        XCTAssertEqual(historical.hrSamples, dense)
+        XCTAssertNotEqual(historical.availability, .basic)
+
     }
 
     func testLegacyPayloadHasSourceButNoInventedFinalSequence() throws {

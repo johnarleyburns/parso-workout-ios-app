@@ -15,11 +15,14 @@ extension WorkoutPlanEditor {
                         sets: person.performerID == nil ? (first?.sets ?? [])
                             : (first?.performerPlans.first { $0.performerID == person.performerID }?.sets ?? []))
                 } label: {
-                    Label(person.name, systemImage: "list.number")
+                    Label {
+                        Text(verbatim: "\(person.name): \(plan.repStructure(performerID: person.performerID).map(String.init).joined(separator: "-"))")
+                    } icon: { Image(systemName: "list.number") }
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)
                 .accessibilityLabel("Change workout rep structure for \(person.name)")
+                .accessibilityValue(plan.repStructure(performerID: person.performerID).map(String.init).joined(separator: "-"))
             }
         }
         .workoutPlanCard()

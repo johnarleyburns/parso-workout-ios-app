@@ -14,23 +14,30 @@ struct WatchWeekView: View {
     }
 
     var body: some View {
-        GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height * 0.62)
-            VStack(spacing: 4) {
-                ZStack {
-                    ring(rings[0], diameter: side, lineWidth: max(8, side * 0.11))
-                    ring(rings[1], diameter: side * 0.62, lineWidth: max(8, side * 0.11))
+        ScrollView {
+            // Width stays constant when page chrome changes during a swipe.
+            // Height-dependent sizing made the rings jump after the toolbar settled.
+            VStack(spacing: 14) {
+                GeometryReader { proxy in
+                    let side = proxy.size.width / 1.14
+                    ZStack {
+                        ring(rings[0], diameter: side, lineWidth: side * 0.11)
+                        ring(rings[1], diameter: side * 0.62, lineWidth: side * 0.11)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                .frame(width: side, height: side)
+                .aspectRatio(1, contentMode: .fit)
+                .frame(maxWidth: 156)
                 .accessibilityHidden(true)
                 HStack(spacing: 6) {
                     legend(rings[0], unit: String(localized: "Sets"), title: String(localized: "Strength"))
                     legend(rings[1], unit: String(localized: "Min"), title: String(localized: "Cardio"))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(.horizontal, 8)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
         }
-        .navigationTitle("This Week")
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("watch.thisWeek")
     }

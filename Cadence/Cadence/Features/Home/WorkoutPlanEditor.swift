@@ -166,6 +166,9 @@ struct WorkoutPlanEditor: View {
                                            uniquingKeysWith: { first, _ in first })
             }
             if !didResolvePartnerPlans {
+                if suggestedStrength != nil || plan.suggestedWorkoutStyle != nil {
+                    seedSuggestedOwnerDefaults()
+                }
                 resolvePartnerPlans()
                 didResolvePartnerPlans = true
             }

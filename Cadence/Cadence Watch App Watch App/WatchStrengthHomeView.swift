@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 P3 — the Plan page (swipe left): today's exercises with their progress, tap to
 /// jump to one, and Add exercise. Removing an exercise: long-press a row (or Set Card's More); row swipe

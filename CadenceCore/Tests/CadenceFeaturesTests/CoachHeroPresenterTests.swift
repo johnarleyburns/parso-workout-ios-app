@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Phase B (field-test-fixes): hero copy from logged work, not planned candidates.
 final class CoachHeroPresenterTests: XCTestCase {

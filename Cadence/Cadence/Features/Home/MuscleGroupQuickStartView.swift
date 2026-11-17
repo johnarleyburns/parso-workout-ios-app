@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Muscle-coverage suggestion (Home "muscle groups" tile): offers a fresh session
 /// built from catalog suggestions that fill this week's gaps and hands it back as a

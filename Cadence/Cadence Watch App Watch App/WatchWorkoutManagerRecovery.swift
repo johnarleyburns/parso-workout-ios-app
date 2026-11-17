@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     enum BLEConnectionState { case scanning, connected, disconnected }

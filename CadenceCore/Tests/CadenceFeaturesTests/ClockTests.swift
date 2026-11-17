@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class ClockTests: XCTestCase {
     func testFixedClockReturnsPinnedInstant() {

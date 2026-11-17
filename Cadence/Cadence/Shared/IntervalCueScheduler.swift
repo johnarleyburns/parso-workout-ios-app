@@ -1,6 +1,7 @@
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Drives interval audio/haptic cues from wall-clock phase boundaries instead of
 /// SwiftUI view ticks, so cues fire reliably in the background when `audio`

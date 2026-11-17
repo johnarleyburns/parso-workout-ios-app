@@ -5,7 +5,7 @@ Work is committed locally on the existing PR branch. Do not push or update the r
 | Phase | Implementation | Verification |
 | --- | --- | --- |
 | 1. Garmin portability | One Garmin bridge moved to CadencePortability; phone-only product link; existing FIT tests moved intact. Canonical mapping exposed with package access. | Manifest/Xcode boundary regression failed before extraction and passes after. Swift syntax and import boundary guards pass. Apple-platform FIT execution/builds remain unavailable on this Linux host. |
-| 2. Widget contracts | Pending | Pending |
+| 2. Widget contracts | CadenceFeatures is a dependency-free contract module; one shared runtime moved to CadenceWorkoutFeatures. ActivityKit identity and original localization bundle retained. | Real contract target builds on Linux; isolated tests compile the same sources through symlinks and pass (7 tests, including legacy JSON/deep-link fixtures). Widget dependency-closure regression passes. |
 | 3. Shared workout / phone separation | Pending | Pending |
 | 4. Coaching isolation | Pending | Pending |
 

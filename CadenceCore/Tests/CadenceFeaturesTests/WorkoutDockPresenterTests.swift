@@ -1,5 +1,6 @@
 import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 struct WorkoutDockPresenterTests {
     @Test func pauseAndResumeContent() {

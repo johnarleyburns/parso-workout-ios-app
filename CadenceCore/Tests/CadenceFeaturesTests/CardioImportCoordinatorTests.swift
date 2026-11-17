@@ -3,6 +3,7 @@ import Testing
 import CadenceCore
 import CadenceFixtures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 struct CardioImportCoordinatorTests {

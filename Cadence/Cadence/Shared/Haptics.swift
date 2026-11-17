@@ -1,6 +1,7 @@
 import UIKit
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 #if canImport(CoreHaptics)
 import CoreHaptics
 #endif

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 // MARK: - Live HR band + weight-accounting help sheets
 //

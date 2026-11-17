@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 private struct ProgressSessionSignature: Equatable {
     let id: UUID; let date: Date
     let updatedAt: Date
@@ -396,5 +397,4 @@ struct ProgressAnalyticsView: View {
     private func effortRead(_ rir: Double, goal: TrainingGoal) -> String {
         ProgressPresenter.effortRead(rir, goal: goal)
     }
-
 }

@@ -10,6 +10,7 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
+        .library(name: "CadenceWorkoutFeatures", targets: ["CadenceWorkoutFeatures"]),
         .library(name: "CadencePortability", targets: ["CadencePortability"]),
         .library(name: "CadenceCore", targets: ["CadenceCore"]),
         // Foundation-only planning domain; builds and tests on Linux.
@@ -69,17 +70,21 @@ let package = Package(
         // no StoreKit, no UIKit — that is what keeps it testable on macOS.
         .target(
             name: "CadenceFeatures",
-            dependencies: ["CadenceCore"],
+            dependencies: [],
             resources: [.process("Resources/Localizable.xcstrings")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        .target(name: "CadenceWorkoutFeatures", dependencies: ["CadenceCore", "CadenceFeatures"],
+                swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadencePlatformTests", dependencies: ["CadenceFeatures"],
+                    swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadencePlanningTests",
             dependencies: ["CadencePlanning"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceWorkoutFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadenceExerciseImagesTests",
             dependencies: ["CadenceCore", "CadenceExerciseImages"],
@@ -87,7 +92,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CadenceFeaturesTests",
-            dependencies: ["CadenceFeatures", "CadenceFixtures"],
+            dependencies: ["CadenceFeatures", "CadenceWorkoutFeatures", "CadenceFixtures"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

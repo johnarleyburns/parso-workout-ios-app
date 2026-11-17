@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension HomeView {
     func homeDetailDisclosure(title: String,

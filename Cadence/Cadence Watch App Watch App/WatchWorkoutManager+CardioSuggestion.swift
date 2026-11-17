@@ -1,5 +1,6 @@
 import Foundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     private static let cardioSuggestionDefaultsKey = "watch.cardioSuggestion.envelope.v1"

@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Launch-blockers Phase 1c: reference-counted keep-awake holders.
 final class IdleTimerArbiterTests: XCTestCase {

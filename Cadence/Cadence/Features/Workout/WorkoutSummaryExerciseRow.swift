@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// One exercise in a workout summary: a compact roll-up that expands **in place**
 /// to a read-only, per-performer set list (field test 2026-08-18 #1, decision

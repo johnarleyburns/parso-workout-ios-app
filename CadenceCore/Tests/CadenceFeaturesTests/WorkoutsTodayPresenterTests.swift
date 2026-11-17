@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-18 #6: Workouts Today rows carry detail, a plan-source
 /// badge and a startable prescription. Ordering, badge vocabulary and the

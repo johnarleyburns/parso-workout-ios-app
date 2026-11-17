@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The shared "one workout, one line" row. This Week renders its completed
 /// entries with it, and Workouts Today renders its completed rows with it too

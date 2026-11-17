@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WeeklyIntentPresenterTests: XCTestCase {
     private func progress(_ c: Double, _ t: Double, _ text: String = "x") -> HomeDashboardState.Progress {

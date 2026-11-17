@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 private final class FakeActions: PhoneCardioLifecycleActions {

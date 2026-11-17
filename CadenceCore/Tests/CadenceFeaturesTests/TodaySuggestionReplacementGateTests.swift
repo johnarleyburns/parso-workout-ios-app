@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class TodaySuggestionReplacementGateTests: XCTestCase {
     private func payload(title: String = "Push", exercise: String = "Bench Press") -> TodaySuggestedPlanPayload {

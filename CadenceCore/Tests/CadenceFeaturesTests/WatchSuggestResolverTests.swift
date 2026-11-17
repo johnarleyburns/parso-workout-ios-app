@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchSuggestResolverTests: XCTestCase {
     private typealias F = CoachSuggestionFixtures
@@ -70,7 +71,7 @@ final class WatchSuggestResolverTests: XCTestCase {
     func testNoLocalFallbackSourcesRemain() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Sources/CadenceFeatures")
+            .appendingPathComponent("Sources/CadenceWorkoutFeatures")
         let banned = ["WatchLocalSuggestionGenerator", "makeLocal(", "Starter workout", "Suggested on Apple Watch"]
         let files = try FileManager.default.contentsOfDirectory(atPath: root.path).filter { $0.hasSuffix(".swift") }
         XCTAssertFalse(files.contains("WatchLocalSuggestionGenerator.swift"))

@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Moved from Cadence/CadenceTests/CadenceTests.swift (test-pyramid Phase 2).
 final class RestTimerModelTests: XCTestCase {

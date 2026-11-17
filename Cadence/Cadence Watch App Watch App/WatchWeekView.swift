@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// This Week page (swipe left from Today): two concentric activity-style rings — outer Strength
 /// sets, inner Cardio minutes — with text labels, so colour is never the only signal.

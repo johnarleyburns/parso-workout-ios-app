@@ -3,6 +3,7 @@ import WatchKit
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import os.log
 
 @main

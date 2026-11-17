@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchSetDefaultSnapshotPersistenceTests: XCTestCase {
     private let pid = "5B2C3E5A-1111-4222-8333-444455556666"

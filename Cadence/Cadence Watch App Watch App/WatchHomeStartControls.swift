@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchHomeStartControls: View {
     @Binding var selection: WatchHomeWorkoutSelection

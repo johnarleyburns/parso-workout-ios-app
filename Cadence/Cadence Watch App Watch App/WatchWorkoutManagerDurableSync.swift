@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Durable (store-backed) half of the phone→Watch handshake: custom exercises and the
 /// phone-mirrored cardio history are saved here, and the ACK is sent only after they succeed.

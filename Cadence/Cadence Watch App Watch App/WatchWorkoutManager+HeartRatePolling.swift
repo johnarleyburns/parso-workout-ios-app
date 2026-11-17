@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 import OSLog
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 private let hrPollingLog = Logger(subsystem: "guru.parso.cadence", category: "WatchHRLiveStatus")
 

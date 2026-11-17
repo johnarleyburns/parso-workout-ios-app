@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The dedicated H6 Backup & Restore center. It explains each backup path,
 /// shows durable HealthKit queue progress, and keeps destructive/ambiguous

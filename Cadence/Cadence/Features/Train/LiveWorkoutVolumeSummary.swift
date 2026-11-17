@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct LiveWorkoutVolumeState: Equatable, Sendable {
     var current: [MuscleGroup: Double] = [:]

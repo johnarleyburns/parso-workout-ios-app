@@ -2,6 +2,7 @@ import SwiftUI
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 S1–S5 — the Set Card. Replaces the 12-control scrolling keypad: two big
 /// pre-filled numbers, exercise progress, one button. The Crown adjusts the outlined number (weight by

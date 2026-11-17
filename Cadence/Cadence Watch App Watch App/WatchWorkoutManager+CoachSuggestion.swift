@@ -1,5 +1,6 @@
 import Foundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     /// The envelope only if unexpired and well-formed right now; expired data is diagnostic only.

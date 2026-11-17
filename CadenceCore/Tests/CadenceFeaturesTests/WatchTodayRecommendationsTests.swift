@@ -1,5 +1,6 @@
 import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @Suite struct WatchTodayRecommendationsTests {
     private typealias S = WatchSync.TodayPlan.Session

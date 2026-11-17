@@ -5,6 +5,7 @@ import WatchConnectivity
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 P1–P4 (decision D-W1) — the workout pager, Apple Workout's grammar applied to
 /// lifting: Controls ◂ Set Card ▸ Plan ▸ Heart. It always returns to the Set Card. Pausing never

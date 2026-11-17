@@ -2,6 +2,7 @@ import SwiftData
 import UIKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension SessionView {
     func addSet(to exercise: Exercise, weightKg requestedWeightKg: Double, reps: Int,

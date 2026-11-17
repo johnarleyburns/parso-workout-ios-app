@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 final class WatchStrengthFlowModelTests: XCTestCase {

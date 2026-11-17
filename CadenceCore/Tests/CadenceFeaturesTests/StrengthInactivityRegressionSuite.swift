@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 // MARK: - Test doubles (metadata/outcome names only; no user data)
 

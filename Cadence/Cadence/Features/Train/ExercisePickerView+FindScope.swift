@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension ExercisePickerView {
     enum FindScope: String, CaseIterable, Identifiable {

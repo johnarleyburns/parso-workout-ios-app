@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 /// Watch redesign (plans/watch-redesign/2026-09-30/DESIGN.md §7): the Set Card, Today hero,

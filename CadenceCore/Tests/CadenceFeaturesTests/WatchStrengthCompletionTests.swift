@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 /// Issue #350: Watch-started strength completion HR travels as chunked,

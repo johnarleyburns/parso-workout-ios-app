@@ -1,6 +1,7 @@
 import XCTest
 @testable import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 final class ManualCardioMinutesSaverTests: XCTestCase {

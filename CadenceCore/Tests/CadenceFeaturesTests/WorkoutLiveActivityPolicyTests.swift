@@ -1,6 +1,7 @@
 import Foundation
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WorkoutLiveActivityPolicyTests: XCTestCase {
     func testNoActiveWorkoutEndsEveryActivity() {

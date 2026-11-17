@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Muscle-group volume vs plan section (§1). Rendered as a standalone
 /// SwiftUI view to keep `YourWeekView` under the ratchet ceiling.

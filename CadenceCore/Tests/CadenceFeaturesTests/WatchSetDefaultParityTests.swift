@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 /// Issue #433: phone history → built snapshot → context round trip → persisted → Watch flow

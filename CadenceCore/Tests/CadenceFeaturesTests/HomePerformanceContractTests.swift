@@ -1,6 +1,7 @@
 import XCTest
 import Foundation
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class HomePerformanceContractTests: XCTestCase {
     func testCachedRestoreBeforeHeavyWorkIsValid() {

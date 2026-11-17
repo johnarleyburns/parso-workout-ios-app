@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// One assessment kind's screen (strength-pivot P4): the standardized protocol,
 /// a "Record result" action, and — once there's history — a per-series trend

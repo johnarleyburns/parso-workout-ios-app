@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-18 #10: one "The science" row per coaching output, so the
 /// id → citation resolution it depends on is tested once, here.

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WorkoutForYouModalityView: View {
     let onSelect: (SuggestedWorkoutModality) -> Void

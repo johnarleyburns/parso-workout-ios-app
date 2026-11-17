@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// "Workout sent from your phone": every workout the user sent from the iPhone, each startable
 /// here. A workout leaves this list the moment it is started.

@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Live objects the coordinator's finalizer needs for one phone cardio session. These stay
 /// in memory (like the recorder); only accounting metadata is persisted by the coordinator.

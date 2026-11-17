@@ -3,6 +3,7 @@ import SwiftData
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) var watchManager

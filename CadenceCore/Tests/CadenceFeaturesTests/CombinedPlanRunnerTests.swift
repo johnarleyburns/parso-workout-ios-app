@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class CombinedPlanRunnerTests: XCTestCase {
     func testPlanPreservesCardioAndMobilityOrderAndRejectsStrength() throws {

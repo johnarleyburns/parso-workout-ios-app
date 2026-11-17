@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Authenticated, idempotent completion policy (issue #482).
 final class WatchSessionEndPolicyTests: XCTestCase {

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Optional warm-up countdown shown before the first set of a strength workout.
 /// Skip (or the timer reaching zero) moves on to the first set.

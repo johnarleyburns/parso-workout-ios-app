@@ -1,6 +1,7 @@
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     /// Starts a cardio workout and records its own timing clock. The returned

@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 /// Issue #432: Watch partner set defaults resolve from the partner's own synced history.

@@ -2,6 +2,7 @@ import Foundation
 import AppIntents
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension Notification.Name {
     static let readinessCheckInChanged = Notification.Name("cadence.readinessCheckInChanged")

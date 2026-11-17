@@ -3,6 +3,7 @@ import SwiftData
 import AVFoundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 @main
 @MainActor

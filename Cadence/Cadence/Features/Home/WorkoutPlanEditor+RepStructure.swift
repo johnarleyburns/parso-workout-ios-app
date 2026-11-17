@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WorkoutPlanEditor {
     var workoutRepStructureControls: some View {

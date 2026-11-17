@@ -8,6 +8,7 @@ import CloudKit
 import CoreData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import os
 #if DEBUG
 import CadenceFixtures

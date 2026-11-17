@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 @testable import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class ConsecutiveWorkoutSuggestionTests: XCTestCase {
     private var latest: SuggestedExerciseCandidate {

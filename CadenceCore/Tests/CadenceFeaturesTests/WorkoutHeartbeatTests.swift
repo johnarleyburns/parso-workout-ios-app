@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Launch-blockers Phase 1e: the UserDefaults-backed liveness heartbeat.
 @MainActor

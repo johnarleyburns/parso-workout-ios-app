@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Bound summary content to the visible Watch width before laying out charts
 /// and text. Long labels must grow vertically, never widen the scroll content.

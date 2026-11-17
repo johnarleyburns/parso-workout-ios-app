@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Shared setup for Personalized, Previous and Custom. This view owns only a
 /// draft; WatchStrengthView is created after the explicit primary Start action.

@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchWeekLocalOverlayStoreTests: XCTestCase {
     private func makeStore(_ name: String = #function) -> WatchWeekLocalOverlayStore {

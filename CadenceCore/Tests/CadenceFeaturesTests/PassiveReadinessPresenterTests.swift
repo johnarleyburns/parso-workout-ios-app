@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// The passive-readiness Home line is prepared here, headlessly. The HARD RULE is
 /// mechanically enforced: a shown claim always carries a resolvable citation.

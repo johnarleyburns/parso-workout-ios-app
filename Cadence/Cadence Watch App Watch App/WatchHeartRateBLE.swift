@@ -1,6 +1,7 @@
 import Foundation
 import CoreBluetooth
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Direct CoreBluetooth chest-strap heart-rate monitor for watchOS.
 ///

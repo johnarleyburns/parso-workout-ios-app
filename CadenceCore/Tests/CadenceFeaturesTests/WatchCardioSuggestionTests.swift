@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchCardioSuggestionTests: XCTestCase {
     private func suggestion() -> CardioSuggestion {

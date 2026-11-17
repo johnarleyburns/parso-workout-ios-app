@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Compound/isolation and equipment pickers that narrow a Watch muscle-group list.
 struct WatchExerciseFilterSection: View {

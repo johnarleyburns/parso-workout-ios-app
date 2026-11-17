@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Phase D (field-test-fixes): true today-list presenter for "What you did."
 final class TodayActivityPresenterTests: XCTestCase {

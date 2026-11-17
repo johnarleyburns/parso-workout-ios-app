@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-18 #4 (decisions D12/D13): a training partner is coached
 /// on the OWNER's exercises and set count, personalized only by reps/weights

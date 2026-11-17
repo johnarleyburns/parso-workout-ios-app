@@ -1,6 +1,7 @@
 import Foundation
 import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 struct WatchCueAudioCoordinatorTests {

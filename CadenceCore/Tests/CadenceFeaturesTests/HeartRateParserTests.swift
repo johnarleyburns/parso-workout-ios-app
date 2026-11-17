@@ -1,6 +1,7 @@
 import XCTest
 import Foundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Moved from Cadence/CadenceTests/CadenceTests.swift (test-pyramid Phase 2).
 /// The BLE 0x2A37 parser now lives in CadenceFeatures.HeartRateParser.

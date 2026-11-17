@@ -3,6 +3,7 @@ import SwiftData
 import Charts
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The Progress tab's personal-record timeline (FR-5.2, revenue plan Phase 6).
 /// Renders the all-time PR progression per lift plus a "trophy shelf" of the most

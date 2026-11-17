@@ -2,6 +2,7 @@ import Foundation
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     private static let pendingCardioKey = "watch.pendingCardioCompletions"

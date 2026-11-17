@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class AssessmentDisplayTests: XCTestCase {
     func testValueReps() {

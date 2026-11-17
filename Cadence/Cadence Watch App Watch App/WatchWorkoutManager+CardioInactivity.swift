@@ -3,6 +3,7 @@ import HealthKit
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Inactivity policy for Watch-owned CARDIO sessions (not strength, not interval runner, not swim).
 /// The durable `WatchCardioInactivityRecord` is the truth; the deadline task is best-effort and

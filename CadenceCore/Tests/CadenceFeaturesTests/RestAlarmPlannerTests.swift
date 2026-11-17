@@ -1,6 +1,7 @@
 import XCTest
 import Foundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class RestAlarmPlannerTests: XCTestCase {
     func testStartExtendAndCancel() {

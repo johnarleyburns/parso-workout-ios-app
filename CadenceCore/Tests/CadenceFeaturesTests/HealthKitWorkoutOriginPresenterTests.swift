@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class HealthKitWorkoutOriginPresenterTests: XCTestCase {
     private func p(source: String = "", device: String? = nil, model: String? = nil,

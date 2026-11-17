@@ -9,6 +9,7 @@ import Testing
 import HealthKit
 import WatchConnectivity
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import CadenceCore
 import SwiftData
 @testable import Cadence_Watch_App_Watch_App

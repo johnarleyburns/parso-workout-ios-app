@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class ExerciseRepeatDefaultsTests: XCTestCase {
     private let lastKg = WorkoutMath.canonical(205, from: .pounds)

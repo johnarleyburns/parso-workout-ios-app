@@ -1,6 +1,7 @@
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 enum HomeWeeklyVolumeProjection {
     struct Result {

@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchCardioMinutesSummaryTests: XCTestCase {
     private let hrrProfile = CardioIntensityProfile(restingHR: 63, maximumHR: 173, maximumHRSource: .userEntered)
@@ -52,7 +53,7 @@ final class WatchCardioMinutesSummaryTests: XCTestCase {
     func testSourceDoesNotReferenceLegacyZoneMath() throws {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appendingPathComponent("Sources/CadenceFeatures/WatchCardioMinutesSummary.swift")
+            .appendingPathComponent("Sources/CadenceWorkoutFeatures/WatchCardioMinutesSummary.swift")
         let source = try String(contentsOf: url, encoding: .utf8)
         XCTAssertFalse(source.contains("CardioZoneAggregator"))
         XCTAssertFalse(source.contains("CardioMath"))

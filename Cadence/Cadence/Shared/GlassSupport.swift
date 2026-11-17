@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Master switch for custom Liquid Glass call sites. iOS 17-25 always use the
 /// material fallback regardless of this flag.

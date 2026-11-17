@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Presentation hooks supplied ONLY by the suggested-strength preview sheet.
 /// When nil (every other editor flow) the editor's actions and dismissal are

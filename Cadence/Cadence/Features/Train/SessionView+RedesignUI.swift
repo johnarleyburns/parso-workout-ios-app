@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension SessionView {
     func prMomentCard(_ moment: PRMoment) -> some View {

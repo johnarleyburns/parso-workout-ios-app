@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 import WatchKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     static func swimSpec(from config: HKWorkoutConfiguration) -> WorkoutConfigurationSpec? {

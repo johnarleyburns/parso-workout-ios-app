@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// The Watch Set Card metric text must reach the view complete. The metric
 /// layout is shared with the Watch view so its scale and accessibility layout

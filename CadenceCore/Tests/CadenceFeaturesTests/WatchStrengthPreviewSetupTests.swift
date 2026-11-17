@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchStrengthPreviewSetupTests: XCTestCase {
     func testRepDefaultsReplaceEveryExercisePrescriptionWithoutChangingLoadsOrSource() {

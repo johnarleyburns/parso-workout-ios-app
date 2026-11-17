@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import CoreBluetooth
 
 enum HeartRateSource: Equatable { case none, bluetooth, appleWatch }

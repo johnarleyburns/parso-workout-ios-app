@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// One insight's body: title, message, and an expandable why + citation. Reused by
 /// the Coach card (headline styling) and the full insights list.

@@ -1,6 +1,7 @@
 import Foundation
 @testable import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 enum CoachSuggestionFixtures {
     static let asOf = Date(timeIntervalSinceReferenceDate: 800_000_000)

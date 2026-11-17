@@ -2,6 +2,7 @@ import SwiftUI
 import WidgetKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 R1–R2, A1 — rest you can read from the bench: a draining ring, the time,
 /// heart rate, and the next set so the bar can be loaded. Double Tap starts the next set (today's

@@ -1,6 +1,7 @@
 @preconcurrency import ActivityKit
 import Foundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import OSLog
 
 /// Best-effort lock-screen status for an active iPhone workout. The embedded

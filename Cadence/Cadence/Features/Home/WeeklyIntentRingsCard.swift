@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// A compact, determinate weekly activity display. Strength is the outer ring;
 /// cardio is the inner ring, matching the Watch's This Week presentation.

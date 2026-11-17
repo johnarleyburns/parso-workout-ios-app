@@ -1,6 +1,7 @@
 import Foundation
 import WatchConnectivity
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// WatchConnectivity adapter for the phone-side receiver.
 struct PhoneWCHeartRateTransport: WatchHeartRateTransport {

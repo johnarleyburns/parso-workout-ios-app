@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension String {
     var nilIfEmpty: String? { isEmpty ? nil : self }

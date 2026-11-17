@@ -1,68 +1,6 @@
 import Foundation
-import CadenceCore
 
-/// Shared display formatting. Weights are stored canonical-kg; these helpers
-/// convert to the user's unit for display and parse entry back to kg.
-///
-/// Moved verbatim out of the app's `Shared/Formatting.swift` (test-pyramid Phase 1)
-/// so it is headlessly testable under `swift test`. It never needed SwiftUI — the
-/// original file `import SwiftUI`'d without using it.
 public enum Format {
-
-    public static func weight(_ kg: Double, unit: MeasurementUnitPreference, decimals: Int = 1) -> String {
-        let value = WorkoutMath.display(kg, in: unit)
-        let n = NSNumber(value: value)
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = decimals
-        return (f.string(from: n) ?? "\(value)") + " " + unit.abbreviation
-    }
-
-    public static func weightValue(_ kg: Double, unit: MeasurementUnitPreference, decimals: Int = 1) -> String {
-        let value = WorkoutMath.display(kg, in: unit)
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = decimals
-        return f.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    /// Strength-table display precision: preserve quarter-unit loads without
-    /// changing the exact canonical value stored for the set.
-    public static func weightValueQuarter(_ kg: Double, unit: MeasurementUnitPreference) -> String {
-        let value = (WorkoutMath.display(kg, in: unit) * 4).rounded() / 4
-        let f = NumberFormatter()
-        f.numberStyle = .decimal
-        f.minimumFractionDigits = 0
-        f.maximumFractionDigits = 2
-        return f.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    /// Compact previous-set reference, e.g. "60×8".
-    public static func previousShort(_ kg: Double, reps: Int, unit: MeasurementUnitPreference) -> String {
-        "\(weightValue(kg, unit: unit))×\(reps)"
-    }
-
-    public static func setLine(_ set: SetEntry, unit: MeasurementUnitPreference) -> String {
-        if set.usesBodyweight {
-            let added = set.weight > 0 ? " + \(weightValue(set.weight, unit: unit)) \(unit.abbreviation)" : ""
-            return "BW\(added) × \(set.reps)"
-        }
-        return "\(weightValue(set.weight, unit: unit)) \(unit.abbreviation) × \(set.reps)"
-    }
-
-    public static func setLineDual(_ set: SetEntry, preferredUnit: MeasurementUnitPreference) -> String {
-        let alt: MeasurementUnitPreference = preferredUnit == .kilograms ? .pounds : .kilograms
-        if set.usesBodyweight {
-            if set.weight > 0 {
-                return "BW + \(weightValue(set.weight, unit: preferredUnit)) \(preferredUnit.abbreviation) (\(weightValue(set.weight, unit: alt)) \(alt.abbreviation)) × \(set.reps)"
-            }
-            return "BW × \(set.reps)"
-        }
-        return "\(weightValue(set.weight, unit: preferredUnit)) \(preferredUnit.abbreviation) (\(weightValue(set.weight, unit: alt)) \(alt.abbreviation)) × \(set.reps)"
-    }
-
     public static func distance(_ meters: Double) -> String {
         if meters >= 1000 {
             return String(format: "%.2f km", meters / 1000)
@@ -94,60 +32,5 @@ public enum Format {
         let f = NumberFormatter()
         f.numberStyle = .decimal
         return f.string(from: NSNumber(value: value)) ?? "\(value)"
-    }
-
-    public static func heartRate(_ bpm: Double?) -> String {
-        guard let bpm else { return "—" }
-        return String(localized: "\(Int(bpm.rounded())) bpm", bundle: .module)
-    }
-
-    /// A prescription line for a `PlanItem` (round4b §B-1).
-    /// Reps/distance + the Rx load. Per decision #2 the canonical lb is always
-    /// shown, with the user's preferred unit appended only when it differs.
-    public static func prescription(_ item: PlanItem, ladder: [Int]?, unit: MeasurementUnitPreference,
-                                    assessedE1RM: Double? = nil) -> String {
-        var parts: [String] = []
-        if let ladder, !ladder.isEmpty {
-            parts.append(ladder.map(String.init).joined(separator: "-") + " reps")
-        } else if let reps = item.reps {
-            parts.append(String(localized: "\(reps) reps", bundle: .module))
-        }
-        if let d = item.distanceM { parts.append(distance(d)) }
-        var line = parts.joined(separator: " · ")
-        if let pct = item.loadPercentage {
-            let pctStr = "\(Int(pct * 100))%"
-            if let e1rm = assessedE1RM {
-                let loadKg = (e1rm * pct * 10).rounded() / 10
-                let loadStr = weight(loadKg, unit: unit)
-                line += line.isEmpty ? "\(pctStr) (\(loadStr))" : " @ \(pctStr) (\(loadStr))"
-            } else {
-                line += line.isEmpty ? pctStr : " @ \(pctStr)"
-            }
-        } else if let load = rxLoad(male: item.loadLb, female: item.loadLbFemale, unit: unit) {
-            line += line.isEmpty ? load : " @ \(load)"
-        }
-        if let note = item.note { line += " (\(note))" }
-        return line
-    }
-
-    /// "95/65 lb" (pref lb) or "95/65 lb (43/29 kg)" (pref kg). nil when no load.
-    public static func rxLoad(male: Double?, female: Double?, unit: MeasurementUnitPreference) -> String? {
-        guard let male else { return nil }
-        func lbStr(_ lb: Double) -> String { Format.integer(Int(lb.rounded())) }
-        let lbPart: String
-        if let female, female != male {
-            lbPart = "\(lbStr(male))/\(lbStr(female)) lb"
-        } else {
-            lbPart = "\(lbStr(male)) lb"
-        }
-        guard unit == .kilograms else { return lbPart }
-        func kgStr(_ lb: Double) -> String { Format.integer(Int(WorkoutMath.lbToKg(lb).rounded())) }
-        let kgPart: String
-        if let female, female != male {
-            kgPart = "\(kgStr(male))/\(kgStr(female)) kg"
-        } else {
-            kgPart = "\(kgStr(male)) kg"
-        }
-        return "\(lbPart) (\(kgPart))"
     }
 }

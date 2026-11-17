@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// HealthKit authorization and the first-screen Heart Rate Access boundary.
 ///

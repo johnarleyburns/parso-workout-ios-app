@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import CadenceFixtures
 
 /// The single highest-value test gained from the whole test-pyramid exercise:

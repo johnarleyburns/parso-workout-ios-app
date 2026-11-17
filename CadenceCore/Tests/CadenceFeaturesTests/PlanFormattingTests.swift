@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// One formatter for planned sets, shared by the plan editor's compact row and
 /// its per-performer lines (field test 2026-08-18 #4, decision D4).

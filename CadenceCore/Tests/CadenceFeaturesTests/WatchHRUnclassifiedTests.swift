@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchHRUnclassifiedTests: XCTestCase {
     private let profile = CardioIntensityProfile(restingHR: 63, maximumHR: 173, maximumHRSource: .userEntered)

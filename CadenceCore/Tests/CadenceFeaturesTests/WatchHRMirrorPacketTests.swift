@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchHRMirrorPacketTests: XCTestCase {
     private let s = UUID(), r = UUID(), e = UUID()

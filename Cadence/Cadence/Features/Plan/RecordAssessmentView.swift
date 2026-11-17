@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Records one assessment result (strength-pivot P4). The form adapts to the
 /// kind's unit: estimated-1RM tests take a lift + load × reps (and show the

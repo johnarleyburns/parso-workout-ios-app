@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Split out of HomeView+Dashboard.swift (2026-11) to stay under the
 /// test-pyramid's 400-LOC cap once issue #619's weekly-credit wiring landed

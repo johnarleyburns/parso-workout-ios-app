@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Deliberately no @testable: the Watch app consumes this public initializer.
 final class WatchLiftLaunchPublicAPITests: XCTestCase {

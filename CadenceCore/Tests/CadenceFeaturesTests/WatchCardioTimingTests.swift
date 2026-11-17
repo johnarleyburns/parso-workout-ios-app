@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchCardioTimingTests: XCTestCase {
     /// Field bug: a strength workout was running on the phone (so the Watch held

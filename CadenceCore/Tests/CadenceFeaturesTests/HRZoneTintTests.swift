@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field-test batch 2026-08-20 issue 7: the zone-color mapping the cardio live
 /// screens use must match the Apple Watch's scheme, and the `LiveHRBigView`

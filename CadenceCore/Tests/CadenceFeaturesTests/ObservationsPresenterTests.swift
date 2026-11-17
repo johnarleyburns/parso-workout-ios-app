@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// The Observations card has no hidden plan preview; the independent suggested
 /// workout action is unconditional in its SwiftUI parent.

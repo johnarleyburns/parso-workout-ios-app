@@ -5,6 +5,7 @@ import WatchConnectivity
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 @Observable
 @MainActor
@@ -394,7 +395,6 @@ final class WatchWorkoutManager: NSObject {
         }
         if let sessionStart { elapsed = Date().timeIntervalSince(sessionStart) }
     }
-
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
 }

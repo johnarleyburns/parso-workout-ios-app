@@ -2,6 +2,7 @@ import SwiftUI
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// P1 — Controls (swipe right): Pause/Resume, Finish (→ review), Water Lock, Partners; Discard.
 struct WatchStrengthControlsPage: View {

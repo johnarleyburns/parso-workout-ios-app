@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Field test 2026-10-03: a Watch workout session was still recording 27 hours after the
 /// workout ended, with nothing on either device showing it.

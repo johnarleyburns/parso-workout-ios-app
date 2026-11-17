@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Cardio "Suggest": renders only the phone-generated cardio snapshot; starting is an explicit action.
 struct WatchCardioSuggestReviewView: View {

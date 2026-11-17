@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Progress → Observations. Builds its feed from a freshly computed Coach
 /// snapshot (same `HomeCoachModel` pipeline and `HomeDashboardPresenter`

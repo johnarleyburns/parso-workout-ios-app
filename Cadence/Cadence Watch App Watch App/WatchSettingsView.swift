@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §4 — Settings (⚙︎ on Today): everything that used to crowd the launcher.
 /// HR source, units, spoken cues, phone sync status/retry, About.

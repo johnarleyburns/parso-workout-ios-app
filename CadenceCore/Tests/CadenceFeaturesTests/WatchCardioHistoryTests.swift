@@ -3,6 +3,7 @@ import SwiftData
 import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 struct WatchCardioHistoryTests {

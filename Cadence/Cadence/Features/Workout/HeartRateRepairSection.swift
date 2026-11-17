@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Coverage note plus the user-triggered "Reload cardio measurements from Apple Health" action
 /// for a completed strength session. Existing data is only replaced after validation.

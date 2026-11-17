@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class TodayCardioSuggestionTests: XCTestCase {
     private func make(_ minutes: Int) -> CardioSuggestion {

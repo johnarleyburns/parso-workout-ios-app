@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// My Workouts page (swipe left from This Week): today's planned sessions, then recent history.
 struct WatchMyWorkoutsView: View {

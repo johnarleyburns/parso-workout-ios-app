@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The Today surface always keeps Strength above Cardio. Each modality owns its
 /// recommendation and completion state; neither can replace the other.

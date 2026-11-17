@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class IntervalInactivityEvidenceAdapterTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_000_000)

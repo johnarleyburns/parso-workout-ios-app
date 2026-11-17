@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class CuePolicyTests: XCTestCase {
     func testPersonalBestReplacesSetCue() {

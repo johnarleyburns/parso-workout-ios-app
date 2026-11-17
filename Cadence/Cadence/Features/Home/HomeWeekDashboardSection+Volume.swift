@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension HomeWeekDashboardSection {
     /// One muscle group's weekly sets. This is the resolution that answers

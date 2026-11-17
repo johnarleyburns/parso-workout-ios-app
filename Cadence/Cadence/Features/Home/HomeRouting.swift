@@ -3,6 +3,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// What to launch once the countdown finishes.
 struct PendingWorkout: Identifiable {

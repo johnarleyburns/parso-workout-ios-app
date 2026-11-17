@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Phase E (field-test-fixes): swap + remove exercise.
 final class ExerciseSwapTests: XCTestCase {

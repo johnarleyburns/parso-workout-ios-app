@@ -1,5 +1,6 @@
 import XCTest
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class HomeHeaderPresentationTests: XCTestCase {
     func testSupporterProducesAchievementBadge() throws {

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// One tappable Today recommendation (strength or cardio) on the watch launcher.
 struct WatchRecommendationRow: View {

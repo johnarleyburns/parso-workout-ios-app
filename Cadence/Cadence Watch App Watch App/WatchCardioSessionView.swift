@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchCardioSessionView: View {
     let kind: WorkoutConfigurationSpec.CardioKind

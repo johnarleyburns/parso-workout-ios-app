@@ -3,6 +3,7 @@ import Combine
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct SessionPendingRotorEntry: Identifiable { let id: String; let label: String }
 

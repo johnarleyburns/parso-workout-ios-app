@@ -2,6 +2,7 @@ import XCTest
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Moved from Cadence/CadenceTests/IntervalRunnerTests.swift (test-pyramid Phase 2),
 /// converted from swift-testing to XCTest to match CadenceCoreTests. Now runs

@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchHRRelayScheduleTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_000)

@@ -3,6 +3,7 @@ import HealthKit
 import WatchKit
 import WidgetKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 // MARK: - Workouts the iPhone opens on the Watch
 //

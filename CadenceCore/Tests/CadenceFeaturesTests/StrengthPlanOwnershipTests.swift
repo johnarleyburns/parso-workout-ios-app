@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class StrengthPlanOwnershipTests: XCTestCase {
     func testOnlyManualFindDraftIsDurable() {

@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Phase G (field-test-fixes): per-rep-count weight autofill + inverse-e1RM.
 final class WeightSuggestionTests: XCTestCase {

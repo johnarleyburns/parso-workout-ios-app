@@ -1,6 +1,7 @@
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 /// Fixture-level phone ↔ Watch parity: the phone resolves `SuggestedWorkoutGenerator

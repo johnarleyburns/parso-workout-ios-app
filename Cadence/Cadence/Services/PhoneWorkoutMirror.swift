@@ -1,4 +1,5 @@
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import HealthKit
 
 /// Retains the iPhone's mirrored `HKWorkoutSession` for a Watch-primary workout.

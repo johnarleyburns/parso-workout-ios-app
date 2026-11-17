@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 // MARK: - Test doubles (fake clock/transport/HK/recorder; no sleeps, no HealthKit, no Watch)
 

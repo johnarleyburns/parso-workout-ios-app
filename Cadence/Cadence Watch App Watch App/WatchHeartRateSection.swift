@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Heart-rate heading, zone-banded graph, and Avg/Max rows shared by the cardio and strength
 /// watch summaries. Renders nothing when the workout recorded no heart-rate samples.

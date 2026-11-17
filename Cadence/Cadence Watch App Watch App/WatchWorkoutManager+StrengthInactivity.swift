@@ -3,6 +3,7 @@ import SwiftData
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// 10-minute inactivity watchdog for Watch-started/resumed STRENGTH workouts. Cardio, swim,
 /// interval and monitoring never create a record. The durable record (not the task) is the source

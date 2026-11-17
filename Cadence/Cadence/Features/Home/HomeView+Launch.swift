@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension HomeView {
     /// Starts a scheduled snapshot through the same reviewed Workout Plan

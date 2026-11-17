@@ -1,6 +1,7 @@
 import Testing
 import Foundation
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 private final class MemoryFS: WatchOutboxFileSystem {
     var files: [String: Data] = [:]

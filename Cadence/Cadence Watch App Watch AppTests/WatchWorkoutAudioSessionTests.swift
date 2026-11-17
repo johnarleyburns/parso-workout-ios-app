@@ -1,5 +1,6 @@
 import AVFoundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import Testing
 @testable import Cadence_Watch_App_Watch_App
 

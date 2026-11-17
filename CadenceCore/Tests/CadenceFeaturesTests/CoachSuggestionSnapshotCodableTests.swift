@@ -1,6 +1,7 @@
 import XCTest
 @testable import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 final class CoachSuggestionSnapshotCodableTests: XCTestCase {
     private typealias F = CoachSuggestionFixtures

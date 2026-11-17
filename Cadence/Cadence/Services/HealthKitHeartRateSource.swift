@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import os
 
 /// HealthKit-backed `HealthHeartRateSource` for "Reload cardio measurements from Apple

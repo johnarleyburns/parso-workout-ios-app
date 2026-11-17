@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension HomeWeekDashboardSection {
     func activityDose(_ dose: WeeklyActivitySummary) -> some View {

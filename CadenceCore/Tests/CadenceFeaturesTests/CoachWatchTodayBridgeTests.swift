@@ -1,6 +1,7 @@
 import XCTest
 @testable import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class CoachWatchTodayBridgeTests: XCTestCase {
     private func session(_ id: String, _ payload: CoachSession.LaunchPayload,

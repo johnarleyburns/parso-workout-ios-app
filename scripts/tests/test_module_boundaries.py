@@ -45,6 +45,14 @@ class ModuleBoundaries(unittest.TestCase):
             else:
                 self.assertNotIn('/* CadencePortability */', block)
 
+    def test_widgets_only_reach_light_contracts(self):
+        self.assertEqual(self.closure('CadenceFeatures'), {'CadenceFeatures'})
+        self.assertTrue((SOURCES / 'CadenceFeatures/WorkoutLiveActivityAttributes.swift').exists())
+        self.assertTrue((SOURCES / 'CadenceWorkoutFeatures/WatchStrengthFlowModel.swift').exists())
+        for path in (SOURCES / 'CadenceFeatures').glob('*.swift'):
+            self.assertNotIn('import SwiftData', path.read_text())
+            self.assertNotIn('import CadenceCore', path.read_text())
+
 
 if __name__ == '__main__':
     unittest.main()

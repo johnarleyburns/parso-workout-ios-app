@@ -2,6 +2,7 @@ import Foundation
 import AVFoundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Non-visual interval cues (field-testing §06/round 4): haptics + bundled bell
 /// sounds on every transition, a 30-second warning bell, and optional spoken

@@ -2,6 +2,7 @@ import SwiftUI
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchCoolDownView: View {
     let model: WatchStrengthFlowModel

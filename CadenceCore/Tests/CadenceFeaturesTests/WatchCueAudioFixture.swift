@@ -1,5 +1,6 @@
 import Foundation
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 final class FakeSessionDriver: WatchCueSessionDriving {

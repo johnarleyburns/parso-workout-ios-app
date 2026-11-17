@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-19 #1 and #3: what a performer's next set should be.
 final class PerformerSetPlannerTests: XCTestCase {

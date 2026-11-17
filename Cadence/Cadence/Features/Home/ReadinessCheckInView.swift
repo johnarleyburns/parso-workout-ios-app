@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct ReadinessCheckInView: View {
     @Environment(\.dismiss) private var dismiss

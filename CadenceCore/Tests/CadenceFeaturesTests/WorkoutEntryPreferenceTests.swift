@@ -3,6 +3,7 @@ import Foundation
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WorkoutEntryPreferenceTests: XCTestCase {
     func testWatchOverrideBeatsLaterPlanSetsAndExercises() throws {

@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The one full-width action control. Every primary/secondary full-width button
 /// on Home, Start Workout, Workout Plan and the live workout uses this (or, for

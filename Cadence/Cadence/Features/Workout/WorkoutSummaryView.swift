@@ -3,6 +3,7 @@ import Charts
 import MapKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The always-on post-workout summary (field-testing Round 4 A3). Renders a pure
 /// `WorkoutSummaryData` — strength rolls up exercises + total volume; cardio shows

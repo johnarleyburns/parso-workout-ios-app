@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Deleting an abandoned watch-only workout from the Resume row, without
 /// opening it (which would start an `HKWorkoutSession` just to throw one away).

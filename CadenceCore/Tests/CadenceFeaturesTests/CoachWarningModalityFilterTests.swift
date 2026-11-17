@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class CoachWarningModalityFilterTests: XCTestCase {
     private func warning(_ id: String, _ modality: CoachWarning.Modality) -> CoachWarning {

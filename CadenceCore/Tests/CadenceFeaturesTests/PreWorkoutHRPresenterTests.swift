@@ -1,6 +1,7 @@
 import XCTest
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-20 issue 6: the HR gate's Continue button must stay
 /// tappable even when the Apple Watch fails to deliver a sample, and "Check for

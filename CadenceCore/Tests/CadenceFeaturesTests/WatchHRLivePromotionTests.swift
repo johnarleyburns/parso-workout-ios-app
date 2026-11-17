@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class WatchHRLivePromotionTests: XCTestCase {
     private let session = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!

@@ -1,5 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-18 issue 3. The action-button height and the page rhythm
 /// have exactly one home; a view that hard-codes its own number is a regression.

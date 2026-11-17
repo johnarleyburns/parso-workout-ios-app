@@ -36,7 +36,15 @@ final class WatchSetDefaultParityTests: XCTestCase {
         for (i, r) in rows.enumerated() {
             let e = exercises[r.0] ?? Exercise(name: r.0)
             if exercises[r.0] == nil { phone.insert(e); exercises[r.0] = e }
-            phone.insert(SetEntry(weight: r.1, reps: r.2, order: i, session: s, exercise: e, performedBy: r.3))
+            // A deterministic `completedAt` (not the `Date()` default): the sample
+            // timestamp now round-trips through the JSON snapshot payload, and the
+            // live wall clock's sub-microsecond component doesn't survive that
+            // round trip bit-for-bit on every platform, which made `syncedSnapshot`'s
+            // `received == built` assertion flaky under CI even though both sides
+            // printed identically at whole-second resolution.
+            phone.insert(SetEntry(weight: r.1, reps: r.2, order: i,
+                                  completedAt: base.addingTimeInterval(Double(day) * 86_400 + Double(i)),
+                                  session: s, exercise: e, performedBy: r.3))
         }
     }
 

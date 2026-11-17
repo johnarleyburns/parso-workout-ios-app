@@ -790,7 +790,13 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertTrue(hint!.contains("Previous:"))
     }
 
-    func testDefaultRepsUsePriorWorkingLadderAndIgnoreWarmups() {
+    /// `lastPriorWorkingSet` now beats the rep-pattern ladder guess for a
+    /// plan-less session (see `PerformerSetPlannerTests
+    /// .testLastPriorWorkingSetBeatsRepPatternAndEstimatedLoadWithoutPlan` /
+    /// `.testExtraSetBeyondPlanReturnsToHistory`): every set defaults to the
+    /// exact last working set (70 kg x 8), not the historical ladder
+    /// (12, 10, 8). The warmup set is still excluded from that pick.
+    func testDefaultRepsUseLastPriorWorkingSetIgnoringWarmups() {
         let ex = simpleExercise(named: "Ladder Press")
         let prior = try! WorkoutRepository.createSession(title: "Last",
                                                          date: Date(timeIntervalSince1970: 100),
@@ -803,12 +809,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let m = makeModel()
         m.start(createSession: true)
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 12)
+        XCTAssertEqual(Int(m.currentReps), 8)
 
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 10)
+        XCTAssertEqual(Int(m.currentReps), 8)
     }
 
     func testSetHistoryLinesShowPriorAndCurrentWorkoutSets() {

@@ -1,55 +1,108 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Suggested Strength" : {
+    "Personalized" : {
       "extractionState" : "manual",
       "localizations" : {
         "en-GB" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suggested Strength"
+            "state" : "needs_review",
+            "value" : "Personalized"
           }
         },
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorgeschlagenes Krafttraining"
+            "state" : "needs_review",
+            "value" : "Personalisiert"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fuerza sugerida"
+            "state" : "needs_review",
+            "value" : "Personalizado"
           }
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musculation suggérée"
+            "state" : "needs_review",
+            "value" : "Personnalisé"
           }
         },
         "nl" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voorgestelde krachttraining"
+            "state" : "needs_review",
+            "value" : "Gepersonaliseerd"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Treino de força sugerido"
+            "state" : "needs_review",
+            "value" : "Personalizado"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "推荐力量训练"
+            "state" : "needs_review",
+            "value" : "个性化"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "建議肌力訓練"
+            "state" : "needs_review",
+            "value" : "個人化"
+          }
+        }
+      }
+    },
+    "Personalized Strength" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalized Strength"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalisiertes Krafttraining"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Fuerza personalizada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Musculation personnalisée"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gepersonaliseerde krachttraining"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Treino de força personalizado"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "个性化力量训练"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "個人化肌力訓練"
           }
         }
       }

@@ -12,33 +12,16 @@ struct WatchHomeSuggestedStrengthView: View {
     @State private var finished = false
 
     var body: some View {
-        List {
+        Group {
             if let launch {
-                Text(launch.title).font(.headline)
-                ForEach(launch.exerciseNames, id: \.self) { name in
-                    HStack {
-                        Text(name).font(.footnote)
-                        Spacer()
-                        NavigationLink {
-                            WatchSuggestedExerciseInfoView(name: name)
-                        } label: { Image(systemName: "info.circle") }
-                        .accessibilityLabel("\(name) details")
-                    }
-                }
-                if !citationIDs.isEmpty {
-                    WatchCoachLineView(line: WatchCoachLine(text: "Workout sources", citationIDs: citationIDs))
-                }
-                NavigationLink {
-                    WatchStrengthView(title: launch.title, plannedExerciseNames: launch.exerciseNames,
-                                      repLadder: launch.repLadder, planPayload: launch.planPayload)
-                } label: { Label("Start Strength", systemImage: "play.fill") }
+                WatchStrengthPreview(launch: launch, citationIDs: citationIDs)
             } else if finished {
-                Text("Couldn't generate a suggestion. Try again or use Quick Start.")
+                Text("Couldn't create a personalized workout. Try again or use Custom.")
             } else {
-                ProgressView("Generating suggestion…")
+                ProgressView("Preparing personalized workout…")
             }
         }
-        .navigationTitle("Suggested")
+        .navigationTitle("Personalized")
         .task {
             let ready = WatchSuggestResolver.resolve(envelope: manager.coachSuggestionEnvelope,
                 now: manager.coachClock(), historyState: manager.coachHistoryState)
@@ -67,8 +50,8 @@ struct WatchHomeSuggestedStrengthView: View {
                             PlannedSetPrescription(targetReps: exercise.repRange.lowerBound)
                         })
                 }
-                launch = WatchLiftLaunch(title: "Suggested Strength", exerciseNames: names, repLadder: [],
-                    planPayload: WatchPlanPayload(title: "Suggested Strength",
+                launch = WatchLiftLaunch(title: "Personalized Strength", exerciseNames: names, repLadder: [],
+                    planPayload: WatchPlanPayload(title: "Personalized Strength",
                         strength: .init(exerciseNames: names, prescriptions: prescriptions)))
                 citationIDs = option.citationIDs
             }

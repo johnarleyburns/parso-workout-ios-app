@@ -87,8 +87,8 @@ public enum WatchCardioSuggestAvailability: Equatable, Sendable {
         case noSnapshot, expired
         public var message: String {
             switch self {
-            case .noSnapshot: "No cardio suggestion is on this Watch yet. A recent iPhone sync is needed."
-            case .expired: "Today's cardio suggestion needs refresh."
+            case .noSnapshot: "No personalized cardio workout is on this Watch yet. A recent iPhone sync is needed."
+            case .expired: "Today's personalized cardio workout needs refresh."
             }
         }
     }

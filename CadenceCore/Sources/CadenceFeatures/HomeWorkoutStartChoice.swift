@@ -7,7 +7,7 @@ public enum HomeStrengthStartChoice: String, CaseIterable, Identifiable, Sendabl
     public var title: String {
         switch self {
         case .quickStart: "Quick Start"
-        case .suggested: "Suggested"
+        case .suggested: "Personalized"
         case .previous: "Previous"
         }
     }

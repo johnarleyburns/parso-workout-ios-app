@@ -1,6 +1,59 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Personalized" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalized"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalisiert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalizado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personnalisé"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gepersonaliseerd"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalizado"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "个性化"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "個人化"
+          }
+        }
+      }
+    },
     "Strength this week" : {
       "localizations" : {
         "en" : {
@@ -3212,54 +3265,54 @@
       },
       "comment" : "UI text shown in: Editable Plan (CadenceCore/Sources/CadenceFeatures/EditablePlan.swift)"
     },
-    "About suggested workouts" : {
+    "About personalized workouts" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Über vorgeschlagene Trainings"
+            "value" : "Über personalisierte Trainings"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "About suggested workouts"
+            "value" : "About personalized workouts"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Acerca de los entrenamientos sugeridos"
+            "value" : "Acerca de los entrenamientos personalizados"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "À propos des entraînements suggérés"
+            "value" : "À propos des entraînements personnalisés"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Over voorgestelde trainingen"
+            "value" : "Over gepersonaliseerde trainingen"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sobre os treinos sugeridos"
+            "value" : "Sobre os treinos personalizados"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "关于推荐训练"
+            "value" : "关于个性化训练"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "關於推薦訓練"
+            "value" : "關於個人化訓練"
           }
         }
       },
@@ -4539,54 +4592,54 @@
       },
       "comment" : "UI text shown in: Suggested Workout Presenter (CadenceCore/Sources/CadenceFeatures/SuggestedWorkoutPresenter.swift)"
     },
-    "Calculating suggested workouts…" : {
+    "Calculating personalized workouts…" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Vorgeschlagene Trainings werden berechnet …"
+            "value" : "Personalisierte Trainings werden berechnet …"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Calculating suggested workouts…"
+            "value" : "Calculating personalized workouts…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Calculando entrenamientos sugeridos…"
+            "value" : "Calculando entrenamientos personalizados…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Calcul des entraînements suggérés…"
+            "value" : "Calcul des entraînements personnalisés…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Voorgestelde trainingen berekenen…"
+            "value" : "Gepersonaliseerde trainingen berekenen…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Calculando treinos sugeridos…"
+            "value" : "Calculando treinos personalizados…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "正在计算推荐训练…"
+            "value" : "正在计算个性化训练…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "正在計算推薦訓練…"
+            "value" : "正在計算個人化訓練…"
           }
         }
       },
@@ -11954,54 +12007,54 @@
       },
       "comment" : "Watch redesign UI text (plans/watch-redesign/2026-09-30/DESIGN.md)."
     },
-    "View Suggested Workout" : {
+    "View Personalized Workout" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Vorgeschlagenes Training ansehen"
+            "value" : "Personalisiertes Training ansehen"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "View Suggested Workout"
+            "value" : "View Personalized Workout"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Ver entrenamiento sugerido"
+            "value" : "Ver entrenamiento personalizado"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Voir l’entraînement suggéré"
+            "value" : "Voir l’entraînement personnalisé"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Voorgestelde training bekijken"
+            "value" : "Gepersonaliseerde training bekijken"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Ver treino sugerido"
+            "value" : "Ver treino personalizado"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "查看建议训练"
+            "value" : "查看个性化训练"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "查看建議訓練"
+            "value" : "查看個人化訓練"
           }
         }
       },

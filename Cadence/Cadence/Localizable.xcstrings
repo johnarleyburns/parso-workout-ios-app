@@ -1,6 +1,59 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Personalized" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalized"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalisiert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalizado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personnalisé"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Gepersonaliseerd"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Personalizado"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "个性化"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "個人化"
+          }
+        }
+      }
+    },
     "Read the source" : {
       "localizations" : {
         "en-GB" : {
@@ -157,55 +210,55 @@
         }
       }
     },
-    "Suggested Strength" : {
+    "Personalized Strength" : {
       "extractionState" : "manual",
       "localizations" : {
         "en-GB" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suggested Strength"
+            "state" : "needs_review",
+            "value" : "Personalized Strength"
           }
         },
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vorgeschlagenes Krafttraining"
+            "state" : "needs_review",
+            "value" : "Personalisiertes Krafttraining"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fuerza sugerida"
+            "state" : "needs_review",
+            "value" : "Fuerza personalizada"
           }
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Musculation suggérée"
+            "state" : "needs_review",
+            "value" : "Musculation personnalisée"
           }
         },
         "nl" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voorgestelde krachttraining"
+            "state" : "needs_review",
+            "value" : "Gepersonaliseerde krachttraining"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Treino de força sugerido"
+            "state" : "needs_review",
+            "value" : "Treino de força personalizado"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "推荐力量训练"
+            "state" : "needs_review",
+            "value" : "个性化力量训练"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "建議肌力訓練"
+            "state" : "needs_review",
+            "value" : "個人化肌力訓練"
           }
         }
       }
@@ -6499,54 +6552,54 @@
       },
       "comment" : "UI text shown in: Interval Setup (Cadence/Cadence/Features/Intervals/IntervalSetupView.swift)"
     },
-    "About suggested workouts" : {
+    "About personalized workouts" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Über vorgeschlagene Trainings"
+            "value" : "Über personalisierte Trainings"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "About suggested workouts"
+            "value" : "About personalized workouts"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Acerca de los entrenamientos sugeridos"
+            "value" : "Acerca de los entrenamientos personalizados"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "À propos des entraînements suggérés"
+            "value" : "À propos des entraînements personnalisés"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Over voorgestelde trainingen"
+            "value" : "Over gepersonaliseerde trainingen"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Sobre os treinos sugeridos"
+            "value" : "Sobre os treinos personalizados"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "关于推荐训练"
+            "value" : "关于个性化训练"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "關於推薦訓練"
+            "value" : "關於個人化訓練"
           }
         }
       },
@@ -35984,54 +36037,54 @@
       },
       "comment" : "UI text shown in: Inline Set Editor (Cadence/Cadence/Features/Train/InlineSetEditorView.swift)"
     },
-    "How suggested loads are estimated" : {
+    "How personalized loads are estimated" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "So werden vorgeschlagene Lasten geschätzt"
+            "value" : "So werden personalisierte Lasten geschätzt"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "How suggested loads are estimated"
+            "value" : "How personalized loads are estimated"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cómo se estiman las cargas sugeridas"
+            "value" : "Cómo se estiman las cargas personalizadas"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Estimation des charges suggérées"
+            "value" : "Estimation des charges personnalisées"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Hoe voorgestelde gewichten worden geschat"
+            "value" : "Hoe gepersonaliseerde gewichten worden geschat"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Como as cargas sugeridas são estimadas"
+            "value" : "Como as cargas personalizadas são estimadas"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "建议负荷的估算方式"
+            "value" : "个性化负荷的估算方式"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "建議負荷的估算方式"
+            "value" : "個人化負荷的估算方式"
           }
         }
       },
@@ -56618,54 +56671,54 @@
       },
       "comment" : "UI text shown in: Custom Exercise List (Cadence/Cadence/Features/Settings/CustomExerciseListView.swift)"
     },
-    "Rebuilding your suggested workout…" : {
+    "Rebuilding your personalized workout…" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Vorgeschlagenes Training wird neu erstellt …"
+            "value" : "Personalisiertes Training wird neu erstellt …"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Rebuilding your suggested workout…"
+            "value" : "Rebuilding your personalized workout…"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Reconstruyendo tu entrenamiento sugerido…"
+            "value" : "Reconstruyendo tu entrenamiento personalizado…"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Reconstruction de votre entraînement suggéré…"
+            "value" : "Reconstruction de votre entraînement personnalisé…"
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Je voorgestelde training wordt opnieuw opgebouwd…"
+            "value" : "Je gepersonaliseerde training wordt opnieuw opgebouwd…"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Reconstruindo seu treino sugerido…"
+            "value" : "Reconstruindo seu treino personalizado…"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "正在重新生成建议训练…"
+            "value" : "正在重新生成个性化训练…"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "正在重新產生建議訓練…"
+            "value" : "正在重新產生個人化訓練…"
           }
         }
       },
@@ -70706,60 +70759,60 @@
       },
       "comment" : "UI text shown in: Home Muscle History (Cadence/Cadence/Features/Home/HomeMuscleHistory.swift)"
     },
-    "Suggested for you" : {
+    "Personalized for you" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Für dich vorgeschlagen"
+            "state" : "needs_review",
+            "value" : "Für dich personalisiert"
           }
         },
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suggested for you"
+            "state" : "needs_review",
+            "value" : "Personalized for you"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Suggested for you"
+            "value" : "Personalized for you"
           }
         },
         "es" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sugerido para ti"
+            "state" : "needs_review",
+            "value" : "Personalizado para ti"
           }
         },
         "fr" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Suggestion pour vous"
+            "state" : "needs_review",
+            "value" : "Personnalisé pour vous"
           }
         },
         "nl" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voor jou voorgesteld"
+            "state" : "needs_review",
+            "value" : "Voor jou gepersonaliseerd"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sugerido para você"
+            "state" : "needs_review",
+            "value" : "Personalizado para você"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "为你推荐"
+            "state" : "needs_review",
+            "value" : "为你个性化"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "為你推薦"
+            "state" : "needs_review",
+            "value" : "為你個人化"
           }
         }
       },
@@ -84410,7 +84463,7 @@
       },
       "comment" : "UI text shown in: Coach Card (Cadence/Cadence/Features/Coach/CoachCardView.swift)"
     },
-    "Why don't you want this suggested?" : {
+    "Why don't you want this recommended?" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -84421,7 +84474,7 @@
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Why don't you want this suggested?"
+            "value" : "Why don't you want this recommended?"
           }
         },
         "es" : {

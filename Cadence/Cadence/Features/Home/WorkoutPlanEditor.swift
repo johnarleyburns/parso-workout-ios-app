@@ -247,7 +247,7 @@ struct WorkoutPlanEditor: View {
             if isRegeneratingAfterExclusion {
                 ZStack {
                     Color.black.opacity(0.15).ignoresSafeArea()
-                    ProgressView("Rebuilding your suggested workout…")
+                    ProgressView("Rebuilding your personalized workout…")
                         .padding(20)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                 }

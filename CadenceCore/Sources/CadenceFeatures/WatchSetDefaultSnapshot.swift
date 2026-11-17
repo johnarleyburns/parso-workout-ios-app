@@ -2,7 +2,7 @@ import Foundation
 import CadenceCore
 
 /// Property-list-safe, canonical-kg history inputs for `PerformerSetPlanner`.
-/// Contract only: nothing builds, sends, or consumes it yet.
+/// Built on phone and consumed by the Watch set-entry flow.
 public struct WatchSetDefaultSnapshot: Codable, Equatable, Sendable {
     public static let currentVersion = 1
     public static let ownerID = "owner"
@@ -60,10 +60,14 @@ public struct WatchSetDefaultSnapshot: Codable, Equatable, Sendable {
         /// Canonical kilograms.
         public var weightKg: Double
         public var reps: Int
+        /// Optional for older phone payloads. Keep actual set recency when the
+        /// Watch has newer local history than its last phone snapshot.
+        public var completedAt: Date?
 
-        public init(weightKg: Double, reps: Int) {
+        public init(weightKg: Double, reps: Int, completedAt: Date? = nil) {
             self.weightKg = weightKg
             self.reps = reps
+            self.completedAt = completedAt
         }
 
         fileprivate var isValid: Bool { weightKg.isFinite && weightKg > 0 && reps > 0 }
@@ -115,7 +119,10 @@ public struct WatchSetDefaultSnapshot: Codable, Equatable, Sendable {
             generalRepLadders: performer.generalRepLadders,
             firstWorkingWeightKg: exercise.firstWorkingWeightKg,
             weightSamples: exercise.samples.map {
-                SetSample(weight: $0.weightKg, reps: $0.reps, date: generatedAt)
+                SetSample(weight: $0.weightKg, reps: $0.reps, date: $0.completedAt ?? generatedAt)
+            },
+            lastPriorWorkingSet: exercise.samples.last.map {
+                SetSample(weight: $0.weightKg, reps: $0.reps, date: $0.completedAt ?? generatedAt)
             })
     }
 

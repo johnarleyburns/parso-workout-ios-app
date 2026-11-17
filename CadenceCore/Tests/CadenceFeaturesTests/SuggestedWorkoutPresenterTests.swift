@@ -3,6 +3,12 @@ import CadenceCore
 @testable import CadenceFeatures
 
 final class SuggestedWorkoutPresenterTests: XCTestCase {
+    func testWorkoutCopyUsesPersonalizedTerminology() {
+        XCTAssertEqual(SuggestedWorkoutPresenter.navigationTitle, "View Personalized Workout")
+        XCTAssertEqual(SuggestedWorkoutPresenter.calculatingTitle, "Calculating personalized workouts…")
+        XCTAssertEqual(SuggestedWorkoutPresenter.aboutAccessibilityLabel, "About personalized workouts")
+    }
+
     private func option(style: SuggestedWorkoutStyle, exercises: [SuggestedWorkoutExercise],
                         remaining: [String: Double] = [:], trimmed: Bool = false,
                         unsupported: [SuggestedCoverageGap] = []) -> SuggestedWorkoutOption {

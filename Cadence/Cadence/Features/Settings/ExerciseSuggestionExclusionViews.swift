@@ -30,7 +30,7 @@ struct ExerciseSuggestionExclusionSheet: View {
                     Text("Don't Suggest \(exercise.name)")
                 }
 
-                Section("Why don't you want this suggested?") {
+                Section("Why don't you want this recommended?") {
                     Picker("Reason", selection: $reason) {
                         ForEach(ExerciseSuggestionExclusionReason.allCases) { value in
                             Text(value.displayName).tag(value)

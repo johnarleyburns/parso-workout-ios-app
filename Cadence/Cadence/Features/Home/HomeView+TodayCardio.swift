@@ -2,7 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 
-/// "Suggested Cardio for You": always shown below the strength suggestion. It
+/// "Suggested Cardio for You": always shown below the personalized strength workout. It
 /// behaves like the strength card — cached suggestion first, a newer one behind
 /// an explicit link, Start, and Suggest Another.
 struct HomeTodayCardioCard: View {
@@ -20,7 +20,7 @@ struct HomeTodayCardioCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Suggested Cardio for You", systemImage: "heart.fill")
+            Label("Personalized Cardio for You", systemImage: "heart.fill")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(CadenceTheme.accent)
             if let completedTitle {
@@ -36,7 +36,7 @@ struct HomeTodayCardioCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if hasNewer {
-                    Button("Show newer suggested workout…", action: onShowNewer)
+                    Button("Show newer personalized workout…", action: onShowNewer)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(CadenceTheme.link)
                         .accessibilityIdentifier("home.cardio.showNewer")
@@ -51,7 +51,7 @@ struct HomeTodayCardioCard: View {
             } else if isCalculating {
                 HStack(spacing: 8) {
                     ProgressView()
-                    Text("Preparing your cardio suggestion…").font(.subheadline).foregroundStyle(.secondary)
+                    Text("Preparing your personalized cardio workout…").font(.subheadline).foregroundStyle(.secondary)
                 }
             } else if isRequesting {
                 HStack(spacing: 8) {
@@ -59,7 +59,7 @@ struct HomeTodayCardioCard: View {
                     Text("Suggesting…").font(.subheadline).foregroundStyle(.secondary)
                 }
             } else {
-                Button(onRequest != nil ? "Suggest cardio" : "No cardio suggestion is available right now.") {
+                Button(onRequest != nil ? "Suggest cardio" : "No personalized cardio workout is available right now.") {
                     onRequest?()
                 }
                 .buttonStyle(.borderedProminent)
@@ -107,7 +107,7 @@ extension HomeView {
             guard !Task.isCancelled else { return }
             todayCardioInput = input
             guard let fresh else {
-                cardioRequestState = .failed(String(localized: "No cardio suggestion is available right now."))
+                cardioRequestState = .failed(String(localized: "No personalized cardio workout is available right now."))
                 return
             }
             todayCardio = fresh
@@ -118,7 +118,7 @@ extension HomeView {
         }
     }
 
-    /// Watch `request_settings_sync`: regenerate and push the cardio suggestion.
+    /// Watch `request_settings_sync`: regenerate and push the personalized cardio workout.
     func refreshWatchCardioSuggestion() {
         guard surface == .today else { return }
         requestCardioSuggestion()
@@ -131,7 +131,7 @@ extension HomeView {
         TodayCardioSuggestionCache().save(pending)
     }
 
-    /// Replaces today's cardio suggestion with a different one.
+    /// Replaces today's personalized cardio workout with a different one.
     func suggestAnotherTodayCardio(_ current: CardioSuggestion) {
         guard let base = todayCardioInput else { return }
         if let id = current.protocolID { skippedHIITProtocolIDs.insert(id) }
@@ -148,7 +148,7 @@ extension HomeView {
         var next = generate(excluding: [])
         if next == nil || next?.id == current.id { next = generate(excluding: [current.type]) }
         guard let next, next.id != current.id else {
-            suggestedCardioFailure = String(localized: "No other cardio suggestion is available. You can still pick cardio yourself.")
+            suggestedCardioFailure = String(localized: "No other personalized cardio workout is available. You can still pick cardio yourself.")
             return
         }
         todayCardio = next

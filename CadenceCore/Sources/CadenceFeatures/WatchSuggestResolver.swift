@@ -37,18 +37,18 @@ public enum WatchSuggestAvailability: Equatable, Sendable {
 
         public var message: String {
             switch self {
-            case .noSnapshot: "No suggestion is on this Watch yet. A recent iPhone sync is needed."
-            case .expired: "Today's suggestion needs refresh."
-            case .historyChanged: "A workout changed since this suggestion. Refresh from iPhone."
-            case .unsupportedSnapshot: "This suggestion can't be read. Update Cladiron on iPhone and sync."
-            case .generationFailed: "Couldn't build today's suggestion. Sync with iPhone to try again."
+            case .noSnapshot: "No personalized workout is on this Watch yet. A recent iPhone sync is needed."
+            case .expired: "Today's personalized workout needs refresh."
+            case .historyChanged: "A workout changed since this personalized workout. Refresh from iPhone."
+            case .unsupportedSnapshot: "This personalized workout can't be read. Update Cladiron on iPhone and sync."
+            case .generationFailed: "Couldn't build today's personalized workout. Sync with iPhone to try again."
             }
         }
 
         public var accessibilityLabel: String {
             switch self {
-            case .historyChanged: "Suggestion can't be used because a workout changed. Sync with iPhone."
-            default: "Suggestion needs iPhone refresh. " + message
+            case .historyChanged: "Personalized workout can't be used because a workout changed. Sync with iPhone."
+            default: "Personalized workout needs iPhone refresh. " + message
             }
         }
     }
@@ -61,7 +61,7 @@ public enum WatchSuggestAvailability: Equatable, Sendable {
 
 public enum WatchSuggestResolver {
     public static let readyHeading = "Synced from iPhone"
-    public static let readyAccessibilityLabel = "Suggestion ready, same as iPhone"
+    public static let readyAccessibilityLabel = "Personalized workout ready, same as iPhone"
 
     public static func resolve(envelope: WatchCoachSuggestionEnvelope?, now: Date,
                                historyState: WatchCoachHistoryState = .init(),

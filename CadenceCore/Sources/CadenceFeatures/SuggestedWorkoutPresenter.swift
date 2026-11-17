@@ -21,9 +21,9 @@ public struct SuggestedWorkoutChoice: Equatable, Sendable, Identifiable {
 }
 
 public enum SuggestedWorkoutPresenter {
-    public static let navigationTitle = String(localized: "View Suggested Workout", bundle: .module)
-    public static let calculatingTitle = String(localized: "Calculating suggested workouts…", bundle: .module)
-    public static let aboutAccessibilityLabel = String(localized: "About suggested workouts", bundle: .module)
+    public static let navigationTitle = String(localized: "View Personalized Workout", bundle: .module)
+    public static let calculatingTitle = String(localized: "Calculating personalized workouts…", bundle: .module)
+    public static let aboutAccessibilityLabel = String(localized: "About personalized workouts", bundle: .module)
     public static let chooserIntro = String(localized: "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting.", bundle: .module)
     public static let choosingAPlan = String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: .module)
 
@@ -32,11 +32,11 @@ public enum SuggestedWorkoutPresenter {
         case .sufficient:
             return nil
         case .unavailable:
-            return String(localized: "No completed strength history was available. This suggestion uses your onboarding preferences and the exercise catalog; future suggestions can become more specific after you log a workout.", bundle: .module)
+            return String(localized: "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout.", bundle: .module)
         case .limited(let workoutCount, let workingSetCount):
             return String(localized: "Limited history: \(workoutCount) workouts", bundle: .module) + ", "
                 + String(localized: "\(workingSetCount) working sets", bundle: .module) + ". "
-                + String(localized: "This suggestion also uses your onboarding preferences, so review it before starting.", bundle: .module)
+                + String(localized: "This personalized workout also uses your onboarding preferences, so review it before starting.", bundle: .module)
         }
     }
 
@@ -128,7 +128,7 @@ public enum SuggestedWorkoutPresenter {
         String(localized: "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.", bundle: .module),
         String(localized: "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.", bundle: .module),
         String(localized: "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason.", bundle: .module),
-        String(localized: "Produces a deterministic suggestion to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: .module)
+        String(localized: "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: .module)
     ]
 
     public static let pseudocode = [

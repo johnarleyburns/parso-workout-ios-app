@@ -9,7 +9,7 @@ public enum WatchLiftSources {
         case suggest, previous, custom
         public var title: String {
             switch self {
-            case .suggest: "Suggest"
+            case .suggest: "Personalized"
             case .previous: "Previous"
             case .custom: "Custom"
             }
@@ -24,7 +24,7 @@ public enum WatchLiftSources {
         public var accessibilityIdentifier: String { "watchStrength.\(rawValue)" }
         public var accessibilityLabel: String {
             switch self {
-            case .suggest: "Suggest, the strength workout synced from iPhone"
+            case .suggest: "Personalized, the strength workout synced from iPhone"
             case .previous: "Previous, your last five strength workouts"
             case .custom: "Custom, choose reps, rest and partners"
             }

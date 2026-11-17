@@ -104,7 +104,7 @@ struct SuggestedCardioPreviewView: View {
                     .foregroundStyle(.secondary)
 
                 CoachSourcesLink(citationIds: suggestion.citationIDs,
-                                 contexts: Dictionary(suggestion.citationIDs.map { ($0, String(localized: "How this cardio suggestion is selected")) },
+                                 contexts: Dictionary(suggestion.citationIDs.map { ($0, String(localized: "How this personalized cardio workout is selected")) },
                                                       uniquingKeysWith: { first, _ in first }))
 
                 Button {

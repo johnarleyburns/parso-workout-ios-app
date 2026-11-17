@@ -29,7 +29,7 @@ extension HomeView {
                 session.completedOwnerWorkingSetCount > 0
             }.count
             // Do not borrow weekly volume from `coachFacts` here. The coach
-            // snapshot and this suggestion task are invalidated together after
+            // snapshot and this personalized workout task are invalidated together after
             // a workout completes, so the rendered snapshot can still describe
             // the previous history while this request is being assembled. Build
             // the volume projection from the just-captured sessions instead.
@@ -60,7 +60,7 @@ extension HomeView {
             // seed finishes, and older stores can contain rows without the
             // facets the solver needs. The canonical value catalog keeps the
             // chooser launchable in both cases without creating SwiftData rows
-            // merely to display a suggestion.
+            // merely to display a personalized workout.
             let candidates: [SuggestedExerciseCandidate]
             let trackedMuscleIDs = Set(settings.coachSchedulePreferences.trackedMuscleGroups
                 .map(\.rawValue))
@@ -231,7 +231,7 @@ extension HomeView {
                 suggestedCardioCalculating = false
                 suggestedCardioTask = nil
                 guard let suggestion else {
-                    suggestedCardioFailure = String(localized: "No cardio suggestion is available. Every supported cardio type may be set to never suggest; allow one again from Pick Cardio.")
+                    suggestedCardioFailure = String(localized: "No personalized cardio workout is available. Every supported cardio type may be set to never suggest; allow one again from Pick Cardio.")
                     return
                 }
                 suggestedCardio = suggestion

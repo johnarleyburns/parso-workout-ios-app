@@ -37,19 +37,32 @@ final class WatchSmokeTests: XCTestCase {
 
         let workoutPicker = app.pickerWheels.firstMatch
         XCTAssertTrue(workoutPicker.waitForExistence(timeout: 10), "Workout wheel did not appear")
-        workoutPicker.adjust(toPickerWheelValue: "Custom Strength")
+        for title in ["Personalized", "Previous", "Custom"] {
+            workoutPicker.adjust(toPickerWheelValue: title)
+            XCTAssertTrue(app.buttons["watch.startWorkout"].exists,
+                          "Selecting a strength workout must not navigate or start")
+            XCTAssertTrue(workoutPicker.exists)
+        }
+        XCTAssertTrue(app.tapButton("watch.mode.cardio"), "Missing cardio mode button")
+        workoutPicker.adjust(toPickerWheelValue: "Swim")
+        XCTAssertTrue(app.buttons["watch.startWorkout"].exists,
+                      "Selecting cardio must not navigate or start")
+        XCTAssertTrue(app.tapButton("watch.mode.strength"), "Missing strength mode button")
+        XCTAssertEqual(workoutPicker.value as? String, "Custom", "Strength selection was not remembered")
+        XCTAssertTrue(app.tapButton("watch.mode.cardio"))
+        XCTAssertEqual(workoutPicker.value as? String, "Swim", "Cardio selection was not remembered")
+        XCTAssertTrue(app.tapButton("watch.mode.strength"))
         XCTAssertTrue(app.tapButton("watch.startWorkout", scrollAttempts: 4),
                       "Watch launcher did not show Start")
-        XCTAssertTrue(app.tapButton("watchStrength.custom"), "Strength start screen did not show Custom")
-        XCTAssertTrue(app.buttons["watchStrength.repPattern.12-10-8"].waitForExistence(timeout: 10),
-                      "Custom setup did not show rep-pattern options")
-        XCTAssertTrue(app.tapButton("watchStrength.rest.60", scrollAttempts: 3),
-                      "Custom setup did not show rest options")
-        XCTAssertTrue(app.tapButton("watchStrength.partner.none", scrollAttempts: 4),
-                      "Custom setup did not show No partner")
-        XCTAssertTrue(app.tapButton("watchStrength.partner.Sam", scrollAttempts: 4),
-                      "Custom setup did not show seeded recent partner")
-        XCTAssertTrue(app.tapButton("watchStrength.customStart", scrollAttempts: 4),
+        XCTAssertTrue(app.tapButton("watchStrength.repDefaults"), "Preview did not expose rep defaults")
+        XCTAssertTrue(app.tapButton("watchStrength.repPattern.12-10-8", scrollAttempts: 3))
+        XCTAssertTrue(app.tapButton("watchStrength.preview.rest"))
+        XCTAssertTrue(app.tapButton("watchStrength.rest.60", scrollAttempts: 3))
+        XCTAssertTrue(app.tapButton("watchStrength.preview.partners"))
+        XCTAssertTrue(app.tapButton("watchStrength.partner.none", scrollAttempts: 4))
+        XCTAssertTrue(app.tapButton("watchStrength.partner.Sam", scrollAttempts: 4))
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.tapButton("watchStrength.preview.start", scrollAttempts: 4),
                       "Custom setup did not start")
 
         // An empty workout opens on the Plan page.

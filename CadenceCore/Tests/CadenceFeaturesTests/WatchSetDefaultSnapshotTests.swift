@@ -22,6 +22,31 @@ final class WatchSetDefaultSnapshotTests: XCTestCase {
         ])
     }
 
+    func testSyncedHistoryCarriesExactLastSetInsteadOfAnOlderRepMatch() throws {
+        let last = WorkoutMath.canonical(205, from: .pounds)
+        let old = WorkoutMath.canonical(250, from: .pounds)
+        let snapshot = S(generatedAt: Date(), performers: [
+            .init(id: "owner", displayName: "Me", exercises: [
+                .init(id: "Back Squat", displayName: "Back Squat", repLadders: [[6, 8]],
+                    samples: [.init(weightKg: old, reps: 6), .init(weightKg: last, reps: 8)], firstWorkingWeightKg: old)
+            ], generalRepLadders: [])
+        ])
+        let history = snapshot.history(exerciseKey: "Back Squat", performerID: "owner")
+        XCTAssertEqual(try XCTUnwrap(history.lastPriorWorkingSet).weight, last, accuracy: 0.0001)
+        let resolved = PerformerSetPlanner.resolve(setIndex: 0, performerPlan: nil, ownerPlan: [],
+            ownerLadder: nil, isOwner: true, history: history)
+        XCTAssertEqual(resolved.reps, 8)
+        XCTAssertEqual(resolved.weightKg ?? 0, last, accuracy: 0.0001)
+    }
+
+    func testSampleCarriesActualSetTimestampAndDecodesLegacyPayloads() throws {
+        let date = Date(timeIntervalSince1970: 200)
+        let sample = S.Sample(weightKg: 92.986, reps: 8, completedAt: date)
+        XCTAssertEqual(try JSONDecoder().decode(S.Sample.self, from: JSONEncoder().encode(sample)), sample)
+        let legacy = Data(#"{"weightKg":92.986,"reps":8}"#.utf8)
+        XCTAssertNil(try JSONDecoder().decode(S.Sample.self, from: legacy).completedAt)
+    }
+
     func testCodableAndPropertyListRoundTrip() throws {
         let s = snapshot()
         let decoded = try JSONDecoder().decode(S.self, from: JSONEncoder().encode(s))

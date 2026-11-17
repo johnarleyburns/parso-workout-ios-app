@@ -4,7 +4,7 @@ import CadenceCore
 
 final class HomeWorkoutStartChoiceTests: XCTestCase {
     func testStrengthChoicesAndRecentCardioLimit() {
-        XCTAssertEqual(HomeStrengthStartChoice.allCases.map(\.title), ["Quick Start", "Suggested", "Previous"])
+        XCTAssertEqual(HomeStrengthStartChoice.allCases.map(\.title), ["Quick Start", "Personalized", "Previous"])
         XCTAssertEqual(HomeRecentCardioChoices.recent(["run", "run", "walk", "cycle", "swim"]),
                        ["run", "walk", "cycle"])
         XCTAssertEqual(HomeRecentCardioChoices.recent([String]()), [])

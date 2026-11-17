@@ -28,6 +28,27 @@ final class WorkoutPlanRepStructureTests: XCTestCase {
         XCTAssertTrue(plan.exercises.allSatisfy { $0.sets.map(\.targetReps) == [5, 5] && $0.performerPlans[0].sets == $0.sets })
     }
 
+    func testStructureLabelAndSelectionReflectActualSets() {
+        let sets = [8, 8, 8].map { EditableSet(targetReps: $0, targetWeight: 25) }
+        let plan = EditablePlan(warmupMinutes: 0, cooldownMinutes: 0,
+            exercises: [EditableExercise(name: "Row", sets: sets, notes: "")])
+        XCTAssertEqual(plan.repStructure(performerID: nil), [8, 8, 8])
+        XCTAssertEqual(plan.repStructure(performerID: nil).map(String.init).joined(separator: "-"), "8-8-8")
+    }
+
+    func testSuggestedDefaultsRepeatLastWorkingSetAndKeepPlannedCount() {
+        let original = (0..<3).map { _ in EditableSet(targetReps: 6, targetWeight: nil) }
+        let history = PartnerPlanResolver.ExerciseHistory(lastSets: [
+            .init(weightKg: 100, reps: 6), .init(weightKg: 92.98643585, reps: 8)])
+        let seeded = PartnerPlanResolver.suggestedOwnerSets(original, history: history)
+        XCTAssertEqual(seeded.map(\.id), original.map(\.id))
+        XCTAssertEqual(seeded.map(\.targetReps), [8, 8, 8])
+        XCTAssertEqual(seeded.map(\.targetWeight), [92.98643585, 92.98643585, 92.98643585])
+        XCTAssertEqual(PartnerPlanResolver.suggestedOwnerSets(original, history: .empty), original)
+        let explicit = [EditableSet(targetReps: 12, targetWeight: 20)]
+        XCTAssertEqual(PartnerPlanResolver.suggestedOwnerSets(explicit, history: history), explicit)
+    }
+
     func testMountainClimbersAreBodyweightWithoutAnExternalLoad() {
         let exercise = Exercise(name: "Mountain Climbers")
         XCTAssertTrue(SessionViewModel.isNonWeighted(exercise))

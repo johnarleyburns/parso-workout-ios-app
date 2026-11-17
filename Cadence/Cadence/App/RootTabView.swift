@@ -224,7 +224,7 @@ struct RootTabView: View {
     private var nativeTabs: some View {
         if #available(iOS 18.0, *) {
             TabView(selection: $selection) {
-                SwiftUI.Tab("Workout", systemImage: "activity.exercise", value: .home) { HomeView() }
+                SwiftUI.Tab("Workout", systemImage: "figure.mixed.cardio", value: .home) { HomeView() }
                 SwiftUI.Tab("Strength", systemImage: "dumbbell.fill", value: .strength) { StrengthView() }
                 SwiftUI.Tab("Cardio", systemImage: "heart.fill", value: .cardio) { CardioWeekView() }
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
@@ -236,7 +236,7 @@ struct RootTabView: View {
             .modifier(LiveWorkoutTabAccessory(active: active))
         } else {
             TabView(selection: $selection) {
-                HomeView().tabItem { Label("Workout", systemImage: "activity.exercise") }.tag(Tab.home)
+                HomeView().tabItem { Label("Workout", systemImage: "figure.mixed.cardio") }.tag(Tab.home)
                 StrengthView().tabItem { Label("Strength", systemImage: "dumbbell.fill") }.tag(Tab.strength)
                 CardioWeekView().tabItem { Label("Cardio", systemImage: "heart.fill") }.tag(Tab.cardio)
                 AdaptiveProgressRoot().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)

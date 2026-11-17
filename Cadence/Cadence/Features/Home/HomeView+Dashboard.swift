@@ -236,12 +236,8 @@ extension HomeView {
                 if suggestedWorkoutPlan == nil { handleSuggestedStrength(.interactiveDismiss) }
             }) { plan in
                 NavigationStack {
-                    // Workout for You is an editable draft by definition: the
-                    // user asked the coach to prepare a workout, so the first
-                    // screen must expose edit controls before Start or
-                    // Schedule can be chosen.
                     WorkoutPlanEditor(
-                        plan: plan, startInEditMode: true,
+                        plan: plan,
                         suggestedStrength: suggestedStrengthHooks(for: plan)) { startedPlan in
                         suggestedStrengthPreview.editedPlan = startedPlan
                         handleSuggestedStrength(.start)

@@ -1192,7 +1192,14 @@ public final class WatchStrengthFlowModel {
 
     public func recordHeartRate(_ samples: [HRSamplePoint]) {
         // Keep the richest capture: the live manager is reset when the workout stops.
-        if samples.count >= recordedHeartRate.count { recordedHeartRate = samples }
+        guard samples.count >= recordedHeartRate.count else { return }
+        recordedHeartRate = samples
+        // The completion transport and history must read the same durable series.
+        // Previously only the phone received HR; the Watch session stayed empty.
+        if let session, !samples.isEmpty, samples.count >= session.hrSamplePoints.count {
+            session.hrSamplePoints = samples
+            try? context.save()
+        }
     }
 
     /// Durable completion-transfer identity, minted once per Watch session.

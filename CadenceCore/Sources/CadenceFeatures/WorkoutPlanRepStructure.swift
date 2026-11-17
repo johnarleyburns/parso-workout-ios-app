@@ -1,6 +1,13 @@
 import Foundation
 
 extension EditablePlan {
+    public func repStructure(performerID: UUID?) -> [Int] {
+        guard let exercise = exercises.first else { return [] }
+        let sets = performerID == nil ? exercise.sets
+            : (exercise.performerPlans.first { $0.performerID == performerID }?.sets ?? [])
+        return sets.map(\.targetReps)
+    }
+
     /// Apply only to the selected performer. Keep each exercise's existing loads
     /// and repeat its last load when the new structure adds working sets.
     public mutating func applyRepStructure(_ reps: [Int], performerID: UUID?) {

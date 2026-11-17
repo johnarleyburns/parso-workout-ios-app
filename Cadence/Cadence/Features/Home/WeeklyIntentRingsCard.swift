@@ -6,10 +6,14 @@ import CadenceFeatures
 struct WeeklyIntentRingsCard: View {
     let display: WeeklyIntentDisplay
     @Binding var tabSelection: RootTabView.Tab
-    @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 104
+    @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 200
 
     var body: some View {
-        VStack(spacing: 16) {
+        VStack(spacing: 24) {
+            Text("Totals this week")
+                .font(.headline)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityAddTraits(.isHeader)
             ZStack {
                 ring(display.strengthRing, cardio: false, diameter: ringDiameter, lineWidth: max(8, ringDiameter * 0.11))
                 ring(display.cardioRing, cardio: true, diameter: ringDiameter * 0.62, lineWidth: max(8, ringDiameter * 0.11))

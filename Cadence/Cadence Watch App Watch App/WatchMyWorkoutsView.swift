@@ -53,7 +53,6 @@ struct WatchMyWorkoutsView: View {
             }
         }
         .listStyle(.plain)
-        .navigationTitle("My Workouts")
         .accessibilityIdentifier("watch.myWorkouts")
         .task(id: "\(cardioHistoryRevision)|\(pendingCardioCompletions.map(\.id.uuidString).joined(separator: ","))") { load() }
         .onReceive(NotificationCenter.default.publisher(for: WatchLocalHistoryMutation.name)) { _ in

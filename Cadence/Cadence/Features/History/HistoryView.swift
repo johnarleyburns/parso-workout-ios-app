@@ -97,29 +97,27 @@ struct HistoryView: View {
     }
 
     private var workoutTimeline: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LayoutMetrics.cardHeadingSpacing) {
-                HStack {
-                    Text("My Workouts").font(.headline)
-                    Spacer()
-                }
+        List {
+            Section {
                 if timelineEntries.isEmpty {
                     Text("No workouts yet — start one from Today.")
                         .font(.subheadline).foregroundStyle(.secondary)
                 } else {
                     ForEach(timelineEntries) { entry in
                         HomeWeekWorkoutRow(entry: entry) { open(entry) }
+                            .buttonStyle(.borderless)
                             .contextMenu { timelineActions(for: entry) }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                deleteAction(for: entry)
+                            }
                     }
                     showMoreButton
                 }
+            } header: {
+                Text("My Workouts")
             }
-            .padding(LayoutMetrics.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
-            .padding(.horizontal)
-            .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
         }
+        .safeAreaPadding(.bottom, CadenceTabBarClearance.scrollContentBottom)
         .accessibilityIdentifier("history.myWorkouts")
     }
 
@@ -187,6 +185,19 @@ struct HistoryView: View {
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private func deleteAction(for entry: TodayActivityPresenter.Entry) -> some View {
+        Button(role: .destructive) {
+            switch entry.kind {
+            case .strength: sessionToDelete = sessions.first { $0.id == entry.sourceId }
+            case .cardio: cardioToDelete = cardio.first { $0.id == entry.sourceId }
+            }
+        } label: {
+            Label("Delete", systemImage: "trash")
+        }
+        .accessibilityIdentifier("history.deleteSwipe")
     }
 
     // MARK: Rows

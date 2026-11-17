@@ -4,6 +4,16 @@ import CadenceCore
 import CadenceFeatures
 
 extension WorkoutPlanEditor {
+    func seedSuggestedOwnerDefaults() {
+        guard let historyIndex else { return }
+        for index in plan.exercises.indices {
+            let history = historyIndex.history(forExerciseNamed: plan.exercises[index].name,
+                                                performerID: nil, people: allPeople)
+            plan.exercises[index].sets = PartnerPlanResolver.suggestedOwnerSets(
+                plan.exercises[index].sets, history: history)
+        }
+    }
+
     /// Fills every partner's plan from *their* history for the owner's
     /// exercises. Runs on appear, roster changes, and after exercise changes.
     func resolvePartnerPlans() {

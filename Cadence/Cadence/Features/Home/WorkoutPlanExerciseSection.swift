@@ -333,12 +333,23 @@ struct RepSchemeSheet: View {
             List {
                 Section("Common") {
                     ForEach(common, id: \.self) { reps in
-                        Button("\(reps.count) sets · \(reps.map(String.init).joined(separator: "-")) reps") {
+                        Button {
                             onSelect(reps); dismiss()
+                        } label: {
+                            HStack {
+                                Text("\(reps.count) sets · \(reps.map(String.init).joined(separator: "-")) reps")
+                                Spacer()
+                                if reps == current { Image(systemName: "checkmark") }
+                            }
                         }
+                        .accessibilityAddTraits(reps == current ? .isSelected : [])
                     }
                 }
                 Section("Custom") {
+                    if !current.isEmpty && !common.contains(current) {
+                        Label(current.map(String.init).joined(separator: "-"), systemImage: "checkmark")
+                            .accessibilityAddTraits(.isSelected)
+                    }
                     TextField("Example: 12, 10, 8", text: $custom)
                         .keyboardType(.numbersAndPunctuation)
                     Button("Use custom structure") {

@@ -14,6 +14,7 @@ struct WatchHomeStartControls: View {
                         .tag(option)
                 }
             }
+            .id(selection.mode == .strength)
             .pickerStyle(.wheel)
             .labelsHidden()
             .frame(height: 44)

@@ -135,6 +135,19 @@ public enum PartnerPlanResolver {
         }
     }
 
+    /// Generated placeholder sets use the same literal last working set as the
+    /// logger. Preserve prescribed loads, set identities and the coach's count.
+    public static func suggestedOwnerSets(_ sets: [EditableSet], history: ExerciseHistory) -> [EditableSet] {
+        guard let last = history.lastSets.last(where: { $0.reps > 0 }) else { return sets }
+        return sets.map { original in
+            guard original.targetWeight == nil, original.loadMode == .straight else { return original }
+            var set = original
+            set.targetReps = last.reps
+            set.targetWeight = last.weightKg > 0 ? last.weightKg : nil
+            return set
+        }
+    }
+
     /// The owner's own plan as a performer entry, so "Me" is always index 0.
     public static func ownerPlan(name: String = "Me",
                                  ownerSets: [EditableSet]) -> EditablePerformerPlan {

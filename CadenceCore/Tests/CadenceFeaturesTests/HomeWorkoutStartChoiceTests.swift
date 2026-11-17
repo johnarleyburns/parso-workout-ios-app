@@ -12,7 +12,7 @@ final class HomeWorkoutStartChoiceTests: XCTestCase {
     func testUnifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
         let choices = HomeWorkoutStartChoice.allChoices
         XCTAssertEqual(choices.map(\.title), [
-            "Suggested Strength", "Previous Strength", "Custom Strength", "HIIT",
+            "Optimal Lifts", "Repeat Lifts", "Quick Start", "HIIT",
             "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Custom Cardio"
         ])
         XCTAssertEqual(Set(choices.map(\.id)).count, choices.count)
@@ -20,6 +20,7 @@ final class HomeWorkoutStartChoiceTests: XCTestCase {
             XCTAssertTrue(choices.contains(.cardio(type)))
         }
         XCTAssertFalse(choices.contains(.cardio(.weights)))
+        XCTAssertEqual(Set(HomeWorkoutStartChoice.strengthChoices.map(\.symbol)), ["dumbbell.fill"])
         XCTAssertTrue(choices.allSatisfy { !$0.symbol.isEmpty })
     }
 

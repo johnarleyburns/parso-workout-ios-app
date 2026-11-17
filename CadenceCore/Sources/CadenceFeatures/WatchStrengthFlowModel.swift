@@ -599,6 +599,8 @@ public final class WatchStrengthFlowModel {
 
         do {
             let performer = currentPerformer
+            let entry = SessionViewModel.normalizedSetEntry(
+                exercise: exercise, requestedWeightKg: currentWeight, requestedUsesBodyweight: false)
             let priorOwnerSamples = (exercise.sets ?? [])
                 .filter { $0.session?.id != session.id && $0.isOwnerSet }
                 .map { SetSample.from($0) }
@@ -608,7 +610,7 @@ public final class WatchStrengthFlowModel {
                 .map { SetSample.from($0) }
             let isOwnerBeforeSave = performer == nil || performer?.isMe == true
             let isPRBeforeSave = isOwnerBeforeSave && !isWarmupSet && PRCalculator.isNewPR(
-                candidate: SetSample(weight: currentWeight, reps: Int(currentReps), isWarmup: false),
+                candidate: SetSample(weight: entry.weightKg, reps: Int(currentReps), isWarmup: false),
                 previous: priorOwnerSamples + earlierOwnerSamples,
                 rule: prRule, formula: prFormula)
 
@@ -617,8 +619,9 @@ public final class WatchStrengthFlowModel {
                                                performerID: performer?.isMe == true ? nil : performer?.id)
             }
             let set = try WorkoutRepository.addSet(
-                to: session, exercise: exercise, weightKg: currentWeight,
+                to: session, exercise: exercise, weightKg: entry.weightKg,
                 reps: Int(currentReps), rpe: resolvedEffortRPE, isWarmup: isWarmupSet,
+                usesBodyweight: entry.usesBodyweight,
                 performedBy: performer?.isMe == true ? nil : performer,
                 in: context
             )

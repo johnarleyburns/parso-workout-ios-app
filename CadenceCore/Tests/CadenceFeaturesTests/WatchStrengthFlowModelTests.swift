@@ -80,6 +80,21 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentWeight, 0)
     }
 
+    func testMountainClimbersShowBWAndNeverLogAnExternalLoad() throws {
+        let model = makeModel()
+        model.start(title: "Bodyweight", plannedExerciseNames: ["Mountain Climbers"], createSession: true)
+        let exercise = try XCTUnwrap(model.exerciseList.first?.exercise)
+        model.startLogSet(for: exercise)
+        let card = try XCTUnwrap(model.setCardState)
+        XCTAssertTrue(card.isNonWeighted)
+        XCTAssertEqual(card.weightText, "BW")
+        // Even stale imported/planned weights cannot leak into the saved set.
+        model.currentWeight = 20
+        let set = try XCTUnwrap(model.logSet())
+        XCTAssertEqual(set.weight, 0)
+        XCTAssertEqual(set.usesBodyweight, true)
+    }
+
     func testLoggedSetContextIsFrozenBeforeRestAdvancesToNextExercise() {
         let m = makeModel()
         m.start(title: "Test", plannedExerciseNames: ["Bench Press", "Squat"], createSession: true)

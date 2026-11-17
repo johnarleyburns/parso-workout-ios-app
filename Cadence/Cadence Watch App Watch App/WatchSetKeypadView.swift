@@ -119,14 +119,14 @@ struct WatchSetKeypadView: View {
         if card.isNonWeighted {
             VStack(spacing: 4) {
                 HStack(spacing: 4) {
-                    Text("Non-\nWeighted")
+                    Text(card.weightText == "BW" ? "BW" : "Non-\nWeighted")
                         .font(.caption2.weight(.semibold))
                         .multilineTextAlignment(.center)
                         .lineLimit(2)
                         .minimumScaleFactor(0.5)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, minHeight: 44)
-                        .accessibilityLabel("Non-weighted movement")
+                        .accessibilityLabel(card.weightText == "BW" ? "Bodyweight, no external load" : "Non-weighted movement")
                         .accessibilityIdentifier("watchSet.nonWeighted")
                     reps
                 }

@@ -321,7 +321,7 @@ private struct LoadEditorSheet: View {
     }
 }
 
-private struct RepSchemeSheet: View {
+struct RepSchemeSheet: View {
     let current: [Int]
     let onSelect: ([Int]) -> Void
     @Environment(\.dismiss) private var dismiss

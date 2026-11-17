@@ -11,26 +11,16 @@ extension HomeView {
             tabSelection: rootTabSelection)
         if resumeSession != nil {
             todayHeroCard
-        } else {
-            HomeWorkoutStartControls(
-                onQuickStart: { startQuickStartStrength() },
-                onSuggested: { openTodaySuggestion() },
-                onPreviousStart: handleEditorStart,
-                onCardio: { start($0) },
-                onCustomCardio: { startOtherCardio(description: $0, gps: $1) })
-            if let quickRepeat = TodayQuickRepeatPresenter.make(sessions: sessions, hasActiveOrResumableSession: false) {
-                Button(quickRepeat.title) {
-                    if let session = sessions.first(where: { $0.id == quickRepeat.sessionID }) {
-                        workoutEditorPlan = .from(session: session)
-                    }
-                }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.plain)
-                .foregroundStyle(CadenceTheme.link)
-                .frame(maxWidth: .infinity)
-                .accessibilityIdentifier("home.repeatLastWorkout")
-            }
         }
+    }
+
+    var workoutStartControls: some View {
+        HomeWorkoutStartControls(
+            onQuickStart: { startQuickStartStrength() },
+            onSuggested: { openTodaySuggestion() },
+            onPreviousStart: handleEditorStart,
+            onCardio: { start($0) },
+            onCustomCardio: { startOtherCardio(description: $0, gps: $1) })
     }
 
     /// Rows for the compact dual card; empty keeps the existing hero. Only the

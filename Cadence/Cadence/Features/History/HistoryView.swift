@@ -42,14 +42,20 @@ struct HistoryView: View {
         .modifier(HistoryChrome(embedded: embedded))
         .toolbar {
             if let control = paging?.deletedControl {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button(control.title) { withAnimation { paging?.toggleDeleted() } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { withAnimation { paging?.toggleDeleted() } } label: {
+                        Image(systemName: showDeleted ? "archivebox.fill" : "archivebox")
+                    }
+                        .accessibilityLabel(control.title)
                         .accessibilityIdentifier("history.toggleDeleted")
                         .accessibilityHint("Switches between active and deleted workouts")
                 }
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Export") { showExport = true }
+                Button { showExport = true } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }
+                    .accessibilityLabel("Share workout archive")
                     .accessibilityIdentifier("history.export")
                     .accessibilityHint("Exports your complete workout archive")
             }
@@ -78,7 +84,7 @@ struct HistoryView: View {
                 try? WorkoutRepository.softDeleteSession(session, in: context)
                 sessionToDelete = nil
             }
-        } message: { _ in Text("This removes the session. You can restore it from Show Deleted.") }
+        } message: { _ in Text("This removes the session. You can restore it from the Archive button.") }
         .confirmationDialog("Delete this cardio workout?",
                             isPresented: Binding(get: { cardioToDelete != nil },
                                                  set: { if !$0 { cardioToDelete = nil } }),
@@ -87,7 +93,7 @@ struct HistoryView: View {
                 try? WorkoutRepository.softDeleteCardio(c, in: context)
                 cardioToDelete = nil
             }
-        } message: { _ in Text("This removes the cardio workout. You can restore it from Show Deleted.") }
+        } message: { _ in Text("This removes the cardio workout. You can restore it from the Archive button.") }
     }
 
     private var workoutTimeline: some View {

@@ -51,9 +51,9 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .strength(.suggested): "Suggested Strength"
-        case .strength(.previous): "Previous Strength"
-        case .strength(.quickStart): "Custom Strength"
+        case .strength(.suggested): "Optimal Lifts"
+        case .strength(.previous): "Repeat Lifts"
+        case .strength(.quickStart): "Quick Start"
         case .cardio(.other): "Custom Cardio"
         case .cardio(let type): type.displayName
         }
@@ -61,8 +61,8 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
 
     public var symbol: String {
         switch self {
-        case .strength(.suggested): "wand.and.stars"
-        case .strength(.previous): "clock.arrow.circlepath"
+        case .strength(.suggested): "dumbbell.fill"
+        case .strength(.previous): "dumbbell.fill"
         case .strength(.quickStart): "dumbbell.fill"
         case .cardio(let type): type.symbol
         }

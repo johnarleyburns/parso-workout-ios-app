@@ -29,7 +29,7 @@ struct TrainingProgressView: View {
                     .padding(.bottom, 8)
                 switch ProgressDataOwner.owner(for: questionSelection.selected) {
                 case .pagedHistory:
-                    HistoryView(path: $path, embedded: true)
+                    ProgressAnalyticsView(path: $path, questionSelection: questionSelection)
                 case .observations:
                     ProgressObservationsView()
                 case .analytics:

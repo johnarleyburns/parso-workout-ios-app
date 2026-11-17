@@ -34,7 +34,7 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
 
     /// The sole picker-ordering API: localized alphabetical by displayed label.
     public static var alphabetical: [ProgressQuestion] {
-        allCases.sorted {
+        allCases.filter { $0 != .workoutHistory }.sorted {
             let order = $0.displayName.localizedStandardCompare($1.displayName)
             return order == .orderedSame ? $0.rawValue < $1.rawValue : order == .orderedAscending
         }
@@ -46,7 +46,7 @@ public struct ProgressQuestionSelection: Equatable, Sendable {
     public private(set) var selected: ProgressQuestion
 
     public init(selected: ProgressQuestion = .strengthOverTime) {
-        self.selected = selected
+        self.selected = selected == .workoutHistory ? .strengthOverTime : selected
     }
 
     public static func persisted(defaults: UserDefaults = .standard) -> Self {
@@ -61,6 +61,6 @@ public struct ProgressQuestionSelection: Equatable, Sendable {
     }
 
     public mutating func select(_ question: ProgressQuestion) {
-        selected = question
+        selected = question == .workoutHistory ? .strengthOverTime : question
     }
 }

@@ -22,8 +22,7 @@ extension WorkoutPlanEditor {
         .accessibilityIdentifier("editor.start")
     }
 
-    /// Start / Schedule / Suggest another, in that order. Cancel is rendered
-    /// last, below all plan content, by the editor body.
+    /// Start the reviewed draft; the sheet owns dismissal.
     @ViewBuilder var suggestedStrengthActions: some View {
         if let hooks = suggestedStrength {
             CadenceActionButton(title: String(localized: "Start this Workout"), systemImage: "play.fill") {
@@ -31,13 +30,6 @@ extension WorkoutPlanEditor {
             }
             .disabled(hooks.isRegenerating)
             .accessibilityIdentifier(SuggestedStrengthActionContract.startIdentifier)
-            CadenceActionButton(title: String(localized: "Suggest another"),
-                                systemImage: "arrow.triangle.2.circlepath",
-                                emphasis: .secondary) {
-                hooks.onSuggestAnother(plan)
-            }
-            .disabled(hooks.isRegenerating)
-            .accessibilityIdentifier(SuggestedStrengthActionContract.anotherIdentifier)
             if hooks.isRegenerating {
                 ProgressView(String(localized: "Finding another workout\u{2026}"))
                     .accessibilityIdentifier("suggestedStrength.loading")
@@ -48,17 +40,6 @@ extension WorkoutPlanEditor {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("suggestedStrength.message")
             }
-        }
-    }
-
-    /// Text-only, visually secondary, below all plan content.
-    @ViewBuilder var suggestedStrengthCancel: some View {
-        if let hooks = suggestedStrength {
-            Button(String(localized: "Cancel")) { hooks.onCancel() }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 44)
-                .accessibilityIdentifier(SuggestedStrengthActionContract.cancelIdentifier)
         }
     }
 

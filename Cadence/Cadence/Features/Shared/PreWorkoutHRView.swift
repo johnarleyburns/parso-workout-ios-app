@@ -173,8 +173,7 @@ struct PreWorkoutHRView: View {
                 } label: {
                     Text(PreWorkoutHRPresenter.continueLabel(hrState))
                         .font(.headline)
-                        .frame(maxWidth: .infinity,
-                               minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
+                        .frame(maxWidth: .infinity)
                 }
                 .cadenceGlassButton(prominent: true, tint: .green)
                 .disabled(!PreWorkoutHRPresenter.continueEnabled(hrState))
@@ -187,11 +186,9 @@ struct PreWorkoutHRView: View {
                 } label: {
                     Text("Cancel")
                         .font(.headline)
-                        .frame(maxWidth: .infinity,
-                               minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .cadenceGlassButton()
                 .accessibilityIdentifier("prehr.cancel")
             }
             .padding(.horizontal)

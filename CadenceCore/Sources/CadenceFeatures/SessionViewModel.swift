@@ -18,7 +18,7 @@ public enum SessionViewModel {
     /// bodyweight movements, where an added load may still be logged.
     public static func isNonWeighted(_ exercise: Exercise) -> Bool {
         let name = exercise.name.lowercased()
-        return name.contains("battling rope") || name.contains("glute ham raise")
+        return name.contains("mountain climber") || name.contains("battling rope") || name.contains("glute ham raise")
             || name.contains("glute-ham raise") || exercise.volumeEligible == false
     }
 
@@ -31,7 +31,7 @@ public enum SessionViewModel {
         if isNonWeighted(exercise) {
             // These movements have no external load field. Never carry a last,
             // planned, voice, or session-prescribed strength load into history.
-            return (0, false)
+            return (0, exercise.name.localizedCaseInsensitiveContains("mountain climber"))
         }
         return (
             max(0, requestedWeightKg),

@@ -73,7 +73,9 @@ public enum WatchSetCardBuilder {
                             isNonWeighted: Bool = false,
                             isLastSet: Bool = false,
                             othersRemain: Bool = false) -> WatchSetCardState {
-        let weightText = isNonWeighted ? "—" : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
+        let isBodyweightOnly = isNonWeighted && exerciseName.localizedCaseInsensitiveContains("mountain climber")
+        let weightText = isNonWeighted ? (isBodyweightOnly ? "BW" : "—")
+            : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
         let changed = isNonWeighted
             ? currentReps != prefillReps
             : abs(currentWeightKg - prefillWeightKg) > 0.001 || currentReps != prefillReps
@@ -85,7 +87,8 @@ public enum WatchSetCardBuilder {
                                          : String(localized: "Last set", bundle: .module))
                          : String(localized: "Log set", bundle: .module))
         let last = lastTime.map { last -> String in
-            let base = Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
+            let base = isBodyweightOnly ? "BW × \(last.reps)"
+                : Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
             if let rpe = last.rpe {
                 return String(localized: "Last time \(base) · RPE \(Int(rpe.rounded()))", bundle: .module)
             }
@@ -105,7 +108,7 @@ public enum WatchSetCardBuilder {
                 exerciseName: exerciseName, completedSetCount: completedWorkingSets,
                 plannedSetCount: plannedWorkingSets.count),
             weightText: weightText,
-            unitText: unit.abbreviation,
+            unitText: isNonWeighted ? "" : unit.abbreviation,
             reps: currentReps,
             lastTimeText: last,
             logTitle: logTitle,

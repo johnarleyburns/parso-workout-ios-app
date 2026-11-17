@@ -51,6 +51,7 @@ struct WorkoutPlanEditor: View {
     // their underlying core types.
     @Query(sort: \Person.name) var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
+    @State var repStructurePerformer: EditablePerformerPlan?
     @State var exercisePickerIntent: ExercisePickerIntent?
 
     @State private var restSeconds: Int
@@ -61,7 +62,6 @@ struct WorkoutPlanEditor: View {
     @State private var plateRounding: Bool
     @State private var useHR: Bool
     @State var isEditing = false
-    @State var originalPlan: EditablePlan
     @State var settingsPresented = false
     @State var historyIndex: WorkoutPlanPartnerHistory.Index?
     @State private var didResolvePartnerPlans = false
@@ -79,7 +79,6 @@ struct WorkoutPlanEditor: View {
     @State var sendToWatchSucceeded = false
     @Environment(AppModel.self) var model
     @State var suggestExerciseFailed = false
-    @State private var discardEditPresented = false
     let allowsStart: Bool
 
     init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
@@ -91,7 +90,6 @@ struct WorkoutPlanEditor: View {
         self.onStart = onStart
         self.onExcludeAndRegenerate = onExcludeAndRegenerate
         self._isEditing = State(initialValue: startInEditMode)
-        self._originalPlan = State(initialValue: plan)
         self.allowsStart = allowsStart
 
         let ws = WorkoutSettings.default
@@ -123,6 +121,8 @@ struct WorkoutPlanEditor: View {
                                           allPeople: allPeople,
                                           onRosterChanged: resolvePartnerPlans)
 
+                workoutRepStructureControls
+
                 if isEditing {
                     ForEach($plan.exercises) { $exercise in
                         WorkoutPlanExerciseSection(
@@ -153,7 +153,6 @@ struct WorkoutPlanEditor: View {
                                          performers: planVolumePerformers,
                                          performerStates: planVolumePerformerStates)
 
-                suggestedStrengthCancel
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }
@@ -182,47 +181,20 @@ struct WorkoutPlanEditor: View {
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if let hooks = suggestedStrength { hooks.onCancel() }
+                    dismiss()
+                } label: { Image(systemName: "xmark") }
+                .accessibilityLabel("Close workout plan")
+                .accessibilityIdentifier("editor.close")
+            }
             ToolbarItem(placement: .topBarTrailing) {
-                Button(isEditing ? "Done" : "Edit") {
-                    if isEditing { originalPlan = plan }
-                    withAnimation { isEditing.toggle() }
+                Button { withAnimation { isEditing.toggle() } } label: {
+                    Image(systemName: isEditing ? "list.bullet" : "pencil")
                 }
+                .accessibilityLabel(isEditing ? "Preview workout plan" : "Edit workout plan")
                 .accessibilityIdentifier("editor.edit")
-            }
-            ToolbarItem(placement: .cancellationAction) {
-                if !isEditing, suggestedStrength == nil {
-                    Button("Cancel") { dismiss() }
-                        .accessibilityIdentifier("editor.cancel")
-                }
-            }
-        }
-        .safeAreaInset(edge: .bottom) {
-            if isEditing {
-                HStack(spacing: 12) {
-                    Button("Cancel") {
-                        if plan != originalPlan {
-                            discardEditPresented = true
-                        } else {
-                            withAnimation { isEditing = false }
-                        }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("editor.cancel")
-
-                    Button("Done") {
-                        originalPlan = plan
-                        withAnimation { isEditing = false }
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("editor.save")
-                }
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.bar)
             }
         }
         .alert(sendToWatchSucceeded ? "Sent to your Watch" : "Couldn't send to Watch",
@@ -232,15 +204,6 @@ struct WorkoutPlanEditor: View {
             Text(sendToWatchSucceeded
                  ? "Open Cladiron on your Watch and start it from Sent from your phone. It leaves that list once you start it."
                  : "Cladiron couldn't reach a paired Apple Watch with the app installed. Check Settings, then try again.")
-        }
-        .alert("Discard changes?", isPresented: $discardEditPresented) {
-            Button("Discard", role: .destructive) {
-                plan = originalPlan
-                withAnimation { isEditing = false }
-            }
-            Button("Keep editing", role: .cancel) { }
-        } message: {
-            Text("Your changes to this workout plan will be lost.")
         }
         .sheet(item: $exercisePickerIntent) { intent in
             NavigationStack {
@@ -284,7 +247,7 @@ struct WorkoutPlanEditor: View {
             if isRegeneratingAfterExclusion {
                 ZStack {
                     Color.black.opacity(0.15).ignoresSafeArea()
-                    ProgressView("Rebuilding your suggested workout…")
+                    ProgressView("Rebuilding your personalized workout…")
                         .padding(20)
                         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
                 }
@@ -321,7 +284,6 @@ struct WorkoutPlanEditor: View {
                 return
             }
             plan = newPlan
-            originalPlan = newPlan
             resolvePartnerPlans()
         }
     }
@@ -338,15 +300,7 @@ struct WorkoutPlanEditor: View {
     }
 
     func saveAndStart() {
-        // Starting from edit mode (every suggested-workout plan opens this
-        // way) must commit whatever the user changed first — the same thing
-        // the explicit Save button does — rather than silently discarding
-        // it if the session that follows ever reads `originalPlan` again
-        // (e.g. a subsequent Cancel on a re-presented editor).
-        if isEditing {
-            originalPlan = plan
-            isEditing = false
-        }
+        isEditing = false
         let ws = WorkoutSettings(
             restSeconds: restSeconds,
             autoStartRest: autoStartRest,

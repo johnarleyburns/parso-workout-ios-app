@@ -52,11 +52,11 @@ struct HomeTodayRecommendationsCard: View {
 
     private func unavailableView(modality: DailyRecommendationModality) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Label(modality == .strength ? "Suggested Strength for You" : "Suggested Cardio for You",
+            Label(modality == .strength ? "Personalized Strength for You" : "Personalized Cardio for You",
                   systemImage: modality == .strength ? "dumbbell.fill" : "heart.fill")
                 .font(.caption.weight(.bold))
                 .foregroundStyle(CadenceTheme.accent)
-            Text("No \(modality.rawValue) suggestion is available right now.")
+            Text("No personalized \(modality.rawValue) workout is available right now.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }

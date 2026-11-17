@@ -226,7 +226,7 @@ struct InlineSetEditorView: View {
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
             if selectedDefault?.weightSourceText != nil || config.weightSourceText != nil {
                 CitationLink(citation: CitationRegistry.oneRMEstimation,
-                             context: String(localized: "How suggested loads are estimated"), compact: true)
+                             context: String(localized: "How personalized loads are estimated"), compact: true)
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }

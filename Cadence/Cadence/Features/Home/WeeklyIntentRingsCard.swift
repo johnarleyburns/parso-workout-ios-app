@@ -11,22 +11,22 @@ struct WeeklyIntentRingsCard: View {
     var body: some View {
         VStack(spacing: 16) {
             ZStack {
-                ring(display.strengthRing, diameter: ringDiameter, lineWidth: max(8, ringDiameter * 0.11))
-                ring(display.cardioRing, diameter: ringDiameter * 0.62, lineWidth: max(8, ringDiameter * 0.11))
+                ring(display.strengthRing, cardio: false, diameter: ringDiameter, lineWidth: max(8, ringDiameter * 0.11))
+                ring(display.cardioRing, cardio: true, diameter: ringDiameter * 0.62, lineWidth: max(8, ringDiameter * 0.11))
             }
             .frame(width: ringDiameter, height: ringDiameter)
             .accessibilityHidden(true)
             HStack(spacing: 16) {
                 legend(display.strengthRing, title: String(localized: "Strength"),
-                       identifierPrefix: "strengthRing") { tabSelection = .strength }
+                       identifierPrefix: "strengthRing", cardio: false) { tabSelection = .strength }
                 legend(display.cardioRing, title: String(localized: "Cardio"),
-                       identifierPrefix: "cardioRing") { tabSelection = .cardio }
+                       identifierPrefix: "cardioRing", cardio: true) { tabSelection = .cardio }
             }
         }
     }
 
-    private func ring(_ ring: WeeklyIntentRingDisplay, diameter: CGFloat, lineWidth: CGFloat) -> some View {
-        let color = CadenceTheme.weeklyTint(ring.tintRole)
+    private func ring(_ ring: WeeklyIntentRingDisplay, cardio: Bool, diameter: CGFloat, lineWidth: CGFloat) -> some View {
+        let color = activityColor(ring.tintRole, cardio: cardio)
         return ZStack {
             Circle().stroke(color.opacity(0.25), lineWidth: lineWidth)
             Circle().trim(from: 0, to: ring.normalizedProgress)
@@ -36,16 +36,21 @@ struct WeeklyIntentRingsCard: View {
         .frame(width: diameter, height: diameter)
     }
 
-    private func legend(_ ring: WeeklyIntentRingDisplay, title: String, identifierPrefix: String,
+    private func activityColor(_ role: WeeklySetTintRole, cardio: Bool) -> Color {
+        let rgb = WeeklyActivityPalette.color(role, cardio: cardio)
+        return Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
+    }
+
+    private func legend(_ ring: WeeklyIntentRingDisplay, title: String, identifierPrefix: String, cardio: Bool,
                         onTap: @escaping () -> Void) -> some View {
         Button(action: onTap) {
             VStack(spacing: 4) {
                 Text(title)
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(CadenceTheme.weeklyTint(ring.tintRole))
+                    .foregroundStyle(activityColor(ring.tintRole, cardio: cardio))
                 Text(ring.valueText)
                     .font(.headline.monospacedDigit())
-                    .foregroundStyle(CadenceTheme.weeklyTint(ring.tintRole))
+                    .foregroundStyle(activityColor(ring.tintRole, cardio: cardio))
                     .multilineTextAlignment(.center)
             }
             .frame(maxWidth: .infinity)

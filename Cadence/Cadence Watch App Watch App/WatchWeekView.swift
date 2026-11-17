@@ -37,9 +37,9 @@ struct WatchWeekView: View {
 
     private func ring(_ ring: WatchWeekRing, diameter: CGFloat, lineWidth: CGFloat) -> some View {
         ZStack {
-            Circle().stroke(Self.color(ring.tone).opacity(0.25), lineWidth: lineWidth)
+            Circle().stroke(Self.color(ring.tone, cardio: ring.kind == .cardio).opacity(0.25), lineWidth: lineWidth)
             Circle().trim(from: 0, to: ring.progress)
-                .stroke(Self.color(ring.tone), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(Self.color(ring.tone, cardio: ring.kind == .cardio), style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
         .frame(width: diameter, height: diameter)
@@ -47,11 +47,11 @@ struct WatchWeekView: View {
 
     private func legend(_ ring: WatchWeekRing, unit: String, title: String) -> some View {
         VStack(spacing: 0) {
-            Text(title).font(.caption2.weight(.semibold)).foregroundStyle(Self.color(ring.tone))
+            Text(title).font(.caption2.weight(.semibold)).foregroundStyle(Self.color(ring.tone, cardio: ring.kind == .cardio))
             Text("\(ring.displayValue)").font(.system(.title3, design: .rounded).weight(.bold))
                 .monospacedDigit()
-                .foregroundStyle(Self.color(ring.tone))
-            Text(unit).font(.caption2).foregroundStyle(Self.color(ring.tone))
+                .foregroundStyle(Self.color(ring.tone, cardio: ring.kind == .cardio))
+            Text(unit).font(.caption2).foregroundStyle(Self.color(ring.tone, cardio: ring.kind == .cardio))
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .ignore)
@@ -59,13 +59,15 @@ struct WatchWeekView: View {
         .accessibilityValue(Text(Self.toneText(ring.tone)))
     }
 
-    static func color(_ tone: WatchWeekRingTone) -> Color {
-        switch tone {
+    static func color(_ tone: WatchWeekRingTone, cardio: Bool = false) -> Color {
+        let role: WeeklySetTintRole = switch tone {
         case .red: .red
         case .yellow: .yellow
-        case .lightGreen: Color(red: 0.56, green: 0.85, blue: 0.40)
-        case .green: Color(red: 0.10, green: 0.55, blue: 0.22)
+        case .lightGreen: .lightGreen
+        case .green: .green
         }
+        let rgb = WeeklyActivityPalette.color(role, cardio: cardio)
+        return Color(red: rgb.red, green: rgb.green, blue: rgb.blue)
     }
 
     static func toneText(_ tone: WatchWeekRingTone) -> String {

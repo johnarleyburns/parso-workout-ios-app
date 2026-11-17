@@ -52,7 +52,7 @@ extension HomeView {
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
         guard request.failureMessage == nil else {
-            strengthRequestState = .failed(request.failureMessage ?? String(localized: "Couldn't generate a suggestion."))
+            strengthRequestState = .failed(request.failureMessage ?? String(localized: "Couldn't generate a personalized workout."))
             return
         }
         // Stable semantic fingerprint: never the view refresh token or task ids.
@@ -116,7 +116,7 @@ extension HomeView {
         }
     }
 
-    /// "Suggest Another": replaces Today's strength suggestion with a different
+    /// "Suggest Another": replaces Today's personalized strength workout with a different
     /// workout by excluding the exercises of the one currently shown.
     func suggestAnotherTodayStrength() {
         guard let shown = todaySuggestedPlan else { return }
@@ -176,7 +176,7 @@ struct WatchCoachRefreshModifier: ViewModifier {
     }
 }
 
-/// Watch `request_settings_sync` → regenerate the cardio suggestion.
+/// Watch `request_settings_sync` → regenerate the personalized cardio workout.
 struct WatchCardioRefreshModifier: ViewModifier {
     let action: () -> Void
     func body(content: Content) -> some View {

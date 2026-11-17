@@ -37,7 +37,7 @@ struct WatchCardioSuggestReviewView: View {
                     .tint(.green)
                     .disabled(watchManager.isActive)
                     .accessibilityIdentifier("watchCardio.suggest.start")
-                    .accessibilityHint("Starts a new cardio workout from the suggestion")
+                    .accessibilityHint("Starts a new cardio workout from the personalized workout")
                 }
             case .needsSync(let reason, let lastSyncedAt):
                 Section {
@@ -58,10 +58,10 @@ struct WatchCardioSuggestReviewView: View {
                         Label("Sync now", systemImage: "arrow.triangle.2.circlepath").frame(minHeight: 44)
                     }
                     .accessibilityIdentifier("watchCardio.suggest.syncNow")
-                    .accessibilityHint("Asks iPhone for a fresh cardio suggestion")
+                    .accessibilityHint("Asks iPhone for a fresh personalized cardio workout")
                 }
             }
         }
-        .navigationTitle("Suggest")
+        .navigationTitle("Personalized")
     }
 }

@@ -6,93 +6,38 @@ import CadenceFeatures
 /// Suggest: evaluates only the exact shared Coach snapshot; starting is an explicit action.
 struct WatchSuggestReviewView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
-    @State private var launch: WatchLiftLaunch?
     @State private var cache = WatchSuggestResolutionCache()
 
     var body: some View {
         let availability = cache.resolve(envelope: watchManager.coachSuggestionEnvelope,
                                          now: watchManager.coachClock(),
                                          historyState: watchManager.coachHistoryState)
-        List {
-            switch availability {
-            case .ready(let ready, _, _):
-                let review = WatchSuggestReview(launch: ready)
-                Section {
-                    Text(review.title).font(.headline)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(WatchSuggestResolver.readyAccessibilityLabel)
-                .accessibilityIdentifier("watchStrength.suggest.ready")
-                Section("Exercises") {
-                    ForEach(Array(review.exerciseLines.enumerated()), id: \.offset) { index, line in
-                        HStack {
-                            Text(line).font(.caption)
-                            Spacer()
-                            if ready.exerciseNames.indices.contains(index) {
-                                NavigationLink {
-                                    WatchSuggestedExerciseInfoView(name: ready.exerciseNames[index])
-                                } label: { Image(systemName: "info.circle") }
-                                .accessibilityLabel("Exercise details")
-                            }
+        Group {
+            if case .ready(let ready, _, _) = availability {
+                WatchStrengthPreview(launch: ready)
+            } else if case .needsSync(let reason, let lastSyncedAt) = availability {
+                List {
+                    Section {
+                        Label("Needs refresh", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
+                            .font(.headline)
+                        Text(reason.message).font(.footnote)
+                        if let lastSyncedAt {
+                            Text("Last synced \(lastSyncedAt.formatted(date: .abbreviated, time: .shortened))")
+                                .font(.caption2).foregroundStyle(.secondary)
                         }
                     }
-                    if WatchSuggestReadyPresentation.showsSupplementalDetail(review.supplementalDetail) {
-                        Text(review.supplementalDetail).font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                Section {
-                    if let message = WatchSuggestReadyPresentation.activeWorkoutMessage(workoutActive: watchManager.isActive) {
-                        Text(message)
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                    Button {
-                        WatchHaptics.success()
-                        launch = ready
-                    } label: {
-                        Label(WatchSuggestReadyPresentation.startTitle, systemImage: "play.fill")
-                            .frame(minHeight: 44)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .disabled(WatchSuggestReadyPresentation.isStartDisabled(workoutActive: watchManager.isActive))
-                    .accessibilityIdentifier("watchStrength.suggest.start")
-                    .accessibilityHint("Creates a new workout from the suggestion")
-                }
-            case .needsSync(let reason, let lastSyncedAt):
-                Section {
-                    Label("Needs refresh", systemImage: "exclamationmark.arrow.triangle.2.circlepath")
-                        .font(.headline)
-                    Text(reason.message).font(.footnote)
-                    if let lastSyncedAt {
-                        Text("Last synced \(lastSyncedAt.formatted(date: .abbreviated, time: .shortened))")
-                            .font(.caption2).foregroundStyle(.secondary)
-                    }
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(reason.accessibilityLabel)
-                .accessibilityIdentifier("watchStrength.suggest.needsSync")
-                Section {
-                    Button {
-                        watchManager.requestSettingsSync()
-                    } label: {
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(reason.accessibilityLabel)
+                    .accessibilityIdentifier("watchStrength.suggest.needsSync")
+                    Button { watchManager.requestSettingsSync() } label: {
                         Label("Sync now", systemImage: "arrow.triangle.2.circlepath")
-                            .frame(minHeight: 44)
                     }
                     .accessibilityIdentifier("watchStrength.suggest.syncNow")
-                    .accessibilityHint("Asks iPhone for a fresh suggestion")
+                    .accessibilityHint("Asks iPhone for a fresh personalized workout")
                 }
             }
         }
-        .navigationTitle("Suggest")
-        .onChange(of: availability) { _, new in
-            if new.launch == nil { launch = nil }
-        }
-        .navigationDestination(isPresented: Binding(get: { launch != nil }, set: { if !$0 { launch = nil } })) {
-            if let config = launch {
-                WatchStrengthView(title: config.title, plannedExerciseNames: config.exerciseNames,
-                                  repLadder: config.repLadder, planPayload: config.planPayload)
-            }
-        }
+        .navigationTitle("Personalized")
     }
 }
 
@@ -133,44 +78,8 @@ struct WatchPreviousListView: View {
 }
 
 private struct WatchPreviousDetailView: View {
-    @Environment(WatchWorkoutManager.self) private var watchManager
     let workout: WatchPreviousWorkout
-    @State private var launch: WatchLiftLaunch?
-
     var body: some View {
-        List {
-            Section {
-                Text("Starts a new workout from this template. Your original workout is not changed.")
-                    .font(.caption2).foregroundStyle(.secondary)
-            }
-            Section("Exercises") {
-                ForEach(Array(workout.structureLines.enumerated()), id: \.offset) { _, line in
-                    Text(line).font(.caption)
-                }
-            }
-            Section {
-                if watchManager.isActive {
-                    Text("Finish or resume your current workout first.")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-                Button {
-                    WatchHaptics.success()
-                    launch = workout.launch
-                } label: {
-                    Label("Start new workout", systemImage: "play.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(watchManager.isActive)
-                .accessibilityIdentifier("watchStrength.previous.start")
-                .accessibilityHint("Creates a new workout from this template")
-            }
-        }
-        .navigationTitle(workout.title)
-        .navigationDestination(isPresented: Binding(get: { launch != nil }, set: { if !$0 { launch = nil } })) {
-            if let config = launch {
-            WatchStrengthView(title: config.title, plannedExerciseNames: config.exerciseNames,
-                              repLadder: config.repLadder, planPayload: config.planPayload)
-            }
-        }
+        WatchStrengthPreview(launch: workout.launch)
     }
 }

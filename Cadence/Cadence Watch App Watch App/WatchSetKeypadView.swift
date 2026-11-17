@@ -5,8 +5,8 @@ import CadenceFeatures
 
 /// Watch redesign §5 S1–S5 — the Set Card. Replaces the 12-control scrolling keypad: two big
 /// pre-filled numbers, exercise progress, one button. The Crown adjusts the outlined number (weight by
-/// default, D-W4); Double Tap logs. Everything rare —
-/// warm-up, plate step, this workout's sets, Last set — is one level down in More.
+/// default, D-W4); Double Tap logs. The "…" at the top opens RPE entry directly; the bottom bar's
+/// − / + step the focused number by the same amount the Crown does.
 struct WatchSetKeypadView: View {
     @Bindable var bindableModel: WatchStrengthFlowModel
     var model: WatchStrengthFlowModel { bindableModel }
@@ -14,9 +14,6 @@ struct WatchSetKeypadView: View {
     @Environment(\.isLuminanceReduced) private var isLuminanceReduced
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var focus: WatchSetCardField = .weight
-    /// The initial step is a common smallest practical plate. People can change it in More;
-    /// both the Crown and visible buttons always use this same step.
-    @State private var weightStep: Double
     @State private var showingMore = false
     @State private var showingLifters = false
     @State private var isLogging = false
@@ -24,7 +21,6 @@ struct WatchSetKeypadView: View {
 
     init(model: WatchStrengthFlowModel) {
         self.bindableModel = model
-        self._weightStep = State(initialValue: model.unit == .pounds ? 5 : 2.5)
     }
 
     private var increment: WeightIncrement { WeightIncrement(unit: model.unit) }
@@ -89,10 +85,34 @@ struct WatchSetKeypadView: View {
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
                                   by: WatchSetCardMetricLayout.crownStep(weightFocused: focus == .weight,
-                                                                       nonWeighted: card.isNonWeighted, weightStep: weightStep),
+                                                                       nonWeighted: card.isNonWeighted),
                                   sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: true)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button { showingMore = true } label: {
+                        Image(systemName: "ellipsis")
+                    }
+                    .accessibilityLabel(Text("More"))
+                    .accessibilityIdentifier("watchSet.more")
+                }
+                ToolbarItemGroup(placement: .bottomBar) {
+                    let isWeight = focus == .weight && !card.isNonWeighted
+                    let amount = isWeight ? WatchSetCardMetricLayout.weightStep : 1
+                    Button { adjustFocusedValue(by: -amount) } label: {
+                        Image(systemName: "minus")
+                    }
+                    .accessibilityLabel("Subtract \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
+                    .accessibilityIdentifier(isWeight ? "watchWeight.minus" : "watchReps.minus")
+                    Spacer()
+                    Button { adjustFocusedValue(by: amount) } label: {
+                        Image(systemName: "plus")
+                    }
+                    .accessibilityLabel("Add \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
+                    .accessibilityIdentifier(isWeight ? "watchWeight.plus" : "watchReps.plus")
+                }
+            }
             .sheet(isPresented: $showingMore) {
-                NavigationStack { WatchSetMoreView(model: model, weightStep: $weightStep) }
+                NavigationStack { WatchRPEPickerSheet(onSelect: selectRPE) }
             }
             .sheet(isPresented: $showingLifters) {
                 NavigationStack { WatchPartnersView(model: model) }
@@ -117,59 +137,23 @@ struct WatchSetKeypadView: View {
                                     onFocus: { focus = .reps })
             .accessibilityIdentifier("watchReps.current")
         if card.isNonWeighted {
-            VStack(spacing: 4) {
-                HStack(spacing: 4) {
-                    Text("Non-\nWeighted")
-                        .font(.caption2.weight(.semibold))
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.5)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .accessibilityLabel("Non-weighted movement")
-                        .accessibilityIdentifier("watchSet.nonWeighted")
-                    reps
-                }
-                adjustmentControls(card)
+            HStack(spacing: 4) {
+                Text(card.weightText == "BW" ? "BW" : "Non-\nWeighted")
+                    .font(.caption2.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.5)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .accessibilityLabel(card.weightText == "BW" ? "Bodyweight, no external load" : "Non-weighted movement")
+                    .accessibilityIdentifier("watchSet.nonWeighted")
+                reps
             }
         } else if WatchSetCardMetricLayout.fields(isAccessibilitySize: dynamicTypeSize >= .accessibility1) == .stacked {
-            VStack(spacing: 4) { weight; reps; adjustmentControls(card) }
+            VStack(spacing: 4) { weight; reps }
         } else {
-            VStack(spacing: 4) { HStack(spacing: 4) { weight; reps }; adjustmentControls(card) }
+            HStack(spacing: 4) { weight; reps }
         }
-    }
-
-    /// Apple advises backing a Crown interaction with touch controls. This is deliberately shown
-    /// on the Set Card rather than hidden in More, and changes exactly the focused Crown value.
-    @ViewBuilder
-    private func adjustmentControls(_ card: WatchSetCardState) -> some View {
-        let isWeight = focus == .weight && !card.isNonWeighted
-        let amount = isWeight ? weightStep : 1
-        HStack(spacing: WatchSetCardAdjustmentLayout.horizontalSpacing) {
-            Button { adjustFocusedValue(by: -amount) } label: {
-                Text("−\(stepText(amount))")
-                    .frame(maxWidth: .infinity, minHeight: WatchSetCardAdjustmentLayout.controlMinHeight)
-            }
-            .accessibilityLabel("Subtract \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
-            .accessibilityIdentifier(isWeight ? "watchWeight.minus" : "watchReps.minus")
-
-            Button { showingMore = true } label: {
-                Image(systemName: "ellipsis")
-                    .frame(minWidth: 32, minHeight: WatchSetCardAdjustmentLayout.controlMinHeight)
-            }
-            .fixedSize(horizontal: true, vertical: false)
-            .contentShape(Rectangle())
-            .accessibilityLabel(Text("More"))
-            .accessibilityIdentifier("watchSet.more")
-
-            Button { adjustFocusedValue(by: amount) } label: {
-                Text("+\(stepText(amount))")
-                    .frame(maxWidth: .infinity, minHeight: WatchSetCardAdjustmentLayout.controlMinHeight)
-            }
-            .accessibilityLabel("Add \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
-            .accessibilityIdentifier(isWeight ? "watchWeight.plus" : "watchReps.plus")
-        }
-        .buttonStyle(.bordered)
     }
 
     private func adjustFocusedValue(by amount: Double) {
@@ -186,6 +170,16 @@ struct WatchSetKeypadView: View {
         value == value.rounded() ? String(format: "%.0f", value) : String(format: "%.1f", value)
     }
 
+    private func selectRPE(_ choice: Int?) {
+        WatchHaptics.tap()
+        var mode = model.effortMode
+        var value = model.effortValue
+        WatchRPESelection.apply(choice, mode: &mode, value: &value)
+        model.effortMode = mode
+        model.effortValue = value
+        showingMore = false
+    }
+
     private var crownBinding: Binding<Double> {
         focus == .weight && !isCurrentExerciseNonWeighted
             ? $bindableModel.currentWeightDisplay
@@ -200,8 +194,6 @@ struct WatchSetKeypadView: View {
         guard case .keypad(let exercise) = model.stage else { return false }
         return SessionViewModel.isNonWeighted(exercise)
     }
-
-    // MARK: Effort + More
 
     // MARK: Log (tap / Double Tap)
 
@@ -230,137 +222,6 @@ struct WatchSetKeypadView: View {
                 WatchSyncSender.send(payload)
             }
             isLogging = false
-        }
-    }
-}
-
-struct WatchSetMoreView: View {
-    @Bindable var model: WatchStrengthFlowModel
-    @Binding var weightStep: Double
-    @Environment(\.dismiss) private var dismiss
-    @State private var confirmRemove = false
-    @State private var showingExactWeight = false
-    @State private var showingExactReps = false
-    @State private var showingRPEPicker = false
-    var body: some View {
-        List {
-            WatchSetDetailsSection(model: model, showingRPEPicker: $showingRPEPicker)
-            Toggle(isOn: Binding(get: { model.isWarmupSet }, set: { if $0 != model.isWarmupSet { model.toggleWarmup() } })) {
-                Label("Warm-up set", systemImage: "flame.fill")
-            }
-            .accessibilityIdentifier("watchSet.warmup")
-            if !isCurrentExerciseNonWeighted {
-                WatchWeightAdjustSection(value: $model.currentWeightDisplay, unit: model.unit, plate: $weightStep)
-            }
-            WatchRepsAdjustSection(value: $model.currentReps)
-            Section("Exact value") {
-                if !isCurrentExerciseNonWeighted {
-                    Button("Enter exact weight") { showingExactWeight = true }
-                        .accessibilityIdentifier("watchWeight.exactEntry")
-                }
-                Button("Enter exact reps") { showingExactReps = true }
-                    .accessibilityIdentifier("watchReps.exactEntry")
-            }
-            if !model.currentWorkoutHistoryLines.isEmpty {
-                Section("This workout") {
-                    ForEach(model.currentWorkoutHistoryLines) { line in
-                        HStack {
-                            Text(verbatim: "\(line.label)  \(line.weightText) × \(line.reps)").monospacedDigit()
-                            Spacer()
-                            if let setID = line.setID {
-                                Button(role: .destructive) {
-                                    WatchHaptics.delete()
-                                    if let payload = model.deleteSet(id: setID) { WatchSyncSender.send(payload) }
-                                } label: { Image(systemName: "trash") }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(Text("Delete set \(line.label)"))
-                                .accessibilityIdentifier("watchSet.delete.\(line.label)")
-                            }
-                        }
-                        .font(.footnote)
-                    }
-                }
-            }
-            Section {
-                Button {
-                    WatchHaptics.success()
-                    if model.logLastSet() != nil, let payload = model.lastSyncPayload { WatchSyncSender.send(payload) }
-                    dismiss()
-                } label: {
-                    Label("Log as last set", systemImage: "flag.checkered")
-                }
-                .accessibilityIdentifier("lastSetButton")
-            }
-            if case .keypad(let exercise) = model.stage {
-                Section {
-                    Button(role: .destructive) { confirmRemove = true } label: {
-                        Label("Remove exercise", systemImage: "trash")
-                    }
-                    .accessibilityIdentifier("watchStrength.deleteExercise.\(exercise.name)")
-                }
-            }
-        }
-        .navigationTitle("More")
-        .sheet(isPresented: $showingRPEPicker) { WatchRPEPickerSheet(onSelect: selectRPE) }
-        .sheet(isPresented: $showingExactWeight) {
-            WatchNumericEntrySheet(field: .weight, initial: "", title: Text("Enter weight in \(model.unit.abbreviation)")) { raw in
-                applyExactWeight(raw)
-            }
-        }
-        .sheet(isPresented: $showingExactReps) {
-            WatchNumericEntrySheet(field: .reps, initial: "", title: Text("Enter reps")) { raw in
-                applyExactReps(raw)
-            }
-        }
-        .alert("Remove \(removableExercise?.name ?? "")?", isPresented: $confirmRemove, presenting: removableExercise) { exercise in
-            Button("Remove", role: .destructive) {
-                WatchHaptics.delete()
-                dismiss()
-                if let payload = model.deleteExercise(exercise) { WatchSyncSender.send(payload) }
-                model.goBackToHome()
-            }
-            .accessibilityIdentifier("watchStrength.deleteExercise.confirm")
-            Button("Keep", role: .cancel) {}
-        } message: { _ in
-            Text("Its sets in this workout are removed too.")
-        }
-    }
-
-}
-
-private extension WatchSetMoreView {
-    var isCurrentExerciseNonWeighted: Bool {
-        guard case .keypad(let exercise) = model.stage else { return false }
-        return SessionViewModel.isNonWeighted(exercise)
-    }
-
-    var removableExercise: Exercise? {
-        guard case .keypad(let exercise) = model.stage else { return nil }
-        return exercise
-    }
-
-    func selectRPE(_ choice: Int?) {
-        WatchHaptics.tap()
-        var mode = model.effortMode
-        var value = model.effortValue
-        WatchRPESelection.apply(choice, mode: &mode, value: &value)
-        model.effortMode = mode
-        model.effortValue = value
-        showingRPEPicker = false
-    }
-
-    func applyExactWeight(_ raw: String) {
-        let increment = WeightIncrement(unit: model.unit)
-        if case .success(let value) = WatchSetEntryParser.weight(raw, unit: model.unit, range: increment.range) {
-            model.currentWeightDisplay = value
-            WatchHaptics.success()
-        }
-    }
-
-    func applyExactReps(_ raw: String) {
-        if case .success(let value) = WatchSetEntryParser.reps(raw) {
-            model.currentReps = Double(value)
-            WatchHaptics.success()
         }
     }
 }

@@ -70,7 +70,7 @@ public struct WatchSetDefaultSnapshotBuilder {
                 exerciseLadders[pid, default: [:]][key, default: []].append(set.reps)
                 if set.weight.isFinite, set.weight > 0 {
                     performers[pid]!.exercises[key]!.samples.append(
-                        .init(weightKg: set.weight, reps: set.reps))
+                        .init(weightKg: set.weight, reps: set.reps, completedAt: set.completedAt))
                 }
             }
             for (pid, ladder) in sessionLadders { performers[pid]!.general.append(ladder) }

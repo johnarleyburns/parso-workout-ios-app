@@ -80,6 +80,21 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertEqual(m.currentWeight, 0)
     }
 
+    func testMountainClimbersShowBWAndNeverLogAnExternalLoad() throws {
+        let model = makeModel()
+        model.start(title: "Bodyweight", plannedExerciseNames: ["Mountain Climbers"], createSession: true)
+        let exercise = try XCTUnwrap(model.exerciseList.first?.exercise)
+        model.startLogSet(for: exercise)
+        let card = try XCTUnwrap(model.setCardState)
+        XCTAssertTrue(card.isNonWeighted)
+        XCTAssertEqual(card.weightText, "BW")
+        // Even stale imported/planned weights cannot leak into the saved set.
+        model.currentWeight = 20
+        let set = try XCTUnwrap(model.logSet())
+        XCTAssertEqual(set.weight, 0)
+        XCTAssertEqual(set.usesBodyweight, true)
+    }
+
     func testLoggedSetContextIsFrozenBeforeRestAdvancesToNextExercise() {
         let m = makeModel()
         m.start(title: "Test", plannedExerciseNames: ["Bench Press", "Squat"], createSession: true)
@@ -775,7 +790,13 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertTrue(hint!.contains("Previous:"))
     }
 
-    func testDefaultRepsUsePriorWorkingLadderAndIgnoreWarmups() {
+    /// `lastPriorWorkingSet` now beats the rep-pattern ladder guess for a
+    /// plan-less session (see `PerformerSetPlannerTests
+    /// .testLastPriorWorkingSetBeatsRepPatternAndEstimatedLoadWithoutPlan` /
+    /// `.testExtraSetBeyondPlanReturnsToHistory`): every set defaults to the
+    /// exact last working set (70 kg x 8), not the historical ladder
+    /// (12, 10, 8). The warmup set is still excluded from that pick.
+    func testDefaultRepsUseLastPriorWorkingSetIgnoringWarmups() {
         let ex = simpleExercise(named: "Ladder Press")
         let prior = try! WorkoutRepository.createSession(title: "Last",
                                                          date: Date(timeIntervalSince1970: 100),
@@ -788,12 +809,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let m = makeModel()
         m.start(createSession: true)
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 12)
+        XCTAssertEqual(Int(m.currentReps), 8)
 
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 10)
+        XCTAssertEqual(Int(m.currentReps), 8)
     }
 
     func testSetHistoryLinesShowPriorAndCurrentWorkoutSets() {
@@ -1020,14 +1041,14 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         XCTAssertFalse(m.hasOutstandingWorkingSet(for: ex, performerIndex: 1))
     }
 
-    func testSetCardNextLifterSkipsCompletedAndSaysLastSetForYou() {
+    func testSetCardNextLifterSkipsCompleted() {
         let (m, exs) = plannedPartnerModel(counts: [2, 1, 2])
         for _ in 0..<3 { logNormal(m, exs[0]); m.finishRest() }   // Me1, P1, P2(1)
         // Selected: Me (2nd set, last for Me); Partner 1 is complete, Partner 2 remains.
         XCTAssertEqual(m.currentPerformerIndex, 0)
         let card = m.setCardState
         XCTAssertEqual(card?.lifterText, "Me · then Partner 2")
-        XCTAssertEqual(card?.logTitle, "Last set for you")
+        XCTAssertEqual(card?.logTitle, "Log set", "the primary action always reads \"Log set\"")
     }
 
     func testManualSelectionDoesNotOrphanPlannedPerformer() {

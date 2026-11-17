@@ -21,7 +21,7 @@ extension WorkoutPlanEditor {
         }
     }
 
-    private func rosterMembers() -> [PartnerPlanResolver.RosterMember] {
+    func rosterMembers() -> [PartnerPlanResolver.RosterMember] {
         let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let ordered = plan.partnerIDs.compactMap { id -> PartnerPlanResolver.RosterMember? in
             guard let person = peopleByID[id] else { return nil }

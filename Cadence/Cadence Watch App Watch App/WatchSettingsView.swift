@@ -76,10 +76,10 @@ struct WatchCardioPickerView: View {
                 NavigationLink {
                     WatchCardioSuggestReviewView(onStart: onSuggest)
                 } label: {
-                    Label("Suggest", systemImage: "sparkles")
+                    Label("Personalized", systemImage: "sparkles")
                 }
                 .accessibilityIdentifier("watchCardio.suggest")
-                .accessibilityHint("Shows the cardio suggestion from your iPhone")
+                .accessibilityHint("Shows the personalized cardio workout from your iPhone")
             }
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                 // Buttons, not NavigationLinks: several links in one List row activate together.

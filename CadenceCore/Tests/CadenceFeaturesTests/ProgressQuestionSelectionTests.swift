@@ -18,17 +18,14 @@ final class ProgressQuestionSelectionTests: XCTestCase {
 
     func testAlphabeticalContainsEveryCaseExactlyOnce() {
         let list = ProgressQuestion.alphabetical
-        XCTAssertEqual(list.count, ProgressQuestion.allCases.count)
-        XCTAssertEqual(Set(list), Set(ProgressQuestion.allCases))
+        XCTAssertEqual(list.count, ProgressQuestion.allCases.count - 1)
+        XCTAssertEqual(Set(list), Set(ProgressQuestion.allCases.filter { $0 != .workoutHistory }))
         XCTAssertTrue(list.contains(.observations))
     }
 
-    func testMyWorkoutsImmediatelyPrecedesObservations() throws {
-        let list = ProgressQuestion.alphabetical
-        let i = try XCTUnwrap(list.firstIndex(of: .workoutHistory))
-        XCTAssertEqual(list[i + 1], .observations)
-        XCTAssertEqual(ProgressQuestion.workoutHistory.displayName, "My Workouts")
-        XCTAssertEqual(ProgressQuestion.observations.displayName, "Observations")
+    func testHistoryLivesOutsideProgress() {
+        XCTAssertFalse(ProgressQuestion.alphabetical.contains(.workoutHistory))
+        XCTAssertEqual(ProgressQuestionSelection(selected: .workoutHistory).selected, .strengthOverTime)
     }
 
     func testAlphabeticalIsLocalizedLabelSorted() {
@@ -41,7 +38,7 @@ final class ProgressQuestionSelectionTests: XCTestCase {
         let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
-        for (raw, expected) in [("workoutHistory", ProgressQuestion.workoutHistory),
+        for (raw, expected) in [("workoutHistory", ProgressQuestion.strengthOverTime),
                                 ("observations", .observations),
                                 ("bogus", .strengthOverTime)] {
             defaults.set(raw, forKey: ProgressQuestionSelection.persistenceKey)
@@ -69,7 +66,7 @@ final class ProgressQuestionSelectionTests: XCTestCase {
     func testSelectingHistoryKeepsPickerStateStable() {
         var selection = ProgressQuestionSelection(selected: .tests)
         selection.select(.workoutHistory)
-        XCTAssertEqual(selection.selected, .workoutHistory)
+        XCTAssertEqual(selection.selected, .strengthOverTime)
         selection.select(.tests)
         XCTAssertEqual(selection.selected, .tests)
     }

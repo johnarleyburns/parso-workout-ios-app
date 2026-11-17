@@ -30,6 +30,7 @@ struct WatchRootView: View {
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
     @State private var showingCardio = false
+    @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
     private let launchRequests = WatchLaunchRequests.shared
 
     init(arguments: [String] = ProcessInfo.processInfo.arguments) {
@@ -187,12 +188,15 @@ struct WatchRootView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
             } else {
-                WatchHomeStartControls(cardioDestination: { AnyView(cardioSetupView(for: $0)) })
+                WatchHomeStartControls(selection: $homeSelection)
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
             }
         }
         .listStyle(.plain)
+        .modifier(WatchHomeStartNavigation(selection: $homeSelection,
+            showsModeButtons: resumableStrengthSession == nil,
+            cardioDestination: { AnyView(cardioSetupView(for: $0)) }))
     }
 
     private var presentation: WatchTodayHomePresentation { WatchTodayHomePresentation(hero: hero) }

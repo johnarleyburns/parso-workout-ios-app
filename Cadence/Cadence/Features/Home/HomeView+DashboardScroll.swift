@@ -34,8 +34,15 @@ extension HomeView {
                 }
                 .id("week.top")
                 .padding(.horizontal)
-                .padding(.top, 4)
+                .padding(.top, 20)
                 .padding(.bottom)
+            }
+            .safeAreaInset(edge: .bottom) {
+                if surface == .today, resumeSession == nil {
+                    workoutStartControls
+                        .padding(.horizontal)
+                        .padding(.vertical, 16)
+                }
             }
             .background { CadenceGlassBackdrop(tint: .green) }
             .navigationTitle(surface.title)
@@ -55,6 +62,13 @@ extension HomeView {
                 // Settings is no longer a bottom tab; Today owns the single
                 // entry point, shown only on the Today surface.
                 if surface == .today {
+                    ToolbarItem(placement: .topBarLeading) {
+                        Button { path.append(HomeRoute.history) } label: {
+                            Image(systemName: "clock.arrow.circlepath")
+                        }
+                        .accessibilityLabel("Workout history")
+                        .accessibilityIdentifier("home.history")
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         Button {
                             Haptics.selection()

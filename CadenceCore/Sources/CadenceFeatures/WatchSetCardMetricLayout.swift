@@ -17,7 +17,12 @@ public enum WatchSetCardMetricLayout: Equatable, Sendable {
         isAccessibilitySize ? .stacked : .twoColumns
     }
 
-    public static func crownStep(weightFocused: Bool, nonWeighted: Bool, weightStep: Double) -> Double {
+    /// The Crown's weight detent: a fixed 0.5 (either unit) so entry is a true
+    /// decimal scroll rather than snapping to a plate-sized jump (field report:
+    /// the former 5 lb/2.5 kg "plate step" made small corrections impossible).
+    public static let weightStep: Double = 0.5
+
+    public static func crownStep(weightFocused: Bool, nonWeighted: Bool) -> Double {
         weightFocused && !nonWeighted ? weightStep : 1
     }
 }

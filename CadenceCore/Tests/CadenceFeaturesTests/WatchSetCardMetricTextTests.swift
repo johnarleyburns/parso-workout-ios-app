@@ -8,9 +8,13 @@ import CadenceCore
 /// rules remain headlessly testable.
 @Suite struct WatchSetCardMetricTextTests {
     @Test func nonWeightedCrownAlwaysUsesOneRepSteps() {
-        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: true, weightStep: 5) == 1)
-        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: false, weightStep: 5) == 5)
-        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: false, nonWeighted: false, weightStep: 5) == 1)
+        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: true) == 1)
+        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: false, nonWeighted: false) == 1)
+    }
+
+    @Test func weightCrownLocksToAHalfUnitDecimalStepNotAPlateJump() {
+        #expect(WatchSetCardMetricLayout.weightStep == 0.5)
+        #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: false) == 0.5)
     }
     private func card(lbs: Double, reps: Int) -> WatchSetCardState {
         WatchSetCardBuilder.make(

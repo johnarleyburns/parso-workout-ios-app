@@ -46,9 +46,10 @@ struct HomeWorkoutStartControls: View {
                 }
             } label: {
                 Label("Start Workout", systemImage: "activity.exercise")
-                    .cadenceActionLabel(alignment: .center)
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
             }
-            .cadenceGlassButton(prominent: true, tint: CadenceTheme.accent)
+            .cadenceGlassButton(prominent: true, tint: Color(red: 0.08, green: 0.38, blue: 0.16))
             .accessibilityIdentifier("home.start.workout")
         }
         .glassGroup(spacing: 12)
@@ -79,6 +80,7 @@ struct HomeWorkoutStartControls: View {
 
     private func sourceLabel(_ title: String) -> some View {
         HStack(spacing: 12) {
+            Image(systemName: selection.symbol)
             Text(LocalizedStringKey(title))
                 .frame(maxWidth: .infinity, alignment: .leading)
             Image(systemName: "chevron.up.chevron.down")
@@ -94,6 +96,7 @@ struct HomeWorkoutStartControls: View {
 }
 
 struct HomePreviousStrengthWorkouts: View {
+    @State private var selectedPlan: EditablePlan?
     let onStart: (EditablePlan) -> Void
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     var body: some View {
@@ -101,9 +104,7 @@ struct HomePreviousStrengthWorkouts: View {
             let previous = Array(sessions.lazy.filter(\.countsAsStrengthHistory).prefix(20))
             if previous.isEmpty { Text("No previous strength workouts yet.") }
             ForEach(previous) { session in
-                NavigationLink {
-                    WorkoutPlanEditor(plan: .from(session: session), onStart: onStart)
-                } label: {
+                Button { selectedPlan = .from(session: session) } label: {
                     VStack(alignment: .leading) {
                         Text(session.title.isEmpty ? "Workout" : session.title)
                         Text(session.date.formatted(date: .abbreviated, time: .omitted)).font(.caption)
@@ -111,6 +112,11 @@ struct HomePreviousStrengthWorkouts: View {
                 }
             }
         }
-        .navigationTitle("Previous")
+        .navigationTitle("Repeat Lifts")
+        .sheet(item: $selectedPlan) { plan in
+            NavigationStack {
+                WorkoutPlanEditor(plan: plan, onStart: onStart)
+            }
+        }
     }
 }

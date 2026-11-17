@@ -10,7 +10,7 @@ final class WatchLiftSourcesTests: XCTestCase {
     }
 
     func testMenuOrder() {
-        XCTAssertEqual(WatchLiftSources.menuOrder.map(\.title), ["Suggest", "Previous", "Custom"])
+        XCTAssertEqual(WatchLiftSources.menuOrder.map(\.title), ["Personalized", "Previous", "Custom"])
         XCTAssertEqual(WatchLiftSources.Source.suggest.accessibilityIdentifier, "watchStrength.suggest")
         XCTAssertEqual(WatchLiftSources.menuTitle, "Lift")
     }

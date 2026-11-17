@@ -38,7 +38,7 @@ struct WatchStrengthHomeView: View {
 
     private var planList: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(model.session?.title ?? String(localized: "Plan"))
+            Text("Exercises")
                 .font(.footnote.weight(.semibold))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -95,7 +95,7 @@ struct WatchStrengthHomeView: View {
                 WatchHaptics.tap()
                 showingSuggestion = true
             } label: {
-                Label("Suggest exercise", systemImage: "wand.and.stars")
+                Label("Suggest", systemImage: "wand.and.stars")
             }
             .accessibilityIdentifier("watchStrength.suggestExercise")
             .accessibilityHint("Finds an exercise suited to this workout")

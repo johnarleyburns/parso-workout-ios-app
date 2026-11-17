@@ -413,6 +413,8 @@ public final class WatchStrengthFlowModel {
             ?? pendingExercises.contains(where: matches)
         guard !present else { return .alreadyPresent(name: resolved) }
 
+        let prescription = prescription
+            ?? WatchStrengthPreviewSetup.customDefaultPrescription(for: resolved, payload: planPayload)
         let priorPrescriptions = session?.plannedPrescriptions ?? []
         if let session {
             session.plannedExerciseNames.append(resolved)
@@ -465,19 +467,24 @@ public final class WatchStrengthFlowModel {
             repLadders: ladders,
             firstWorkingWeightKg: prior.first { !$0.isWarmup && $0.weight > 0 }?.weight,
             lastWeightThisSessionKg: logged.last?.weight,
-            weightSamples: prior.filter { !$0.isWarmup }.map { SetSample.from($0) }
+            weightSamples: prior.filter { !$0.isWarmup }.map { SetSample.from($0) },
+            lastPriorWorkingSet: prior.last { !$0.isWarmup && $0.reps > 0 }.map(SetSample.from)
         )
         // The phone's synced snapshot for the selected performer (stable remote
         // identity only, never a name or local id) is the authoritative historical
-        // source when it has data; Watch-local history of that same person is the
-        // fallback. A partner never reads owner rows. Current-session values are
+        // source when it has newer data; a later Watch-local set takes precedence.
+        // A partner never reads owner rows. Current-session values are
         // layered on separately.
         if let provider = setDefaultHistory {
             let synced = provider.history(
                 exerciseKey: WatchSetDefaultSnapshot.canonicalKey(exercise.name),
                 performerID: currentPerformerRemoteID)
-            if !synced.repLadders.isEmpty || !synced.weightSamples.isEmpty
-                || synced.firstWorkingWeightKg != nil || !synced.generalRepLadders.isEmpty {
+            let localIsNewer = history.lastPriorWorkingSet.map { local in
+                synced.lastPriorWorkingSet.map { local.date > $0.date } ?? true
+            } ?? false
+            let hasSyncedHistory = !synced.repLadders.isEmpty || !synced.weightSamples.isEmpty
+                || synced.firstWorkingWeightKg != nil || !synced.generalRepLadders.isEmpty
+            if !localIsNewer && hasSyncedHistory {
                 history = synced
                 history.repsLoggedThisSession = logged.map(\.reps)
                 history.lastWeightThisSessionKg = logged.last?.weight
@@ -599,6 +606,8 @@ public final class WatchStrengthFlowModel {
 
         do {
             let performer = currentPerformer
+            let entry = SessionViewModel.normalizedSetEntry(
+                exercise: exercise, requestedWeightKg: currentWeight, requestedUsesBodyweight: false)
             let priorOwnerSamples = (exercise.sets ?? [])
                 .filter { $0.session?.id != session.id && $0.isOwnerSet }
                 .map { SetSample.from($0) }
@@ -608,7 +617,7 @@ public final class WatchStrengthFlowModel {
                 .map { SetSample.from($0) }
             let isOwnerBeforeSave = performer == nil || performer?.isMe == true
             let isPRBeforeSave = isOwnerBeforeSave && !isWarmupSet && PRCalculator.isNewPR(
-                candidate: SetSample(weight: currentWeight, reps: Int(currentReps), isWarmup: false),
+                candidate: SetSample(weight: entry.weightKg, reps: Int(currentReps), isWarmup: false),
                 previous: priorOwnerSamples + earlierOwnerSamples,
                 rule: prRule, formula: prFormula)
 
@@ -617,8 +626,9 @@ public final class WatchStrengthFlowModel {
                                                performerID: performer?.isMe == true ? nil : performer?.id)
             }
             let set = try WorkoutRepository.addSet(
-                to: session, exercise: exercise, weightKg: currentWeight,
+                to: session, exercise: exercise, weightKg: entry.weightKg,
                 reps: Int(currentReps), rpe: resolvedEffortRPE, isWarmup: isWarmupSet,
+                usesBodyweight: entry.usesBodyweight,
                 performedBy: performer?.isMe == true ? nil : performer,
                 in: context
             )

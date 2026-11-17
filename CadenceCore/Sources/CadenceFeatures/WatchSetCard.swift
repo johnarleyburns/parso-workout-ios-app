@@ -70,22 +70,19 @@ public enum WatchSetCardBuilder {
                             nextLifter: String?,
                             effortText: String?,
                             isWarmup: Bool,
-                            isNonWeighted: Bool = false,
-                            isLastSet: Bool = false,
-                            othersRemain: Bool = false) -> WatchSetCardState {
-        let weightText = isNonWeighted ? "—" : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
+                            isNonWeighted: Bool = false) -> WatchSetCardState {
+        let isBodyweightOnly = isNonWeighted && exerciseName.localizedCaseInsensitiveContains("mountain climber")
+        let weightText = isNonWeighted ? (isBodyweightOnly ? "BW" : "—")
+            : Format.weightValue(currentWeightKg, unit: unit, decimals: 1)
         let changed = isNonWeighted
             ? currentReps != prefillReps
             : abs(currentWeightKg - prefillWeightKg) > 0.001 || currentReps != prefillReps
-        let logTitle = changed
-            ? (isNonWeighted
-                ? String(localized: "Log \(currentReps) reps", bundle: .module)
-                : String(localized: "Log \(weightText) × \(currentReps)", bundle: .module))
-            : (isLastSet ? (othersRemain ? String(localized: "Last set for you", bundle: .module)
-                                         : String(localized: "Last set", bundle: .module))
-                         : String(localized: "Log set", bundle: .module))
+        // The primary action always reads "Log set" (field report: a title that echoed
+        // the entered values or flagged the last set made the button feel unstable).
+        let logTitle = String(localized: "Log set", bundle: .module)
         let last = lastTime.map { last -> String in
-            let base = Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
+            let base = isBodyweightOnly ? "BW × \(last.reps)"
+                : Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
             if let rpe = last.rpe {
                 return String(localized: "Last time \(base) · RPE \(Int(rpe.rounded()))", bundle: .module)
             }
@@ -105,7 +102,7 @@ public enum WatchSetCardBuilder {
                 exerciseName: exerciseName, completedSetCount: completedWorkingSets,
                 plannedSetCount: plannedWorkingSets.count),
             weightText: weightText,
-            unitText: unit.abbreviation,
+            unitText: isNonWeighted ? "" : unit.abbreviation,
             reps: currentReps,
             lastTimeText: last,
             logTitle: logTitle,
@@ -194,7 +191,6 @@ extension WatchStrengthFlowModel {
         // order); ad-hoc exercises keep plain round-robin.
         let pendingNext = isLast || !plannedWorkingSets(for: exercise).isEmpty
             ? nextPendingTurn(afterLoggedBy: currentPerformerIndex, on: exercise) : nil
-        let othersRemain = isLast && pendingNext.map { $0.performerIndex != currentPerformerIndex } == true
         let nextIndex = pendingNext?.performerIndex ?? (currentPerformerIndex + 1) % max(options.count, 1)
         let nextLifter = options.isEmpty || nextIndex == currentPerformerIndex ? nil
             : options.first { $0.index == nextIndex }?.name
@@ -213,8 +209,7 @@ extension WatchStrengthFlowModel {
             nextLifter: options.count > 1 ? nextLifter : nil,
             effortText: effort,
             isWarmup: isWarmupSet,
-            isNonWeighted: SessionViewModel.isNonWeighted(exercise),
-            isLastSet: isLast, othersRemain: othersRemain)
+            isNonWeighted: SessionViewModel.isNonWeighted(exercise))
     }
 
     /// Cycles the effort chip: none → 6 → 7 → 8 → 9 → 10 → none (S2).

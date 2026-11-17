@@ -25,9 +25,14 @@ final class WatchSetDefaultSnapshotBuilderTests: XCTestCase {
         for (i, t) in sets.enumerated() {
             let e = SetEntry(weight: t.1, reps: t.2, order: i, isWarmup: t.3,
                              session: s, exercise: t.0, performedBy: t.4)
+            e.completedAt = s.date.addingTimeInterval(Double(i))
             context.insert(e)
         }
         return s
+    }
+
+    private func sample(_ weight: Double, _ reps: Int, day: Int, order: Int = 0) -> WatchSetDefaultSnapshot.Sample {
+        .init(weightKg: weight, reps: reps, completedAt: base.addingTimeInterval(Double(day) * 86_400 + Double(order)))
     }
 
     private func build(limit: Int = 21) throws -> WatchSetDefaultSnapshot {
@@ -42,8 +47,10 @@ final class WatchSetDefaultSnapshotBuilderTests: XCTestCase {
         let owner = try XCTUnwrap(snap.performers.first { $0.id == "owner" })
         let ex = try XCTUnwrap(owner.exercises.first { $0.id == "bench press" })
         XCTAssertEqual(ex.repLadders, [[8, 7], [8, 6]])
-        XCTAssertEqual(ex.samples, [.init(weightKg: 60, reps: 8), .init(weightKg: 60, reps: 7),
-                                    .init(weightKg: 65, reps: 8), .init(weightKg: 70, reps: 6)])
+        XCTAssertEqual(ex.samples, [sample(60, 8, day: 1), sample(60, 7, day: 1, order: 1),
+                                    sample(65, 8, day: 2, order: 1), sample(70, 6, day: 2, order: 2)])
+        XCTAssertEqual(snap.history(exerciseKey: "Bench Press", performerID: "owner").lastPriorWorkingSet?.date,
+                       base.addingTimeInterval(2 * 86_400 + 2))
         XCTAssertEqual(ex.firstWorkingWeightKg, 65)
         XCTAssertEqual(owner.generalRepLadders, [[8, 7], [8, 6]])
         XCTAssertEqual(ex.firstWorkingWeightKg,
@@ -60,9 +67,9 @@ final class WatchSetDefaultSnapshotBuilderTests: XCTestCase {
         func benchRow(_ id: String) -> WatchSetDefaultSnapshot.Exercise? {
             snap.performers.first { $0.id == id }?.exercises.first { $0.id == "bench press" }
         }
-        XCTAssertEqual(benchRow("owner")?.samples, [.init(weightKg: 100, reps: 5)])
-        XCTAssertEqual(benchRow(a.id.uuidString)?.samples, [.init(weightKg: 40, reps: 12)])
-        XCTAssertEqual(benchRow(b.id.uuidString)?.samples, [.init(weightKg: 30, reps: 15)])
+        XCTAssertEqual(benchRow("owner")?.samples, [sample(100, 5, day: 1)])
+        XCTAssertEqual(benchRow(a.id.uuidString)?.samples, [sample(40, 12, day: 1, order: 1)])
+        XCTAssertEqual(benchRow(b.id.uuidString)?.samples, [sample(30, 15, day: 1, order: 2)])
     }
 
     func testPartnerWithoutLiftKeepsGeneralLadders() throws {
@@ -81,7 +88,7 @@ final class WatchSetDefaultSnapshotBuilderTests: XCTestCase {
         let snap = try build(limit: 1)
         let owner = try XCTUnwrap(snap.performers.first { $0.id == "owner" })
         let ex = try XCTUnwrap(owner.exercises.first)
-        XCTAssertEqual(ex.samples, [.init(weightKg: 60, reps: 8)])
+        XCTAssertEqual(ex.samples, [sample(60, 8, day: 1)])
         XCTAssertEqual(ex.repLadders, [[8, 5]])
         XCTAssertEqual(owner.generalRepLadders, [[8, 5]])
     }

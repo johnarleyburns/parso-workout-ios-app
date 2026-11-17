@@ -113,7 +113,7 @@ public struct SuggestedStrengthPreviewState: Equatable, Sendable {
     }
 
     public static let noAlternativeMessage =
-        "No different workout is available right now. Your current suggestion is unchanged; you can try again, edit it, or cancel."
+        "No different workout is available right now. Your current personalized workout is unchanged; you can try again, edit it, or cancel."
 
     private mutating func finishRegeneration() {
         isRegenerating = false

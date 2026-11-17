@@ -38,7 +38,7 @@ struct CardioGoalSheet: View {
         NavigationStack {
             Form {
                 if let recommendation {
-                    Section("Suggested workout") {
+                    Section("Personalized workout") {
                         Text(recommendation.title).font(.headline)
                         Text(recommendation.subtitle).foregroundStyle(.secondary)
                         CoachSourcesLink(citationIds: recommendation.citationIds,

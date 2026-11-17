@@ -16,13 +16,13 @@ final class WatchRedesignTests: XCTestCase {
         XCTAssertEqual(state.exerciseProgress.exerciseNameMaxLines, 2)
     }
 
-    func testLogTitleEchoesOnlyAChangedSet() {
+    func testLogTitleAlwaysReadsLogSetEvenWhenTheSetEchoesAChange() {
         let unchanged = card(current: 100, reps: 5, prefill: 100, prefillReps: 5)
         XCTAssertFalse(unchanged.echoesChange)
+        XCTAssertEqual(unchanged.logTitle, "Log set")
         let changed = card(current: 100, reps: 4, prefill: 100, prefillReps: 5)
         XCTAssertTrue(changed.echoesChange)
-        XCTAssertTrue(changed.logTitle.contains("100"))
-        XCTAssertTrue(changed.logTitle.contains("4"))
+        XCTAssertEqual(changed.logTitle, "Log set", "field report: an echoing title made the button feel unstable")
     }
 
     func testPlanLineCitesOnlyRealScienceClaims() {

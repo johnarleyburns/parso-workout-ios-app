@@ -133,7 +133,9 @@ final class ExerciseSearchIndexTests: XCTestCase {
         let catalog = ExerciseLibrary.starter
         XCTAssertGreaterThan(catalog.count, 200, "expected a large catalog to stress search")
         let queries = ["b", "be", "ben", "benc", "bench", "c", "ca", "cab", "cable", "cable c"]
-        let iterations = 10
+        // Routine checks still exercise every query and both implementations.
+        // The scheduled benchmark increases repetitions without taxing every PR.
+        let iterations = ProcessInfo.processInfo.environment["CADENCE_FULL_BENCHMARKS"] == "1" ? 10 : 1
 
         // The fix: build once, reuse across keystrokes.
         let index = ExerciseSearchIndex(catalog)
@@ -148,9 +150,9 @@ final class ExerciseSearchIndexTests: XCTestCase {
 
         XCTAssertLessThan(reuseElapsed, rebuildElapsed,
                           "reusing the prebuilt index (\(reuseElapsed)s) must beat rebuilding per keystroke (\(rebuildElapsed)s)")
-        // Generous absolute ceiling (100 reused ranks over the full catalog) so a
-        // pathological regression still trips even on a heavily loaded CI box.
-        XCTAssertLessThan(reuseElapsed, 10.0, "reused index ranking unexpectedly slow (\(reuseElapsed)s)")
+        // Preserve the same per-query ceiling for routine and full benchmarks.
+        let secondsPerQuery = reuseElapsed / Double(iterations * queries.count)
+        XCTAssertLessThan(secondsPerQuery, 0.1, "reused index ranking unexpectedly slow (\(secondsPerQuery)s per query)")
     }
 
     func testNormalizeIsRegexFreeAndCorrect() {

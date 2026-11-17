@@ -10,5 +10,4 @@ if [[ "${SKIP_LOCAL_GUARDS:-}" == "1" ]]; then
 fi
 
 echo "pre-commit: running SwiftPM package tests only (no simulator)"
-swift package resolve --package-path CadenceCore
-swift test --package-path CadenceCore --parallel
+bash scripts/ci-test.sh

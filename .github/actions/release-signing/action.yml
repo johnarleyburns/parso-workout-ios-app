@@ -1,0 +1,66 @@
+name: Release signing setup
+description: Install the same certificate and profiles for archive and export jobs
+inputs:
+  certificate:
+    description: Release signing input
+    required: true
+  certificate-password:
+    description: Release signing input
+    required: true
+  keychain-password:
+    description: Release signing input
+    required: true
+  phone-profile:
+    description: Release signing input
+    required: true
+  watch-profile:
+    description: Release signing input
+    required: true
+  widget-profile:
+    description: Release signing input
+    required: true
+  watch-widget-profile:
+    description: Release signing input
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Import Certificate
+      env:
+        APPLE_CERTIFICATE: ${{ inputs.certificate }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
+        KEYCHAIN_PASSWORD: ${{ inputs.keychain-password }}
+      shell: bash
+      run: |
+        set -eo pipefail
+        security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+        security set-keychain-settings -lut 21600 build.keychain
+        echo -n "$APPLE_CERTIFICATE" | base64 --decode -o certificate.p12
+        security import certificate.p12 \
+          -P "$APPLE_CERTIFICATE_PASSWORD" \
+          -A -t cert -f pkcs12 \
+          -k build.keychain
+        security set-key-partition-list \
+          -S apple-tool:,apple: \
+          -s -k "$KEYCHAIN_PASSWORD" build.keychain
+
+    - name: Import Provisioning Profiles
+      env:
+        PROVISIONING_PROFILE_BASE64: ${{ inputs.phone-profile }}
+        WATCH_PROVISIONING_PROFILE_BASE64: ${{ inputs.watch-profile }}
+        WIDGET_PROVISIONING_PROFILE_BASE64: ${{ inputs.widget-profile }}
+        WATCH_WIDGET_PROVISIONING_PROFILE_BASE64: ${{ inputs.watch-widget-profile }}
+      shell: bash
+      run: |
+        set -eo pipefail
+        mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+        echo -n "$PROVISIONING_PROFILE_BASE64" | base64 --decode \
+          -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_App_Store.mobileprovision"
+        echo -n "$WATCH_PROVISIONING_PROFILE_BASE64" | base64 --decode \
+          -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Watch_App_Store.mobileprovision"
+        echo -n "$WIDGET_PROVISIONING_PROFILE_BASE64" | base64 --decode \
+          -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Widgets_App_Store.mobileprovision"
+        echo -n "$WATCH_WIDGET_PROVISIONING_PROFILE_BASE64" | base64 --decode \
+          -o "$HOME/Library/MobileDevice/Provisioning Profiles/Parso_Workout_Watch_Widgets_App_Store.mobileprovision"

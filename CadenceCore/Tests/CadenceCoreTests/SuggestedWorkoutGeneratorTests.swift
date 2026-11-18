@@ -633,9 +633,9 @@ struct SuggestedWorkoutGeneratorTests {
         let bodyweight = bundle.option(.bodyweight)
         let bodyweightIDs = Set(TrainingEngineBridge.preferredExerciseIDs(for: .bodyweight))
         #expect(!bodyweight.exercises.isEmpty)
+        let bodyweightNames = bodyweight.exercises.map(\.name).joined(separator: ", ")
         #expect(bodyweight.exercises.allSatisfy { bodyweightIDs.contains($0.candidateID) },
-                      "Bodyweight chooser leaked a non-bodyweight movement: " +
-                      bodyweight.exercises.map(\.name).joined(separator: ", "))
+                      "Bodyweight chooser leaked a non-bodyweight movement: \(bodyweightNames)")
         #expect(!bodyweight.exercises.contains { $0.name.localizedCaseInsensitiveContains("clean and jerk") })
     }
 

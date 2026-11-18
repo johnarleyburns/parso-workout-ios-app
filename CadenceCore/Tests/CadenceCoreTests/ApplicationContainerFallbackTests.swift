@@ -3,6 +3,7 @@ import Testing
 import Foundation
 import SwiftData
 @testable import CadenceCore
+@testable import CadenceWorkoutFeatures
 
 @Suite struct ApplicationContainerFallbackTests {
     private struct MirrorError: Error {}

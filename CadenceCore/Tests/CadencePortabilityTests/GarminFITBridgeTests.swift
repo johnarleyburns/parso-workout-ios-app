@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 @testable import CadencePortability
@@ -8,7 +9,7 @@ import CadenceCore
 /// Uses FIT bytes produced by DB++ v1.18.2's `GarminFITAdapter`; no network,
 /// file picker, simulator, or wall-clock dependence.
 @MainActor
-final class GarminFITBridgeTests: XCTestCase {
+struct GarminFITBridgeTests {
     private let start = Date(timeIntervalSince1970: 1_700_100_000)
 
     private func makeContext(_ dir: URL? = nil) throws -> ModelContext {
@@ -35,65 +36,65 @@ final class GarminFITBridgeTests: XCTestCase {
         return session
     }
 
-    func testExportBlockersAndFilename() throws {
+    @Test func exportBlockersAndFilename() throws {
         let context = try makeContext()
         let open = WorkoutSession(title: "x", date: start)
         context.insert(open)
-        XCTAssertEqual(GarminFITBridge.exportBlockers(for: open), .notFinished)
-        XCTAssertThrowsError(try GarminFITBridge.export(session: open)) {
-            XCTAssertEqual($0 as? GarminFITBridge.Failure, .invalidWorkout(.notFinished))
+        #expect(GarminFITBridge.exportBlockers(for: open) == .notFinished)
+        #expect(throws: GarminFITBridge.Failure.invalidWorkout(.notFinished)) {
+            try GarminFITBridge.export(session: open)
         }
         let empty = WorkoutSession(title: "x", date: start, endedAt: start.addingTimeInterval(5))
         context.insert(empty)
-        XCTAssertEqual(GarminFITBridge.exportBlockers(for: empty), .noCompletedSets)
+        #expect(GarminFITBridge.exportBlockers(for: empty) == .noCompletedSets)
         let good = seed(context)
-        XCTAssertNil(GarminFITBridge.exportBlockers(for: good))
-        XCTAssertTrue(GarminFITBridge.filename(for: good).hasSuffix(".fit"))
-        XCTAssertTrue(GarminFITBridge.filename(for: good).contains(good.id.uuidString.prefix(8).lowercased()))
+        #expect(GarminFITBridge.exportBlockers(for: good) == nil)
+        #expect(GarminFITBridge.filename(for: good).hasSuffix(".fit"))
+        #expect(GarminFITBridge.filename(for: good).contains(good.id.uuidString.prefix(8).lowercased()))
     }
 
-    func testExportedFileIsFITAndRoundTripsLosslessly() throws {
+    @Test func exportedFileIsFITAndRoundTripsLosslessly() throws {
         let context = try makeContext()
         let session = seed(context)
         let file = try GarminFITBridge.export(session: session)
-        XCTAssertEqual(Array(file.data[8..<12]), Array(".FIT".utf8))
+        #expect(Array(file.data[8..<12]) == Array(".FIT".utf8))
 
         let preview = try GarminFITBridge.preview(data: file.data, filename: file.filename)
-        XCTAssertEqual(preview.fidelity, .lossless)
-        XCTAssertEqual(preview.sessionID, session.id)
-        XCTAssertEqual(preview.exerciseCount, 2)
-        XCTAssertEqual(preview.setCount, 3)
-        XCTAssertEqual(preview.start.timeIntervalSince1970, start.timeIntervalSince1970, accuracy: 0.001)
-        XCTAssertEqual(preview.sourceFilename, file.filename)
+        #expect(preview.fidelity == .lossless)
+        #expect(preview.sessionID == session.id)
+        #expect(preview.exerciseCount == 2)
+        #expect(preview.setCount == 3)
+        #expect(abs(preview.start.timeIntervalSince1970 - start.timeIntervalSince1970) <= 0.001)
+        #expect(preview.sourceFilename == file.filename)
 
         let target = try makeContext()
-        let receipt = try XCTUnwrap(try GarminFITBridge.apply(preview, to: target))
-        XCTAssertEqual(receipt.importedSessionID, session.id)
-        let restored = try XCTUnwrap(try target.fetch(FetchDescriptor<WorkoutSession>()).first)
-        XCTAssertEqual(restored.id, session.id)
-        XCTAssertEqual(restored.notes, "Felt strong — café ☕")
-        XCTAssertEqual(restored.endedAt, session.endedAt)
+        let receipt = try #require(try GarminFITBridge.apply(preview, to: target))
+        #expect(receipt.importedSessionID == session.id)
+        let restored = try #require(try target.fetch(FetchDescriptor<WorkoutSession>()).first)
+        #expect(restored.id == session.id)
+        #expect(restored.notes == "Felt strong — café ☕")
+        #expect(restored.endedAt == session.endedAt)
         let sets = restored.orderedSets
-        XCTAssertEqual(sets.count, 3)
-        XCTAssertTrue(sets[0].isWarmup)
-        XCTAssertEqual(sets[1].rpe, 8)
-        XCTAssertEqual(sets[1].note, "paused ñ")
-        XCTAssertEqual(sets[1].weight, 61, accuracy: 0.0001)
-        XCTAssertEqual(sets[1].exercise?.sourceExerciseID, "Barbell_Bench_Press_-_Medium_Grip")
-        XCTAssertEqual(sets[2].exercise?.name, "Żurek Carry 横")
-        XCTAssertEqual(sets[2].exercise?.isCustom, true)
-        XCTAssertEqual(sets[2].reps, 12)
+        #expect(sets.count == 3)
+        #expect(sets[0].isWarmup)
+        #expect(sets[1].rpe == 8)
+        #expect(sets[1].note == "paused ñ")
+        #expect(abs(sets[1].weight - 61) <= 0.0001)
+        #expect(sets[1].exercise?.sourceExerciseID == "Barbell_Bench_Press_-_Medium_Grip")
+        #expect(sets[2].exercise?.name == "Żurek Carry 横")
+        #expect(sets[2].exercise?.isCustom == true)
+        #expect(sets[2].reps == 12)
     }
 
-    func testMultiChunkSidecarRoundTrips() throws {
+    @Test func multiChunkSidecarRoundTrips() throws {
         let context = try makeContext()
         let session = seed(context, long: true)
         let file = try GarminFITBridge.export(session: session)
         let preview = try GarminFITBridge.preview(data: file.data, filename: file.filename)
-        XCTAssertEqual(preview.setCount, 41)
+        #expect(preview.setCount == 41)
     }
 
-    func testReloadAfterFreshContainerRestoresSameWorkout() throws {
+    @Test func reloadAfterFreshContainerRestoresSameWorkout() throws {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent("fit-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
@@ -107,68 +108,68 @@ final class GarminFITBridgeTests: XCTestCase {
         }
         let reopened = try makeContext(dir)
         let all = try reopened.fetch(FetchDescriptor<WorkoutSession>())
-        XCTAssertEqual(all.map(\.id), [session.id])
-        XCTAssertEqual(all.first?.orderedSets.count, 3)
+        #expect(all.map(\.id) == [session.id])
+        #expect(all.first?.orderedSets.count == 3)
     }
 
-    func testMalformedAndNonFITInputWritesNothing() throws {
+    @Test func malformedAndNonFITInputWritesNothing() throws {
         let context = try makeContext()
         let session = seed(context)
         let file = try GarminFITBridge.export(session: session)
-        XCTAssertThrowsError(try GarminFITBridge.preview(data: Data("hello world, not fit".utf8), filename: "a.fit")) {
-            XCTAssertEqual($0 as? GarminFITBridge.Failure, .notFIT)
+        #expect(throws: GarminFITBridge.Failure.notFIT) {
+            try GarminFITBridge.preview(data: Data("hello world, not fit".utf8), filename: "a.fit")
         }
-        XCTAssertThrowsError(try GarminFITBridge.preview(data: Data(), filename: "a.fit"))
+        #expect(throws: (any Error).self) { try GarminFITBridge.preview(data: Data(), filename: "a.fit") }
         let truncated = file.data.prefix(file.data.count / 2)
-        XCTAssertThrowsError(try GarminFITBridge.preview(data: Data(truncated), filename: "a.fit"))
+        #expect(throws: (any Error).self) { try GarminFITBridge.preview(data: Data(truncated), filename: "a.fit") }
         var big = file.data
         big.append(Data(count: GarminFITBridge.maxFileBytes))
-        XCTAssertThrowsError(try GarminFITBridge.preview(data: big, filename: "a.fit")) {
-            XCTAssertEqual($0 as? GarminFITBridge.Failure, .tooLarge)
+        #expect(throws: GarminFITBridge.Failure.tooLarge) {
+            try GarminFITBridge.preview(data: big, filename: "a.fit")
         }
         let target = try makeContext()
-        XCTAssertEqual(try target.fetch(FetchDescriptor<WorkoutSession>()).count, 0)
+        #expect(try target.fetch(FetchDescriptor<WorkoutSession>()).count == 0)
     }
 
-    func testNativeOnlyFITRequiresSidecarAndWritesNothing() throws {
+    @Test func nativeOnlyFITRequiresSidecarAndWritesNothing() throws {
         let data = Self.nativeOnlyFIT()
-        XCTAssertThrowsError(try GarminFITBridge.preview(data: data, filename: "garmin.fit")) {
-            XCTAssertEqual($0 as? GarminFITBridge.Failure, .sidecarRequired)
+        #expect(throws: GarminFITBridge.Failure.sidecarRequired) {
+            try GarminFITBridge.preview(data: data, filename: "garmin.fit")
         }
         let context = try makeContext()
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 0)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<SetEntry>()).count, 0)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 0)
+        #expect(try context.fetch(FetchDescriptor<SetEntry>()).count == 0)
     }
 
-    func testDuplicateDecisions() throws {
+    @Test func duplicateDecisions() throws {
         let context = try makeContext()
         let session = seed(context)
         try context.save()
         let preview = try GarminFITBridge.preview(data: try GarminFITBridge.export(session: session).data,
                                                   filename: "dup.fit")
-        XCTAssertNotNil(GarminFITBridge.existingSession(for: preview, in: context))
+        #expect(GarminFITBridge.existingSession(for: preview, in: context) != nil)
 
-        XCTAssertNil(try GarminFITBridge.apply(preview, to: context, duplicate: .cancel))
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 1)
+        #expect(try GarminFITBridge.apply(preview, to: context, duplicate: .cancel) == nil)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 1)
 
-        let both = try XCTUnwrap(try GarminFITBridge.apply(preview, to: context, duplicate: .keepBoth))
-        XCTAssertNotEqual(both.importedSessionID, session.id)
+        let both = try #require(try GarminFITBridge.apply(preview, to: context, duplicate: .keepBoth))
+        #expect(both.importedSessionID != session.id)
         let all = try context.fetch(FetchDescriptor<WorkoutSession>())
-        XCTAssertEqual(all.count, 2)
-        XCTAssertTrue(all.first { $0.id == both.importedSessionID }?.notes?.contains(session.id.uuidString) == true)
+        #expect(all.count == 2)
+        #expect(all.first { $0.id == both.importedSessionID }?.notes?.contains(session.id.uuidString) == true)
 
         try GarminFITBridge.undo(both, in: context)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 1)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 1)
 
-        let replaced = try XCTUnwrap(try GarminFITBridge.apply(preview, to: context, duplicate: .replace))
-        XCTAssertEqual(replaced.replacedSessionID, session.id)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 1)
-        XCTAssertThrowsError(try GarminFITBridge.undo(replaced, in: context))
+        let replaced = try #require(try GarminFITBridge.apply(preview, to: context, duplicate: .replace))
+        #expect(replaced.replacedSessionID == session.id)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 1)
+        #expect(throws: (any Error).self) { try GarminFITBridge.undo(replaced, in: context) }
     }
 
-    func testInvalidSidecarIsRejected() throws {
-        XCTAssertThrowsError(try GarminFITBridge.parse(Data("{\"schemaVersion\":\"0.3.0\"}".utf8))) {
-            XCTAssertEqual($0 as? GarminFITBridge.Failure, .invalidSidecar)
+    @Test func invalidSidecarIsRejected() throws {
+        #expect(throws: GarminFITBridge.Failure.invalidSidecar) {
+            try GarminFITBridge.parse(Data("{\"schemaVersion\":\"0.3.0\"}".utf8))
         }
     }
 

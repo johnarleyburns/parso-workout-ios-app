@@ -1,11 +1,12 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 @MainActor
-final class StoreMigrationRuntimeTests: XCTestCase {
-    func testMigrationCopiesBothBoundariesAndWritesRollbackArtifact() throws {
+struct StoreMigrationRuntimeTests {
+    @Test func migrationCopiesBothBoundariesAndWritesRollbackArtifact() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("CadenceMigration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -36,23 +37,23 @@ final class StoreMigrationRuntimeTests: XCTestCase {
             stateURL: stateURL, snapshotURL: snapshotURL, cloudKitEnabled: false,
             now: Date(timeIntervalSince1970: 100))
 
-        XCTAssertEqual(result.oldCounts, StoreMigrationCounts(sessions: 1, ownerSets: 1,
+        #expect(result.oldCounts == StoreMigrationCounts(sessions: 1, ownerSets: 1,
                                                                cardio: 1, assessments: 1))
-        XCTAssertEqual(result.newCounts, result.oldCounts)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: snapshotURL.path))
-        XCTAssertFalse(FileManager.default.fileExists(atPath: directory
+        #expect(result.newCounts == result.oldCounts)
+        #expect(FileManager.default.fileExists(atPath: snapshotURL.path))
+        #expect(!FileManager.default.fileExists(atPath: directory
             .appendingPathComponent(StoreMigrationRuntime.readyMarkerFileName).path))
         try StoreMigrationRuntime.markHealthBackfillQueued(stateURL: stateURL)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory
+        #expect(FileManager.default.fileExists(atPath: directory
             .appendingPathComponent(StoreMigrationRuntime.readyMarkerFileName).path))
 
         let split = try CadenceStore.makeSplitModelContainer(
             localURL: localURL, syncURL: syncURL, cloudKitEnabled: false)
         let restored = ModelContext(split)
-        XCTAssertEqual(try restored.fetchCount(FetchDescriptor<WorkoutSession>()), 1)
-        XCTAssertEqual(try restored.fetchCount(FetchDescriptor<Exercise>()), 1)
-        XCTAssertEqual(try restored.fetchCount(FetchDescriptor<SetEntry>()), 1)
-        XCTAssertEqual(try restored.fetchCount(FetchDescriptor<Person>()), 1)
+        #expect(try restored.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
+        #expect(try restored.fetchCount(FetchDescriptor<Exercise>()) == 1)
+        #expect(try restored.fetchCount(FetchDescriptor<SetEntry>()) == 1)
+        #expect(try restored.fetchCount(FetchDescriptor<Person>()) == 1)
     }
 }
 #endif

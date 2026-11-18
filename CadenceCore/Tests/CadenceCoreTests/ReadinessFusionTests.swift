@@ -1,11 +1,12 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
 /// D4 in code: self-report is authoritative where fresh; passive signals fill the
 /// gap at lower confidence and, when strongly suppressed with no check-in, prompt
-/// one. The named invariant `test_selfReportBeatsContradictingPassiveSignal` is the
+/// one. The named invariant `selfReportBeatsContradictingPassiveSignal` is the
 /// one that guarantees the coach never contradicts `sawMonitoring2016`.
-final class ReadinessFusionTests: XCTestCase {
+struct ReadinessFusionTests {
 
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -30,78 +31,78 @@ final class ReadinessFusionTests: XCTestCase {
 
     // MARK: The D4 invariant
 
-    func test_selfReportBeatsContradictingPassiveSignal() {
+    @Test func selfReportBeatsContradictingPassiveSignal() {
         // Fresh self-report says "I feel great"; passive HRV says "strongly
         // suppressed". Self-report MUST win (sawMonitoring2016).
         let fused = ReadinessFusion.fuse(
             selfReport: selfReport(good: true, ageHours: 2),
             passive: passive(.stronglySuppressed),
             now: now)
-        XCTAssertFalse(fused.isPoor, "a fresh good self-report must not be overridden by HRV")
-        XCTAssertFalse(fused.promptCheckIn, "we already have a fresh check-in")
-        XCTAssertEqual(fused.passive?.level, .stronglySuppressed, "passive is retained as context")
+        #expect(!fused.isPoor, "a fresh good self-report must not be overridden by HRV")
+        #expect(!fused.promptCheckIn, "we already have a fresh check-in")
+        #expect(fused.passive?.level == .stronglySuppressed, "passive is retained as context")
     }
 
-    func testFreshPoorSelfReportIsRespectedToo() {
+    @Test func freshPoorSelfReportIsRespectedToo() {
         let fused = ReadinessFusion.fuse(
             selfReport: selfReport(good: false, ageHours: 2),
             passive: passive(.normal),
             now: now)
-        XCTAssertTrue(fused.isPoor, "a fresh poor self-report stands even when passive is normal")
+        #expect(fused.isPoor, "a fresh poor self-report stands even when passive is normal")
     }
 
     // MARK: staleness
 
-    func testStaleSelfReportDoesNotWin() {
+    @Test func staleSelfReportDoesNotWin() {
         // A 30h-old "great" check-in must NOT override a strongly-suppressed passive
         // signal — it is no longer fresh.
         let fused = ReadinessFusion.fuse(
             selfReport: selfReport(good: true, ageHours: 30),
             passive: passive(.stronglySuppressed),
             now: now)
-        XCTAssertTrue(fused.promptCheckIn,
+        #expect(fused.promptCheckIn,
                       "stale self-report + strong passive suppression should prompt a check-in")
-        XCTAssertEqual(fused.confidence, .low)
+        #expect(fused.confidence == .low)
     }
 
     // MARK: passive-only path
 
-    func testPassiveOnlyYieldsReducedConfidence() {
+    @Test func passiveOnlyYieldsReducedConfidence() {
         let fused = ReadinessFusion.fuse(selfReport: nil, passive: passive(.suppressed), now: now)
-        XCTAssertEqual(fused.confidence, .low, "no check-in → passive drives a low-confidence estimate")
-        XCTAssertTrue(fused.isPoor)
-        XCTAssertNil(fused.capturedAt, "passive-only readiness has no self-report timestamp")
+        #expect(fused.confidence == .low, "no check-in → passive drives a low-confidence estimate")
+        #expect(fused.isPoor)
+        #expect(fused.capturedAt == nil, "passive-only readiness has no self-report timestamp")
     }
 
-    func testCorroboratingPassiveRaisesConfidence() {
+    @Test func corroboratingPassiveRaisesConfidence() {
         // Fresh poor self-report + suppressed passive agree → confidence bumps up.
         let fused = ReadinessFusion.fuse(
             selfReport: selfReport(good: false, ageHours: 2),
             passive: passive(.suppressed),
             now: now)
-        XCTAssertEqual(fused.confidence, .high, "objective agreement should raise confidence")
+        #expect(fused.confidence == .high, "objective agreement should raise confidence")
     }
 
     // MARK: promptCheckIn
 
-    func testPromptCheckInOnlyOnStronglySuppressedWithNoCheckIn() {
-        XCTAssertTrue(ReadinessFusion.fuse(selfReport: nil,
+    @Test func promptCheckInOnlyOnStronglySuppressedWithNoCheckIn() {
+        #expect(ReadinessFusion.fuse(selfReport: nil,
                                            passive: passive(.stronglySuppressed),
                                            now: now).promptCheckIn)
         // Suppressed (not strong) does not prompt.
-        XCTAssertFalse(ReadinessFusion.fuse(selfReport: nil,
+        #expect(!ReadinessFusion.fuse(selfReport: nil,
                                             passive: passive(.suppressed),
                                             now: now).promptCheckIn)
         // Strong but a fresh check-in exists → no prompt.
-        XCTAssertFalse(ReadinessFusion.fuse(selfReport: selfReport(good: true, ageHours: 1),
+        #expect(!ReadinessFusion.fuse(selfReport: selfReport(good: true, ageHours: 1),
                                             passive: passive(.stronglySuppressed),
                                             now: now).promptCheckIn)
     }
 
-    func testInsufficientPassiveAndNoSelfReportIsQuiet() {
+    @Test func insufficientPassiveAndNoSelfReportIsQuiet() {
         let fused = ReadinessFusion.fuse(selfReport: nil, passive: .insufficient, now: now)
-        XCTAssertFalse(fused.promptCheckIn)
-        XCTAssertFalse(fused.isPoor)
-        XCTAssertEqual(fused.confidence, .low)
+        #expect(!fused.promptCheckIn)
+        #expect(!fused.isPoor)
+        #expect(fused.confidence == .low)
     }
 }

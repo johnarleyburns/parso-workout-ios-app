@@ -1,10 +1,11 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class NormalizedPlanStoreTests: XCTestCase {
-    func testAllPlanItemFamiliesRoundTripThroughNormalizedRows() throws {
+struct NormalizedPlanStoreTests {
+    @Test func allPlanItemFamiliesRoundTripThroughNormalizedRows() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let planID = PlanID(raw: UUID(uuidString: "00000000-0000-0000-0000-000000000101")!)
         let sessionID = UUID(uuidString: "00000000-0000-0000-0000-000000000102")!
@@ -35,18 +36,18 @@ final class NormalizedPlanStoreTests: XCTestCase {
             rationale: EngineRationale(summary: "Test rationale"))
 
         let header = try NormalizedPlanStore.upsert(plan, originDevice: "iphone", in: context)
-        let restored = try XCTUnwrap(try NormalizedPlanStore.fetch(id: planID, in: context))
+        let restored = try #require(try NormalizedPlanStore.fetch(id: planID, in: context))
 
-        XCTAssertEqual(header.id, planID.raw)
-        XCTAssertEqual(restored, plan)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanWeek>()).count, 1)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanDay>()).count, 7)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanSession>()).count, 1)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count, 4)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanSet>()).count, 1)
+        #expect(header.id == planID.raw)
+        #expect(restored == plan)
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanWeek>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanDay>()).count == 7)
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanSession>()).count == 1)
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count == 4)
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanSet>()).count == 1)
     }
 
-    func testNewerUpsertReplacesOnlyThePlanTreeAndPreservesStableIDs() throws {
+    @Test func newerUpsertReplacesOnlyThePlanTreeAndPreservesStableIDs() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let weekID = UUID()
         let dayID = UUID()
@@ -59,16 +60,16 @@ final class NormalizedPlanStoreTests: XCTestCase {
                           title: "Second", updatedAt: 20, itemCount: 2)
         _ = try NormalizedPlanStore.upsert(second, originDevice: "ipad", in: context)
 
-        XCTAssertEqual(try NormalizedPlanStore.fetch(id: planID, in: context)?.title, "Second")
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanWeek>()).map(\.id), [weekID])
+        #expect(try NormalizedPlanStore.fetch(id: planID, in: context)?.title == "Second")
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanWeek>()).map(\.id) == [weekID])
         let persistedDays = try context.fetch(FetchDescriptor<PersistedPlanDay>())
-        XCTAssertEqual(persistedDays.count, 7)
-        XCTAssertTrue(persistedDays.contains(where: { $0.id == dayID }))
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanSession>()).map(\.id), [sessionID])
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count, 2)
+        #expect(persistedDays.count == 7)
+        #expect(persistedDays.contains(where: { $0.id == dayID }))
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanSession>()).map(\.id) == [sessionID])
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count == 2)
     }
 
-    func testContentEquivalentPlanDoesNotRewriteNormalizedTree() throws {
+    @Test func contentEquivalentPlanDoesNotRewriteNormalizedTree() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let planID = PlanID(raw: UUID())
         let original = plan(id: planID, weekID: UUID(), dayID: UUID(), sessionID: UUID(),
@@ -79,13 +80,13 @@ final class NormalizedPlanStoreTests: XCTestCase {
         regenerated.updatedAt = Date(timeIntervalSince1970: 900)
         let retained = try NormalizedPlanStore.upsert(regenerated, originDevice: "iphone", in: context)
 
-        XCTAssertTrue(header === retained)
-        XCTAssertEqual(retained.updatedAt, original.updatedAt)
-        XCTAssertEqual(try NormalizedPlanStore.fetch(id: planID, in: context), original)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count, 1)
+        #expect(header === retained)
+        #expect(retained.updatedAt == original.updatedAt)
+        #expect(try NormalizedPlanStore.fetch(id: planID, in: context) == original)
+        #expect(try context.fetch(FetchDescriptor<PersistedPlanItem>()).count == 1)
     }
 
-    func testClientRelationshipRoundTripsShareMetadataAndLifecycle() throws {
+    @Test func clientRelationshipRoundTripsShareMetadataAndLifecycle() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let relationship = ClientRelationship(
             displayName: "Alex", notes: "Prefers mornings", goal: .hypertrophy,
@@ -94,9 +95,9 @@ final class NormalizedPlanStoreTests: XCTestCase {
             createdAt: Date(timeIntervalSince1970: 1), updatedAt: Date(timeIntervalSince1970: 2))
 
         _ = try NormalizedPlanStore.upsert(relationship, in: context)
-        let record = try XCTUnwrap(try context.fetch(FetchDescriptor<PersistedClientRelationship>()).first)
+        let record = try #require(try context.fetch(FetchDescriptor<PersistedClientRelationship>()).first)
 
-        XCTAssertEqual(try record.value(), relationship)
+        #expect(try record.value() == relationship)
     }
 
     private func plan(id: PlanID, weekID: UUID, dayID: UUID, sessionID: UUID,

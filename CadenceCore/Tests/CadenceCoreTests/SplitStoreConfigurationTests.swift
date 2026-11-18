@@ -1,13 +1,14 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// H5's privacy boundary must be constructible before the app is allowed to
 /// switch from the legacy single-store container.
 @MainActor
-final class SplitStoreConfigurationTests: XCTestCase {
-    func testLocalAndSyncConfigurationsOpenOnSeparateFiles() throws {
+struct SplitStoreConfigurationTests {
+    @Test func localAndSyncConfigurationsOpenOnSeparateFiles() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("CadenceSplitStore-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -26,10 +27,10 @@ final class SplitStoreConfigurationTests: XCTestCase {
         context.insert(set)
         try context.save()
 
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<WorkoutSession>()), 1)
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Exercise>()), 1)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("Local.store").path))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: directory.appendingPathComponent("Sync.store").path))
+        #expect(try context.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Exercise>()) == 1)
+        #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("Local.store").path))
+        #expect(FileManager.default.fileExists(atPath: directory.appendingPathComponent("Sync.store").path))
     }
 }
 #endif

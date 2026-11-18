@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WatchCardioMinutesSummaryTests: XCTestCase {
+struct WatchCardioMinutesSummaryTests {
     private let hrrProfile = CardioIntensityProfile(restingHR: 63, maximumHR: 173, maximumHRSource: .userEntered)
     private let maxOnlyProfile = CardioIntensityProfile(restingHR: nil, maximumHR: 173, maximumHRSource: .userEntered)
 
@@ -13,64 +14,64 @@ final class WatchCardioMinutesSummaryTests: XCTestCase {
 
     private func assertMatchesAccumulator(_ samples: [HRSamplePoint], duration: TimeInterval,
                                           profile: CardioIntensityProfile,
-                                          file: StaticString = #filePath, line: UInt = #line) {
+                                          sourceLocation: SourceLocation = #_sourceLocation) {
         let expected = CardioMinuteAccumulator.summarize(duration: duration, samples: samples, profile: profile)
         let got = WatchCardioMinutesSummary.make(hrSamples: samples, sessionDuration: duration, profile: profile)
-        XCTAssertEqual(got?.belowModerateMinutes ?? -1, expected.belowModerateDuration / 60, file: file, line: line)
-        XCTAssertEqual(got?.moderateMinutes ?? -1, expected.moderateDuration / 60, file: file, line: line)
-        XCTAssertEqual(got?.vigorousMinutes ?? -1, expected.vigorousDuration / 60, file: file, line: line)
-        XCTAssertEqual(got?.totalMinutes ?? -1, expected.classifiedDuration / 60, file: file, line: line)
+        #expect((got?.belowModerateMinutes ?? -1) == expected.belowModerateDuration / 60, sourceLocation: sourceLocation)
+        #expect((got?.moderateMinutes ?? -1) == expected.moderateDuration / 60, sourceLocation: sourceLocation)
+        #expect((got?.vigorousMinutes ?? -1) == expected.vigorousDuration / 60, sourceLocation: sourceLocation)
+        #expect((got?.totalMinutes ?? -1) == expected.classifiedDuration / 60, sourceLocation: sourceLocation)
     }
 
-    func testHRRProfileClassifiesModerateAndVigorousLikePhone() {
+    @Test func hRRProfileClassifiesModerateAndVigorousLikePhone() {
         let samples = dense(111, from: 0, count: 5) + dense(130, from: 300, count: 5)
         let summary = WatchCardioMinutesSummary.make(hrSamples: samples, sessionDuration: 600, profile: hrrProfile)
-        XCTAssertEqual(summary?.moderateMinutes ?? -1, 5, accuracy: 0.0001)
-        XCTAssertEqual(summary?.vigorousMinutes ?? -1, 5, accuracy: 0.0001)
-        XCTAssertEqual(summary?.belowModerateMinutes ?? -1, 0, accuracy: 0.0001)
+        #expect(abs((summary?.moderateMinutes ?? -1) - 5) <= 0.0001)
+        #expect(abs((summary?.vigorousMinutes ?? -1) - 5) <= 0.0001)
+        #expect(abs((summary?.belowModerateMinutes ?? -1) - 0) <= 0.0001)
         assertMatchesAccumulator(samples, duration: 600, profile: hrrProfile)
     }
 
     /// E (field testing): the Watch summary's "Cardio attr" row must show the
     /// same guideline-weighted figure (moderate + 2x vigorous) the phone's
     /// "Guideline credit" row already shows -- not the plain unweighted total.
-    func testAttributedMinutesMatchesModerateEquivalentFormula() {
+    @Test func attributedMinutesMatchesModerateEquivalentFormula() {
         let samples = dense(111, from: 0, count: 5) + dense(130, from: 300, count: 5)
         let accumulated = CardioMinuteAccumulator.summarize(duration: 600, samples: samples, profile: hrrProfile)
         let summary = WatchCardioMinutesSummary.make(hrSamples: samples, sessionDuration: 600, profile: hrrProfile)
-        XCTAssertEqual(summary?.attributedMinutes ?? -1, accumulated.moderateEquivalentMinutes, accuracy: 0.0001)
+        #expect(abs((summary?.attributedMinutes ?? -1) - accumulated.moderateEquivalentMinutes) <= 0.0001)
         // Moderate + 2x vigorous must differ from the plain unweighted total
         // whenever there's any vigorous time, or this test can't tell the two
         // formulas apart.
-        XCTAssertNotEqual(summary?.attributedMinutes, summary?.totalMinutes)
+        #expect(summary?.attributedMinutes != summary?.totalMinutes)
     }
 
-    func testPercentMaxFallbackWithoutRestingHRMatchesAccumulator() {
+    @Test func percentMaxFallbackWithoutRestingHRMatchesAccumulator() {
         let samples = dense(100, from: 0, count: 4) + dense(125, from: 240, count: 4) + dense(160, from: 480, count: 4)
         assertMatchesAccumulator(samples, duration: 720, profile: maxOnlyProfile)
     }
 
-    func testLongGapCarriesForwardTheLastKnownHeartRate() {
+    @Test func longGapCarriesForwardTheLastKnownHeartRate() {
         let samples = [HRSamplePoint(t: 0, bpm: 130), HRSamplePoint(t: 600, bpm: 130)]
         let summary = WatchCardioMinutesSummary.make(hrSamples: samples, sessionDuration: 660, profile: hrrProfile)
-        XCTAssertEqual(summary?.vigorousMinutes ?? -1, 11, accuracy: 0.0001)
-        XCTAssertEqual(summary?.totalMinutes ?? -1, 11, accuracy: 0.0001)
+        #expect(abs((summary?.vigorousMinutes ?? -1) - 11) <= 0.0001)
+        #expect(abs((summary?.totalMinutes ?? -1) - 11) <= 0.0001)
         assertMatchesAccumulator(samples, duration: 660, profile: hrrProfile)
     }
 
-    func testNilWithoutEnoughHeartRate() {
-        XCTAssertNil(WatchCardioMinutesSummary.make(hrSamples: [], sessionDuration: 0, profile: hrrProfile))
-        XCTAssertNil(WatchCardioMinutesSummary.make(hrSamples: [HRSamplePoint(t: 0, bpm: 120)],
-                                                    sessionDuration: 60, profile: hrrProfile))
+    @Test func nilWithoutEnoughHeartRate() {
+        #expect(WatchCardioMinutesSummary.make(hrSamples: [], sessionDuration: 0, profile: hrrProfile) == nil)
+        #expect(WatchCardioMinutesSummary.make(hrSamples: [HRSamplePoint(t: 0, bpm: 120)],
+                                                    sessionDuration: 60, profile: hrrProfile) == nil)
     }
 
-    func testSourceDoesNotReferenceLegacyZoneMath() throws {
+    @Test func sourceDoesNotReferenceLegacyZoneMath() throws {
         let url = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .appendingPathComponent("Sources/CadenceWorkoutFeatures/WatchCardioMinutesSummary.swift")
         let source = try String(contentsOf: url, encoding: .utf8)
-        XCTAssertFalse(source.contains("CardioZoneAggregator"))
-        XCTAssertFalse(source.contains("CardioMath"))
-        XCTAssertTrue(source.contains("CardioMinuteAccumulator.summarize"))
+        #expect(!source.contains("CardioZoneAggregator"))
+        #expect(!source.contains("CardioMath"))
+        #expect(source.contains("CardioMinuteAccumulator.summarize"))
     }
 }

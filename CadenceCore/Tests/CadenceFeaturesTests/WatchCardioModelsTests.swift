@@ -1,234 +1,234 @@
-import XCTest
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 import CadencePhoneFeatures
 
-final class WatchCardioModelsTests: XCTestCase {
+struct WatchCardioModelsTests {
 
     // MARK: - WorkoutConfigurationSpec
 
-    func testSpecForRun() {
+    @Test func specForRun() {
         let spec = WorkoutConfigurationSpec(for: "run")
-        XCTAssertEqual(spec.kind, .run)
-        XCTAssertEqual(spec.location, .outdoor)
+        #expect(spec.kind == .run)
+        #expect(spec.location == .outdoor)
     }
 
-    func testSpecCarriesPlannedCardioTargets() {
+    @Test func specCarriesPlannedCardioTargets() {
         let spec = WorkoutConfigurationSpec(
             for: "run", plannedDurationSeconds: 1_800, targetZone: 2)
-        XCTAssertEqual(spec.plannedDurationSeconds, 1_800)
-        XCTAssertEqual(spec.targetZone, 2)
+        #expect(spec.plannedDurationSeconds == 1_800)
+        #expect(spec.targetZone == 2)
     }
 
-    func testSpecForWalk() {
+    @Test func specForWalk() {
         let spec = WorkoutConfigurationSpec(for: "walk")
-        XCTAssertEqual(spec.kind, .walk)
+        #expect(spec.kind == .walk)
     }
 
-    func testSpecForCycle() {
+    @Test func specForCycle() {
         let spec = WorkoutConfigurationSpec(for: "cycle")
-        XCTAssertEqual(spec.kind, .cycle)
+        #expect(spec.kind == .cycle)
     }
 
-    func testSpecForSwim_default25m() {
+    @Test func specForSwim_default25m() {
         let spec = WorkoutConfigurationSpec(for: "swim")
-        XCTAssertEqual(spec.kind, .swim)
+        #expect(spec.kind == .swim)
         if case .pool(let lapLength) = spec.location {
-            XCTAssertEqual(lapLength, 25)
-        } else { XCTFail("Expected pool location") }
+            #expect(lapLength == 25)
+        } else { Issue.record("Expected pool location") }
     }
 
-    func testSpecForHIIT() {
+    @Test func specForHIIT() {
         let spec = WorkoutConfigurationSpec(for: "hiit")
-        XCTAssertEqual(spec.kind, .hiit)
+        #expect(spec.kind == .hiit)
     }
 
-    func testSpecForBoxing() {
+    @Test func specForBoxing() {
         let spec = WorkoutConfigurationSpec(for: "boxing")
-        XCTAssertEqual(spec.kind, .boxing)
+        #expect(spec.kind == .boxing)
     }
 
-    func testSpecForRowing() {
+    @Test func specForRowing() {
         let spec = WorkoutConfigurationSpec(for: "rowing")
-        XCTAssertEqual(spec.kind, .rowing)
+        #expect(spec.kind == .rowing)
     }
 
-    func testEllipticalAndStairsKeepTheirTypesAndUseIndoorSetup() {
+    @Test func ellipticalAndStairsKeepTheirTypesAndUseIndoorSetup() {
         let elliptical = WorkoutConfigurationSpec(for: "elliptical")
-        XCTAssertEqual(elliptical.kind, .elliptical)
-        XCTAssertEqual(elliptical.location, .indoor)
+        #expect(elliptical.kind == .elliptical)
+        #expect(elliptical.location == .indoor)
         for raw in ["stairClimber", "stair_climber", "stairs"] {
             let stairs = WorkoutConfigurationSpec(for: raw)
-            XCTAssertEqual(stairs.kind, .stairClimber)
-            XCTAssertEqual(stairs.location, .indoor)
+            #expect(stairs.kind == .stairClimber)
+            #expect(stairs.location == .indoor)
         }
     }
 
-    func testSpecForOther() {
+    @Test func specForOther() {
         let spec = WorkoutConfigurationSpec(for: "other")
-        XCTAssertEqual(spec.kind, .other)
+        #expect(spec.kind == .other)
     }
 
-    func testSpecForUnknown() {
+    @Test func specForUnknown() {
         let spec = WorkoutConfigurationSpec(for: "garbage")
-        XCTAssertEqual(spec.kind, .strength)
+        #expect(spec.kind == .strength)
     }
 
-    func testSpecCustomPool() {
+    @Test func specCustomPool() {
         let spec = WorkoutConfigurationSpec(kind: .swim, location: .pool(lapLength: 50))
         if case .pool(let lapLength) = spec.location {
-            XCTAssertEqual(lapLength, 50)
-        } else { XCTFail("Expected pool") }
+            #expect(lapLength == 50)
+        } else { Issue.record("Expected pool") }
     }
 
-    func testSpecCustomOutdoorRun() {
+    @Test func specCustomOutdoorRun() {
         let spec = WorkoutConfigurationSpec(kind: .run, location: .outdoor)
-        XCTAssertEqual(spec.location, .outdoor)
+        #expect(spec.location == .outdoor)
     }
 
     // MARK: - CardioMetricsModel
 
-    func testDistanceFormat_metric() {
+    @Test func distanceFormat_metric() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms)
         m.updateDistance(0)
-        XCTAssertTrue(m.formatDistance().contains("m"))
+        #expect(m.formatDistance().contains("m"))
     }
 
-    func testDistanceFormat_miles() {
+    @Test func distanceFormat_miles() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
         m.updateDistance(1609.344)
-        XCTAssertTrue(m.formatDistance().contains("mi"))
+        #expect(m.formatDistance().contains("mi"))
     }
 
-    func testPaceDivByZero_safe() {
+    @Test func paceDivByZero_safe() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms)
         m.updateDistance(0)
         m.updateElapsed(0)
-        XCTAssertEqual(m.formatPace(), "--")
+        #expect(m.formatPace() == "--")
     }
 
-    func testHRZone() {
+    @Test func hRZone() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms)
         m.updateHR(150)
-        XCTAssertGreaterThan(m.hrZone, 0)
-        XCTAssertLessThanOrEqual(m.hrZone, 5)
+        #expect(m.hrZone > 0)
+        #expect(m.hrZone <= 5)
     }
 
-    func testSplitPer500m() {
+    @Test func splitPer500m() {
         let m = CardioMetricsModel(kind: .rowing, unit: .kilograms)
         m.updateDistance(1000)
         m.elapsed = 150
         m.recomputeSplitPer500m()
-        XCTAssertEqual(m.splitPer500m ?? 0, 75, accuracy: 1)
+        #expect(abs((m.splitPer500m ?? 0) - 75) <= 1)
     }
 
-    func testAutoPaused() {
+    @Test func autoPaused() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms)
-        XCTAssertFalse(m.isAutoPaused)
+        #expect(!m.isAutoPaused)
         m.setAutoPaused(true)
-        XCTAssertTrue(m.isAutoPaused)
+        #expect(m.isAutoPaused)
         m.resetAutoPause()
-        XCTAssertFalse(m.isAutoPaused)
+        #expect(!m.isAutoPaused)
     }
 
-    func testLapCount_defaultsToZero() {
+    @Test func lapCount_defaultsToZero() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms)
-        XCTAssertEqual(m.lapCount, 0)
-        XCTAssertEqual(m.manualLapCount, 0)
+        #expect(m.lapCount == 0)
+        #expect(m.manualLapCount == 0)
     }
 
-    func testLapCount_totalIncludesManual() {
+    @Test func lapCount_totalIncludesManual() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms)
         m.lapCount = 3
         m.manualLapCount = 2
-        XCTAssertEqual(m.lapCount + m.manualLapCount, 5)
+        #expect(m.lapCount + m.manualLapCount == 5)
     }
 
-    func testDistanceFormat_imperial_roundsCorrectly() {
+    @Test func distanceFormat_imperial_roundsCorrectly() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
         m.updateDistance(0)
-        XCTAssertTrue(m.formatDistance().contains("mi"))
+        #expect(m.formatDistance().contains("mi"))
     }
 
-    func testSplitPer500m_zeroDistance() {
+    @Test func splitPer500m_zeroDistance() {
         let m = CardioMetricsModel(kind: .rowing, unit: .kilograms)
         m.updateDistance(0)
         m.elapsed = 100
         m.recomputeSplitPer500m()
-        XCTAssertNil(m.splitPer500m)
+        #expect(m.splitPer500m == nil)
     }
 
     // MARK: - AutoPauseDetector
 
-    func testHighSpeed_noPause() {
+    @Test func highSpeed_noPause() {
         var d = AutoPauseDetector()
-        XCTAssertEqual(d.evaluate(speedMPS: 3.0, isDisabled: false), .none)
+        #expect(d.evaluate(speedMPS: 3.0, isDisabled: false) == .none)
     }
 
-    func testLowSpeed_withoutDebounce_noPause() {
+    @Test func lowSpeed_withoutDebounce_noPause() {
         var d = AutoPauseDetector()
-        XCTAssertEqual(d.evaluate(speedMPS: 0.3, isDisabled: false), .none)
+        #expect(d.evaluate(speedMPS: 0.3, isDisabled: false) == .none)
     }
 
-    func testLowSpeed_withDebounce_pauses() {
+    @Test func lowSpeed_withDebounce_pauses() {
         var d = AutoPauseDetector(speedThreshold: 0.5, debounceSeconds: 0.0)
-        XCTAssertEqual(d.evaluate(speedMPS: 0.3, isDisabled: false), .pause)
+        #expect(d.evaluate(speedMPS: 0.3, isDisabled: false) == .pause)
     }
 
-    func testResumeAfterPause() {
+    @Test func resumeAfterPause() {
         var d = AutoPauseDetector(speedThreshold: 0.5, debounceSeconds: 0.0)
         _ = d.evaluate(speedMPS: 0.3, isDisabled: false)
         d.reset()
-        XCTAssertEqual(d.evaluate(speedMPS: 3.0, isDisabled: false), .none)
+        #expect(d.evaluate(speedMPS: 3.0, isDisabled: false) == .none)
     }
 
-    func testDisabled_noPause() {
+    @Test func disabled_noPause() {
         var d = AutoPauseDetector(speedThreshold: 0.5, debounceSeconds: 0.0)
-        XCTAssertEqual(d.evaluate(speedMPS: 0.1, isDisabled: true), .none)
+        #expect(d.evaluate(speedMPS: 0.1, isDisabled: true) == .none)
     }
 
-    func testNilSpeed_noPause() {
+    @Test func nilSpeed_noPause() {
         var d = AutoPauseDetector()
-        XCTAssertEqual(d.evaluate(speedMPS: nil, isDisabled: false), .none)
+        #expect(d.evaluate(speedMPS: nil, isDisabled: false) == .none)
     }
 
     // MARK: - IntervalSetupModel
 
-    func testHIITDefaults() {
+    @Test func hIITDefaults() {
         let m = IntervalSetupModel(kind: "HIIT")
-        XCTAssertEqual(m.rounds, 8)
-        XCTAssertEqual(m.warmupSeconds, 180)
-        XCTAssertEqual(m.workSeconds, 20)
-        XCTAssertEqual(m.restSeconds, 10)
-        XCTAssertEqual(m.cooldownSeconds, 120)
-        XCTAssertEqual(m.hiitProtocol, .tabata)
+        #expect(m.rounds == 8)
+        #expect(m.warmupSeconds == 180)
+        #expect(m.workSeconds == 20)
+        #expect(m.restSeconds == 10)
+        #expect(m.cooldownSeconds == 120)
+        #expect(m.hiitProtocol == .tabata)
     }
 
-    func testBoxingDefaults() {
+    @Test func boxingDefaults() {
         let m = IntervalSetupModel(kind: "Boxing")
-        XCTAssertEqual(m.rounds, 8)
-        XCTAssertEqual(m.warmupSeconds, 180)
-        XCTAssertEqual(m.workSeconds, 180)
-        XCTAssertEqual(m.restSeconds, 60)
-        XCTAssertEqual(m.cooldownSeconds, 120)
-        XCTAssertEqual(m.boxingRoundMinutes, 3)
-        XCTAssertEqual(m.boxingRestSeconds, 60)
+        #expect(m.rounds == 8)
+        #expect(m.warmupSeconds == 180)
+        #expect(m.workSeconds == 180)
+        #expect(m.restSeconds == 60)
+        #expect(m.cooldownSeconds == 120)
+        #expect(m.boxingRoundMinutes == 3)
+        #expect(m.boxingRestSeconds == 60)
     }
 
-    func testIntervalAcceptsSyncedWarmupAndCooldown() {
+    @Test func intervalAcceptsSyncedWarmupAndCooldown() {
         let m = IntervalSetupModel(kind: "Boxing", warmupSeconds: 240, cooldownSeconds: 60)
-        XCTAssertEqual(m.warmupSeconds, 240)
-        XCTAssertEqual(m.cooldownSeconds, 60)
+        #expect(m.warmupSeconds == 240)
+        #expect(m.cooldownSeconds == 60)
     }
 
-    func testIntervalInitializerClampsSyncedWarmupAndCooldown() {
+    @Test func intervalInitializerClampsSyncedWarmupAndCooldown() {
         let m = IntervalSetupModel(kind: "Boxing", warmupSeconds: 900, cooldownSeconds: -20)
-        XCTAssertEqual(m.warmupSeconds, 600)
-        XCTAssertEqual(m.cooldownSeconds, 0)
+        #expect(m.warmupSeconds == 600)
+        #expect(m.cooldownSeconds == 0)
     }
 
-    func testIntervalClamp() {
+    @Test func intervalClamp() {
         let m = IntervalSetupModel(kind: "HIIT")
         m.rounds = 100
         m.warmupSeconds = -10
@@ -236,78 +236,78 @@ final class WatchCardioModelsTests: XCTestCase {
         m.restSeconds = 0
         m.cooldownSeconds = 1000
         let c = m.clamped()
-        XCTAssertEqual(c.rounds, 30)
-        XCTAssertEqual(c.warmupSeconds, 0)
-        XCTAssertEqual(c.workSeconds, 600)
-        XCTAssertEqual(c.restSeconds, 5)
-        XCTAssertEqual(c.cooldownSeconds, 600)
+        #expect(c.rounds == 30)
+        #expect(c.warmupSeconds == 0)
+        #expect(c.workSeconds == 600)
+        #expect(c.restSeconds == 5)
+        #expect(c.cooldownSeconds == 600)
     }
 
-    func testWarmupAndCooldownAllowZeroButWorkAndRestDoNot() {
+    @Test func warmupAndCooldownAllowZeroButWorkAndRestDoNot() {
         let m = IntervalSetupModel(kind: "Boxing")
         m.warmupSeconds = 0
         m.workSeconds = 0
         m.restSeconds = 0
         m.cooldownSeconds = 0
         let c = m.clamped()
-        XCTAssertEqual(c.warmupSeconds, 0)
-        XCTAssertEqual(c.workSeconds, 5)
-        XCTAssertEqual(c.restSeconds, 5)
-        XCTAssertEqual(c.cooldownSeconds, 0)
+        #expect(c.warmupSeconds == 0)
+        #expect(c.workSeconds == 5)
+        #expect(c.restSeconds == 5)
+        #expect(c.cooldownSeconds == 0)
     }
 
-    func testIntervalPlanBuilt() {
+    @Test func intervalPlanBuilt() {
         let m = IntervalSetupModel(kind: "Custom")
         let plan = m.intervalPlan()
-        XCTAssertEqual(plan.name, "Custom")
-        XCTAssertEqual(plan.workRounds, 8)
+        #expect(plan.name == "Custom")
+        #expect(plan.workRounds == 8)
     }
 
-    func testIntervalPlanWorkRoundsMatchesRounds() {
+    @Test func intervalPlanWorkRoundsMatchesRounds() {
         let m = IntervalSetupModel(kind: "HIIT")
         m.rounds = 3
         let plan = m.intervalPlan()
-        XCTAssertEqual(plan.workRounds, 3)
+        #expect(plan.workRounds == 3)
     }
 
-    func testIntervalPlanUsesConfiguredWarmupAndCooldown() {
+    @Test func intervalPlanUsesConfiguredWarmupAndCooldown() {
         let m = IntervalSetupModel(kind: "Boxing", warmupSeconds: 240, cooldownSeconds: 60)
         m.rounds = 2
         let plan = m.intervalPlan()
-        XCTAssertEqual(plan.phases.first?.kind, .warmup)
-        XCTAssertEqual(plan.phases.first?.duration, 240)
-        XCTAssertEqual(plan.phases.last?.kind, .cooldown)
-        XCTAssertEqual(plan.phases.last?.duration, 60)
+        #expect(plan.phases.first?.kind == .warmup)
+        #expect(plan.phases.first?.duration == 240)
+        #expect(plan.phases.last?.kind == .cooldown)
+        #expect(plan.phases.last?.duration == 60)
     }
 
-    func testIntervalPlanOmitsZeroWarmupAndCooldown() {
+    @Test func intervalPlanOmitsZeroWarmupAndCooldown() {
         let m = IntervalSetupModel(kind: "Boxing")
         m.rounds = 1
         m.warmupSeconds = 0
         m.cooldownSeconds = 0
         let plan = m.intervalPlan()
-        XCTAssertFalse(plan.phases.contains { $0.kind == .warmup })
-        XCTAssertFalse(plan.phases.contains { $0.kind == .cooldown })
-        XCTAssertEqual(plan.workRounds, 1)
+        #expect(!plan.phases.contains { $0.kind == .warmup })
+        #expect(!plan.phases.contains { $0.kind == .cooldown })
+        #expect(plan.workRounds == 1)
     }
 
     // MARK: - DistanceUnitPreference formatting
 
-    func testKgWeightMilesDistance_formatsDistanceAsMiles() {
+    @Test func kgWeightMilesDistance_formatsDistanceAsMiles() {
         let m = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
         m.updateDistance(1609.344)
-        XCTAssertTrue(m.formatDistance().contains("mi"))
+        #expect(m.formatDistance().contains("mi"))
     }
 
-    func testPoundsWeightKmDistance_formatsDistanceAsKilometers() {
+    @Test func poundsWeightKmDistance_formatsDistanceAsKilometers() {
         let m = CardioMetricsModel(kind: .walk, unit: .pounds, distanceUnit: .kilometers)
         m.updateDistance(500)
-        XCTAssertTrue(m.formatDistance().contains("m"))
+        #expect(m.formatDistance().contains("m"))
         m.updateDistance(2000)
-        XCTAssertTrue(m.formatDistance().contains("km"))
+        #expect(m.formatDistance().contains("km"))
     }
 
-    func testPaceLabelFollowsDistanceUnit() {
+    @Test func paceLabelFollowsDistanceUnit() {
         let mMiles = CardioMetricsModel(kind: .run, unit: .kilograms, distanceUnit: .miles)
         let mKm = CardioMetricsModel(kind: .run, unit: .pounds, distanceUnit: .kilometers)
 
@@ -316,11 +316,11 @@ final class WatchCardioModelsTests: XCTestCase {
 
         let paceMiles = mMiles.formatPace()
         let paceKm = mKm.formatPace()
-        if paceMiles != "--" { XCTAssertTrue(paceMiles.contains("/mi")) }
-        if paceKm != "--" { XCTAssertTrue(paceKm.contains("/km")) }
+        if paceMiles != "--" { #expect(paceMiles.contains("/mi")) }
+        if paceKm != "--" { #expect(paceKm.contains("/km")) }
     }
 
-    func testSpeedLabelFollowsDistanceUnit() {
+    @Test func speedLabelFollowsDistanceUnit() {
         let mMiles = CardioMetricsModel(kind: .cycle, unit: .kilograms, distanceUnit: .miles)
         let mKm = CardioMetricsModel(kind: .cycle, unit: .pounds, distanceUnit: .kilometers)
 
@@ -329,20 +329,20 @@ final class WatchCardioModelsTests: XCTestCase {
 
         let speedMiles = mMiles.formatSpeed()
         let speedKm = mKm.formatSpeed()
-        if speedMiles != "--" { XCTAssertTrue(speedMiles.hasSuffix("mph")) }
-        if speedKm != "--" { XCTAssertTrue(speedKm.hasSuffix("km/h")) }
+        if speedMiles != "--" { #expect(speedMiles.hasSuffix("mph")) }
+        if speedKm != "--" { #expect(speedKm.hasSuffix("km/h")) }
     }
 
-    func testRowingSplitRemains500m() {
+    @Test func rowingSplitRemains500m() {
         let m = CardioMetricsModel(kind: .rowing, unit: .kilograms, distanceUnit: .miles)
         m.updateDistance(1000); m.elapsed = 150
         m.recomputeSplitPer500m()
-        XCTAssertTrue(m.formatSplit().contains("/500m"))
+        #expect(m.formatSplit().contains("/500m"))
     }
 
     // MARK: - WatchCardioLivePresenter
 
-    func testLivePresenterHRZoneBoundaries() {
+    @Test func livePresenterHRZoneBoundaries() {
         let max = 190.0
         let cases: [(Double, Int)] = [(30, 1), (0.60 * max, 2), (0.70 * max, 3),
                                       (0.80 * max, 4), (0.90 * max, 5)]
@@ -350,12 +350,12 @@ final class WatchCardioModelsTests: XCTestCase {
             let p = WatchCardioLivePresenter.present(elapsed: 1, bpm: bpm, distanceMeters: nil,
                                                        heartRateEnabled: true, gpsEnabled: false,
                                                        distanceUnit: .kilometers, maxHR: max)
-            XCTAssertEqual(p.hrZone, zone, "Expected zone \(zone) at \(bpm) BPM")
-            XCTAssertEqual(p.bpmText, "\(Int(bpm.rounded()))")
+            #expect(p.hrZone == zone, "Expected zone \(zone) at \(bpm) BPM")
+            #expect(p.bpmText == "\(Int(bpm.rounded()))")
         }
     }
 
-    func testLivePresenterUsesThePhoneHRRTrainingZone() {
+    @Test func livePresenterUsesThePhoneHRRTrainingZone() {
         let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 180,
                                              maximumHRSource: .userEntered)
         let bpm = 144.0 // 70% HRR: Z4 under the shared classifier.
@@ -363,110 +363,110 @@ final class WatchCardioModelsTests: XCTestCase {
         let presentation = WatchCardioLivePresenter.present(
             elapsed: 1, bpm: bpm, distanceMeters: nil, heartRateEnabled: true,
             gpsEnabled: false, distanceUnit: .kilometers, intensityProfile: profile)
-        XCTAssertEqual(presentation.hrZone, expected.trainingZone?.rawValue)
-        XCTAssertEqual(presentation.relativeIntensity, expected.relativeIntensity)
-        XCTAssertEqual(presentation.guidelineIntensity, expected.guidelineIntensity)
+        #expect(presentation.hrZone == expected.trainingZone?.rawValue)
+        #expect(presentation.relativeIntensity == expected.relativeIntensity)
+        #expect(presentation.guidelineIntensity == expected.guidelineIntensity)
     }
 
-    func testLivePresenterNoHRHidesBPMAndZone() {
+    @Test func livePresenterNoHRHidesBPMAndZone() {
         let p = WatchCardioLivePresenter.present(elapsed: 65, bpm: 150, distanceMeters: 20,
                                                    heartRateEnabled: false, gpsEnabled: false,
                                                    distanceUnit: .kilometers)
-        XCTAssertEqual(p.elapsedText, "0:01:05")
-        XCTAssertFalse(p.showsHeartRate)
-        XCTAssertNil(p.hrZone)
-        XCTAssertNil(p.distanceText)
+        #expect(p.elapsedText == "0:01:05")
+        #expect(!p.showsHeartRate)
+        #expect(p.hrZone == nil)
+        #expect(p.distanceText == nil)
     }
 
-    func testLivePresenterNilAndZeroSamples() {
+    @Test func livePresenterNilAndZeroSamples() {
         let noHR = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: nil,
                                                       heartRateEnabled: true, gpsEnabled: true,
                                                       distanceUnit: .kilometers)
-        XCTAssertNil(noHR.bpmText)
-        XCTAssertEqual(noHR.distanceText, "0 m")
+        #expect(noHR.bpmText == nil)
+        #expect(noHR.distanceText == "0 m")
 
         let zeroHR = WatchCardioLivePresenter.present(elapsed: 0, bpm: 0, distanceMeters: 0,
                                                         heartRateEnabled: true, gpsEnabled: true,
                                                         distanceUnit: .miles)
-        XCTAssertNil(zeroHR.bpmText)
-        XCTAssertEqual(zeroHR.distanceText, "0 m")
+        #expect(zeroHR.bpmText == nil)
+        #expect(zeroHR.distanceText == "0 m")
     }
 
-    func testLivePresenterDistanceFormattingAndGPSGate() {
+    @Test func livePresenterDistanceFormattingAndGPSGate() {
         let metric = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: 132,
                                                         heartRateEnabled: false, gpsEnabled: true,
                                                         distanceUnit: .kilometers)
-        XCTAssertEqual(metric.distanceText, "132 m")
+        #expect(metric.distanceText == "132 m")
         let imperial = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: 3218.688,
                                                           heartRateEnabled: false, gpsEnabled: true,
                                                           distanceUnit: .miles)
-        XCTAssertEqual(imperial.distanceText, "2 mi")
+        #expect(imperial.distanceText == "2 mi")
         let gated = WatchCardioLivePresenter.present(elapsed: 0, bpm: nil, distanceMeters: 3218.688,
                                                        heartRateEnabled: false, gpsEnabled: false,
                                                        distanceUnit: .miles)
-        XCTAssertNil(gated.distanceText)
+        #expect(gated.distanceText == nil)
     }
 
     // MARK: - HIIT protocol picker
 
-    func testHIITSetupDefaultsToTabata() {
+    @Test func hIITSetupDefaultsToTabata() {
         let m = IntervalSetupModel(kind: "HIIT")
-        XCTAssertEqual(m.hiitProtocol, .tabata)
+        #expect(m.hiitProtocol == .tabata)
         let plan = m.hiitIntervalPlan()
-        XCTAssertEqual(plan.name, "Tabata")
+        #expect(plan.name == "Tabata")
     }
 
-    func testEachHIITProtocolMapsToBuiltInFactory() {
+    @Test func eachHIITProtocolMapsToBuiltInFactory() {
         let model = IntervalSetupModel(kind: "HIIT")
         for proto in CadenceWorkoutFeatures.HIITProtocol.allCases {
             model.hiitProtocol = proto
             let plan = model.hiitIntervalPlan()
-            XCTAssertFalse(plan.phases.isEmpty, "\(proto.displayName) plan should not be empty")
-            XCTAssertGreaterThan(plan.totalDuration, 0, "\(proto.displayName) should have positive duration")
+            #expect(!plan.phases.isEmpty, "\(proto.displayName) plan should not be empty")
+            #expect(plan.totalDuration > 0, "\(proto.displayName) should have positive duration")
         }
     }
 
-    func testBoxingDefaultsRounds() {
+    @Test func boxingDefaultsRounds() {
         let m = IntervalSetupModel(kind: "Boxing")
-        XCTAssertEqual(m.rounds, 8)
-        XCTAssertEqual(m.boxingRoundMinutes, 3)
-        XCTAssertEqual(m.boxingRestSeconds, 60)
+        #expect(m.rounds == 8)
+        #expect(m.boxingRoundMinutes == 3)
+        #expect(m.boxingRestSeconds == 60)
     }
 
-    func testBoxingPlanHasNoWarmupAndNoCooldown() {
+    @Test func boxingPlanHasNoWarmupAndNoCooldown() {
         let m = IntervalSetupModel(kind: "Boxing")
         let plan = m.boxingIntervalPlan()
-        XCTAssertFalse(plan.phases.contains { $0.kind == .warmup })
-        XCTAssertFalse(plan.phases.contains { $0.kind == .cooldown })
+        #expect(!plan.phases.contains { $0.kind == .warmup })
+        #expect(!plan.phases.contains { $0.kind == .cooldown })
     }
 
-    func testBoxingRoundsLimitedTo1to20() {
+    @Test func boxingRoundsLimitedTo1to20() {
         let m = IntervalSetupModel(kind: "Boxing")
         m.rounds = 25
         let c = m.clamped()
-        XCTAssertEqual(c.rounds, 20)
+        #expect(c.rounds == 20)
         m.rounds = 0
         let c2 = m.clamped()
-        XCTAssertEqual(c2.rounds, 1)
+        #expect(c2.rounds == 1)
     }
 
-    func testBoxingRoundLengthOnly2or3Minutes() {
+    @Test func boxingRoundLengthOnly2or3Minutes() {
         let m = IntervalSetupModel(kind: "Boxing")
         m.boxingRoundMinutes = 5
         let c = m.clamped()
-        XCTAssertEqual(c.boxingRoundMinutes, 3)
+        #expect(c.boxingRoundMinutes == 3)
         m.boxingRoundMinutes = 1
         let c2 = m.clamped()
-        XCTAssertEqual(c2.boxingRoundMinutes, 2)
+        #expect(c2.boxingRoundMinutes == 2)
     }
 
-    func testBoxingRestOnly30or60Seconds() {
+    @Test func boxingRestOnly30or60Seconds() {
         let m = IntervalSetupModel(kind: "Boxing")
         m.boxingRestSeconds = 45
         let c = m.clamped()
-        XCTAssertEqual(c.boxingRestSeconds, 60)
+        #expect(c.boxingRestSeconds == 60)
         m.boxingRestSeconds = 15
         let c2 = m.clamped()
-        XCTAssertEqual(c2.boxingRestSeconds, 30)
+        #expect(c2.boxingRestSeconds == 30)
     }
 }

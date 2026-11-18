@@ -1,36 +1,37 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WatchHRCommandTests: XCTestCase {
-    func testStartRoundTripsThroughPropertyListPayload() throws {
+struct WatchHRCommandTests {
+    @Test func startRoundTripsThroughPropertyListPayload() throws {
         let requestID = UUID()
         let command = WatchHRCommand(action: .start, requestID: requestID,
                                      workoutType: "run", issuedAt: 1234.5)
-        let decoded = try XCTUnwrap(WatchHRCommand(payload: command.payload))
-        XCTAssertEqual(decoded, command)
+        let decoded = try #require(WatchHRCommand(payload: command.payload))
+        #expect(decoded == command)
     }
 
-    func testStopRoundTripsWithRequestIdentity() throws {
+    @Test func stopRoundTripsWithRequestIdentity() throws {
         let requestID = UUID()
         let command = WatchHRCommand(action: .stop, requestID: requestID, issuedAt: 1235)
-        XCTAssertEqual(WatchHRCommand(payload: command.payload), command)
+        #expect(WatchHRCommand(payload: command.payload) == command)
     }
 
-    func testCommandsAreStrictlyOrderedWhenClockDoesNotAdvance() {
+    @Test func commandsAreStrictlyOrderedWhenClockDoesNotAdvance() {
         let first = WatchHRCommand.nextIssuedAt(now: 100, after: nil)
         let second = WatchHRCommand.nextIssuedAt(now: 99, after: first)
         let third = WatchHRCommand.nextIssuedAt(now: 100, after: second)
-        XCTAssertGreaterThan(second, first)
-        XCTAssertGreaterThan(third, second)
+        #expect(second > first)
+        #expect(third > second)
     }
 
-    func testOldOrDuplicateCommandIsNotNewer() {
-        XCTAssertFalse(WatchHRCommand(action: .stop, requestID: UUID(), issuedAt: 10)
+    @Test func oldOrDuplicateCommandIsNotNewer() {
+        #expect(!WatchHRCommand(action: .stop, requestID: UUID(), issuedAt: 10)
             .isNewer(than: 10))
-        XCTAssertFalse(WatchHRCommand(action: .stop, requestID: UUID(), issuedAt: 9)
+        #expect(!WatchHRCommand(action: .stop, requestID: UUID(), issuedAt: 9)
             .isNewer(than: 10))
-        XCTAssertTrue(WatchHRCommand(action: .stop, requestID: UUID(), issuedAt: 11)
+        #expect(WatchHRCommand(action: .stop, requestID: UUID(), issuedAt: 11)
             .isNewer(than: 10))
     }
 }

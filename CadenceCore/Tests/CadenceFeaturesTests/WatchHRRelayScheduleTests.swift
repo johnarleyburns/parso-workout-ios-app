@@ -1,76 +1,89 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WatchHRRelayScheduleTests: XCTestCase {
+struct WatchHRRelayScheduleTests {
     private let t0 = Date(timeIntervalSince1970: 1_000)
 
-    func testFirstReadingIsNewAndSendsNow() {
+    @Test func firstReadingIsNewAndSendsNow() {
         var schedule = WatchHRRelaySchedule()
-        XCTAssertTrue(schedule.observeReading(endingAt: t0, uptime: 0))
-        XCTAssertEqual(schedule.delayBeforeSending(uptime: 50), 0)
+        let isNew = schedule.observeReading(endingAt: t0, uptime: 0)
+        #expect(isNew)
+        #expect(schedule.delayBeforeSending(uptime: 50) == 0)
     }
 
-    func testTheSameSampleSeenAgainIsNotNew() {
+    @Test func theSameSampleSeenAgainIsNotNew() {
         var schedule = WatchHRRelaySchedule()
-        XCTAssertTrue(schedule.observeReading(endingAt: t0, uptime: 0))
-        XCTAssertFalse(schedule.observeReading(endingAt: t0, uptime: 0), "the display poll re-reads the latest statistic")
-        XCTAssertFalse(schedule.observeReading(endingAt: t0.addingTimeInterval(-3), uptime: 0), "an older sample arriving late")
-        XCTAssertTrue(schedule.observeReading(endingAt: t0.addingTimeInterval(5), uptime: 0))
+        let first = schedule.observeReading(endingAt: t0, uptime: 0)
+        #expect(first)
+        let repeated = schedule.observeReading(endingAt: t0, uptime: 0)
+        #expect(!repeated, "the display poll re-reads the latest statistic")
+        let older = schedule.observeReading(endingAt: t0.addingTimeInterval(-3), uptime: 0)
+        #expect(!older, "an older sample arriving late")
+        let newer = schedule.observeReading(endingAt: t0.addingTimeInterval(5), uptime: 0)
+        #expect(newer)
     }
 
-    func testReadingsWithoutTimestampsAreAlwaysNew() {
+    @Test func readingsWithoutTimestampsAreAlwaysNew() {
         var schedule = WatchHRRelaySchedule()
-        XCTAssertTrue(schedule.observeReading(endingAt: nil, uptime: 0))
-        XCTAssertTrue(schedule.observeReading(endingAt: nil, uptime: 0))
+        let first = schedule.observeReading(endingAt: nil, uptime: 0)
+        #expect(first)
+        let second = schedule.observeReading(endingAt: nil, uptime: 0)
+        #expect(second)
     }
 
-    func testAReadingInsideTheGapWaitsForTheRest() {
+    @Test func aReadingInsideTheGapWaitsForTheRest() {
         var schedule = WatchHRRelaySchedule()
         schedule.recordSend(uptime: 100)
-        XCTAssertEqual(schedule.delayBeforeSending(uptime: 100.25), 0.75, accuracy: 0.0001)
-        XCTAssertEqual(schedule.delayBeforeSending(uptime: 101), 0)
-        XCTAssertEqual(schedule.delayBeforeSending(uptime: 106), 0)
+        #expect(abs(schedule.delayBeforeSending(uptime: 100.25) - 0.75) <= 0.0001)
+        #expect(schedule.delayBeforeSending(uptime: 101) == 0)
+        #expect(schedule.delayBeforeSending(uptime: 106) == 0)
     }
 
-    func testUptimeGoingBackwardDoesNotStallTheRelay() {
+    @Test func uptimeGoingBackwardDoesNotStallTheRelay() {
         var schedule = WatchHRRelaySchedule()
         schedule.recordSend(uptime: 500)
-        XCTAssertEqual(schedule.delayBeforeSending(uptime: 10), 0)
+        #expect(schedule.delayBeforeSending(uptime: 10) == 0)
     }
 
-    func testHeartbeatStopsAfterFifteenSecondsWithoutANewReading() {
+    @Test func heartbeatStopsAfterFifteenSecondsWithoutANewReading() {
         var schedule = WatchHRRelaySchedule()
-        XCTAssertFalse(schedule.isNewestReadingStale(uptime: 100), "no reading yet")
-        XCTAssertTrue(schedule.observeReading(endingAt: t0, uptime: 100))
-        XCTAssertFalse(schedule.isNewestReadingStale(uptime: 115))
-        XCTAssertTrue(schedule.isNewestReadingStale(uptime: 115.5))
-        XCTAssertFalse(schedule.observeReading(endingAt: t0, uptime: 116), "a re-read is not a new reading")
-        XCTAssertTrue(schedule.isNewestReadingStale(uptime: 116))
-        XCTAssertTrue(schedule.observeReading(endingAt: nil, uptime: 117), "a strap reading counts as new")
-        XCTAssertFalse(schedule.isNewestReadingStale(uptime: 117))
+        #expect(!schedule.isNewestReadingStale(uptime: 100), "no reading yet")
+        let first = schedule.observeReading(endingAt: t0, uptime: 100)
+        #expect(first)
+        #expect(!schedule.isNewestReadingStale(uptime: 115))
+        #expect(schedule.isNewestReadingStale(uptime: 115.5))
+        let reread = schedule.observeReading(endingAt: t0, uptime: 116)
+        #expect(!reread, "a re-read is not a new reading")
+        #expect(schedule.isNewestReadingStale(uptime: 116))
+        let strap = schedule.observeReading(endingAt: nil, uptime: 117)
+        #expect(strap, "a strap reading counts as new")
+        #expect(!schedule.isNewestReadingStale(uptime: 117))
     }
 
-    func testALateHealthKitReadingIsFreshWhenItArrives() {
+    @Test func aLateHealthKitReadingIsFreshWhenItArrives() {
         var schedule = WatchHRRelaySchedule()
         // HealthKit can deliver a sample well after it was taken.
-        XCTAssertTrue(schedule.observeReading(endingAt: t0.addingTimeInterval(-40), uptime: 200))
-        XCTAssertFalse(schedule.isNewestReadingStale(uptime: 200))
+        let isNew = schedule.observeReading(endingAt: t0.addingTimeInterval(-40), uptime: 200)
+        #expect(isNew)
+        #expect(!schedule.isNewestReadingStale(uptime: 200))
     }
 
-    func testResetForgetsReadingsAndSends() {
+    @Test func resetForgetsReadingsAndSends() {
         var schedule = WatchHRRelaySchedule()
         _ = schedule.observeReading(endingAt: t0, uptime: 0)
         schedule.recordSend(uptime: 100)
         schedule.reset()
-        XCTAssertEqual(schedule, WatchHRRelaySchedule())
-        XCTAssertTrue(schedule.observeReading(endingAt: t0, uptime: 0))
-        XCTAssertEqual(schedule.delayBeforeSending(uptime: 100.1), 0)
+        #expect(schedule == WatchHRRelaySchedule())
+        let isNew = schedule.observeReading(endingAt: t0, uptime: 0)
+        #expect(isNew)
+        #expect(schedule.delayBeforeSending(uptime: 100.1) == 0)
     }
 
-    func testHeartbeatKeepsThePhoneWellInsideItsStaleWindow() {
-        XCTAssertEqual(WatchHRRelaySchedule.heartbeatInterval, 5)
-        XCTAssertEqual(WatchHRRelay.staleAfter, 3 * WatchHRRelaySchedule.heartbeatInterval)
-        XCTAssertLessThan(WatchHRRelaySchedule.minimumGap, WatchHRRelaySchedule.heartbeatInterval)
+    @Test func heartbeatKeepsThePhoneWellInsideItsStaleWindow() {
+        #expect(WatchHRRelaySchedule.heartbeatInterval == 5)
+        #expect(WatchHRRelay.staleAfter == 3 * WatchHRRelaySchedule.heartbeatInterval)
+        #expect(WatchHRRelaySchedule.minimumGap < WatchHRRelaySchedule.heartbeatInterval)
     }
 }

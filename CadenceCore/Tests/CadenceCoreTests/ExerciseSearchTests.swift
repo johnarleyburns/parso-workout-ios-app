@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -41,6 +42,15 @@ final class ExerciseSearchTests: XCTestCase {
         let results = ExerciseLibrary.search("incline", in: ExerciseLibrary.starter)
         XCTAssertTrue(results.first?.name.localizedCaseInsensitiveContains("Incline") ?? false,
                       "a name match should rank first")
+    }
+
+    func testTrainingDisciplineTermSurfacesOlympicLifts() {
+        // "Snatch" carries no "olympic" substring in its name — only in its
+        // `trainingTypes` facet (field-testing batch: universal search).
+        let results = ExerciseLibrary.search("olympic", in: ExerciseLibrary.starter)
+        XCTAssertTrue(results.contains { $0.name == "Snatch" },
+                      "'olympic' should surface olympic-weightlifting movements by discipline, not just name")
+        XCTAssertTrue(results.contains { $0.name == "Clean and Jerk" })
     }
 
     func testMultiWordQueryAndsTerms() {
@@ -129,3 +139,4 @@ final class ExerciseSearchTests: XCTestCase {
     }
 
 }
+#endif

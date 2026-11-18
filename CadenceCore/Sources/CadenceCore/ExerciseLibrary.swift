@@ -50,7 +50,9 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     public var searchKeywords: [String] {
         ExerciseSearch.keywords(name: name, equipment: equipment, isLateral: isLateral,
                                 force: force, mechanics: mechanics,
-                                primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles)
+                                primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles,
+                                trainingTypes: trainingTypes, sportContexts: sportContexts,
+                                category: category)
     }
 
     /// Concise positional initializer for the literal catalog.

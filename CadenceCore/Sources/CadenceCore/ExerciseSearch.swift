@@ -23,13 +23,23 @@ public enum ExerciseSearch {
 
     /// Builds the flattened, lowercased keyword set for an exercise from its
     /// facets (decision #12). Stored on the model so search is a token compare.
+    ///
+    /// `trainingTypes`/`sportContexts`/`category` let a generic query like
+    /// "olympic" or "powerlifting" surface a movement by its training
+    /// discipline, not just a name/muscle/equipment match (field-testing
+    /// batch: "universal" search). A small synonym table covers the common
+    /// colloquial terms that don't literally appear in the taxonomy's own
+    /// raw values (e.g. "olympic" for the `.weightlifting` sport context).
     public static func keywords(name: String,
                                 equipment: Equipment?,
                                 isLateral: Bool,
                                 force: Force?,
                                 mechanics: Mechanics?,
                                 primaryMuscles: [String],
-                                secondaryMuscles: [String]) -> [String] {
+                                secondaryMuscles: [String],
+                                trainingTypes: [ExerciseTrainingType] = [],
+                                sportContexts: [ExerciseSportContext] = [],
+                                category: ExerciseCategory? = nil) -> [String] {
         var tokens: Set<String> = []
         for word in normalize(name).split(separator: " ") { tokens.insert(String(word)) }
         if let equipment { tokens.insert(equipment.rawValue) }
@@ -38,6 +48,20 @@ public enum ExerciseSearch {
         if let mechanics { tokens.insert(mechanics.rawValue) }
         for group in MuscleGroup.canonicalize(primaryMuscles + secondaryMuscles) {
             group.searchTerms.forEach { tokens.insert(normalize($0)) }
+        }
+        for type in trainingTypes {
+            for word in normalize(type.rawValue).split(separator: " ") { tokens.insert(String(word)) }
+        }
+        for sportContext in sportContexts {
+            for word in normalize(sportContext.rawValue).split(separator: " ") { tokens.insert(String(word)) }
+        }
+        if let category { tokens.insert(category.rawValue) }
+        // Colloquial synonyms not literally present in the raw taxonomy values.
+        if trainingTypes.contains(.olympicWeightlifting) || sportContexts.contains(.weightlifting) {
+            tokens.insert("olympic")
+        }
+        if trainingTypes.contains(.powerlifting) || sportContexts.contains(.powerlifting) {
+            tokens.insert("powerlifting")
         }
         return tokens.filter { !$0.isEmpty }.sorted()
     }

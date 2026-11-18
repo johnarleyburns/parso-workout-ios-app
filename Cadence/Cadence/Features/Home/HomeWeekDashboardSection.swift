@@ -65,9 +65,9 @@ struct HomeWeekDashboardSection: View {
                             Text("Muscle coverage").font(.headline)
                                 .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(dashboard.strength.completed)))
                             Spacer()
-                            Text("\(WeeklySetProgress.formattedSets(totals.totals)) / \(totals.target) sets")
+                            Text("\(WeeklySetProgress.formattedSets(Double(totals.totals))) / \(totals.target) sets")
                                 .font(.headline)
-                                .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals.totals)))
+                                .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(Double(totals.totals))))
                         }
                         muscleMapSummary
                     }

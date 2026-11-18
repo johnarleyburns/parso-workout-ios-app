@@ -3,6 +3,7 @@ import HealthKit
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 import os
 
 /// HealthKit-backed `HealthHeartRateSource` for "Reload cardio measurements from Apple
@@ -67,9 +68,10 @@ struct HealthKitHeartRateSource: HealthHeartRateSource {
         let result: [HealthHeartSample] = try await Self.run { done in
             HKSampleQuery(sampleType: HKQuantityType(.heartRate), predicate: predicate, limit: HKObjectQueryNoLimit,
                           sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: true)]) { _, samples, error in
-                done(((samples as? [HKQuantitySample]) ?? []).map {
-                    HealthHeartSample(date: $0.endDate, bpm: $0.quantity.doubleValue(for: unit),
-                                      isAppleWatch: ($0.sourceRevision.productType ?? "").hasPrefix("Watch"))
+                done(((samples as? [HKQuantitySample]) ?? []).map { sample in
+                    let productType: String = sample.sourceRevision.productType ?? ""
+                    return HealthHeartSample(date: sample.endDate, bpm: sample.quantity.doubleValue(for: unit),
+                                             isAppleWatch: productType.hasPrefix("Watch"))
                 }, error)
             }
         } on: { store.execute($0) }

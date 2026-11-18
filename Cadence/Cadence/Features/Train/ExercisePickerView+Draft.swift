@@ -3,6 +3,7 @@ import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension ExercisePickerView {
     /// The single planning-mode selection path: rows, detail, best match and

@@ -100,7 +100,9 @@ final class WatchSetDefaultSnapshotBuilderTests {
     @Test func deterministic() throws {
         let p = Person(name: "Pat"); context.insert(p)
         session(day: 1, sets: [(bench, 60, 8, false, nil), (squat, 80, 5, false, p)])
-        #expect(try build() == try build())
+        let first = try build()
+        let second = try build()
+        #expect(first == second)
     }
 }
 #endif

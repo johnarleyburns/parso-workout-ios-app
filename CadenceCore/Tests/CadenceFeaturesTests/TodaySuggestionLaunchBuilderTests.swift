@@ -63,14 +63,19 @@ struct TodaySuggestionLaunchBuilderTests {
         let context = ModelContext(container)
         try seed(context, workouts: 4)
         let base = try Self.build(context, settings: settings())
-        #expect(base.earlyKey == try Self.build(context, settings: settings()).earlyKey)
-        #expect(base.earlyKey != try Self.build(context, settings: settings(unit: .pounds)).earlyKey)
-        #expect(base.earlyKey != try Self.build(context, settings: settings(warmup: 9)).earlyKey)
+        let sameSettingsKey = try Self.build(context, settings: settings()).earlyKey
+        #expect(base.earlyKey == sameSettingsKey)
+        let poundsKey = try Self.build(context, settings: settings(unit: .pounds)).earlyKey
+        #expect(base.earlyKey != poundsKey)
+        let warmupKey = try Self.build(context, settings: settings(warmup: 9)).earlyKey
+        #expect(base.earlyKey != warmupKey)
         let active = try WorkoutRepository.allSessions(context)[0].id
-        #expect(base.earlyKey != try Self.build(context, active: active, settings: settings()).earlyKey)
+        let activeKey = try Self.build(context, active: active, settings: settings()).earlyKey
+        #expect(base.earlyKey != activeKey)
         context.insert(Exercise(name: "Custom Curl"))
         try context.save()
-        #expect(base.earlyKey != try Self.build(context, settings: settings()).earlyKey)
+        let afterInsertKey = try Self.build(context, settings: settings()).earlyKey
+        #expect(base.earlyKey != afterInsertKey)
     }
 
     @Test func zeroHistoryBuildsStarterRequest() throws {

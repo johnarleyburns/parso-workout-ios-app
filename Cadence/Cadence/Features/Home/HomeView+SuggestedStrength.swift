@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Wiring for the dismissible Strength suggestion preview. All transitions
 /// live in `SuggestedStrengthPreviewState`; this only performs its effects.

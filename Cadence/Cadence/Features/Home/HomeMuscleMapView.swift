@@ -27,7 +27,8 @@ struct HomeMuscleMapView: View {
     /// testing wanted this on the same row as "Muscle coverage").
     static func weeklyTotals(for rows: [HomeDashboardState.VolumeRow]) -> (totals: Int, target: Int) {
         let tracked = rows.filter(\.isTracked)
-        return (tracked.reduce(0) { $0 + $1.sets }, tracked.count * 12)
+        let totalSets = tracked.reduce(0.0) { $0 + $1.sets }
+        return (Int(totalSets.rounded()), tracked.count * 12)
     }
 
     var body: some View {

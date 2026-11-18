@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// "Suggested Cardio for You": always shown below the personalized strength workout. It
 /// behaves like the strength card — cached suggestion first, a newer one behind

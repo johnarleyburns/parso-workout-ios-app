@@ -1,7 +1,8 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class WeeklyAggregatorPrefilterEquivalenceTests: XCTestCase {
+struct WeeklyAggregatorPrefilterEquivalenceTests {
     private let since = Date(timeIntervalSince1970: 1_000_000)
     private let profile = CardioIntensityProfile(maximumHR: 200, maximumHRSource: .userEntered)
 
@@ -26,28 +27,28 @@ final class WeeklyAggregatorPrefilterEquivalenceTests: XCTestCase {
         items.filter { date($0) >= since }
     }
 
-    func testWeeklyCardioAggregatorIsUnaffectedByPrefilteringToSinceBound() {
+    @Test func weeklyCardioAggregatorIsUnaffectedByPrefilteringToSinceBound() {
         let (c, s) = mixedWindowFixture()
         let full = WeeklyCardioAggregator.summarize(c, since: since, profile: profile, sessions: s)
         let prefiltered = WeeklyCardioAggregator.summarize(
             onOrAfter(c, date: \.start), since: since, profile: profile,
             sessions: onOrAfter(s, date: \.date))
-        XCTAssertEqual(full, prefiltered)
+        #expect(full == prefiltered)
     }
 
-    func testWeeklyActivityDoseAggregatorIsUnaffectedByPrefilteringToSinceBound() {
+    @Test func weeklyActivityDoseAggregatorIsUnaffectedByPrefilteringToSinceBound() {
         let (c, s) = mixedWindowFixture()
         let full = WeeklyActivityDoseAggregator.summarize(cardio: c, sessions: s, since: since, profile: profile)
         let prefiltered = WeeklyActivityDoseAggregator.summarize(
             cardio: onOrAfter(c, date: \.start), sessions: onOrAfter(s, date: \.date),
             since: since, profile: profile)
-        XCTAssertEqual(full, prefiltered)
+        #expect(full == prefiltered)
     }
 
-    func testWeeklyStatsVolumeKgIsUnaffectedByPrefilteringToSinceBound() {
+    @Test func weeklyStatsVolumeKgIsUnaffectedByPrefilteringToSinceBound() {
         let (_, s) = mixedWindowFixture()
         let full = WeeklyStats.volumeKg(s, since: since)
         let prefiltered = WeeklyStats.volumeKg(onOrAfter(s, date: \.date), since: since)
-        XCTAssertEqual(full, prefiltered)
+        #expect(full == prefiltered)
     }
 }

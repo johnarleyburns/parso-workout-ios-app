@@ -1,23 +1,24 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class UnifiedPlanStoreTests: XCTestCase {
-    func testValidatedUnifiedPlanRoundTripsThroughSwiftDataEnvelope() throws {
+struct UnifiedPlanStoreTests {
+    @Test func validatedUnifiedPlanRoundTripsThroughSwiftDataEnvelope() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let plan = fixturePlan(title: "Week one", updatedAt: Date(timeIntervalSince1970: 100))
 
         let record = try UnifiedPlanStore.upsert(plan, originDevice: "iphone", in: context)
-        let restored = try XCTUnwrap(try UnifiedPlanStore.fetch(id: plan.id, in: context))
+        let restored = try #require(try UnifiedPlanStore.fetch(id: plan.id, in: context))
 
-        XCTAssertEqual(record.id, plan.id.raw)
-        XCTAssertEqual(record.payloadVersion, UnifiedPlanStore.currentPayloadVersion)
-        XCTAssertEqual(restored, plan)
-        XCTAssertEqual(try UnifiedPlanStore.all(in: context), [plan])
+        #expect(record.id == plan.id.raw)
+        #expect(record.payloadVersion == UnifiedPlanStore.currentPayloadVersion)
+        #expect(restored == plan)
+        #expect(try UnifiedPlanStore.all(in: context) == [plan])
     }
 
-    func testOlderOrEqualPlanDoesNotOverwriteNewerPayload() throws {
+    @Test func olderOrEqualPlanDoesNotOverwriteNewerPayload() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let newer = fixturePlan(title: "Newer", updatedAt: Date(timeIntervalSince1970: 200))
         _ = try UnifiedPlanStore.upsert(newer, originDevice: "ipad", in: context)
@@ -27,11 +28,11 @@ final class UnifiedPlanStoreTests: XCTestCase {
                          updatedAt: Date(timeIntervalSince1970: 100))
         let retained = try UnifiedPlanStore.upsert(older, originDevice: "iphone", in: context)
 
-        XCTAssertEqual(try retained.decodedPlan(), newer)
-        XCTAssertEqual(try UnifiedPlanStore.fetch(id: newer.id, in: context), newer)
+        #expect(try retained.decodedPlan() == newer)
+        #expect(try UnifiedPlanStore.fetch(id: newer.id, in: context) == newer)
     }
 
-    func testContentEquivalentPlanDoesNotRewriteRevisionTimestamp() throws {
+    @Test func contentEquivalentPlanDoesNotRewriteRevisionTimestamp() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let original = fixturePlan(title: "Stable", updatedAt: Date(timeIntervalSince1970: 200))
         let record = try UnifiedPlanStore.upsert(original, originDevice: "iphone", in: context)
@@ -40,12 +41,12 @@ final class UnifiedPlanStoreTests: XCTestCase {
         regenerated.updatedAt = Date(timeIntervalSince1970: 900)
         let retained = try UnifiedPlanStore.upsert(regenerated, originDevice: "iphone", in: context)
 
-        XCTAssertTrue(record === retained)
-        XCTAssertEqual(retained.updatedAt, original.updatedAt)
-        XCTAssertEqual(try UnifiedPlanStore.fetch(id: original.id, in: context), original)
+        #expect(record === retained)
+        #expect(retained.updatedAt == original.updatedAt)
+        #expect(try UnifiedPlanStore.fetch(id: original.id, in: context) == original)
     }
 
-    func testEqualTimestampUsesStableOriginDeviceTieBreak() throws {
+    @Test func equalTimestampUsesStableOriginDeviceTieBreak() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let timestamp = Date(timeIntervalSince1970: 300)
         let base = fixturePlan(title: "Phone", updatedAt: timestamp)
@@ -55,22 +56,22 @@ final class UnifiedPlanStoreTests: XCTestCase {
                             createdAt: base.createdAt, updatedAt: timestamp)
         _ = try UnifiedPlanStore.upsert(ipadPlan, originDevice: "z-ipad", in: context)
 
-        XCTAssertEqual(try UnifiedPlanStore.fetch(id: base.id, in: context)?.title, "iPad")
+        #expect(try UnifiedPlanStore.fetch(id: base.id, in: context)?.title == "iPad")
     }
 
-    func testUnsupportedOrCorruptPayloadFailsWithoutChangingLegacyRecords() throws {
+    @Test func unsupportedOrCorruptPayloadFailsWithoutChangingLegacyRecords() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let plan = fixturePlan(title: "Valid", updatedAt: Date(timeIntervalSince1970: 400))
         let record = try UnifiedPlanStore.upsert(plan, originDevice: "iphone", in: context)
 
         record.payloadVersion = 99
-        XCTAssertThrowsError(try record.decodedPlan()) { error in
-            XCTAssertEqual(error as? UnifiedPlanStoreError, .unsupportedPayloadVersion(99))
+        #expect(throws: UnifiedPlanStoreError.unsupportedPayloadVersion(99)) {
+            try record.decodedPlan()
         }
         record.payloadVersion = UnifiedPlanStore.currentPayloadVersion
         record.planData = Data("not-json".utf8)
-        XCTAssertThrowsError(try record.decodedPlan()) { error in
-            XCTAssertEqual(error as? UnifiedPlanStoreError, .invalidPayload)
+        #expect(throws: UnifiedPlanStoreError.invalidPayload) {
+            try record.decodedPlan()
         }
     }
 

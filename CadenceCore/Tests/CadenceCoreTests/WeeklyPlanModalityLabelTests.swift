@@ -1,12 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Regression coverage for "This Week is out of sync with reality": a past day
 /// whose logged cardio was a Boxing session must read "Boxing", not the generic
 /// "Easy aerobic" bucket the modality used to be flattened into.
-final class WeeklyPlanModalityLabelTests: XCTestCase {
+struct WeeklyPlanModalityLabelTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -18,7 +19,7 @@ final class WeeklyPlanModalityLabelTests: XCTestCase {
         return Calendar.current.date(from: comps) ?? Date(timeIntervalSince1970: 1_750_000_000)
     }
 
-    func testLoggedBoxingDayReadsBoxingNotEasyAerobic() throws {
+    @Test func loggedBoxingDayReadsBoxingNotEasyAerobic() throws {
         let ctx = try makeContext()
         let now = testNow
         let yesterday = now.addingTimeInterval(-86_400)
@@ -35,17 +36,17 @@ final class WeeklyPlanModalityLabelTests: XCTestCase {
         let plan = WeeklyPlan.generate(from: facts)
 
         let cal = Calendar.current
-        let day = try XCTUnwrap(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) },
+        let day = try #require(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) },
                                 "yesterday should be in the plan history window")
-        XCTAssertEqual(day.label, "Boxing",
+        #expect(day.label == "Boxing",
                        "A logged boxing day must carry its real modality, got '\(day.label)'")
-        XCTAssertFalse(day.label.localizedCaseInsensitiveContains("aerobic"),
+        #expect(!day.label.localizedCaseInsensitiveContains("aerobic"),
                        "The generic aerobic bucket must not mask the real activity")
-        let cardioSession = try XCTUnwrap(day.sessions.first { $0.kind == .easyAerobic || $0.kind == .moderateAerobic })
-        XCTAssertEqual(cardioSession.label, "Boxing")
+        let cardioSession = try #require(day.sessions.first { $0.kind == .easyAerobic || $0.kind == .moderateAerobic })
+        #expect(cardioSession.label == "Boxing")
     }
 
-    func testLoggedRunDayReadsRun() throws {
+    @Test func loggedRunDayReadsRun() throws {
         let ctx = try makeContext()
         let now = testNow
         let yesterday = now.addingTimeInterval(-86_400)
@@ -61,13 +62,13 @@ final class WeeklyPlanModalityLabelTests: XCTestCase {
         let plan = WeeklyPlan.generate(from: facts)
 
         let cal = Calendar.current
-        let day = try XCTUnwrap(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) })
-        XCTAssertEqual(day.label, "Run", "A logged run day should read its modality")
+        let day = try #require(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) })
+        #expect(day.label == "Run", "A logged run day should read its modality")
     }
 
     /// Future/prescribed cardio days have no logged modality to know yet, so they
     /// keep the generic bucket label — the fix is scoped to reconstructed history.
-    func testFuturePrescribedCardioKeepsGenericLabel() throws {
+    @Test func futurePrescribedCardioKeepsGenericLabel() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let plan = WeeklyPlan.generate(from: facts)
@@ -76,7 +77,7 @@ final class WeeklyPlanModalityLabelTests: XCTestCase {
             .flatMap(\.sessions)
             .filter { $0.kind == .easyAerobic || $0.kind == .moderateAerobic }
         for session in futureCardio {
-            XCTAssertFalse(["Boxing", "Run", "Walk", "Cycle", "Swim", "Row"].contains(session.label),
+            #expect(!["Boxing", "Run", "Walk", "Cycle", "Swim", "Row"].contains(session.label),
                            "Future cardio has no known modality; it keeps a generic label")
         }
     }

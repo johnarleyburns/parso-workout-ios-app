@@ -1,11 +1,12 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Issue #562: Watch cardio import must use the shared HRR-capable profile.
 @MainActor
-final class WatchCardioImportProfileTests: XCTestCase {
+struct WatchCardioImportProfileTests {
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
@@ -21,8 +22,8 @@ final class WatchCardioImportProfileTests: XCTestCase {
 
     private func imported(_ c: WatchCardioCompletion, profile: CardioIntensityProfile,
                           in ctx: ModelContext) throws -> CardioMinuteSummary {
-        XCTAssertTrue(try WorkoutRepository.ingest(c, profile: profile, in: ctx))
-        return try XCTUnwrap(try WorkoutRepository.allCardio(ctx).first?.intensitySummary)
+        #expect(try WorkoutRepository.ingest(c, profile: profile, in: ctx))
+        return try #require(try WorkoutRepository.allCardio(ctx).first?.intensitySummary)
     }
 
     /// Mirrors `AppModel.currentIntensityProfile()` with a cached snapshot.
@@ -31,61 +32,61 @@ final class WatchCardioImportProfileTests: XCTestCase {
                                         age: age, updatedAt: Date())
     }
 
-    func testCachedRestingHRUsesHRRAndMatchesPhoneProfile() throws {
+    @Test func cachedRestingHRUsesHRRAndMatchesPhoneProfile() throws {
         let profile = shared(resting: 63)
-        XCTAssertEqual(profile.restingHR, 63)
-        XCTAssertEqual(profile.maximumHR ?? 0, 173, accuracy: 0.01)
+        #expect(profile.restingHR == 63)
+        #expect(abs((profile.maximumHR ?? 0) - 173) <= 0.01)
         let c = completion()
         let summary = try imported(c, profile: profile, in: try makeContext())
         let expected = CardioMinuteAccumulator.summarize(
             duration: 600, samples: c.hrSamples,
             profile: CardioIntensityProfile(restingHR: 63, maximumHR: 173))
-        XCTAssertEqual(summary.moderateDuration, expected.moderateDuration, accuracy: 2)
-        XCTAssertEqual(summary.vigorousDuration, expected.vigorousDuration, accuracy: 2)
-        XCTAssertEqual(summary.method, expected.method)
-        XCTAssertGreaterThan(summary.moderateDuration, 0)
-        XCTAssertGreaterThan(summary.vigorousDuration, 0)
+        #expect(abs(summary.moderateDuration - expected.moderateDuration) <= 2)
+        #expect(abs(summary.vigorousDuration - expected.vigorousDuration) <= 2)
+        #expect(summary.method == expected.method)
+        #expect(summary.moderateDuration > 0)
+        #expect(summary.vigorousDuration > 0)
     }
 
-    func testNoSnapshotFallsBackToPercentMaxWithoutInventingRestingHR() throws {
+    @Test func noSnapshotFallsBackToPercentMaxWithoutInventingRestingHR() throws {
         let profile = shared(resting: nil)
-        XCTAssertNil(profile.restingHR)
+        #expect(profile.restingHR == nil)
         let summary = try imported(completion(), profile: profile, in: try makeContext())
         let hrr = CardioMinuteAccumulator.summarize(
             duration: 600, samples: completion().hrSamples,
             profile: CardioIntensityProfile(restingHR: 63, maximumHR: 173))
-        XCTAssertNotEqual(summary.method, hrr.method)
+        #expect(summary.method != hrr.method)
     }
 
-    func testUserMaxOverrideWinsAndKeepsRestingHR() {
+    @Test func userMaxOverrideWinsAndKeepsRestingHR() {
         let profile = shared(resting: 63, override: 190)
-        XCTAssertEqual(profile.maximumHR ?? 0, 190, accuracy: 0.01)
-        XCTAssertEqual(profile.restingHR, 63)
+        #expect(abs((profile.maximumHR ?? 0) - 190) <= 0.01)
+        #expect(profile.restingHR == 63)
     }
 
-    func testDuplicateCompletionDoesNotRewriteIntensitySummary() throws {
+    @Test func duplicateCompletionDoesNotRewriteIntensitySummary() throws {
         let ctx = try makeContext()
         let c = completion()
         let first = try imported(c, profile: shared(resting: 63), in: ctx)
-        XCTAssertFalse(try WorkoutRepository.ingest(c, profile: shared(resting: nil), in: ctx))
+        #expect(!(try WorkoutRepository.ingest(c, profile: shared(resting: nil), in: ctx)))
         let rows = try WorkoutRepository.allCardio(ctx)
-        XCTAssertEqual(rows.count, 1)
-        XCTAssertEqual(rows.first?.intensitySummary, first)
+        #expect(rows.count == 1)
+        #expect(rows.first?.intensitySummary == first)
     }
 
-    func testHandlerUsesSharedCurrentIntensityProfile() throws {
+    @Test func handlerUsesSharedCurrentIntensityProfile() throws {
         let repo = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let text = try String(contentsOf: repo.appendingPathComponent("Cadence/Cadence/App/AppModel.swift"),
                               encoding: .utf8)
-        let start = try XCTUnwrap(text.range(of: "private func handleWatchCardioCompletion("))
+        let start = try #require(text.range(of: "private func handleWatchCardioCompletion("))
         let rest = text[start.upperBound...]
-        let end = try XCTUnwrap(rest.range(of: "private func completionAck"))
+        let end = try #require(rest.range(of: "private func completionAck"))
         let body = String(rest[..<end.lowerBound])
-        XCTAssertTrue(body.contains("let profile = currentIntensityProfile()"))
-        XCTAssertTrue(body.contains("ingest(completion, profile: profile, in: ctx)"))
-        XCTAssertFalse(body.contains("CardioIntensityProfile.resolved"))
-        XCTAssertFalse(body.contains("await"))
+        #expect(body.contains("let profile = currentIntensityProfile()"))
+        #expect(body.contains("ingest(completion, profile: profile, in: ctx)"))
+        #expect(!body.contains("CardioIntensityProfile.resolved"))
+        #expect(!body.contains("await"))
     }
 }
 #endif

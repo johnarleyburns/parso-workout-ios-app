@@ -1,12 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Weekly volume after the DB++ adoption: every tally goes through `VolumeCredit`,
 /// so a movement credits only the muscles it actually trains, and only if it is
 /// volume-eligible at all (decision D3).
-final class TrainingFactsVolumeTests: XCTestCase {
+struct TrainingFactsVolumeTests {
 
     private let testNow = Date(timeIntervalSince1970: 1_750_000_000)
 
@@ -36,7 +37,7 @@ final class TrainingFactsVolumeTests: XCTestCase {
                            goal: .hypertrophy, experience: .intermediate)
     }
 
-    func testSpecializedCatalogGroupsReceiveWeeklyDirectAndIndirectCredit() throws {
+    @Test func specializedCatalogGroupsReceiveWeeklyDirectAndIndirectCredit() throws {
         let context = try makeContext()
         let sessions = try [
             log("Standing Toe Raise", sets: 2, in: context),
@@ -47,51 +48,51 @@ final class TrainingFactsVolumeTests: XCTestCase {
             log("Dumbbell Scaption", sets: 2, in: context),
         ]
         let weekly = facts(sessions).weeklySetsByGroup
-        XCTAssertEqual(weekly[.tibialis], 2)
-        XCTAssertEqual(weekly[.neck], 2)
-        XCTAssertEqual(weekly[.hipFlexors], 3)
-        XCTAssertEqual(weekly[.rotatorCuff], 3)
+        #expect(weekly[.tibialis] == 2)
+        #expect(weekly[.neck] == 2)
+        #expect(weekly[.hipFlexors] == 3)
+        #expect(weekly[.rotatorCuff] == 3)
     }
 
     /// The headline change: a deadlift's lower back stabilises. It used to earn
     /// half a set every time and read as trained back volume.
-    func testDeadliftDoesNotCreditLowerBack() throws {
+    @Test func deadliftDoesNotCreditLowerBack() throws {
         let ctx = try makeContext()
         let session = try log("Deadlift", sets: 4, in: ctx)
         let f = facts([session])
 
-        XCTAssertEqual(f.weeklySetsByGroup[.glutes] ?? 0, 4, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.hamstrings] ?? 0, 4, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.quadriceps] ?? 0, 2, accuracy: 0.001)
-        XCTAssertNil(f.weeklySetsByGroup[.lowerBack])
-        XCTAssertNil(f.weeklySetsByGroup[.traps], "the traps hold the bar; they are not trained by it")
+        #expect(abs((f.weeklySetsByGroup[.glutes] ?? 0) - 4) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.hamstrings] ?? 0) - 4) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.quadriceps] ?? 0) - 2) <= 0.001)
+        #expect(f.weeklySetsByGroup[.lowerBack] == nil)
+        #expect(f.weeklySetsByGroup[.traps] == nil, "the traps hold the bar; they are not trained by it")
     }
 
-    func testBenchPressCreditsChestFullAndTricepsHalf() throws {
+    @Test func benchPressCreditsChestFullAndTricepsHalf() throws {
         let ctx = try makeContext()
         let session = try log("Bench Press", sets: 4, in: ctx)
         let f = facts([session])
 
-        XCTAssertEqual(f.weeklySetsByGroup[.chest] ?? 0, 4, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.triceps] ?? 0, 2, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.shoulders] ?? 0, 2, accuracy: 0.001)
+        #expect(abs((f.weeklySetsByGroup[.chest] ?? 0) - 4) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.triceps] ?? 0) - 2) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.shoulders] ?? 0) - 2) <= 0.001)
     }
 
     /// Stretching, plyometrics and cardio stop inflating the weekly set count.
-    func testNonVolumeMovementsDoNotCountTowardWeeklyVolume() throws {
+    @Test func nonVolumeMovementsDoNotCountTowardWeeklyVolume() throws {
         let ctx = try makeContext()
-        let stretchName = try XCTUnwrap(try WorkoutRepository.allExercises(ctx)
+        let stretchName = try #require(try WorkoutRepository.allExercises(ctx)
             .first { $0.trainingTypes.contains(.stretching) }?.name)
         let session = try log(stretchName, sets: 5, in: ctx)
         let f = facts([session])
 
-        XCTAssertTrue(f.weeklySetsByGroup.isEmpty,
+        #expect(f.weeklySetsByGroup.isEmpty,
                       "\(stretchName) credited \(f.weeklySetsByGroup)")
-        XCTAssertTrue(f.weeklySetsByGroup.isEmpty)
-        XCTAssertEqual(f.totalWorkingSets, 5, "the sets are still logged, they just do not count as volume")
+        #expect(f.weeklySetsByGroup.isEmpty)
+        #expect(f.totalWorkingSets == 5, "the sets are still logged, they just do not count as volume")
     }
 
-    func testFrequencyByGroupCountsDistinctDays() throws {
+    @Test func frequencyByGroupCountsDistinctDays() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         var sessions: [WorkoutSession] = []
@@ -103,38 +104,38 @@ final class TrainingFactsVolumeTests: XCTestCase {
             sessions.append(session)
         }
         let f = facts(sessions)
-        XCTAssertEqual(f.frequencyByGroup[.chest], 2)
+        #expect(f.frequencyByGroup[.chest] == 2)
     }
 
     /// The body-part rollup credits a part once per set at its best member credit,
     /// which is exactly the primary/secondary semantics it had before.
-    func testMuscleGroupRollupCreditsOncePerSet() throws {
+    @Test func muscleGroupRollupCreditsOncePerSet() throws {
         let ctx = try makeContext()
         // A squat trains quadriceps and glutes directly and the adductors
         // indirectly — three leg groups from one set, but one set of `legs`.
         let session = try log("Back Squat", sets: 3, in: ctx)
         let f = facts([session])
 
-        XCTAssertEqual(f.weeklySetsByGroup[.quadriceps] ?? 0, 3, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.glutes] ?? 0, 3, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.adductors] ?? 0, 1.5, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByGroup[.quadriceps] ?? 0, 3, accuracy: 0.001,
+        #expect(abs((f.weeklySetsByGroup[.quadriceps] ?? 0) - 3) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.glutes] ?? 0) - 3) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.adductors] ?? 0) - 1.5) <= 0.001)
+        #expect(abs((f.weeklySetsByGroup[.quadriceps] ?? 0) - 3) <= 0.001,
                        "three leg groups from one set is still one set of legs")
     }
 
-    func testWeeklySetsByMuscleMirrorsTheGroupTally() throws {
+    @Test func weeklySetsByMuscleMirrorsTheGroupTally() throws {
         let ctx = try makeContext()
         let session = try log("Bench Press", sets: 2, in: ctx)
         let f = facts([session])
 
-        XCTAssertEqual(f.weeklySetsByMuscle["chest"] ?? 0, 2, accuracy: 0.001)
-        XCTAssertEqual(f.weeklySetsByMuscle.count, f.weeklySetsByGroup.count)
+        #expect(abs((f.weeklySetsByMuscle["chest"] ?? 0) - 2) <= 0.001)
+        #expect(f.weeklySetsByMuscle.count == f.weeklySetsByGroup.count)
         for (group, sets) in f.weeklySetsByGroup {
-            XCTAssertEqual(f.weeklySetsByMuscle[group.rawValue] ?? 0, sets, accuracy: 0.001)
+            #expect(abs((f.weeklySetsByMuscle[group.rawValue] ?? 0) - sets) <= 0.001)
         }
     }
 
-    func testVolumeTrendByGroupComparesAgainstThePriorWeek() throws {
+    @Test func volumeTrendByGroupComparesAgainstThePriorWeek() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         let thisWeek = try WorkoutRepository.createSession(
@@ -151,42 +152,42 @@ final class TrainingFactsVolumeTests: XCTestCase {
         }
 
         let f = facts([thisWeek, priorWeek])
-        XCTAssertEqual(f.volumeTrendByGroup[.chest], .rising)
-        XCTAssertEqual(f.volumeTrendByGroup[.chest], .rising)
+        #expect(f.volumeTrendByGroup[.chest] == .rising)
+        #expect(f.volumeTrendByGroup[.chest] == .rising)
     }
 
-    func testEmptyHistoryTalliesNothing() {
+    @Test func emptyHistoryTalliesNothing() {
         let f = facts([])
-        XCTAssertTrue(f.weeklySetsByGroup.isEmpty)
-        XCTAssertTrue(f.frequencyByGroup.isEmpty)
-        XCTAssertTrue(f.volumeTrendByGroup.isEmpty)
+        #expect(f.weeklySetsByGroup.isEmpty)
+        #expect(f.frequencyByGroup.isEmpty)
+        #expect(f.volumeTrendByGroup.isEmpty)
     }
 }
 
 /// The preference that decides which groups the coach programs toward.
-final class TrackedMuscleGroupPreferenceTests: XCTestCase {
+struct TrackedMuscleGroupPreferenceTests {
 
-    func testDefaultMatchesDBPlusPlusTrackedGroups() {
-        XCTAssertEqual(CoachSchedulePreferences.default.trackedMuscleGroups,
+    @Test func defaultMatchesDBPlusPlusTrackedGroups() {
+        #expect(CoachSchedulePreferences.default.trackedMuscleGroups ==
                        MuscleGroup.defaultTracked)
     }
 
-    func testEmptySelectionFallsBackToTheDefault() {
+    @Test func emptySelectionFallsBackToTheDefault() {
         let prefs = CoachSchedulePreferences(trackedMuscleGroups: [])
-        XCTAssertEqual(prefs.trackedMuscleGroups, MuscleGroup.defaultTracked)
+        #expect(prefs.trackedMuscleGroups == MuscleGroup.defaultTracked)
     }
 
-    func testRoundTripsThroughCodable() throws {
+    @Test func roundTripsThroughCodable() throws {
         var prefs = CoachSchedulePreferences.default
         prefs.trackedMuscleGroups = [.chest, .lats, .adductors]
         let decoded = try JSONDecoder().decode(
             CoachSchedulePreferences.self, from: try JSONEncoder().encode(prefs))
-        XCTAssertEqual(decoded.trackedMuscleGroups, [.chest, .lats, .adductors])
+        #expect(decoded.trackedMuscleGroups == [.chest, .lats, .adductors])
     }
 
     /// A user who opted a body part out of coverage before the DB++ adoption keeps
     /// that opt-out: every group belonging to it drops out of the tracked set.
-    func testLegacyCoverageOptOutsMigrate() throws {
+    @Test func legacyCoverageOptOutsMigrate() throws {
         let legacyJSON = """
         {"strengthDaysPerWeek":3,"cardioDaysPerWeek":2,"allowsTwoADays":false,
          "dailyStepTarget":8000,"excludedCoverageParts":["calves","abs"],
@@ -195,20 +196,20 @@ final class TrackedMuscleGroupPreferenceTests: XCTestCase {
         let decoded = try JSONDecoder().decode(
             CoachSchedulePreferences.self, from: Data(legacyJSON.utf8))
 
-        XCTAssertFalse(decoded.trackedMuscleGroups.contains(.calves))
-        XCTAssertFalse(decoded.trackedMuscleGroups.contains(.abdominals))
-        XCTAssertTrue(decoded.trackedMuscleGroups.contains(.chest))
-        XCTAssertEqual(decoded.trackedMuscleGroups.count, MuscleGroup.defaultTracked.count - 3)
+        #expect(!decoded.trackedMuscleGroups.contains(.calves))
+        #expect(!decoded.trackedMuscleGroups.contains(.abdominals))
+        #expect(decoded.trackedMuscleGroups.contains(.chest))
+        #expect(decoded.trackedMuscleGroups.count == MuscleGroup.defaultTracked.count - 3)
     }
 
-    func testAFileWithNeitherKeyGetsTheDefault() throws {
+    @Test func aFileWithNeitherKeyGetsTheDefault() throws {
         let json = """
         {"strengthDaysPerWeek":3,"cardioDaysPerWeek":2,"allowsTwoADays":false,
          "dailyStepTarget":8000,"desiredSetsPerExercise":3}
         """
         let decoded = try JSONDecoder().decode(
             CoachSchedulePreferences.self, from: Data(json.utf8))
-        XCTAssertEqual(decoded.trackedMuscleGroups, MuscleGroup.defaultTracked)
+        #expect(decoded.trackedMuscleGroups == MuscleGroup.defaultTracked)
     }
 }
 #endif

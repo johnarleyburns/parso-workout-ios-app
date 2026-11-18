@@ -1,12 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Coach-user-control Phase 4 — a history day lists EVERY logged workout as its
 /// own session chip (a strength AM + boxing PM + run day shows all three), and
 /// each chip carries `sourceWorkoutId` so the UI can open that exact workout.
-final class WeeklyPlanHistorySessionsTests: XCTestCase {
+struct WeeklyPlanHistorySessionsTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -18,7 +19,7 @@ final class WeeklyPlanHistorySessionsTests: XCTestCase {
         return Calendar.current.date(from: comps) ?? Date(timeIntervalSince1970: 1_784_000_000)
     }
 
-    func testTwoADayHistoryListsEveryWorkoutWithSourceIds() throws {
+    @Test func twoADayHistoryListsEveryWorkoutWithSourceIds() throws {
         let ctx = try makeContext()
         let now = testNow
         let yesterday = now.addingTimeInterval(-86_400)
@@ -52,23 +53,23 @@ final class WeeklyPlanHistorySessionsTests: XCTestCase {
         let plan = WeeklyPlan.generate(from: facts)
 
         let cal = Calendar.current
-        let day = try XCTUnwrap(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) })
+        let day = try #require(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) })
 
-        XCTAssertEqual(day.sessions.count, 3,
+        #expect(day.sessions.count == 3,
                        "All three logged workouts must appear, got \(day.sessions.map(\.label))")
-        XCTAssertEqual(day.sessions.filter { $0.kind == .strength }.count, 1)
-        XCTAssertTrue(day.sessions.contains { $0.label == "Boxing" })
-        XCTAssertTrue(day.sessions.contains { $0.label == "Run" })
+        #expect(day.sessions.filter { $0.kind == .strength }.count == 1)
+        #expect(day.sessions.contains { $0.label == "Boxing" })
+        #expect(day.sessions.contains { $0.label == "Run" })
 
-        XCTAssertEqual(Set(day.sessions.compactMap(\.sourceWorkoutId)),
+        #expect(Set(day.sessions.compactMap(\.sourceWorkoutId)) ==
                        Set([session.id, boxing.id, run.id]),
                        "Each history chip must link back to its real workout")
 
-        XCTAssertTrue(day.label.contains("Boxing") && day.label.contains("Run"),
+        #expect(day.label.contains("Boxing") && day.label.contains("Run"),
                       "The day label must describe every session, got '\(day.label)'")
     }
 
-    func testSameDayCardioSessionsSortedByStartTime() throws {
+    @Test func sameDayCardioSessionsSortedByStartTime() throws {
         let ctx = try makeContext()
         let now = testNow
         let yesterday = now.addingTimeInterval(-86_400)
@@ -90,8 +91,8 @@ final class WeeklyPlanHistorySessionsTests: XCTestCase {
         let plan = WeeklyPlan.generate(from: facts)
 
         let cal = Calendar.current
-        let day = try XCTUnwrap(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) })
-        XCTAssertEqual(day.sessions.compactMap(\.sourceWorkoutId), [earlier.id, later.id],
+        let day = try #require(plan.days.first { cal.isDate($0.date, inSameDayAs: yesterday) })
+        #expect(day.sessions.compactMap(\.sourceWorkoutId) == [earlier.id, later.id],
                        "Same-day sessions must list in the order they happened")
     }
 }

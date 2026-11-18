@@ -23,6 +23,16 @@ final class CardioMinutesDisplayTests: XCTestCase {
         XCTAssertFalse(values.joined(separator: " ").contains("dashboard.cardioDetail"))
         XCTAssertFalse(values.joined(separator: " ").contains("Int("))
     }
+
+    func testUnattributedNamesTheRealThresholdWhenKnown() {
+        XCTAssertEqual(CardioMinutesDisplay.unattributed(4.2, thresholdBPM: 102.4),
+                       "4 min unattributed — below minimum attribution HR of 102")
+    }
+
+    func testUnattributedFallsBackToUnclassifiedWordingWithoutAThreshold() {
+        XCTAssertEqual(CardioMinutesDisplay.unattributed(4.2, thresholdBPM: nil),
+                       CardioMinutesDisplay.unclassified(4.2))
+    }
 }
 
 final class WeeklyCardioProgressTests: XCTestCase {

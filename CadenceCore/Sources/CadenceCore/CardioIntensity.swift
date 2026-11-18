@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(os)
 import os
+#endif
 
 /// Versioned provenance for cardio intensity and guideline calculations.
 public enum CardioAlgorithmVersion: String, Codable, Sendable, Equatable {
@@ -17,12 +19,48 @@ public enum HRMaximumSource: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .laboratoryMeasured: return String(localized: "Laboratory measured", bundle: .module)
-        case .fieldTest: return String(localized: "Field tested", bundle: .module)
-        case .observed: return String(localized: "Observed", bundle: .module)
-        case .userEntered: return String(localized: "User entered", bundle: .module)
-        case .agePredicted: return String(localized: "Age-estimated", bundle: .module)
-        case .unavailable: return String(localized: "Unavailable", bundle: .module)
+        case .laboratoryMeasured: return {
+            #if os(Linux)
+            "Laboratory measured"
+            #else
+            String(localized: "Laboratory measured", bundle: .module)
+            #endif
+        }()
+        case .fieldTest: return {
+            #if os(Linux)
+            "Field tested"
+            #else
+            String(localized: "Field tested", bundle: .module)
+            #endif
+        }()
+        case .observed: return {
+            #if os(Linux)
+            "Observed"
+            #else
+            String(localized: "Observed", bundle: .module)
+            #endif
+        }()
+        case .userEntered: return {
+            #if os(Linux)
+            "User entered"
+            #else
+            String(localized: "User entered", bundle: .module)
+            #endif
+        }()
+        case .agePredicted: return {
+            #if os(Linux)
+            "Age-estimated"
+            #else
+            String(localized: "Age-estimated", bundle: .module)
+            #endif
+        }()
+        case .unavailable: return {
+            #if os(Linux)
+            "Unavailable"
+            #else
+            String(localized: "Unavailable", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -32,13 +70,55 @@ public enum RelativeIntensity: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .veryLight: return String(localized: "Very light", bundle: .module)
-        case .light: return String(localized: "Light", bundle: .module)
-        case .moderate: return String(localized: "Moderate", bundle: .module)
-        case .vigorous: return String(localized: "Vigorous", bundle: .module)
-        case .veryHard: return String(localized: "Very hard", bundle: .module)
-        case .nearMaximal: return String(localized: "Near maximal", bundle: .module)
-        case .unknown: return String(localized: "Unclassified", bundle: .module)
+        case .veryLight: return {
+            #if os(Linux)
+            "Very light"
+            #else
+            String(localized: "Very light", bundle: .module)
+            #endif
+        }()
+        case .light: return {
+            #if os(Linux)
+            "Light"
+            #else
+            String(localized: "Light", bundle: .module)
+            #endif
+        }()
+        case .moderate: return {
+            #if os(Linux)
+            "Moderate"
+            #else
+            String(localized: "Moderate", bundle: .module)
+            #endif
+        }()
+        case .vigorous: return {
+            #if os(Linux)
+            "Vigorous"
+            #else
+            String(localized: "Vigorous", bundle: .module)
+            #endif
+        }()
+        case .veryHard: return {
+            #if os(Linux)
+            "Very hard"
+            #else
+            String(localized: "Very hard", bundle: .module)
+            #endif
+        }()
+        case .nearMaximal: return {
+            #if os(Linux)
+            "Near maximal"
+            #else
+            String(localized: "Near maximal", bundle: .module)
+            #endif
+        }()
+        case .unknown: return {
+            #if os(Linux)
+            "Unclassified"
+            #else
+            String(localized: "Unclassified", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -48,10 +128,34 @@ public enum GuidelineIntensity: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .belowModerate: return String(localized: "Below moderate", bundle: .module)
-        case .moderate: return String(localized: "Moderate", bundle: .module)
-        case .vigorous: return String(localized: "Vigorous", bundle: .module)
-        case .unknown: return String(localized: "Unclassified", bundle: .module)
+        case .belowModerate: return {
+            #if os(Linux)
+            "Below moderate"
+            #else
+            String(localized: "Below moderate", bundle: .module)
+            #endif
+        }()
+        case .moderate: return {
+            #if os(Linux)
+            "Moderate"
+            #else
+            String(localized: "Moderate", bundle: .module)
+            #endif
+        }()
+        case .vigorous: return {
+            #if os(Linux)
+            "Vigorous"
+            #else
+            String(localized: "Vigorous", bundle: .module)
+            #endif
+        }()
+        case .unknown: return {
+            #if os(Linux)
+            "Unclassified"
+            #else
+            String(localized: "Unclassified", bundle: .module)
+            #endif
+        }()
         }
     }
 
@@ -78,10 +182,28 @@ public enum IntensityMethod: String, Codable, Sendable, Equatable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .heartRateReserve: return String(localized: "Heart-rate reserve", bundle: .module)
+        case .heartRateReserve: return {
+            #if os(Linux)
+            "Heart-rate reserve"
+            #else
+            String(localized: "Heart-rate reserve", bundle: .module)
+            #endif
+        }()
         case .percentMaximumHeartRate: return "% maximum heart rate"
-        case .activityMetadata: return String(localized: "Activity metadata", bundle: .module)
-        case .unavailable: return String(localized: "Unavailable", bundle: .module)
+        case .activityMetadata: return {
+            #if os(Linux)
+            "Activity metadata"
+            #else
+            String(localized: "Activity metadata", bundle: .module)
+            #endif
+        }()
+        case .unavailable: return {
+            #if os(Linux)
+            "Unavailable"
+            #else
+            String(localized: "Unavailable", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -89,7 +211,13 @@ public enum IntensityMethod: String, Codable, Sendable, Equatable, Hashable {
 public enum TrainingZone: Int, Codable, CaseIterable, Hashable, Sendable {
     case z1 = 1, z2, z3, z4, z5
 
-    public var displayName: String { String(localized: "Zone \(rawValue)", bundle: .module) }
+    public var displayName: String { {
+        #if os(Linux)
+        "Zone \(rawValue)"
+        #else
+        String(localized: "Zone \(rawValue)", bundle: .module)
+        #endif
+    }() }
 }
 
 public enum TrainingZonePolicy: String, Codable, Sendable, Equatable, Hashable {
@@ -100,8 +228,20 @@ public enum TrainingZonePolicy: String, Codable, Sendable, Equatable, Hashable {
     public var displayName: String {
         switch self {
         case .hrrFiveZone: return "5-zone HRR"
-        case .thresholdBased: return String(localized: "Threshold-based", bundle: .module)
-        case .custom: return String(localized: "Custom", bundle: .module)
+        case .thresholdBased: return {
+            #if os(Linux)
+            "Threshold-based"
+            #else
+            String(localized: "Threshold-based", bundle: .module)
+            #endif
+        }()
+        case .custom: return {
+            #if os(Linux)
+            "Custom"
+            #else
+            String(localized: "Custom", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -178,6 +318,19 @@ public struct CardioIntensityProfile: Codable, Equatable, Sendable {
         guard let restingHR, let maximumHR,
               restingHR > 0, maximumHR > restingHR else { return nil }
         return maximumHR - restingHR
+    }
+
+    /// The heart-rate threshold (BPM) below which cardio minutes are
+    /// unattributed rather than credited to a guideline zone — the HRR
+    /// formula when resting HR is known, else the %max-HR fallback,
+    /// matching `CardioIntensityClassifier`'s own branching exactly. `nil`
+    /// when no maximum HR is available at all.
+    public var belowModerateThresholdBPM: Double? {
+        if let restingHR, let hrr = validHeartRateReserve {
+            return restingHR + CardioIntensityPolicy.veryLightHRR * hrr
+        }
+        guard let maximumHR, maximumHR > 0 else { return nil }
+        return CardioIntensityPolicy.moderateMinimumMaximumFraction * maximumHR
     }
 }
 
@@ -307,8 +460,10 @@ public enum CardioIntensityClassifier {
     }
 
     private static func zone(forMaximumFraction fraction: Double) -> TrainingZone {
+        // z1's upper bound must match `moderateMinimumMaximumFraction` exactly
+        // so "zone 1" never disagrees with the belowModerate guideline credit.
         switch fraction {
-        case ..<0.60: return .z1
+        case ..<CardioIntensityPolicy.moderateMinimumMaximumFraction: return .z1
         case ..<0.70: return .z2
         case ..<0.80: return .z3
         case ..<0.90: return .z4
@@ -493,6 +648,7 @@ public struct WeeklyCardioSummary: Codable, Equatable, Sendable {
 }
 
 public enum WeeklyCardioAggregator {
+    #if canImport(os)
     /// Test-only seam: counts `summarize` invocations made inside a
     /// `$invocationProbe.withValue(...)` scope. Nil (and free) in production.
     final class InvocationProbe: Sendable {
@@ -501,12 +657,15 @@ public enum WeeklyCardioAggregator {
         func record() { storage.withLock { $0 += 1 } }
     }
     @TaskLocal static var invocationProbe: InvocationProbe?
+    #endif
 
     public static func summarize(_ workouts: [CardioWorkout], since: Date,
                                  profile: CardioIntensityProfile? = nil,
                                  actualMinutesTarget: Double? = nil,
                                  sessions: [WorkoutSession] = []) -> WeeklyCardioSummary {
+        #if canImport(os)
         invocationProbe?.record()
+        #endif
         var actual = 0.0
         var below = 0.0
         var moderate = 0.0

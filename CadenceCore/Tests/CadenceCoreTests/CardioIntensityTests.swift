@@ -31,6 +31,21 @@ final class CardioIntensityTests: XCTestCase {
         XCTAssertEqual(result.guidelineIntensity, .moderate)
     }
 
+    /// Percent-max-HR fallback (no resting HR): the "zone 1" training-zone
+    /// boundary must match the belowModerate guideline boundary exactly
+    /// (both 0.50×max), so a 50-60%-max-HR minute can never be labeled
+    /// "moderate" in guideline text while still being counted as zone 1.
+    func testPercentMaximumFallbackZoneBoundaryMatchesGuidelineBoundary() {
+        let profile = CardioIntensityProfile(maximumHR: 200, maximumHRSource: .userEntered)
+
+        // 55% of max HR: above the 50% belowModerate cutoff, so guideline is
+        // "moderate" — the training zone must agree and report z2, not z1.
+        let result = CardioIntensityClassifier.classify(heartRate: 110, profile: profile)
+
+        XCTAssertEqual(result.guidelineIntensity, .moderate)
+        XCTAssertEqual(result.trainingZone, .z2, "zone must not disagree with the moderate guideline credit")
+    }
+
     func testHRRBoundariesAndGuidelineCredit() {
         let cases: [(Double, RelativeIntensity, GuidelineIntensity, TrainingZone)] = [
             (101, .veryLight, .belowModerate, .z1),
@@ -119,6 +134,23 @@ final class CardioIntensityTests: XCTestCase {
         XCTAssertEqual(weekly.moderateMinutes, 10, accuracy: 0.001)
         XCTAssertEqual(weekly.moderateEquivalentMinutes, 10, accuracy: 0.001)
         XCTAssertEqual(weekly.belowModerateMinutes, 0, accuracy: 0.001)
+    }
+
+    /// HRR formula (resting HR known): threshold = resting + 0.30×(max−resting).
+    func testBelowModerateThresholdBPMUsesHRRFormulaWhenRestingHRKnown() {
+        let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 200, maximumHRSource: .fieldTest)
+        XCTAssertEqual(profile.belowModerateThresholdBPM ?? 0, 102, accuracy: 0.001)
+    }
+
+    /// %MaxHR fallback (no resting HR): threshold = 0.50×max, matching the
+    /// corrected zone-1/guideline boundary above.
+    func testBelowModerateThresholdBPMUsesPercentMaxFallbackWhenNoRestingHR() {
+        let profile = CardioIntensityProfile(maximumHR: 200, maximumHRSource: .userEntered)
+        XCTAssertEqual(profile.belowModerateThresholdBPM ?? 0, 100, accuracy: 0.001)
+    }
+
+    func testBelowModerateThresholdBPMIsNilWithoutAnyMaximumHR() {
+        XCTAssertNil(CardioIntensityProfile().belowModerateThresholdBPM)
     }
 
     func testMETDoseStaysSeparateFromGuidelineCredit() {

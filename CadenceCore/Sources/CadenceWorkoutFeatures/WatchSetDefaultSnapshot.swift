@@ -108,8 +108,20 @@ public struct WatchSetDefaultSnapshot: Codable, Equatable, Sendable {
         Array(ladders.map { $0.filter { $0 > 0 } }.filter { !$0.isEmpty }.suffix(limit))
     }
 
-    public func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-        guard let performer = performers.first(where: { $0.id == performerID }) else { return .empty }
+    /// `performerName` is a fallback match key for performers the Watch has no
+    /// phone-linked remote id for yet (e.g. a partner added by typed name mid-workout,
+    /// or a session started from plain partner-name strings). Matching by id stays
+    /// primary and exact; name matching only engages when the id lookup misses, so a
+    /// same-named-but-different person never silently inherits someone else's history
+    /// once a real id link exists.
+    public func history(exerciseKey: String, performerID: String, performerName: String? = nil) -> PerformerSetPlanner.History {
+        let performer = performers.first(where: { $0.id == performerID })
+            ?? performerName.flatMap { name in
+                let canonical = Self.canonicalKey(name)
+                guard !canonical.isEmpty else { return nil }
+                return performers.first { $0.id != Self.ownerID && Self.canonicalKey($0.displayName) == canonical }
+            }
+        guard let performer else { return .empty }
         guard let exercise = performer.exercises.first(where: { $0.id == Self.canonicalKey(exerciseKey) })
         else {
             // No row for this movement: keep only the performer's own general rep habit.

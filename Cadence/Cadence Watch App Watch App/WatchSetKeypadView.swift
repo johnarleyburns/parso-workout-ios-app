@@ -19,6 +19,7 @@ struct WatchSetKeypadView: View {
     @State private var showingLifters = false
     @State private var isLogging = false
     @State private var toastLastTime: String?
+    @State private var showingExerciseInfo = false
 
     init(model: WatchStrengthFlowModel) {
         self.bindableModel = model
@@ -57,10 +58,6 @@ struct WatchSetKeypadView: View {
                   }
                 }
                 fields(card)
-                if !isLuminanceReduced {
-                    logButton(card)
-                    // The teaching hint gives way to the lifter row when partners take the space.
-                }
             }
             .padding(.horizontal, 4)
             // "Last time" is a transient toast so it never pushes the weight/reps rows into the title.
@@ -81,7 +78,6 @@ struct WatchSetKeypadView: View {
                 guard !Task.isCancelled else { return }
                 withAnimation { toastLastTime = nil }
             }
-            .navigationTitle("")
             .navigationBarTitleDisplayMode(.inline)
             .focusable()
             .digitalCrownRotation(crownBinding, from: crownRange.lowerBound, through: crownRange.upperBound,
@@ -91,19 +87,37 @@ struct WatchSetKeypadView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button { showingMore = true } label: {
-                        Image(systemName: "ellipsis")
+                        Text("RPE")
                     }
-                    .accessibilityLabel(Text("More"))
+                    .accessibilityLabel(Text("RPE"))
                     .accessibilityIdentifier("watchSet.more")
+                }
+                ToolbarItem(placement: .principal) {
+                    TimelineView(.periodic(from: .now, by: 60)) { context in
+                        Text(context.date, format: .dateTime.hour().minute())
+                            .font(.caption2.weight(.semibold).monospacedDigit())
+                            .accessibilityIdentifier("watchSet.clock")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showingExerciseInfo = true } label: {
+                        Image(systemName: "info.circle")
+                    }
+                    .accessibilityLabel(Text("Exercise info"))
+                    .accessibilityIdentifier("watchSet.exerciseInfo")
                 }
                 ToolbarItemGroup(placement: .bottomBar) {
                     let isWeight = focus == .weight && !card.isNonWeighted
-                    let amount = isWeight ? WatchSetCardMetricLayout.weightStep : 1
+                    let amount = isWeight ? WatchSetCardMetricLayout.buttonWeightStep(unit: model.unit) : 1
                     Button { adjustFocusedValue(by: -amount) } label: {
                         Image(systemName: "minus")
                     }
                     .accessibilityLabel("Subtract \(stepText(amount)) \(isWeight ? card.unitText : "reps")")
                     .accessibilityIdentifier(isWeight ? "watchWeight.minus" : "watchReps.minus")
+                    Spacer()
+                    if !isLuminanceReduced {
+                        logButton(card)
+                    }
                     Spacer()
                     Button { adjustFocusedValue(by: amount) } label: {
                         Image(systemName: "plus")
@@ -118,8 +132,26 @@ struct WatchSetKeypadView: View {
             .sheet(isPresented: $showingLifters) {
                 NavigationStack { WatchPartnersView(model: model) }
             }
+            .sheet(isPresented: $showingExerciseInfo) {
+                NavigationStack {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if let exercise = currentExercise {
+                                WatchExerciseDetailContent(exercise: exercise)
+                            } else {
+                                Text("No exercise details available")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                    }
+                    .navigationTitle(card.exerciseName.localizedExerciseName)
+                    .navigationBarTitleDisplayMode(.inline)
+                }
+            }
             .accessibilityAction(named: Text("Log set")) { log() }
-            .accessibilityAction(named: Text("More")) { showingMore = true }
+            .accessibilityAction(named: Text("RPE")) { showingMore = true }
         }
     }
 
@@ -196,6 +228,11 @@ struct WatchSetKeypadView: View {
         return SessionViewModel.isNonWeighted(exercise)
     }
 
+    private var currentExercise: Exercise? {
+        guard case .keypad(let exercise) = model.stage else { return nil }
+        return exercise
+    }
+
     // MARK: Log (tap / Double Tap)
 
     private func logButton(_ card: WatchSetCardState) -> some View {
@@ -205,12 +242,14 @@ struct WatchSetKeypadView: View {
             if isLogging {
                 ProgressView()
             } else {
-                Label(card.logTitle, systemImage: "checkmark")
+                Text("Log")
             }
         }
-        .buttonStyle(WatchPillStyle(kind: .primary))
+        .buttonStyle(.borderedProminent)
+        .tint(WatchTone.accent)
         .disabled(isLogging)
         .handGestureShortcut(.primaryAction)
+        .accessibilityLabel(Text(card.logTitle))
         .accessibilityIdentifier("logSetButton")
     }
 

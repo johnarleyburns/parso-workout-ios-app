@@ -1,6 +1,8 @@
 import CadenceFeatures
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 import Observation
 import CadenceCore
 
@@ -87,7 +89,7 @@ struct WatchActivePerformer: Equatable {
 
 /// Read-only source of phone-synced set-default history (owner only for now).
 public protocol WatchSetDefaultHistoryProviding {
-    func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History
+    func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History
 }
 
 /// Adapter over the Watch's durable snapshot persistence; loads on each call so a
@@ -97,8 +99,9 @@ public struct PersistedWatchSetDefaultHistory: WatchSetDefaultHistoryProviding {
     public init(persistence: WatchSetDefaultSnapshotPersistence = WatchSetDefaultSnapshotPersistence()) {
         self.persistence = persistence
     }
-    public func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-        persistence.load()?.history(exerciseKey: exerciseKey, performerID: performerID) ?? .empty
+    public func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+        persistence.load()?.history(exerciseKey: exerciseKey, performerID: performerID,
+                                    performerName: performerName) ?? .empty
     }
 }
 
@@ -121,6 +124,84 @@ public struct WatchLoggedSetContext: Equatable, Sendable {
         self.reps = reps
     }
 }
+
+/// Persistence seam over `ModelContext` + `WorkoutRepository`, narrowed to
+/// exactly what `WatchStrengthFlowModel` calls. Lets the flow model's ~1,100
+/// lines of pure session logic type-check without SwiftData; `ModelContext`'s
+/// conformance below is the same, unchanged Darwin behavior, just reached
+/// through this seam instead of called directly.
+public protocol WatchStrengthPersistence: AnyObject {
+    func save() throws
+    func deleteSession(_ session: WorkoutSession)
+    func insertPerson(_ person: Person)
+    func exactExercise(named name: String) -> Exercise?
+    func findOrCreateExercise(named name: String) throws -> Exercise
+    func findOrCreateExercise(named name: String, category: ExerciseCategory?,
+                               primaryMuscles: [String], secondaryMuscles: [String]) throws -> Exercise
+    func addSet(to session: WorkoutSession, exercise: Exercise, weightKg: Double, reps: Int,
+                rpe: Double?, isWarmup: Bool, usesBodyweight: Bool, performedBy: Person?) throws -> SetEntry
+    func removeExercise(_ exercise: Exercise, from session: WorkoutSession) throws -> Int
+    func deleteSet(_ set: SetEntry) throws
+    func findOrCreatePerson(named name: String) throws -> Person
+    func createSession(title: String, partnerIDs: [String]) throws -> WorkoutSession
+    func allPeople() throws -> [Person]
+    func exerciseByID(_ id: UUID) -> Exercise?
+}
+
+#if canImport(SwiftData)
+extension ModelContext: WatchStrengthPersistence {
+    public func deleteSession(_ session: WorkoutSession) { delete(session) }
+    public func insertPerson(_ person: Person) { insert(person) }
+
+    public func exactExercise(named name: String) -> Exercise? {
+        var exact = FetchDescriptor<Exercise>(predicate: #Predicate { $0.name == name })
+        exact.fetchLimit = 1
+        return try? fetch(exact).first
+    }
+
+    public func findOrCreateExercise(named name: String) throws -> Exercise {
+        try WorkoutRepository.findOrCreateExercise(named: name, in: self)
+    }
+
+    public func findOrCreateExercise(named name: String, category: ExerciseCategory?,
+                                      primaryMuscles: [String], secondaryMuscles: [String]) throws -> Exercise {
+        try WorkoutRepository.findOrCreateExercise(named: name, category: category,
+                                                     primaryMuscles: primaryMuscles,
+                                                     secondaryMuscles: secondaryMuscles, in: self)
+    }
+
+    public func addSet(to session: WorkoutSession, exercise: Exercise, weightKg: Double, reps: Int,
+                        rpe: Double?, isWarmup: Bool, usesBodyweight: Bool, performedBy: Person?) throws -> SetEntry {
+        try WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: weightKg, reps: reps,
+                                      rpe: rpe, isWarmup: isWarmup, usesBodyweight: usesBodyweight,
+                                      performedBy: performedBy, in: self)
+    }
+
+    public func removeExercise(_ exercise: Exercise, from session: WorkoutSession) throws -> Int {
+        try WorkoutRepository.removeExercise(exercise, from: session, in: self)
+    }
+
+    public func deleteSet(_ set: SetEntry) throws {
+        try WorkoutRepository.deleteSet(set, in: self)
+    }
+
+    public func findOrCreatePerson(named name: String) throws -> Person {
+        try WorkoutRepository.findOrCreatePerson(named: name, in: self)
+    }
+
+    public func createSession(title: String, partnerIDs: [String]) throws -> WorkoutSession {
+        try WorkoutRepository.createSession(title: title, partnerIDs: partnerIDs, in: self)
+    }
+
+    public func allPeople() throws -> [Person] {
+        try WorkoutRepository.allPeople(self)
+    }
+
+    public func exerciseByID(_ id: UUID) -> Exercise? {
+        ExerciseCatalogSnapshot.exercise(id: id, in: self)
+    }
+}
+#endif
 
 @Observable
 public final class WatchStrengthFlowModel {
@@ -179,7 +260,7 @@ public final class WatchStrengthFlowModel {
     /// it as an accessible confirmation until the user dismisses it.
     public var lastAddedExerciseName: String?
     /// Persistence seam (tests inject a failing save).
-    var saveHandler: (ModelContext) throws -> Void = { try $0.save() }
+    var saveHandler: (WatchStrengthPersistence) throws -> Void = { try $0.save() }
 
     public var discardPayload: [String: Any]?
     public var lastSyncPayload: [String: Any]?
@@ -189,7 +270,7 @@ public final class WatchStrengthFlowModel {
     let cooldownDefault: Int
     let warmupDefault: Int
     let restDefault: Int
-    private let context: ModelContext
+    private let context: WatchStrengthPersistence
     private(set) var exercisePendingAfterRest: Exercise?
 
     /// Set when "Last Set" logs the final set of the whole plan; the watch asks Done / Keep going.
@@ -210,7 +291,7 @@ public final class WatchStrengthFlowModel {
     /// Read-only phone-synced owner history; nil means local Watch history only.
     private let setDefaultHistory: WatchSetDefaultHistoryProviding?
 
-    public init(context: ModelContext, unit: MeasurementUnitPreference = .kilograms,
+    public init(context: WatchStrengthPersistence, unit: MeasurementUnitPreference = .kilograms,
                 cooldownDefault: Int = 5, restDefault: Int = 90, warmupDefault: Int = 0,
                 setDefaultHistory: WatchSetDefaultHistoryProviding? = nil) {
         self.context = context
@@ -298,13 +379,11 @@ public final class WatchStrengthFlowModel {
         if let cached = exerciseCache[key] { return cached }
         // One exact-name row. The first lookup of every workout used to load
         // the whole ~900-exercise catalog on the Watch's main thread.
-        var exact = FetchDescriptor<Exercise>(predicate: #Predicate { $0.name == key })
-        exact.fetchLimit = 1
-        if let match = try? context.fetch(exact).first {
+        if let match = context.exactExercise(named: key) {
             exerciseCache[key] = match
             return match
         }
-        guard let resolved = try? WorkoutRepository.findOrCreateExercise(named: key, in: context) else {
+        guard let resolved = try? context.findOrCreateExercise(named: key) else {
             return nil
         }
         exerciseCache[resolved.name] = resolved
@@ -350,7 +429,7 @@ public final class WatchStrengthFlowModel {
     /// row was drawn) is `.unavailable`; no exercise is ever created here.
     @discardableResult
     public func addExercise(id: UUID, named name: String) -> WatchExerciseAddResult {
-        guard let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) else {
+        guard let exercise = context.exerciseByID(id) else {
             return .unavailable(name: name)
         }
         exerciseCache[exercise.name] = exercise
@@ -363,7 +442,7 @@ public final class WatchStrengthFlowModel {
     @discardableResult
     public func addSuggestedExercise(id: UUID, name: String, sets: Int,
                                      repRange: ClosedRange<Int>) -> WatchExerciseAddResult {
-        guard let exercise = ExerciseCatalogSnapshot.exercise(id: id, in: context) else {
+        guard let exercise = context.exerciseByID(id) else {
             return .unavailable(name: name)
         }
         exerciseCache[exercise.name] = exercise
@@ -387,12 +466,11 @@ public final class WatchStrengthFlowModel {
                                      attribution: WatchCustomExerciseMuscleAttribution) -> WatchExerciseAddResult {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, attribution.hasPrimaryMuscle,
-              let exercise = try? WorkoutRepository.findOrCreateExercise(
+              let exercise = try? context.findOrCreateExercise(
                 named: trimmed,
                 category: WatchCustomExerciseDefinition.category(for: attribution.primary),
                 primaryMuscles: attribution.primaryIDs,
-                secondaryMuscles: attribution.secondaryIDs,
-                in: context
+                secondaryMuscles: attribution.secondaryIDs
               ) else { return .unavailable(name: trimmed) }
         exerciseCache[exercise.name] = exercise
         return addResolvedExercise(exercise)
@@ -471,15 +549,19 @@ public final class WatchStrengthFlowModel {
             weightSamples: prior.filter { !$0.isWarmup }.map { SetSample.from($0) },
             lastPriorWorkingSet: prior.last { !$0.isWarmup && $0.reps > 0 }.map(SetSample.from)
         )
-        // The phone's synced snapshot for the selected performer (stable remote
-        // identity only, never a name or local id) is the authoritative historical
-        // source when it has newer data; a later Watch-local set takes precedence.
-        // A partner never reads owner rows. Current-session values are
-        // layered on separately.
+        // The phone's synced snapshot for the selected performer is the authoritative
+        // historical source when it has newer data; a later Watch-local set takes
+        // precedence. Matched by remote id when known, else by display name as a
+        // fallback for partners the Watch has no phone-linked id for yet (added by
+        // typed name, or a name-only session start) — never for the owner, who always
+        // matches by the fixed "owner" id. A partner never reads owner rows. Current-
+        // session values are layered on separately.
         if let provider = setDefaultHistory {
+            let active = activePerformer
             let synced = provider.history(
                 exerciseKey: WatchSetDefaultSnapshot.canonicalKey(exercise.name),
-                performerID: currentPerformerRemoteID)
+                performerID: active.remoteID,
+                performerName: active.localPerson == nil ? nil : active.displayName)
             let localIsNewer = history.lastPriorWorkingSet.map { local in
                 synced.lastPriorWorkingSet.map { local.date > $0.date } ?? true
             } ?? false
@@ -626,12 +708,11 @@ public final class WatchStrengthFlowModel {
                 WorkoutEntryPreference.setReps(Int(currentReps), in: session,
                                                performerID: performer?.isMe == true ? nil : performer?.id)
             }
-            let set = try WorkoutRepository.addSet(
+            let set = try context.addSet(
                 to: session, exercise: exercise, weightKg: entry.weightKg,
                 reps: Int(currentReps), rpe: resolvedEffortRPE, isWarmup: isWarmupSet,
                 usesBodyweight: entry.usesBodyweight,
-                performedBy: performer?.isMe == true ? nil : performer,
-                in: context
+                performedBy: performer?.isMe == true ? nil : performer
             )
 
             let isOwner = set.isOwnerSet
@@ -703,7 +784,7 @@ public final class WatchStrengthFlowModel {
         WatchLocalHistoryMutation.notify()
         if let session {
             do {
-                _ = try WorkoutRepository.removeExercise(exercise, from: session, in: context)
+                _ = try context.removeExercise(exercise, from: session)
                 refreshExerciseList()
                 recomputeTotals()
                 let payload: [String: Any] = [
@@ -740,7 +821,7 @@ public final class WatchStrengthFlowModel {
         guard let session,
               let set = session.orderedSets.first(where: { $0.id == setID }) else { return nil }
         do {
-            try WorkoutRepository.deleteSet(set, in: context)
+            try context.deleteSet(set)
             refreshExerciseList()
             recomputeTotals()
             let payload: [String: Any] = [
@@ -762,7 +843,7 @@ public final class WatchStrengthFlowModel {
             return
         }
         if let session, session.orderedSets.isEmpty {
-            context.delete(session)
+            context.deleteSession(session)
             try? context.save()
             self.session = nil
             stage = .discarded
@@ -807,7 +888,7 @@ public final class WatchStrengthFlowModel {
         WatchLocalHistoryMutation.notify()
         if let session {
             let syncSets = !(session.sets ?? []).isEmpty
-            context.delete(session)
+            context.deleteSession(session)
             try? context.save()
             discardPayload = syncSets ? ["action": "discard_session", "session_id": session.id.uuidString] : nil
         }
@@ -817,7 +898,7 @@ public final class WatchStrengthFlowModel {
 
     public func addPartner(named name: String) {
         do {
-            let person = try WorkoutRepository.findOrCreatePerson(named: name, in: context)
+            let person = try context.findOrCreatePerson(named: name)
             if !partners.contains(where: { $0.id == person.id }) {
                 partners.append(person)
             }
@@ -860,10 +941,9 @@ public final class WatchStrengthFlowModel {
         guard session == nil else { return }
         priorSetsByExerciseAndPerformer.removeAll()
         do {
-            session = try WorkoutRepository.createSession(
+            session = try context.createSession(
                 title: title,
-                partnerIDs: partners.map { $0.id.uuidString },
-                in: context
+                partnerIDs: partners.map { $0.id.uuidString }
             )
             session?.originDevice = "watch"
             var resolvedPending: [String] = []
@@ -895,14 +975,14 @@ public final class WatchStrengthFlowModel {
                 let trimmed = ref.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !trimmed.isEmpty, seenRemote.insert(ref.id).inserted else { continue }
                 // Same display name, different phone identity: keep distinct lifters.
-                let reusable = (try? WorkoutRepository.allPeople(context))?.first { candidate in
+                let reusable = (try? context.allPeople())?.first { candidate in
                     !candidate.isMe
                         && candidate.name.compare(trimmed, options: .caseInsensitive) == .orderedSame
                         && !partners.contains(where: { $0.id == candidate.id })
                 }
                 let person = reusable ?? Person(name: trimmed, isMe: false)
                 if reusable == nil {
-                    context.insert(person)
+                    context.insertPerson(person)
                     try? context.save()
                 }
                 partners.append(person)
@@ -916,7 +996,7 @@ public final class WatchStrengthFlowModel {
             guard !trimmed.isEmpty,
                   seen.insert(trimmed.lowercased()).inserted else { continue }
             do {
-                let person = try WorkoutRepository.findOrCreatePerson(named: trimmed, in: context)
+                let person = try context.findOrCreatePerson(named: trimmed)
                 if !partners.contains(where: { $0.id == person.id }) {
                     partners.append(person)
                 }
@@ -929,7 +1009,7 @@ public final class WatchStrengthFlowModel {
         currentPerformerIndex = 0
         let ids = session.activePartnerIDs.compactMap(UUID.init(uuidString:))
         guard !ids.isEmpty else { return }
-        let people = (try? WorkoutRepository.allPeople(context)) ?? []
+        let people = (try? context.allPeople()) ?? []
         for id in ids {
             if let person = people.first(where: { $0.id == id && !$0.isMe }) {
                 partners.append(person)
@@ -1058,7 +1138,13 @@ public final class WatchStrengthFlowModel {
             !$0.isWarmup && belongsToCurrentPerformer($0)
         }
         guard let last = working.last else { return nil }
-        return String(localized: "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: unit))", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: unit))"
+            #else
+            String(localized: "Previous: \(Format.previousShort(last.effectiveLoadKg, reps: last.reps, unit: unit))", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 
     public var previousWorkoutHistoryLines: [WatchSetHistoryLine] {

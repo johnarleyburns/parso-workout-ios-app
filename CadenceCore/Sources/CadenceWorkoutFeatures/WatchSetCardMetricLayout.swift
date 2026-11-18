@@ -1,3 +1,4 @@
+import CadenceCore
 import CadenceFeatures
 import Foundation
 
@@ -25,5 +26,16 @@ public enum WatchSetCardMetricLayout: Equatable, Sendable {
 
     public static func crownStep(weightFocused: Bool, nonWeighted: Bool) -> Double {
         weightFocused && !nonWeighted ? weightStep : 1
+    }
+
+    /// The +/- buttons' weight step: a coarser plate-sized jump (5 lb / 2.5 kg)
+    /// so the buttons cover a big change in one or two taps, while the Crown
+    /// (`crownStep`, unchanged at 0.5) stays the precision input. Field report:
+    /// users expect different behavior from the two controls, not the same step.
+    public static func buttonWeightStep(unit: MeasurementUnitPreference) -> Double {
+        switch unit {
+        case .pounds: 5
+        case .kilograms: 2.5
+        }
     }
 }

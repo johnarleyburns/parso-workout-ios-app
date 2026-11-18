@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -25,8 +26,8 @@ final class WatchSetDefaultParityTests: XCTestCase {
 
     private struct Provider: WatchSetDefaultHistoryProviding {
         var snapshot: WatchSetDefaultSnapshot
-        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID, performerName: performerName)
         }
     }
 
@@ -143,6 +144,25 @@ final class WatchSetDefaultParityTests: XCTestCase {
         XCTAssertEqual(f.currentWeight, fd.weightKg ?? 20); XCTAssertEqual(f.currentReps, Double(fd.reps))
     }
 
+    /// Issue (field testing): a partner added by typed name only — no `performers:`
+    /// payload linking a phone UUID, exactly the `addPartner(named:)`/name-only-start
+    /// path — must still resolve that name's previous weight from synced history by
+    /// matching the snapshot performer's `displayName`, not fall through to the flat
+    /// 45 lb/20 kg default because the local Watch-only person has no remote id.
+    func testNameOnlyPartnerStillGetsTheirOwnSyncedWeightNotTheFlatDefault() throws {
+        addSession(day: 1, [("Bench Press", 100, 5, nil), ("Bench Press", 40, 12, sam)])
+        let snap = try syncedSnapshot()
+        // No `performers:` payload at all — exactly the bug's reproduction path.
+        let m = WatchStrengthFlowModel(context: watch, unit: .kilograms, cooldownDefault: 5,
+                                       restDefault: 90, setDefaultHistory: Provider(snapshot: snap))
+        m.start(title: "Push", plannedExerciseNames: ["Bench Press"], createSession: true)
+        m.addPartner(named: "Sam")
+        m.selectPerformer(at: 1)
+        m.startLogSet(for: m.exerciseList[0].exercise)
+        XCTAssertEqual(m.currentWeight, 40, "name-only partner must inherit their own synced weight, not the flat default")
+        XCTAssertNotEqual(m.currentWeight, 45)
+    }
+
     func testChangedSnapshotChangesHandshakeButIdenticalCoalesces() throws {
         addSession(day: 1, [("Bench Press", 80, 8, nil)])
         try phone.save()
@@ -158,3 +178,4 @@ final class WatchSetDefaultParityTests: XCTestCase {
         XCTAssertNotEqual(comps(a), comps(b))
     }
 }
+#endif

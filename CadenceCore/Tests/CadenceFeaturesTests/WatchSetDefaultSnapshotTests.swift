@@ -2,6 +2,7 @@ import XCTest
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
+import CadencePhoneFeatures
 
 final class WatchSetDefaultSnapshotTests: XCTestCase {
     typealias S = WatchSetDefaultSnapshot
@@ -80,6 +81,24 @@ final class WatchSetDefaultSnapshotTests: XCTestCase {
         XCTAssertTrue(missing.weightSamples.isEmpty)
         XCTAssertNil(missing.firstWorkingWeightKg)
         XCTAssertEqual(s.history(exerciseKey: "squat", performerID: UUID().uuidString), .empty)
+    }
+
+    func testHistoryFallsBackToNameMatchWhenIDIsUnknown() {
+        let s = snapshot()
+        // A Watch-local-only performer id (never synced to the phone, e.g. the
+        // `legacy-name:` sentinel for a partner added by typed name) must still
+        // resolve that partner's synced history by matching displayName.
+        let unknownID = "legacy-name:sam"
+        let byName = s.history(exerciseKey: "bench press", performerID: unknownID, performerName: "Me")
+        XCTAssertEqual(byName.firstWorkingWeightKg, 40, "falls back to the partner's own synced row by name")
+        // A real id match still wins outright and ignores the name.
+        let byID = s.history(exerciseKey: "bench press", performerID: partner, performerName: "someone else entirely")
+        XCTAssertEqual(byID.firstWorkingWeightKg, 40)
+        // The sentinel for the owner's own name must never accidentally match a partner.
+        let unmatched = s.history(exerciseKey: "bench press", performerID: unknownID, performerName: "Nobody Here")
+        XCTAssertEqual(unmatched, .empty)
+        // No performerName at all behaves exactly as before: id-only, no match.
+        XCTAssertEqual(s.history(exerciseKey: "bench press", performerID: unknownID), .empty)
     }
 
     func testKeyNormalization() {

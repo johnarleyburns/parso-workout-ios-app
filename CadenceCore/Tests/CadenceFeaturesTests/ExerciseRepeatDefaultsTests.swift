@@ -1,8 +1,10 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class ExerciseRepeatDefaultsTests: XCTestCase {
     private let lastKg = WorkoutMath.canonical(205, from: .pounds)
@@ -33,8 +35,8 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
 
     private struct SyncedHistory: WatchSetDefaultHistoryProviding {
         let snapshot: WatchSetDefaultSnapshot
-        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID, performerName: performerName)
         }
     }
 
@@ -92,3 +94,4 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
         XCTAssertEqual(resolved.reps, 8)
     }
 }
+#endif

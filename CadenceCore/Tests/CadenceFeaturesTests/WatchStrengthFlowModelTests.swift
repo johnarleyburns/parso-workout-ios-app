@@ -1,8 +1,10 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
+import CadencePhoneFeatures
 
 final class WatchStrengthFlowModelTests: XCTestCase {
 
@@ -1182,8 +1184,8 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
     private struct StubHistory: WatchSetDefaultHistoryProviding {
         var snapshot: WatchSetDefaultSnapshot
-        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID, performerName: performerName)
         }
     }
 
@@ -1396,3 +1398,4 @@ final class WatchAddConfirmationTests: XCTestCase {
         XCTAssertNil(state.pending)
     }
 }
+#endif

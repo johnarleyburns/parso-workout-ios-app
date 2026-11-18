@@ -1,8 +1,10 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
+import CadencePhoneFeatures
 
 /// Issue #432: Watch partner set defaults resolve from the partner's own synced history.
 @MainActor
@@ -19,8 +21,8 @@ final class WatchPartnerDefaultsTests: XCTestCase {
 
     private struct Stub: WatchSetDefaultHistoryProviding {
         var snapshot: WatchSetDefaultSnapshot
-        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID, performerName: performerName)
         }
     }
 
@@ -115,3 +117,4 @@ final class WatchPartnerDefaultsTests: XCTestCase {
         XCTAssertEqual(m.currentWeight, 20)
     }
 }
+#endif

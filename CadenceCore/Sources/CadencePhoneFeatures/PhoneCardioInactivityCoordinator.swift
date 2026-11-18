@@ -1,30 +1,11 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
+import CadenceWorkoutFeatures
 
 /// Why an iPhone-recorded cardio workout was ended without the user pressing End.
 public enum PhoneCardioFinalizeReason: String, Codable, Sendable, Equatable {
     case inactivity
-}
-
-/// Every input a live recorder may report. Only the "active" cases count as user
-/// activity; the `passive` cases exist so call sites classify explicitly and the
-/// coordinator can prove they are ignored.
-public enum CardioEvidenceEvent: Sendable, Equatable {
-    /// Explicit user control: start, resume, lap, goal edit. Always counts.
-    case userAction
-    /// Cumulative GPS path distance. Counts only when it grows by a meaningful step.
-    case distance(totalMeters: Double)
-    /// Motion class change from CoreMotion (outdoor profile only).
-    case motion
-    /// A heart-rate sample; counts only if `CardioInactivityPolicy.isQualifyingHeartRate`.
-    case heartRate(bpm: Double, sampleAt: Date, restingHR: Double?, maxHR: Double?)
-    case passive(PassiveSource)
-
-    public enum PassiveSource: String, Sendable, Equatable, CaseIterable {
-        case timerTick, viewAppeared, scenePhase, render, locationAuthorization
-        case heartRateReceiptOnly, watchRelayHeartbeat, duplicateLocationFix
-    }
 }
 
 /// Durable metadata needed to restore/reconcile a parked or backgrounded recorder.

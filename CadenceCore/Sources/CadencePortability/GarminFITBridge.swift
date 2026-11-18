@@ -219,20 +219,28 @@ public enum GarminFITBridge {
                                          endedAt: parsed.end ?? parsed.start, notes: notes,
                                          isLogged: true, originDevice: originDevice)
             context.insert(session)
-            let library = (try? context.fetch(FetchDescriptor<Exercise>())) ?? []
-            var resolved: [Exercise] = []
+            let library = (try? context.fetch(FetchDescriptor<CadenceCore.Exercise>())) ?? []
+            var resolved: [CadenceCore.Exercise] = []
             var order = 0
             for item in parsed.exercises {
-                let exercise = library.first { item.exerciseID != nil && $0.sourceExerciseID == item.exerciseID }
-                    ?? resolved.first { $0.name.caseInsensitiveCompare(item.name) == .orderedSame }
-                    ?? library.first { $0.name.caseInsensitiveCompare(item.name) == .orderedSame }
-                    ?? {
-                        let created = Exercise(name: item.name, isCustom: item.exerciseID == nil,
-                                               originDevice: originDevice, sourceExerciseID: item.exerciseID)
-                        context.insert(created)
-                        resolved.append(created)
-                        return created
-                    }()
+                let byImportedID: CadenceCore.Exercise? = item.exerciseID != nil
+                    ? library.first { $0.sourceExerciseID == item.exerciseID } : nil
+                let byPendingName: CadenceCore.Exercise? = resolved.first {
+                    $0.name.caseInsensitiveCompare(item.name) == .orderedSame
+                }
+                let byLibraryName: CadenceCore.Exercise? = library.first {
+                    $0.name.caseInsensitiveCompare(item.name) == .orderedSame
+                }
+                let exercise: CadenceCore.Exercise
+                if let found = byImportedID ?? byPendingName ?? byLibraryName {
+                    exercise = found
+                } else {
+                    let created = CadenceCore.Exercise(name: item.name, isCustom: item.exerciseID == nil,
+                                           originDevice: originDevice, sourceExerciseID: item.exerciseID)
+                    context.insert(created)
+                    resolved.append(created)
+                    exercise = created
+                }
                 for set in item.sets {
                     order += 1
                     let entry = SetEntry(weight: set.loadKg, reps: set.reps, order: order,

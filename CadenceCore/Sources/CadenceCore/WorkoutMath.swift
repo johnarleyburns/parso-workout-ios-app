@@ -159,8 +159,8 @@ public enum DistanceUnitPreference: String, CaseIterable, Codable, Sendable, Ide
         }
     }
 
-    public static func unitDefault() -> DistanceUnitPreference {
-        Locale.current.measurementSystem == .us ? .miles : .kilometers
+    public static func unitDefault(locale: Locale = .current) -> DistanceUnitPreference {
+        locale.measurementSystem == .us ? .miles : .kilometers
     }
 }
 

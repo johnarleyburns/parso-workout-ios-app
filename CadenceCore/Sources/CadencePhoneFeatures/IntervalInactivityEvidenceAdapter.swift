@@ -1,4 +1,5 @@
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import Foundation
 
 /// Value-only mapping from a `CombinedPlanRunner` to `CardioActivityEvidence`.

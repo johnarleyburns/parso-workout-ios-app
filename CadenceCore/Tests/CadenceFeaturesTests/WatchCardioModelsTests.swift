@@ -418,7 +418,7 @@ final class WatchCardioModelsTests: XCTestCase {
 
     func testEachHIITProtocolMapsToBuiltInFactory() {
         let model = IntervalSetupModel(kind: "HIIT")
-        for proto in HIITProtocol.allCases {
+        for proto in CadenceWorkoutFeatures.HIITProtocol.allCases {
             model.hiitProtocol = proto
             let plan = model.hiitIntervalPlan()
             XCTAssertFalse(plan.phases.isEmpty, "\(proto.displayName) plan should not be empty")

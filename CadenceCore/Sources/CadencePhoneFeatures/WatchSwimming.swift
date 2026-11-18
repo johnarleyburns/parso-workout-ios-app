@@ -1,4 +1,5 @@
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import Foundation
 
 public enum WatchSwimMode: String, CaseIterable, Identifiable, Sendable {

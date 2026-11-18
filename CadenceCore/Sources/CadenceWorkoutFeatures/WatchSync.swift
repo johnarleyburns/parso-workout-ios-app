@@ -31,8 +31,8 @@ public struct WeightIncrement {
         return (value < 0 ? "-" : "+") + magStr
     }
 
-    public static func unitDefault() -> MeasurementUnitPreference {
-        Locale.current.measurementSystem == .us ? .pounds : .kilograms
+    public static func unitDefault(locale: Locale = .current) -> MeasurementUnitPreference {
+        locale.measurementSystem == .us ? .pounds : .kilograms
     }
 }
 

@@ -31,9 +31,11 @@ final class WatchSyncTests: XCTestCase {
     }
 
     func testLocaleDefaultUS() {
-        let locale = Locale(identifier: "en_US")
-        let result = locale.measurementSystem == .us ? MeasurementUnitPreference.pounds : .kilograms
-        XCTAssertEqual(WeightIncrement.unitDefault(), result)
+        XCTAssertEqual(WeightIncrement.unitDefault(locale: Locale(identifier: "en_US")), .pounds)
+    }
+
+    func testLocaleDefaultMetric() {
+        XCTAssertEqual(WeightIncrement.unitDefault(locale: Locale(identifier: "de_DE")), .kilograms)
     }
 
     // MARK: - Context apply

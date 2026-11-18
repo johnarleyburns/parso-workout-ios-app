@@ -57,7 +57,7 @@ struct WatchIntervalSetupView: View {
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
             Picker("", selection: $model.hiitProtocol) {
-                ForEach(HIITProtocol.allCases, id: \.self) { proto in
+                ForEach(CadenceWorkoutFeatures.HIITProtocol.allCases, id: \.self) { proto in
                     Text(proto.displayName).tag(proto)
                 }
             }

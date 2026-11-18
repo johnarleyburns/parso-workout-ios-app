@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 // Watch redesign (plans/watch-redesign/2026-09-30/DESIGN.md §5 T1–T4, F2, §7): the Today hero, the
 // per-destination save receipts, and the learned cardio tile order. Pure; the watch maps them.

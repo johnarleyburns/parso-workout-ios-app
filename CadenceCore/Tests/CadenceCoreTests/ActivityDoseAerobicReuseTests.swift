@@ -1,4 +1,5 @@
 #if canImport(os)
+import Foundation
 import Testing
 @testable import CadenceCore
 

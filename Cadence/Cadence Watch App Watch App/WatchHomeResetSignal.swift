@@ -6,7 +6,7 @@ import SwiftUI
 /// workout started (direct from Home vs. via a setup/preview screen vs. via a
 /// previous-workout detail screen).
 private struct WatchReturnToHomeKey: EnvironmentKey {
-    static let defaultValue: () -> Void = {}
+    nonisolated(unsafe) static let defaultValue: () -> Void = {}
 }
 
 /// Broadcasts every `watchReturnToHome()` call so views that own their own

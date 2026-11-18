@@ -92,7 +92,7 @@ struct WatchSetKeypadView: View {
                     .accessibilityLabel(Text("RPE"))
                     .accessibilityIdentifier("watchSet.more")
                 }
-                ToolbarItem(placement: .principal) {
+                ToolbarItem(placement: .topBarTrailing) {
                     TimelineView(.periodic(from: .now, by: 60)) { context in
                         Text(context.date, format: .dateTime.hour().minute())
                             .font(.caption2.weight(.semibold).monospacedDigit())

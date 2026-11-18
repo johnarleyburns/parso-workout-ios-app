@@ -1,4 +1,5 @@
 #if canImport(SwiftData)
+import Foundation
 import Testing
 import SwiftData
 @testable import CadenceCore

@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// A transparent duration estimate for a planned strength workout. The
 /// estimate is deliberately separate from the workout model: it is presentation

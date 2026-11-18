@@ -1,6 +1,7 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
+import CadenceWorkoutFeatures
 
 /// Render order and visibility for the Observations surface (Progress).
 ///

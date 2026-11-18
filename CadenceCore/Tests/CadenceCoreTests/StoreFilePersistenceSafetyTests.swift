@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -38,3 +39,4 @@ final class StoreFilePersistenceSafetyTests: XCTestCase {
         XCTAssertGreaterThan(sizeAfter, 0)
     }
 }
+#endif

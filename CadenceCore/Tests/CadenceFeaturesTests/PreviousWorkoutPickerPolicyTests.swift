@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -63,3 +64,4 @@ final class PreviousWorkoutPickerPolicyTests: XCTestCase {
         XCTAssertEqual(result.map(\.id), [recent.id, old.id])
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -305,3 +306,4 @@ final class EditablePlanTests: XCTestCase {
         XCTAssertTrue(EditablePlan.from(session: session).exercises.allSatisfy { $0.performerPlans.isEmpty })
     }
 }
+#endif

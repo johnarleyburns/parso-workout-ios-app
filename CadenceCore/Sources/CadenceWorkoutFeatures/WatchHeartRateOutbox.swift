@@ -1,6 +1,8 @@
 import CadenceFeatures
 import Foundation
+#if canImport(OSLog)
 import OSLog
+#endif
 
 /// Persisted Watch-side journal for one phone-owned workout.
 public struct WatchHeartRateOutboxState: Codable, Equatable, Sendable {
@@ -69,7 +71,9 @@ public final class WatchHeartRateOutbox {
     public static let minimumBPM = WatchHRMessage.minimumBPM
     public static let maximumBPM = WatchHRMessage.maximumBPM
 
+    #if canImport(OSLog)
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "WatchHROutbox")
+    #endif
 
     private let store: WatchHeartRateOutboxStore
     private let transport: WatchHeartRateTransport
@@ -123,12 +127,16 @@ public final class WatchHeartRateOutbox {
                 guard fresh.retired.count < Self.maximumRetiredJournals else {
                     bindingRefused = true
                     failedRecoverably = true
+                    #if canImport(OSLog)
                     Self.log.error("retired journal limit reached, new workout not bound")
+                    #endif
                     return false
                 }
                 sealPending(&old)
                 fresh.retired.append(old)
+                #if canImport(OSLog)
                 Self.log.info("earlier workout retained for delivery")
+                #endif
             }
         }
         state = fresh
@@ -154,13 +162,17 @@ public final class WatchHeartRateOutbox {
         // sample without identity and a builder callback that has it dedupe.
         let weak = Self.key(source: source, sampleEnd: end, bpm: bpm, sampleID: nil)
         if s.seenKeys.contains(key) || s.seenKeys.contains(weak) {
+            #if canImport(OSLog)
             Self.log.debug("observation deduplicated")
+            #endif
             return .duplicate
         }
         if s.pending.count + s.batches.reduce(0, { $0 + $1.observations.count }) >= Self.maximumRetainedObservations {
             guard compactPending(&s) else {
                 failedRecoverably = true
+                #if canImport(OSLog)
                 Self.log.error("outbox full, observation refused")
+                #endif
                 return .notPersisted
             }
         }
@@ -169,7 +181,9 @@ public final class WatchHeartRateOutbox {
         s.pending.append(WatchHRObservation(observationID: makeUUID(), source: source, sampleEnd: end, bpm: bpm, sampleID: sampleID))
         state = s
         guard persist() else { return .notPersisted }
+        #if canImport(OSLog)
         Self.log.debug("observation accepted")
+        #endif
         return .accepted
     }
 
@@ -212,7 +226,9 @@ public final class WatchHeartRateOutbox {
             }
             guard candidates.count <= capacity else {
                 failedRecoverably = true
+                #if canImport(OSLog)
                 Self.log.error("outbox full, completion refused")
+                #endif
                 return nil
             }
         }
@@ -247,7 +263,9 @@ public final class WatchHeartRateOutbox {
         state = s
         guard persist() else { return }
         diagnostics.retryCount += 1
+        #if canImport(OSLog)
         Self.log.info("retry: \(reason, privacy: .public), unacknowledged chunks \(s.batches.count)")
+        #endif
         deliver()
     }
 
@@ -272,7 +290,9 @@ public final class WatchHeartRateOutbox {
             if bytes > WatchHRChunker.maxEncodedBytes {
                 diagnostics.oversizedChunkCount += 1
                 failedRecoverably = true
+                #if canImport(OSLog)
                 Self.log.error("chunk exceeds byte budget, retained")
+                #endif
                 continue
             }
             diagnostics.largestChunkBytes = max(diagnostics.largestChunkBytes, bytes)
@@ -284,15 +304,21 @@ public final class WatchHeartRateOutbox {
             let due = batch.durableQueuedAt.map { now - $0 >= Self.retryInterval } ?? true
             if transport.isReachable && (due || lastImmediateAt.map { now - $0 >= Self.retryInterval } ?? true) {
                 transport.sendImmediate(message)
+                #if canImport(OSLog)
                 Self.log.debug("immediate attempt")
+                #endif
             } else if !transport.isReachable {
+                #if canImport(OSLog)
                 Self.log.debug("immediate skipped: unreachable")
+                #endif
             }
             if due {
                 transport.transferUserInfo(message)
                 s.batches[i].durableQueuedAt = now
                 changed = true
+                #if canImport(OSLog)
                 Self.log.debug("durable transfer queued")
+                #endif
             }
         }
         return changed
@@ -324,12 +350,16 @@ public final class WatchHeartRateOutbox {
                   s.batches.removeAll { $0.deliveryID == ack.deliveryID || $0.sequence <= ack.cursor }
                   return true
               }) != nil else {
+            #if canImport(OSLog)
             Self.log.error("acknowledgement rejected")
+            #endif
             return false
         }
         persist()
         diagnostics.receiptCount += 1
+        #if canImport(OSLog)
         Self.log.info("acknowledgement accepted")
+        #endif
         if message.kind == .finalizeAcknowledgement { releaseIfFullyDelivered() }
         return true
     }
@@ -349,10 +379,14 @@ public final class WatchHeartRateOutbox {
                   for i in s.batches.indices { s.batches[i].durableQueuedAt = nil }
                   return s.nextSequence - 1
               }) else {
+            #if canImport(OSLog)
             Self.log.error("finalize request rejected or deferred")
+            #endif
             return false
         }
+        #if canImport(OSLog)
         Self.log.info("finalization requested")
+        #endif
         guard persist() else { return false }
         deliver() // persisted first; hands every batch to WatchConnectivity
         let handedOver = withJournal(sessionID: message.phoneWorkoutSessionID, requestID: message.watchRequestID,
@@ -366,7 +400,9 @@ public final class WatchHeartRateOutbox {
                                    sequence: lastSequence)
         if transport.isReachable { transport.sendImmediate(final) }
         transport.transferUserInfo(final)
+        #if canImport(OSLog)
         Self.log.info("finalization complete")
+        #endif
         return true
     }
 
@@ -388,7 +424,9 @@ public final class WatchHeartRateOutbox {
             persist()
         } else { return false }
         failedRecoverably = false
+        #if canImport(OSLog)
         Self.log.info("terminal discard")
+        #endif
         return true
     }
 
@@ -439,9 +477,17 @@ public final class WatchHeartRateOutbox {
     @discardableResult
     private func persist() -> Bool {
         guard let state else { return true }
-        do { try store.save(state); Self.log.debug("outbox persisted"); return true } catch {
+        do {
+            try store.save(state)
+            #if canImport(OSLog)
+            Self.log.debug("outbox persisted")
+            #endif
+            return true
+        } catch {
             failedRecoverably = true
+            #if canImport(OSLog)
             Self.log.error("outbox persistence failed")
+            #endif
             return false
         }
     }

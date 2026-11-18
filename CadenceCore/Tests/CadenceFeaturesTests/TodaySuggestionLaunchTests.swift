@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Launch-order proof: the durable Today plan is restored before candidate
 /// loading or generation; only a genuine miss loads candidates and generates.

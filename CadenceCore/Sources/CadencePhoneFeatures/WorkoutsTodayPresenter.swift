@@ -200,7 +200,13 @@ public enum WorkoutsTodayPresenter {
         let minutes = session.durationMinutes.map { "~\($0)m" }
         if session.kind == .strength {
             let sets = (session.exercises ?? []).reduce(0) { $0 + ($1.sets ?? $1.repLadder?.count ?? 0) }
-            let setText = sets > 0 ? String(localized: "\(sets) sets", bundle: FeatureLocalization.bundle) : nil
+            let setText = sets > 0 ? {
+                #if os(Linux)
+                "\(sets) sets"
+                #else
+                String(localized: "\(sets) sets", bundle: FeatureLocalization.bundle)
+                #endif
+            }() : nil
             return [setText, minutes].compactMap { $0 }.joined(separator: " · ")
         }
         let intensity = session.intensity?.rawValue

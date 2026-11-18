@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -73,3 +74,4 @@ final class WorkoutHeartbeatTests: XCTestCase {
         XCTAssertEqual(ActiveSessionRecovery.adoptedElapsed(sessionID: UUID(), heartbeat: hb), 0)
     }
 }
+#endif

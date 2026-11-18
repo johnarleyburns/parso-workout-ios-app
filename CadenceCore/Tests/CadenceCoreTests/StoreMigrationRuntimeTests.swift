@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -54,3 +55,4 @@ final class StoreMigrationRuntimeTests: XCTestCase {
         XCTAssertEqual(try restored.fetchCount(FetchDescriptor<Person>()), 1)
     }
 }
+#endif

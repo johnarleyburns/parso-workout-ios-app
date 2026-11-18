@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -81,3 +82,4 @@ final class ImportedCardioIntensityTests: XCTestCase {
         XCTAssertNotNil(try WorkoutRepository.allCardio(c).first?.intensitySummary)
     }
 }
+#endif

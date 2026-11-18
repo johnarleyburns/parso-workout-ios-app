@@ -1,6 +1,9 @@
 import CadenceFeatures
 import Foundation
+import CadenceWorkoutFeatures
+#if canImport(OSLog)
 import OSLog
+#endif
 
 /// What the phone durably remembers about one workout's received Watch HR.
 public struct WatchHRReceiptState: Codable, Equatable, Sendable {
@@ -8,6 +11,14 @@ public struct WatchHRReceiptState: Codable, Equatable, Sendable {
     public var deliveryIDs: Set<UUID> = []
     public var sequences: Set<Int> = []
     public var finalSequence: Int?
+
+    public init(phoneWorkoutSessionID: UUID, deliveryIDs: Set<UUID> = [],
+                sequences: Set<Int> = [], finalSequence: Int? = nil) {
+        self.phoneWorkoutSessionID = phoneWorkoutSessionID
+        self.deliveryIDs = deliveryIDs
+        self.sequences = sequences
+        self.finalSequence = finalSequence
+    }
 
     /// Highest n such that batches 1...n were all persisted.
     public var cursor: Int {
@@ -88,7 +99,9 @@ public enum WatchHRReceiveOutcome: Equatable, Sendable {
 /// session-owned HR path, and acknowledges only after persistence succeeds.
 @MainActor
 public final class WatchHeartRateReceiver {
+    #if canImport(OSLog)
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "WatchHRReceiver")
+    #endif
 
     private let store: WatchHeartRateReceiptStore
     private let transport: WatchHeartRateTransport
@@ -164,7 +177,9 @@ public final class WatchHeartRateReceiver {
         case .observations:
             guard message.acknowledgement == nil || !message.observations.isEmpty else { return reject(.emptyBatch) }
             if state.deliveryIDs.contains(message.deliveryID) || state.sequences.contains(message.sequence) {
+                #if canImport(OSLog)
                 Self.log.debug("duplicate delivery")
+                #endif
                 do { try advanceFinalization(sessionID: message.phoneWorkoutSessionID, receipt: state) } catch {
                     return .persistenceFailed
                 }
@@ -172,7 +187,9 @@ public final class WatchHeartRateReceiver {
                 return .duplicate
             }
             guard persist(message.phoneWorkoutSessionID, message.observations) else {
+                #if canImport(OSLog)
                 Self.log.error("persistence failed, not acknowledged")
+                #endif
                 return .persistenceFailed
             }
             state.deliveryIDs.insert(message.deliveryID)
@@ -181,11 +198,15 @@ public final class WatchHeartRateReceiver {
             // save fails nothing is acknowledged; the Watch retains the batch and
             // the replay re-persists idempotently (the recorder dedupes by identity/time).
             do { try store.save(state) } catch {
+                #if canImport(OSLog)
                 Self.log.error("receipt journal save failed, not acknowledged")
+                #endif
                 return .persistenceFailed
             }
             do { try advanceFinalization(sessionID: message.phoneWorkoutSessionID, receipt: state) } catch {
+                #if canImport(OSLog)
                 Self.log.error("finalization save failed, not acknowledged")
+                #endif
                 return .persistenceFailed
             }
             acknowledge(message, cursor: state.cursor)
@@ -197,7 +218,9 @@ public final class WatchHeartRateReceiver {
                 try advanceFinalization(sessionID: message.phoneWorkoutSessionID, receipt: state)
             } catch { return .persistenceFailed }
             if state.finalizationComplete { acknowledge(message, cursor: state.cursor) }
+            #if canImport(OSLog)
             Self.log.info("finalization \(state.finalizationComplete ? "complete" : "pending", privacy: .public)")
+            #endif
             return .finalizationUpdated(complete: state.finalizationComplete)
         case .finalizeRequest:
             return reject(.malformed) // phone → Watch only
@@ -255,7 +278,9 @@ public final class WatchHeartRateReceiver {
                 try finalizationStore.save(WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch))
             }
         } catch {
+            #if canImport(OSLog)
             Self.log.error("pending finalization state not persisted; not sending")
+            #endif
             try? finalizationStore.save(WatchHRFinalizationState(sessionID: sessionID, captureEpoch: captureEpoch,
                                                                  status: .failedRecoverably))
             return .failure(.pendingStateNotPersisted)
@@ -265,7 +290,9 @@ public final class WatchHeartRateReceiver {
                                      captureEpoch: captureEpoch)
         if transport.isReachable { transport.sendImmediate(message) }
         transport.transferUserInfo(message)
+        #if canImport(OSLog)
         Self.log.info("finalization requested")
+        #endif
         return .success(())
     }
 
@@ -273,7 +300,9 @@ public final class WatchHeartRateReceiver {
     public func discard(sessionID: UUID) {
         store.clear(sessionID: sessionID)
         finalizationStore.clear(sessionID: sessionID)
+        #if canImport(OSLog)
         Self.log.info("terminal discard")
+        #endif
     }
 
     private func acknowledge(_ message: WatchHRMessage, cursor: Int) {
@@ -288,7 +317,9 @@ public final class WatchHeartRateReceiver {
     }
 
     private func reject(_ reason: WatchHRMessageRejection) -> WatchHRReceiveOutcome {
+        #if canImport(OSLog)
         Self.log.error("rejected: \(reason.rawValue, privacy: .public)")
+        #endif
         return .rejected(reason)
     }
 }

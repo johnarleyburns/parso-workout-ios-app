@@ -10,6 +10,12 @@ public enum WeightSuggestionCopy {
         } else {
             subject = "your"
         }
-        return String(localized: "Estimated from \(subject) previous \(exercise) sets · rounded to a loadable increment", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "Estimated from \(subject) previous \(exercise) sets · rounded to a loadable increment"
+            #else
+            String(localized: "Estimated from \(subject) previous \(exercise) sets · rounded to a loadable increment", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 }

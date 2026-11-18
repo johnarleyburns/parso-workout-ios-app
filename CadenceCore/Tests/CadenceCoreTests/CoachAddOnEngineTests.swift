@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -110,3 +111,4 @@ final class CoachAddOnEngineTests: XCTestCase {
         XCTAssertFalse(all.contains { $0.id == "addon.encouragedCardio" })
     }
 }
+#endif

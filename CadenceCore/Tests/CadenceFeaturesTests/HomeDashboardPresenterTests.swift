@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -364,3 +365,4 @@ final class HomeDashboardPresenterTests: XCTestCase {
         XCTAssertEqual(unrestored.strength.completed, 0)
     }
 }
+#endif

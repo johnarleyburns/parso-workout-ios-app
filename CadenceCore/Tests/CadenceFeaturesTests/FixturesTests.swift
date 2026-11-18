@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -62,3 +63,4 @@ final class FixturesTests: XCTestCase {
         XCTAssertTrue(decoded.allowsTwoADays)
     }
 }
+#endif

@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(CryptoKit)
 import CryptoKit
+#endif
 
 /// The small, app-local projection used by Personalized suggestions. This is
 /// deliberately not a SwiftData `@Model`: the canonical workout models remain
@@ -243,8 +245,17 @@ public enum ExerciseHistoryIndexStore {
             }.joined(separator: ";")
             return "\(header)#\(sets)"
         }.joined(separator: "||")
+        #if canImport(CryptoKit)
         return SHA256.hash(data: Data(canonical.utf8))
             .map { String(format: "%02x", $0) }.joined()
+        #else
+        // Non-Darwin builds only run coaching logic/tests locally, never the
+        // shipped app, so this cache fingerprint only needs to be internally
+        // consistent within a run — not bit-identical to the SHA256 above.
+        var hasher = Hasher()
+        hasher.combine(canonical)
+        return String(format: "%016x", UInt(bitPattern: hasher.finalize()))
+        #endif
     }
 
     private static func load(from url: URL?) throws -> ExerciseHistoryIndexSnapshot? {

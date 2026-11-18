@@ -48,7 +48,13 @@ public enum SessionRenderModel {
             guard !sets.isEmpty else { return nil }
             return "\(performer.label): " + sets.map { setLineText($0, unit: unit) }.joined(separator: ", ")
         }
-        return segments.isEmpty ? nil : String(localized: "Done: ", bundle: FeatureLocalization.bundle) + segments.joined(separator: "; ")
+        return segments.isEmpty ? nil : {
+            #if os(Linux)
+            "Done: "
+            #else
+            String(localized: "Done: ", bundle: FeatureLocalization.bundle)
+            #endif
+        }() + segments.joined(separator: "; ")
     }
 
     /// The combined `6/6 sets · reps · weight · BW` summary, used solo and as
@@ -57,10 +63,28 @@ public enum SessionRenderModel {
                                       unit: MeasurementUnitPreference) -> String {
         let completed = context.sets.filter { !$0.isWarmup }.count
         let planned = completed + context.pendingSets.count
-        var parts = [String(localized: "\(completed)/\(max(completed, planned)) sets", bundle: FeatureLocalization.bundle)]
+        var parts = [{
+            #if os(Linux)
+            "\(completed)/\(max(completed, planned)) sets"
+            #else
+            String(localized: "\(completed)/\(max(completed, planned)) sets", bundle: FeatureLocalization.bundle)
+            #endif
+        }()]
         let reps = (context.sets.filter { !$0.isWarmup }.map(\.reps) + context.pendingSets.map(\.targetReps)).filter { $0 > 0 }
         if let minReps = reps.min(), let maxReps = reps.max() {
-            parts.append(minReps == maxReps ? String(localized: "\(minReps) reps", bundle: FeatureLocalization.bundle) : String(localized: "\(minReps)–\(maxReps) reps", bundle: FeatureLocalization.bundle))
+            parts.append(minReps == maxReps ? {
+                #if os(Linux)
+                "\(minReps) reps"
+                #else
+                String(localized: "\(minReps) reps", bundle: FeatureLocalization.bundle)
+                #endif
+            }() : {
+                #if os(Linux)
+                "\(minReps)–\(maxReps) reps"
+                #else
+                String(localized: "\(minReps)–\(maxReps) reps", bundle: FeatureLocalization.bundle)
+                #endif
+            }())
         }
         let weights = context.sets.filter { !$0.isWarmup && !$0.usesBodyweight }.map(\.weight) +
             context.pendingSets.compactMap(\.targetWeightKg)

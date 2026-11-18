@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -80,3 +81,4 @@ final class YourWeekPresenterTests: XCTestCase {
         XCTAssertEqual(rows.map(\.zone), [1, 3])
     }
 }
+#endif

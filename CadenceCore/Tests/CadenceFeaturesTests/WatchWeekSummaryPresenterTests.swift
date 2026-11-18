@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Regression for the reported defect: a successful WatchConnectivity handshake
 /// rendered "0 sets / 0 min" on the Watch although iPhone This Week showed 111

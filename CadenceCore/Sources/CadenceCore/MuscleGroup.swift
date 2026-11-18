@@ -39,51 +39,291 @@ public enum MuscleGroup: String, CaseIterable, Codable, Sendable, Identifiable, 
 
     public var displayName: String {
         switch self {
-        case .abdominals: String(localized: "Abs", bundle: .module)
-        case .abductors: String(localized: "Abductors", bundle: .module)
-        case .adductors: String(localized: "Adductors", bundle: .module)
-        case .biceps: String(localized: "Biceps", bundle: .module)
-        case .calves: String(localized: "Calves", bundle: .module)
-        case .chest: String(localized: "Chest", bundle: .module)
-        case .forearms: String(localized: "Forearms", bundle: .module)
-        case .glutes: String(localized: "Glutes", bundle: .module)
-        case .hamstrings: String(localized: "Hamstrings", bundle: .module)
-        case .lats: String(localized: "Lats", bundle: .module)
-        case .lowerBack: String(localized: "Lower Back", bundle: .module)
-        case .middleBack: String(localized: "Mid Back", bundle: .module)
-        case .neck: String(localized: "Neck", bundle: .module)
-        case .quadriceps: String(localized: "Quads", bundle: .module)
-        case .shoulders: String(localized: "Shoulders", bundle: .module)
-        case .traps: String(localized: "Traps", bundle: .module)
-        case .triceps: String(localized: "Triceps", bundle: .module)
-        case .tibialis: String(localized: "Tibialis", bundle: .module)
-        case .rotatorCuff: String(localized: "Rotator Cuff", bundle: .module)
-        case .hipFlexors: String(localized: "Hip Flexors", bundle: .module)
+        case .abdominals: {
+            #if os(Linux)
+            "Abs"
+            #else
+            String(localized: "Abs", bundle: .module)
+            #endif
+        }()
+        case .abductors: {
+            #if os(Linux)
+            "Abductors"
+            #else
+            String(localized: "Abductors", bundle: .module)
+            #endif
+        }()
+        case .adductors: {
+            #if os(Linux)
+            "Adductors"
+            #else
+            String(localized: "Adductors", bundle: .module)
+            #endif
+        }()
+        case .biceps: {
+            #if os(Linux)
+            "Biceps"
+            #else
+            String(localized: "Biceps", bundle: .module)
+            #endif
+        }()
+        case .calves: {
+            #if os(Linux)
+            "Calves"
+            #else
+            String(localized: "Calves", bundle: .module)
+            #endif
+        }()
+        case .chest: {
+            #if os(Linux)
+            "Chest"
+            #else
+            String(localized: "Chest", bundle: .module)
+            #endif
+        }()
+        case .forearms: {
+            #if os(Linux)
+            "Forearms"
+            #else
+            String(localized: "Forearms", bundle: .module)
+            #endif
+        }()
+        case .glutes: {
+            #if os(Linux)
+            "Glutes"
+            #else
+            String(localized: "Glutes", bundle: .module)
+            #endif
+        }()
+        case .hamstrings: {
+            #if os(Linux)
+            "Hamstrings"
+            #else
+            String(localized: "Hamstrings", bundle: .module)
+            #endif
+        }()
+        case .lats: {
+            #if os(Linux)
+            "Lats"
+            #else
+            String(localized: "Lats", bundle: .module)
+            #endif
+        }()
+        case .lowerBack: {
+            #if os(Linux)
+            "Lower Back"
+            #else
+            String(localized: "Lower Back", bundle: .module)
+            #endif
+        }()
+        case .middleBack: {
+            #if os(Linux)
+            "Mid Back"
+            #else
+            String(localized: "Mid Back", bundle: .module)
+            #endif
+        }()
+        case .neck: {
+            #if os(Linux)
+            "Neck"
+            #else
+            String(localized: "Neck", bundle: .module)
+            #endif
+        }()
+        case .quadriceps: {
+            #if os(Linux)
+            "Quads"
+            #else
+            String(localized: "Quads", bundle: .module)
+            #endif
+        }()
+        case .shoulders: {
+            #if os(Linux)
+            "Shoulders"
+            #else
+            String(localized: "Shoulders", bundle: .module)
+            #endif
+        }()
+        case .traps: {
+            #if os(Linux)
+            "Traps"
+            #else
+            String(localized: "Traps", bundle: .module)
+            #endif
+        }()
+        case .triceps: {
+            #if os(Linux)
+            "Triceps"
+            #else
+            String(localized: "Triceps", bundle: .module)
+            #endif
+        }()
+        case .tibialis: {
+            #if os(Linux)
+            "Tibialis"
+            #else
+            String(localized: "Tibialis", bundle: .module)
+            #endif
+        }()
+        case .rotatorCuff: {
+            #if os(Linux)
+            "Rotator Cuff"
+            #else
+            String(localized: "Rotator Cuff", bundle: .module)
+            #endif
+        }()
+        case .hipFlexors: {
+            #if os(Linux)
+            "Hip Flexors"
+            #else
+            String(localized: "Hip Flexors", bundle: .module)
+            #endif
+        }()
         }
     }
 
     public var scientificName: String {
         switch self {
-        case .abdominals: String(localized: "Rectus Abdominis", bundle: .module)
-        case .abductors: String(localized: "Hip Abductors", bundle: .module)
-        case .adductors: String(localized: "Hip Adductors", bundle: .module)
-        case .biceps: String(localized: "Biceps Brachii", bundle: .module)
-        case .calves: String(localized: "Triceps Surae", bundle: .module)
-        case .chest: String(localized: "Pectoralis Major", bundle: .module)
-        case .forearms: String(localized: "Forearm Flexors and Extensors", bundle: .module)
-        case .glutes: String(localized: "Gluteus Maximus", bundle: .module)
-        case .hamstrings: String(localized: "Hamstrings", bundle: .module)
-        case .lats: String(localized: "Latissimus Dorsi", bundle: .module)
-        case .lowerBack: String(localized: "Erector Spinae", bundle: .module)
-        case .middleBack: String(localized: "Rhomboids and Middle Trapezius", bundle: .module)
-        case .neck: String(localized: "Cervical Flexors and Extensors", bundle: .module)
-        case .quadriceps: String(localized: "Quadriceps", bundle: .module)
-        case .shoulders: String(localized: "Deltoid", bundle: .module)
-        case .traps: String(localized: "Trapezius", bundle: .module)
-        case .triceps: String(localized: "Triceps Brachii", bundle: .module)
-        case .tibialis: String(localized: "Tibialis Anterior", bundle: .module)
-        case .rotatorCuff: String(localized: "Rotator Cuff", bundle: .module)
-        case .hipFlexors: String(localized: "Iliopsoas", bundle: .module)
+        case .abdominals: {
+            #if os(Linux)
+            "Rectus Abdominis"
+            #else
+            String(localized: "Rectus Abdominis", bundle: .module)
+            #endif
+        }()
+        case .abductors: {
+            #if os(Linux)
+            "Hip Abductors"
+            #else
+            String(localized: "Hip Abductors", bundle: .module)
+            #endif
+        }()
+        case .adductors: {
+            #if os(Linux)
+            "Hip Adductors"
+            #else
+            String(localized: "Hip Adductors", bundle: .module)
+            #endif
+        }()
+        case .biceps: {
+            #if os(Linux)
+            "Biceps Brachii"
+            #else
+            String(localized: "Biceps Brachii", bundle: .module)
+            #endif
+        }()
+        case .calves: {
+            #if os(Linux)
+            "Triceps Surae"
+            #else
+            String(localized: "Triceps Surae", bundle: .module)
+            #endif
+        }()
+        case .chest: {
+            #if os(Linux)
+            "Pectoralis Major"
+            #else
+            String(localized: "Pectoralis Major", bundle: .module)
+            #endif
+        }()
+        case .forearms: {
+            #if os(Linux)
+            "Forearm Flexors and Extensors"
+            #else
+            String(localized: "Forearm Flexors and Extensors", bundle: .module)
+            #endif
+        }()
+        case .glutes: {
+            #if os(Linux)
+            "Gluteus Maximus"
+            #else
+            String(localized: "Gluteus Maximus", bundle: .module)
+            #endif
+        }()
+        case .hamstrings: {
+            #if os(Linux)
+            "Hamstrings"
+            #else
+            String(localized: "Hamstrings", bundle: .module)
+            #endif
+        }()
+        case .lats: {
+            #if os(Linux)
+            "Latissimus Dorsi"
+            #else
+            String(localized: "Latissimus Dorsi", bundle: .module)
+            #endif
+        }()
+        case .lowerBack: {
+            #if os(Linux)
+            "Erector Spinae"
+            #else
+            String(localized: "Erector Spinae", bundle: .module)
+            #endif
+        }()
+        case .middleBack: {
+            #if os(Linux)
+            "Rhomboids and Middle Trapezius"
+            #else
+            String(localized: "Rhomboids and Middle Trapezius", bundle: .module)
+            #endif
+        }()
+        case .neck: {
+            #if os(Linux)
+            "Cervical Flexors and Extensors"
+            #else
+            String(localized: "Cervical Flexors and Extensors", bundle: .module)
+            #endif
+        }()
+        case .quadriceps: {
+            #if os(Linux)
+            "Quadriceps"
+            #else
+            String(localized: "Quadriceps", bundle: .module)
+            #endif
+        }()
+        case .shoulders: {
+            #if os(Linux)
+            "Deltoid"
+            #else
+            String(localized: "Deltoid", bundle: .module)
+            #endif
+        }()
+        case .traps: {
+            #if os(Linux)
+            "Trapezius"
+            #else
+            String(localized: "Trapezius", bundle: .module)
+            #endif
+        }()
+        case .triceps: {
+            #if os(Linux)
+            "Triceps Brachii"
+            #else
+            String(localized: "Triceps Brachii", bundle: .module)
+            #endif
+        }()
+        case .tibialis: {
+            #if os(Linux)
+            "Tibialis Anterior"
+            #else
+            String(localized: "Tibialis Anterior", bundle: .module)
+            #endif
+        }()
+        case .rotatorCuff: {
+            #if os(Linux)
+            "Rotator Cuff"
+            #else
+            String(localized: "Rotator Cuff", bundle: .module)
+            #endif
+        }()
+        case .hipFlexors: {
+            #if os(Linux)
+            "Iliopsoas"
+            #else
+            String(localized: "Iliopsoas", bundle: .module)
+            #endif
+        }()
         }
     }
 

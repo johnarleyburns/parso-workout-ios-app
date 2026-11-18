@@ -24,15 +24,69 @@ public enum Equipment: String, CaseIterable, Codable, Sendable, Identifiable {
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .barbell: return String(localized: "Barbell", bundle: .module)
-        case .dumbbell: return String(localized: "Dumbbell", bundle: .module)
-        case .cable: return String(localized: "Cable", bundle: .module)
-        case .machine: return String(localized: "Machine", bundle: .module)
-        case .bodyweight: return String(localized: "Bodyweight", bundle: .module)
-        case .plyometric: return String(localized: "Plyometric", bundle: .module)
-        case .kettlebell: return String(localized: "Kettlebell", bundle: .module)
-        case .band: return String(localized: "Band", bundle: .module)
-        case .smith: return String(localized: "Smith Machine", bundle: .module)
+        case .barbell: return {
+            #if os(Linux)
+            "Barbell"
+            #else
+            String(localized: "Barbell", bundle: .module)
+            #endif
+        }()
+        case .dumbbell: return {
+            #if os(Linux)
+            "Dumbbell"
+            #else
+            String(localized: "Dumbbell", bundle: .module)
+            #endif
+        }()
+        case .cable: return {
+            #if os(Linux)
+            "Cable"
+            #else
+            String(localized: "Cable", bundle: .module)
+            #endif
+        }()
+        case .machine: return {
+            #if os(Linux)
+            "Machine"
+            #else
+            String(localized: "Machine", bundle: .module)
+            #endif
+        }()
+        case .bodyweight: return {
+            #if os(Linux)
+            "Bodyweight"
+            #else
+            String(localized: "Bodyweight", bundle: .module)
+            #endif
+        }()
+        case .plyometric: return {
+            #if os(Linux)
+            "Plyometric"
+            #else
+            String(localized: "Plyometric", bundle: .module)
+            #endif
+        }()
+        case .kettlebell: return {
+            #if os(Linux)
+            "Kettlebell"
+            #else
+            String(localized: "Kettlebell", bundle: .module)
+            #endif
+        }()
+        case .band: return {
+            #if os(Linux)
+            "Band"
+            #else
+            String(localized: "Band", bundle: .module)
+            #endif
+        }()
+        case .smith: return {
+            #if os(Linux)
+            "Smith Machine"
+            #else
+            String(localized: "Smith Machine", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -76,14 +130,62 @@ public enum ExerciseTrainingType: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .strength: String(localized: "Strength", bundle: .module)
-        case .powerlifting: String(localized: "Powerlifting", bundle: .module)
-        case .olympicWeightlifting: String(localized: "Olympic Weightlifting", bundle: .module)
-        case .strongman: String(localized: "Strongman", bundle: .module)
-        case .plyometrics: String(localized: "Plyometrics", bundle: .module)
-        case .cardio: String(localized: "Cardio", bundle: .module)
-        case .stretching: String(localized: "Stretching", bundle: .module)
-        case .mobility: String(localized: "Mobility", bundle: .module)
+        case .strength: {
+            #if os(Linux)
+            "Strength"
+            #else
+            String(localized: "Strength", bundle: .module)
+            #endif
+        }()
+        case .powerlifting: {
+            #if os(Linux)
+            "Powerlifting"
+            #else
+            String(localized: "Powerlifting", bundle: .module)
+            #endif
+        }()
+        case .olympicWeightlifting: {
+            #if os(Linux)
+            "Olympic Weightlifting"
+            #else
+            String(localized: "Olympic Weightlifting", bundle: .module)
+            #endif
+        }()
+        case .strongman: {
+            #if os(Linux)
+            "Strongman"
+            #else
+            String(localized: "Strongman", bundle: .module)
+            #endif
+        }()
+        case .plyometrics: {
+            #if os(Linux)
+            "Plyometrics"
+            #else
+            String(localized: "Plyometrics", bundle: .module)
+            #endif
+        }()
+        case .cardio: {
+            #if os(Linux)
+            "Cardio"
+            #else
+            String(localized: "Cardio", bundle: .module)
+            #endif
+        }()
+        case .stretching: {
+            #if os(Linux)
+            "Stretching"
+            #else
+            String(localized: "Stretching", bundle: .module)
+            #endif
+        }()
+        case .mobility: {
+            #if os(Linux)
+            "Mobility"
+            #else
+            String(localized: "Mobility", bundle: .module)
+            #endif
+        }()
         }
     }
 
@@ -126,18 +228,90 @@ public enum ExerciseModality: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .bodyweight: String(localized: "Bodyweight", bundle: .module)
-        case .freeWeight: String(localized: "Free Weight", bundle: .module)
-        case .machine: String(localized: "Machine", bundle: .module)
-        case .cable: String(localized: "Cable", bundle: .module)
-        case .band: String(localized: "Band", bundle: .module)
-        case .kettlebell: String(localized: "Kettlebell", bundle: .module)
-        case .medicineBall: String(localized: "Medicine Ball", bundle: .module)
-        case .loadedObject: String(localized: "Loaded Object", bundle: .module)
-        case .sled: String(localized: "Sled", bundle: .module)
-        case .rope: String(localized: "Rope", bundle: .module)
-        case .foamRoll: String(localized: "Foam Roll", bundle: .module)
-        case .other: String(localized: "Other", bundle: .module)
+        case .bodyweight: {
+            #if os(Linux)
+            "Bodyweight"
+            #else
+            String(localized: "Bodyweight", bundle: .module)
+            #endif
+        }()
+        case .freeWeight: {
+            #if os(Linux)
+            "Free Weight"
+            #else
+            String(localized: "Free Weight", bundle: .module)
+            #endif
+        }()
+        case .machine: {
+            #if os(Linux)
+            "Machine"
+            #else
+            String(localized: "Machine", bundle: .module)
+            #endif
+        }()
+        case .cable: {
+            #if os(Linux)
+            "Cable"
+            #else
+            String(localized: "Cable", bundle: .module)
+            #endif
+        }()
+        case .band: {
+            #if os(Linux)
+            "Band"
+            #else
+            String(localized: "Band", bundle: .module)
+            #endif
+        }()
+        case .kettlebell: {
+            #if os(Linux)
+            "Kettlebell"
+            #else
+            String(localized: "Kettlebell", bundle: .module)
+            #endif
+        }()
+        case .medicineBall: {
+            #if os(Linux)
+            "Medicine Ball"
+            #else
+            String(localized: "Medicine Ball", bundle: .module)
+            #endif
+        }()
+        case .loadedObject: {
+            #if os(Linux)
+            "Loaded Object"
+            #else
+            String(localized: "Loaded Object", bundle: .module)
+            #endif
+        }()
+        case .sled: {
+            #if os(Linux)
+            "Sled"
+            #else
+            String(localized: "Sled", bundle: .module)
+            #endif
+        }()
+        case .rope: {
+            #if os(Linux)
+            "Rope"
+            #else
+            String(localized: "Rope", bundle: .module)
+            #endif
+        }()
+        case .foamRoll: {
+            #if os(Linux)
+            "Foam Roll"
+            #else
+            String(localized: "Foam Roll", bundle: .module)
+            #endif
+        }()
+        case .other: {
+            #if os(Linux)
+            "Other"
+            #else
+            String(localized: "Other", bundle: .module)
+            #endif
+        }()
         }
     }
 
@@ -172,12 +346,42 @@ public enum ExerciseSportContext: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .powerlifting: String(localized: "Powerlifting", bundle: .module)
-        case .weightlifting: String(localized: "Weightlifting", bundle: .module)
-        case .strongman: String(localized: "Strongman", bundle: .module)
+        case .powerlifting: {
+            #if os(Linux)
+            "Powerlifting"
+            #else
+            String(localized: "Powerlifting", bundle: .module)
+            #endif
+        }()
+        case .weightlifting: {
+            #if os(Linux)
+            "Weightlifting"
+            #else
+            String(localized: "Weightlifting", bundle: .module)
+            #endif
+        }()
+        case .strongman: {
+            #if os(Linux)
+            "Strongman"
+            #else
+            String(localized: "Strongman", bundle: .module)
+            #endif
+        }()
         case .crossfit: "CrossFit"
-        case .gymnastics: String(localized: "Gymnastics", bundle: .module)
-        case .generalFitness: String(localized: "General Fitness", bundle: .module)
+        case .gymnastics: {
+            #if os(Linux)
+            "Gymnastics"
+            #else
+            String(localized: "Gymnastics", bundle: .module)
+            #endif
+        }()
+        case .generalFitness: {
+            #if os(Linux)
+            "General Fitness"
+            #else
+            String(localized: "General Fitness", bundle: .module)
+            #endif
+        }()
         }
     }
 
@@ -193,9 +397,27 @@ public enum AnnotationConfidence: String, CaseIterable, Codable, Sendable {
 
     public var displayName: String {
         switch self {
-        case .high: String(localized: "High", bundle: .module)
-        case .medium: String(localized: "Medium", bundle: .module)
-        case .low: String(localized: "Low", bundle: .module)
+        case .high: {
+            #if os(Linux)
+            "High"
+            #else
+            String(localized: "High", bundle: .module)
+            #endif
+        }()
+        case .medium: {
+            #if os(Linux)
+            "Medium"
+            #else
+            String(localized: "Medium", bundle: .module)
+            #endif
+        }()
+        case .low: {
+            #if os(Linux)
+            "Low"
+            #else
+            String(localized: "Low", bundle: .module)
+            #endif
+        }()
         }
     }
 }

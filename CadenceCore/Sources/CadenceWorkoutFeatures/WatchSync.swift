@@ -361,10 +361,34 @@ public enum WatchSync {
         public var toastText: String? {
             switch self {
             case .idle: return nil
-            case .syncing: return String(localized: "Syncing to Watch", bundle: FeatureLocalization.bundle)
-            case .synced: return String(localized: "Watch synced", bundle: FeatureLocalization.bundle)
+            case .syncing: return {
+                #if os(Linux)
+                "Syncing to Watch"
+                #else
+                String(localized: "Syncing to Watch", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
+            case .synced: return {
+                #if os(Linux)
+                "Watch synced"
+                #else
+                String(localized: "Watch synced", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
             case .failed(let message, _):
-                return message.isEmpty ? String(localized: "Watch sync failed", bundle: FeatureLocalization.bundle) : String(localized: "Watch sync failed: \(message)", bundle: FeatureLocalization.bundle)
+                return message.isEmpty ? {
+                    #if os(Linux)
+                    "Watch sync failed"
+                    #else
+                    String(localized: "Watch sync failed", bundle: FeatureLocalization.bundle)
+                    #endif
+                }() : {
+                    #if os(Linux)
+                    "Watch sync failed: \(message)"
+                    #else
+                    String(localized: "Watch sync failed: \(message)", bundle: FeatureLocalization.bundle)
+                    #endif
+                }()
             }
         }
 

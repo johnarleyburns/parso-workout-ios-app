@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -81,3 +82,4 @@ final class WatchLiftSourcesTests: XCTestCase {
         XCTAssertTrue(created.orderedSets.isEmpty)
     }
 }
+#endif

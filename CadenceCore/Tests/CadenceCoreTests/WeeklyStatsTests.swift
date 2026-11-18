@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -77,3 +78,4 @@ final class WeeklyStatsTests: XCTestCase {
         XCTAssertEqual(startDay, mondayStart, "On Monday 6am, weekStart should be the same Monday at midnight")
     }
 }
+#endif

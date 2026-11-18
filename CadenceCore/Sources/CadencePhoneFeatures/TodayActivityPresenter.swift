@@ -95,10 +95,22 @@ public enum TodayActivityPresenter {
                 let detail = exercises.isEmpty ? nil : exercises.joined(separator: ", ")
                 let duration = Self.formatDuration(s.duration)
                 let setCount = ordered.count
-                let value = setCount > 0 ? String(localized: "\(setCount) sets", bundle: FeatureLocalization.bundle) + " · " + duration : duration
+                let value = setCount > 0 ? {
+                    #if os(Linux)
+                    "\(setCount) sets"
+                    #else
+                    String(localized: "\(setCount) sets", bundle: FeatureLocalization.bundle)
+                    #endif
+                }() + " · " + duration : duration
                 return Entry(
                     id: s.id, kind: .strength,
-                    title: s.title.isEmpty ? String(localized: "Strength session", bundle: FeatureLocalization.bundle) : s.title,
+                    title: s.title.isEmpty ? {
+                        #if os(Linux)
+                        "Strength session"
+                        #else
+                        String(localized: "Strength session", bundle: FeatureLocalization.bundle)
+                        #endif
+                    }() : s.title,
                     detail: detail,
                     value: value,
                     occurredAt: s.endedAt ?? s.date,
@@ -123,7 +135,13 @@ public enum TodayActivityPresenter {
                 let cardioTitle = c.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 let heartRateDetail: String? = {
                     guard let hr = c.avgHeartRate, hr > 0 else { return nil }
-                    return String(localized: "\(Int(hr)) bpm", bundle: FeatureLocalization.bundle)
+                    return {
+                        #if os(Linux)
+                        "\(Int(hr)) bpm"
+                        #else
+                        String(localized: "\(Int(hr)) bpm", bundle: FeatureLocalization.bundle)
+                        #endif
+                    }()
                 }()
                 return (c, Entry(
                     id: c.id, kind: .cardio,

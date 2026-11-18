@@ -54,17 +54,41 @@ public enum WatchTodayHeroBuilder {
         if let strength = plan.sessions.first(where: \.isStrength) {
             let names = strength.planPayload?.strength?.exerciseNames.nonEmpty ?? strength.exerciseNames
             return .planned(sessionID: strength.id,
-                            title: strength.label.isEmpty ? String(localized: "Strength", bundle: FeatureLocalization.bundle) : strength.label,
+                            title: strength.label.isEmpty ? {
+                                #if os(Linux)
+                                "Strength"
+                                #else
+                                String(localized: "Strength", bundle: FeatureLocalization.bundle)
+                                #endif
+                            }() : strength.label,
                             exercises: names,
                             minutes: estimatedMinutes(strength),
                             advice: advice(strength))
         }
         if let cardio = plan.sessions.first(where: { $0.kind == .cardio }) {
             var parts: [String] = []
-            if let minutes = cardio.durationMinutes { parts.append(String(localized: "\(minutes) min", bundle: FeatureLocalization.bundle)) }
-            if let zone = cardio.zone { parts.append(String(localized: "Zone \(zone)", bundle: FeatureLocalization.bundle)) }
+            if let minutes = cardio.durationMinutes { parts.append({
+                #if os(Linux)
+                "\(minutes) min"
+                #else
+                String(localized: "\(minutes) min", bundle: FeatureLocalization.bundle)
+                #endif
+            }()) }
+            if let zone = cardio.zone { parts.append({
+                #if os(Linux)
+                "Zone \(zone)"
+                #else
+                String(localized: "Zone \(zone)", bundle: FeatureLocalization.bundle)
+                #endif
+            }()) }
             return .plannedCardio(sessionID: cardio.id,
-                                  title: cardio.label.isEmpty ? String(localized: "Cardio", bundle: FeatureLocalization.bundle) : cardio.label,
+                                  title: cardio.label.isEmpty ? {
+                                      #if os(Linux)
+                                      "Cardio"
+                                      #else
+                                      String(localized: "Cardio", bundle: FeatureLocalization.bundle)
+                                      #endif
+                                  }() : cardio.label,
                                   detail: parts.joined(separator: " · "), advice: advice(cardio))
         }
         return .unplanned(synced: true)
@@ -73,14 +97,36 @@ public enum WatchTodayHeroBuilder {
     /// "Bench done · OHP 2 of 4 sets" — finished exercises collapse; the current one shows progress.
     static func resumeDetail(_ resume: ResumeInput) -> String {
         guard let current = resume.exercises.last else {
-            return String(localized: "No sets logged yet", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "No sets logged yet"
+                #else
+                String(localized: "No sets logged yet", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         }
-        let finished = resume.exercises.dropLast().map {
-            String(localized: "\($0.name) done", bundle: FeatureLocalization.bundle)
+        let finished = resume.exercises.dropLast().map { exercise in
+            #if os(Linux)
+            "\(exercise.name) done"
+            #else
+            String(localized: "\(exercise.name) done", bundle: FeatureLocalization.bundle)
+            #endif
         }
         let planned = resume.plannedSets.first { $0.key.caseInsensitiveCompare(current.name) == .orderedSame }?.value
-        let progress = planned.map { String(localized: "\(current.name) \(current.sets) of \($0)", bundle: FeatureLocalization.bundle) }
-            ?? String(localized: "\(current.name) · \(current.sets) logged", bundle: FeatureLocalization.bundle)
+        let progress = planned.map { target in
+            #if os(Linux)
+            "\(current.name) \(current.sets) of \(target)"
+            #else
+            String(localized: "\(current.name) \(current.sets) of \(target)", bundle: FeatureLocalization.bundle)
+            #endif
+        }
+            ?? {
+                #if os(Linux)
+                "\(current.name) · \(current.sets) logged"
+                #else
+                String(localized: "\(current.name) · \(current.sets) logged", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         return (finished.suffix(1) + [progress]).joined(separator: " · ")
     }
 
@@ -118,23 +164,53 @@ public struct WatchSaveReceipt: Equatable, Sendable {
     ///   - transferError: the last transfer error, if one was reported.
     public static func make(savedOnWatch: Bool, pendingTransfers: Int, phoneReachable: Bool,
                             transferError: String?) -> WatchSaveReceipt {
-        let watch: State = savedOnWatch ? .done : .failed(String(localized: "Not saved", bundle: FeatureLocalization.bundle))
+        let watch: State = savedOnWatch ? .done : .failed({
+            #if os(Linux)
+            "Not saved"
+            #else
+            String(localized: "Not saved", bundle: FeatureLocalization.bundle)
+            #endif
+        }())
         let phone: State
         if let transferError {
             phone = .failed(transferError)
         } else if pendingTransfers == 0 {
             phone = .done
         } else if phoneReachable {
-            phone = .inProgress(String(localized: "Sending to iPhone · \(pendingTransfers) left", bundle: FeatureLocalization.bundle))
+            phone = .inProgress({
+                #if os(Linux)
+                "Sending to iPhone · \(pendingTransfers) left"
+                #else
+                String(localized: "Sending to iPhone · \(pendingTransfers) left", bundle: FeatureLocalization.bundle)
+                #endif
+            }())
         } else {
-            phone = .waiting(String(localized: "Sends when your iPhone is nearby", bundle: FeatureLocalization.bundle))
+            phone = .waiting({
+                #if os(Linux)
+                "Sends when your iPhone is nearby"
+                #else
+                String(localized: "Sends when your iPhone is nearby", bundle: FeatureLocalization.bundle)
+                #endif
+            }())
         }
         // Strength summaries reach Apple Health from the iPhone once it has the sets.
         let health: State
         switch phone {
         case .done: health = .done
-        case .failed: health = .waiting(String(localized: "After iPhone sync", bundle: FeatureLocalization.bundle))
-        default: health = .waiting(String(localized: "Saved by your iPhone after sync", bundle: FeatureLocalization.bundle))
+        case .failed: health = .waiting({
+            #if os(Linux)
+            "After iPhone sync"
+            #else
+            String(localized: "After iPhone sync", bundle: FeatureLocalization.bundle)
+            #endif
+        }())
+        default: health = .waiting({
+            #if os(Linux)
+            "Saved by your iPhone after sync"
+            #else
+            String(localized: "Saved by your iPhone after sync", bundle: FeatureLocalization.bundle)
+            #endif
+        }())
         }
         return WatchSaveReceipt(watch: watch, iPhone: phone, health: health)
     }

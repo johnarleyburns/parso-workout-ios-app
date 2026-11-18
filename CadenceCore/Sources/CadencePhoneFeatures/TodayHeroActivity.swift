@@ -78,7 +78,13 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
         if completedToday.count == 1 {
             title = completedToday[0].title
         } else {
-            title = String(localized: "\(completedToday.count) workouts complete", bundle: FeatureLocalization.bundle)
+            title = {
+                #if os(Linux)
+                "\(completedToday.count) workouts complete"
+                #else
+                String(localized: "\(completedToday.count) workouts complete", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         }
         return DaySummary(title: title,
                           setCount: completedToday.reduce(0) { $0 + $1.setCount },
@@ -109,7 +115,13 @@ public struct TodayHeroActivitySnapshot: Sendable, Equatable {
         let exercises = completed.flatMap(\.exercises)
         let title = completed.count == 1
             ? completed[0].title
-            : String(localized: "\(completed.count) workouts complete", bundle: FeatureLocalization.bundle)
+            : {
+                #if os(Linux)
+                "\(completed.count) workouts complete"
+                #else
+                String(localized: "\(completed.count) workouts complete", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         return DaySummary(title: title,
                           setCount: completed.reduce(0) { $0 + $1.setCount },
                           volumeKg: completed.reduce(0) { $0 + $1.volumeKg },
@@ -180,7 +192,13 @@ public enum TodayHeroActivityPresenter {
             let working = sets.filter { $0.exercise?.id == ex.id && !$0.isWarmup && $0.isOwnerSet }
             let detail: String
             if working.isEmpty {
-                detail = String(localized: "No sets", bundle: FeatureLocalization.bundle)
+                detail = {
+                    #if os(Linux)
+                    "No sets"
+                    #else
+                    String(localized: "No sets", bundle: FeatureLocalization.bundle)
+                    #endif
+                }()
             } else if let lastReps = working.last?.reps {
                 detail = "\(working.count) × \(lastReps)"
             } else {
@@ -189,7 +207,13 @@ public enum TodayHeroActivityPresenter {
             return TodayHero.Line(name: ex.name, detail: detail)
         }
         let duration = session.duration
-        return .init(title: session.title.isEmpty ? String(localized: "Workout complete", bundle: FeatureLocalization.bundle) : session.title,
+        return .init(title: session.title.isEmpty ? {
+            #if os(Linux)
+            "Workout complete"
+            #else
+            String(localized: "Workout complete", bundle: FeatureLocalization.bundle)
+            #endif
+        }() : session.title,
                      modality: .strength,
                      setCount: sets.filter { !$0.isWarmup && $0.isOwnerSet }.count,
                      volumeKg: session.totalVolume,
@@ -200,7 +224,13 @@ public enum TodayHeroActivityPresenter {
 
     private static func completedWorkout(_ workout: CardioWorkout) -> TodayHeroActivitySnapshot.CompletedWorkout {
         let title = workout.displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        let displayTitle = title.isEmpty ? String(localized: "Cardio", bundle: FeatureLocalization.bundle) : title
+        let displayTitle = title.isEmpty ? {
+            #if os(Linux)
+            "Cardio"
+            #else
+            String(localized: "Cardio", bundle: FeatureLocalization.bundle)
+            #endif
+        }() : title
         let minutes = Int((workout.duration / 60).rounded())
         let distance: String?
         if let meters = workout.distance, meters > 0 {
@@ -208,13 +238,25 @@ public enum TodayHeroActivityPresenter {
         } else {
             distance = nil
         }
-        let detail = [distance, minutes > 0 ? String(localized: "\(minutes) min", bundle: FeatureLocalization.bundle) : nil]
+        let detail = [distance, minutes > 0 ? {
+            #if os(Linux)
+            "\(minutes) min"
+            #else
+            String(localized: "\(minutes) min", bundle: FeatureLocalization.bundle)
+            #endif
+        }() : nil]
             .compactMap { $0 }
             .joined(separator: " · ")
         return .init(title: displayTitle, modality: .cardio, setCount: 0, volumeKg: 0,
                      durationMinutes: minutes > 0 ? minutes : nil,
                      exercises: [TodayHero.Line(name: displayTitle,
-                                                detail: detail.isEmpty ? String(localized: "Complete", bundle: FeatureLocalization.bundle) : detail)],
+                                                detail: detail.isEmpty ? {
+                                                    #if os(Linux)
+                                                    "Complete"
+                                                    #else
+                                                    String(localized: "Complete", bundle: FeatureLocalization.bundle)
+                                                    #endif
+                                                }() : detail)],
                      occurredAt: workout.start)
     }
 }

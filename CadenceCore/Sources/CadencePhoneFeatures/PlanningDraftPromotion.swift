@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -60,3 +61,4 @@ extension PlanningDraftStore {
         return draft
     }
 }
+#endif

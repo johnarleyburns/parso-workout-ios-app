@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 
 /// Encodes `[String]` as a single delimited `String` for SwiftData storage.
 /// A plain `[String]` attribute is persisted via the legacy transformable,
@@ -146,7 +148,9 @@ public struct PlannedPerformerPrescription: Codable, Equatable, Sendable {
 
 // MARK: Exercise
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class Exercise {
     public var id: UUID = UUID()
     public var name: String = ""
@@ -212,7 +216,9 @@ public final class Exercise {
     /// The free-exercise-db(++) `exerciseId`, for evidence and imagery lookups.
     public var sourceExerciseID: String?
 
+    #if canImport(SwiftData)
     @Relationship(deleteRule: .nullify, inverse: \SetEntry.exercise)
+    #endif
     public var sets: [SetEntry]? = []
 
     public init(id: UUID = UUID(),
@@ -471,6 +477,13 @@ public final class Exercise {
     ]
 }
 
+#if !canImport(SwiftData)
+extension Exercise: Equatable, Hashable {
+    public static func == (lhs: Exercise, rhs: Exercise) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 /// Coarse training split categories (FR-1.1).
 public enum ExerciseCategory: String, CaseIterable, Codable, Sendable, Identifiable {
     case push, pull, legs, core, cardio, plyometrics, other
@@ -490,7 +503,9 @@ public enum ExerciseCategory: String, CaseIterable, Codable, Sendable, Identifia
 
 // MARK: Session
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class WorkoutSession {
     /// Explicit rep preferences for this workout, keyed by performer. Additive for old stores.
     public var setEntryRepOverridesJSON: String = ""
@@ -580,7 +595,9 @@ public final class WorkoutSession {
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 
+    #if canImport(SwiftData)
     @Relationship(deleteRule: .cascade, inverse: \SetEntry.session)
+    #endif
     public var sets: [SetEntry]? = []
 
     public init(id: UUID = UUID(),
@@ -887,9 +904,18 @@ public final class WorkoutSession {
     }
 }
 
+#if !canImport(SwiftData)
+extension WorkoutSession: Equatable, Hashable {
+    public static func == (lhs: WorkoutSession, rhs: WorkoutSession) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 // MARK: SetEntry
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class SetEntry {
     public var id: UUID = UUID()
     /// Canonical weight in kilograms. UI converts to/from the display unit.
@@ -1032,9 +1058,18 @@ public final class SetEntry {
     }
 }
 
+#if !canImport(SwiftData)
+extension SetEntry: Equatable, Hashable {
+    public static func == (lhs: SetEntry, rhs: SetEntry) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 // MARK: Person (training partners, field-testing §04)
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class Person {
     public var id: UUID = UUID()
     public var name: String = ""
@@ -1045,7 +1080,9 @@ public final class Person {
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 
+    #if canImport(SwiftData)
     @Relationship(deleteRule: .nullify, inverse: \SetEntry.performedBy)
+    #endif
     public var sets: [SetEntry]? = []
 
     public init(id: UUID = UUID(),
@@ -1063,9 +1100,18 @@ public final class Person {
     }
 }
 
+#if !canImport(SwiftData)
+extension Person: Equatable, Hashable {
+    public static func == (lhs: Person, rhs: Person) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 // MARK: Templates (FR-1.6)
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class SessionTemplate {
     public var id: UUID = UUID()
     public var name: String = ""
@@ -1073,7 +1119,9 @@ public final class SessionTemplate {
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
 
+    #if canImport(SwiftData)
     @Relationship(deleteRule: .cascade, inverse: \TemplateExercise.template)
+    #endif
     public var exercises: [TemplateExercise]? = []
 
     public init(id: UUID = UUID(),
@@ -1093,7 +1141,16 @@ public final class SessionTemplate {
     }
 }
 
+#if !canImport(SwiftData)
+extension SessionTemplate: Equatable, Hashable {
+    public static func == (lhs: SessionTemplate, rhs: SessionTemplate) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class TemplateExercise {
     public var id: UUID = UUID()
     public var exerciseName: String = ""
@@ -1117,9 +1174,18 @@ public final class TemplateExercise {
     }
 }
 
+#if !canImport(SwiftData)
+extension TemplateExercise: Equatable, Hashable {
+    public static func == (lhs: TemplateExercise, rhs: TemplateExercise) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 // MARK: Cardio (FR-2 / FR-5.3)
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class CardioWorkout {
     public var id: UUID = UUID()
     /// Raw value of `CardioType`.
@@ -1177,10 +1243,14 @@ public final class CardioWorkout {
     public var metBasisRaw: String?
     public var metMethodRaw: String?
 
+    #if canImport(SwiftData)
     @Relationship(deleteRule: .cascade, inverse: \HRSample.cardio)
+    #endif
     public var hrSamples: [HRSample]? = []
 
+    #if canImport(SwiftData)
     @Relationship(deleteRule: .cascade, inverse: \RouteSample.cardio)
+    #endif
     public var routeSamples: [RouteSample]? = []
 
     public init(id: UUID = UUID(),
@@ -1321,6 +1391,13 @@ public final class CardioWorkout {
     }
 }
 
+#if !canImport(SwiftData)
+extension CardioWorkout: Equatable, Hashable {
+    public static func == (lhs: CardioWorkout, rhs: CardioWorkout) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
     case run, cycle, swim, boxing, hiit, walk, rowing, elliptical, stairClimber, other
 
@@ -1400,7 +1477,9 @@ public enum CardioSource: String, CaseIterable, Codable, Sendable {
 
 /// Optional once-daily self-assessment. Never required — missing readiness
 /// lowers Coach's confidence and keeps conservative time gates.
+#if canImport(SwiftData)
 @Model
+#endif
 public final class ReadinessEntry {
     public var id: UUID = UUID()
     public var date: Date = Date()
@@ -1432,7 +1511,16 @@ public final class ReadinessEntry {
     }
 }
 
+#if !canImport(SwiftData)
+extension ReadinessEntry: Equatable, Hashable {
+    public static func == (lhs: ReadinessEntry, rhs: ReadinessEntry) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class HRSample {
     public var id: UUID = UUID()
     /// Seconds since workout start.
@@ -1448,7 +1536,16 @@ public final class HRSample {
     }
 }
 
+#if !canImport(SwiftData)
+extension HRSample: Equatable, Hashable {
+    public static func == (lhs: HRSample, rhs: HRSample) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class RouteSample {
     public var id: UUID = UUID()
     public var t: TimeInterval = 0
@@ -1467,9 +1564,18 @@ public final class RouteSample {
     }
 }
 
+#if !canImport(SwiftData)
+extension RouteSample: Equatable, Hashable {
+    public static func == (lhs: RouteSample, rhs: RouteSample) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 // MARK: HRM Device (FR-4.4)
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class HRMDevice {
     /// CoreBluetooth peripheral identifier.
     public var id: UUID = UUID()
@@ -1493,6 +1599,13 @@ public final class HRMDevice {
         self.updatedAt = updatedAt
     }
 }
+
+#if !canImport(SwiftData)
+extension HRMDevice: Equatable, Hashable {
+    public static func == (lhs: HRMDevice, rhs: HRMDevice) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
 
 /// Sorted keys keep the stored summary string byte-stable so repeated saves compare equal.
 private func intensitySummaryEncoder() -> JSONEncoder {

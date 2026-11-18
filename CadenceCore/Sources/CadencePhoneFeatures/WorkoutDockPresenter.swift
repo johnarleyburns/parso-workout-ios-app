@@ -17,6 +17,11 @@ public enum WorkoutDockPresenter {
     public struct PauseContent: Equatable, Sendable {
         public let title: String
         public let systemImage: String
+
+        public init(title: String, systemImage: String) {
+            self.title = title
+            self.systemImage = systemImage
+        }
     }
 
     public static func pauseContent(isPaused: Bool) -> PauseContent {

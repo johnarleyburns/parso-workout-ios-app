@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -85,3 +86,4 @@ public enum WatchCustomExerciseStore {
             || exercise.updatedAt != row.updatedAt
     }
 }
+#endif

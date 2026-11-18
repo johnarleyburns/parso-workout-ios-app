@@ -16,6 +16,12 @@ public enum SetHistoryText {
                                           unit: MeasurementUnitPreference) -> String? {
         guard let set else { return nil }
         let effort = set.rpe.map { " · RPE \(Int($0.rounded()))" } ?? ""
-        return String(localized: "Last set \(Format.setLine(set, unit: unit))\(effort)", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "Last set \(Format.setLine(set, unit: unit))\(effort)"
+            #else
+            String(localized: "Last set \(Format.setLine(set, unit: unit))\(effort)", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 }

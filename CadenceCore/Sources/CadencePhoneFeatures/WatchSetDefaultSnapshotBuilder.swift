@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -101,3 +102,4 @@ public struct WatchSetDefaultSnapshotBuilder {
         return WatchSetDefaultSnapshot(generatedAt: now, performers: rows)
     }
 }
+#endif

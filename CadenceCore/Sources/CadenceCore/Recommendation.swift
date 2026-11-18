@@ -64,9 +64,27 @@ public struct SetTarget: Equatable, Sendable {
     public func summary(unit: MeasurementUnitPreference) -> String {
         var head: String
         if repsLow == repsHigh {
-            head = sets.map { "\($0)×\(repsLow)" } ?? String(localized: "\(repsLow) reps", bundle: .module)
+            head = sets.map { "\($0)×\(repsLow)" } ?? {
+                #if os(Linux)
+                "\(repsLow) reps"
+                #else
+                String(localized: "\(repsLow) reps", bundle: .module)
+                #endif
+            }()
         } else {
-            head = sets.map { String(localized: "\($0) sets · \(repsLow)–\(repsHigh) reps", bundle: .module) } ?? String(localized: "\(repsLow)–\(repsHigh) reps", bundle: .module)
+            head = sets.map { n in
+                #if os(Linux)
+                "\(n) sets · \(repsLow)–\(repsHigh) reps"
+                #else
+                String(localized: "\(n) sets · \(repsLow)–\(repsHigh) reps", bundle: .module)
+                #endif
+            } ?? {
+                #if os(Linux)
+                "\(repsLow)–\(repsHigh) reps"
+                #else
+                String(localized: "\(repsLow)–\(repsHigh) reps", bundle: .module)
+                #endif
+            }()
         }
         if let kg = loadKg {
             let value = WorkoutMath.display(kg, in: unit)
@@ -124,7 +142,13 @@ public extension Recommendation {
     /// the set count open (e.g. double-progression "keep your current sets").
     func prescribedSession(defaultSets: Int = 3, goal: TrainingGoal = .hypertrophy) -> PrescribedSession {
         guard kind != .cardioHIIT else {
-            return PrescribedSession(title: cardioPrescription ?? String(localized: "Interval session", bundle: .module),
+            return PrescribedSession(title: cardioPrescription ?? {
+                #if os(Linux)
+                "Interval session"
+                #else
+                String(localized: "Interval session", bundle: .module)
+                #endif
+            }(),
                                      exerciseNames: [],
                                      repLadder: [],
                                      loadKg: nil)
@@ -196,9 +220,27 @@ public extension Recommendation {
     /// single-lift rec, the muscle group for an add-volume rec, else a neutral label.
     var prescribedTitle: String {
         if let exercise { return exercise }
-        if kind == .starter { return String(localized: "Full-body session", bundle: .module) }
-        if let group { return String(localized: "\(group.displayName) focus", bundle: .module) }
-        return String(localized: "Coach session", bundle: .module)
+        if kind == .starter { return {
+            #if os(Linux)
+            "Full-body session"
+            #else
+            String(localized: "Full-body session", bundle: .module)
+            #endif
+        }() }
+        if let group { return {
+            #if os(Linux)
+            "\(group.displayName) focus"
+            #else
+            String(localized: "\(group.displayName) focus", bundle: .module)
+            #endif
+        }() }
+        return {
+            #if os(Linux)
+            "Coach session"
+            #else
+            String(localized: "Coach session", bundle: .module)
+            #endif
+        }()
     }
 }
 

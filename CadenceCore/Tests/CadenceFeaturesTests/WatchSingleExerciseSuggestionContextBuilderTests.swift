@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -143,3 +144,4 @@ final class WatchSingleExerciseSuggestionContextBuilderTests: XCTestCase {
         XCTAssertFalse(history.isEmpty)
     }
 }
+#endif

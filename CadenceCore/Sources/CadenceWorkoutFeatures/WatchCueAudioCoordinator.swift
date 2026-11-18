@@ -1,6 +1,8 @@
 import CadenceFeatures
 import Foundation
+#if canImport(OSLog)
 import OSLog
+#endif
 
 /// Identity-carrying claim on the shared cue audio session. Released exactly once.
 public struct WatchCueLease: Hashable, Sendable {
@@ -59,7 +61,9 @@ public final class WatchCueAudioCoordinator {
     private let scheduler: any WatchCueScheduling
     private let makeID: @MainActor () -> UUID
     private let retryDelay: TimeInterval
+    #if canImport(OSLog)
     private let log = Logger(subsystem: "guru.parso.cladiron", category: "watch-cue-audio")
+    #endif
 
     public init(driver: any WatchCueSessionDriving, scheduler: any WatchCueScheduling,
                 retryDelay: TimeInterval = 2, makeID: @escaping @MainActor () -> UUID = { UUID() }) {
@@ -84,19 +88,25 @@ public final class WatchCueAudioCoordinator {
                 state = .active
             } catch {
                 state = .uncertain
+                #if canImport(OSLog)
                 log.error("cue session activation failed \(Self.describe(error), privacy: .public)")
+                #endif
                 throw error
             }
         }
         let lease = WatchCueLease(id: makeID(), owner: owner, epoch: epoch)
         leases.insert(lease)
+        #if canImport(OSLog)
         log.debug("acquire owners=\(self.leases.count, privacy: .public) epoch=\(self.epoch, privacy: .public)")
+        #endif
         return lease
     }
 
     public func release(_ lease: WatchCueLease) {
         guard leases.remove(lease) != nil else { return }
+        #if canImport(OSLog)
         log.debug("release owners=\(self.leases.count, privacy: .public)")
+        #endif
         guard leases.isEmpty, state != .interrupted else { return }
         deactivate(allowRetry: true)
     }
@@ -108,7 +118,9 @@ public final class WatchCueAudioCoordinator {
         retry = nil
         leases.removeAll()
         for handler in invalidationHandlers { handler(reason) }
+        #if canImport(OSLog)
         log.notice("cue audio invalidated \(String(describing: reason), privacy: .public)")
+        #endif
         switch reason {
         case .interruption: state = .interrupted
         case .routeLoss: deactivate(allowRetry: true)
@@ -132,7 +144,9 @@ public final class WatchCueAudioCoordinator {
             state = .inactive
         } catch {
             state = .uncertain
+            #if canImport(OSLog)
             log.error("cue session deactivation failed \(Self.describe(error), privacy: .public)")
+            #endif
             if allowRetry { scheduleRetry() }
         }
     }

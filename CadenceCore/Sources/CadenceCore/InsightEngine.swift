@@ -47,9 +47,27 @@ public enum InsightEngine {
     static let coldStart = Insight(
         id: "coldStart",
         kind: .coldStart,
-        title: String(localized: "Log your first working sets", bundle: .module),
-        message: String(localized: "Need 1 completed strength workout with working sets before Coach can read volume, intensity, or lift trends.", bundle: .module),
-        detail: String(localized: "Workout history and assessment baselines are different. Logged sets let Coach analyze training patterns; separate tests such as e1RM or VO₂ field tests unlock measured baselines for percentage targets and retest comparisons.", bundle: .module),
+        title: {
+            #if os(Linux)
+            "Log your first working sets"
+            #else
+            String(localized: "Log your first working sets", bundle: .module)
+            #endif
+        }(),
+        message: {
+            #if os(Linux)
+            "Need 1 completed strength workout with working sets before Coach can read volume, intensity, or lift trends."
+            #else
+            String(localized: "Need 1 completed strength workout with working sets before Coach can read volume, intensity, or lift trends.", bundle: .module)
+            #endif
+        }(),
+        detail: {
+            #if os(Linux)
+            "Workout history and assessment baselines are different. Logged sets let Coach analyze training patterns; separate tests such as e1RM or VO₂ field tests unlock measured baselines for percentage targets and retest comparisons."
+            #else
+            String(localized: "Workout history and assessment baselines are different. Logged sets let Coach analyze training patterns; separate tests such as e1RM or VO₂ field tests unlock measured baselines for percentage targets and retest comparisons.", bundle: .module)
+            #endif
+        }(),
         citation: CitationRegistry.volumeDoseResponse,
         severity: .info)
 }

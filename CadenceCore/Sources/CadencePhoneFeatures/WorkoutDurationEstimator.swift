@@ -23,9 +23,21 @@ public struct DurationEstimate: Equatable, Sendable {
     public var explanation: String {
         switch basis {
         case .history(let count):
-            return String(localized: "Based on the planned sets, rest times, and your pace over the last \(count) sessions.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Based on the planned sets, rest times, and your pace over the last \(count) sessions."
+                #else
+                String(localized: "Based on the planned sets, rest times, and your pace over the last \(count) sessions.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         case .defaults:
-            return String(localized: "Based on the planned sets and standard working-set and rest defaults.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Based on the planned sets and standard working-set and rest defaults."
+                #else
+                String(localized: "Based on the planned sets and standard working-set and rest defaults.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         }
     }
 }

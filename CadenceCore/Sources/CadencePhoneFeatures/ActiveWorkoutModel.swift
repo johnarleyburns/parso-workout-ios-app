@@ -2,6 +2,7 @@ import CadenceFeatures
 import Foundation
 import Observation
 import CadenceCore
+import CadenceWorkoutFeatures
 
 public extension Notification.Name {
     /// Posted when a past workout's date is edited from history (SessionView). Home
@@ -47,11 +48,6 @@ public enum PauseOrigin: Equatable, Sendable {
     case auto
 }
 
-/// Why a strength session ended; persisted as `WorkoutSession.endReasonRaw`.
-public enum StrengthEndReason: String, Sendable, Equatable {
-    case user, inactivity
-}
-
 public enum FinalizeResult: Equatable, Sendable {
     /// This call ended the session.
     case finalized
@@ -66,7 +62,13 @@ public struct StrengthInactivityNotice: Identifiable, Equatable, Sendable {
     public let endedAt: Date
     public let timeoutMinutes: Int
     public var message: String {
-        String(localized: "Ended after \(timeoutMinutes) minutes inactive", bundle: FeatureLocalization.bundle)
+        {
+            #if os(Linux)
+            "Ended after \(timeoutMinutes) minutes inactive"
+            #else
+            String(localized: "Ended after \(timeoutMinutes) minutes inactive", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 }
 
@@ -186,7 +188,13 @@ public final class ActiveWorkoutModel {
 
     @discardableResult
     public func startStrength(_ session: WorkoutSession, now: Date = Date()) -> Bool {
-        guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? String(localized: "Workout", bundle: FeatureLocalization.bundle) : session.title)) else { return false }
+        guard liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? {
+            #if os(Linux)
+            "Workout"
+            #else
+            String(localized: "Workout", bundle: FeatureLocalization.bundle)
+            #endif
+        }() : session.title)) else { return false }
         strengthSession = session
         restEndsAt = nil
         nextExercise = nil
@@ -208,7 +216,13 @@ public final class ActiveWorkoutModel {
               liveWorkout.lease == lease,
               liveWorkout.adopt(lease, descriptor: LiveWorkoutDescriptor(
                 kind: .strength(sessionID: session.id),
-                name: session.title.isEmpty ? String(localized: "Workout", bundle: FeatureLocalization.bundle) : session.title)) else { return false }
+                name: session.title.isEmpty ? {
+                    #if os(Linux)
+                    "Workout"
+                    #else
+                    String(localized: "Workout", bundle: FeatureLocalization.bundle)
+                    #endif
+                }() : session.title)) else { return false }
         strengthSession = session
         restEndsAt = nil
         nextExercise = nil
@@ -350,7 +364,13 @@ public final class ActiveWorkoutModel {
         strengthSession = session
         nextSetSummary = nil
         nextSetToken = nil
-        _ = liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? String(localized: "Workout", bundle: FeatureLocalization.bundle) : session.title))
+        _ = liveWorkout.acquire(LiveWorkoutDescriptor(kind: .strength(sessionID: session.id), name: session.title.isEmpty ? {
+            #if os(Linux)
+            "Workout"
+            #else
+            String(localized: "Workout", bundle: FeatureLocalization.bundle)
+            #endif
+        }() : session.title))
         clock = WorkoutClock(startedAt: session.date,
                              pausedAccumulated: max(0, gross - elapsed),
                              pausedSince: now)

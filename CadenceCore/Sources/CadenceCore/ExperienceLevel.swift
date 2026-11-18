@@ -13,17 +13,53 @@ public enum ExperienceLevel: String, CaseIterable, Codable, Sendable, Identifiab
 
     public var displayName: String {
         switch self {
-        case .beginner:     return String(localized: "Beginner", bundle: .module)
-        case .intermediate: return String(localized: "Intermediate", bundle: .module)
-        case .advanced:     return String(localized: "Advanced", bundle: .module)
+        case .beginner:     return {
+            #if os(Linux)
+            "Beginner"
+            #else
+            String(localized: "Beginner", bundle: .module)
+            #endif
+        }()
+        case .intermediate: return {
+            #if os(Linux)
+            "Intermediate"
+            #else
+            String(localized: "Intermediate", bundle: .module)
+            #endif
+        }()
+        case .advanced:     return {
+            #if os(Linux)
+            "Advanced"
+            #else
+            String(localized: "Advanced", bundle: .module)
+            #endif
+        }()
         }
     }
 
     public var summary: String {
         switch self {
-        case .beginner:     return String(localized: "New to lifting (under ~1 year).", bundle: .module)
-        case .intermediate: return String(localized: "Training consistently for a year or more.", bundle: .module)
-        case .advanced:     return String(localized: "Years of consistent, structured training.", bundle: .module)
+        case .beginner:     return {
+            #if os(Linux)
+            "New to lifting (under ~1 year)."
+            #else
+            String(localized: "New to lifting (under ~1 year).", bundle: .module)
+            #endif
+        }()
+        case .intermediate: return {
+            #if os(Linux)
+            "Training consistently for a year or more."
+            #else
+            String(localized: "Training consistently for a year or more.", bundle: .module)
+            #endif
+        }()
+        case .advanced:     return {
+            #if os(Linux)
+            "Years of consistent, structured training."
+            #else
+            String(localized: "Years of consistent, structured training.", bundle: .module)
+            #endif
+        }()
         }
     }
 

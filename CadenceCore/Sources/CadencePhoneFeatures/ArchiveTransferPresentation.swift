@@ -16,8 +16,20 @@ public struct ArchiveFlowPresentation: Equatable, Sendable {
     public var showsRestoreControls: Bool { mode == .restoreOnly }
     public var navigationTitle: String {
         switch mode {
-        case .exportOnly: return String(localized: "Export", bundle: FeatureLocalization.bundle)
-        case .restoreOnly: return String(localized: "Restore", bundle: FeatureLocalization.bundle)
+        case .exportOnly: return {
+            #if os(Linux)
+            "Export"
+            #else
+            String(localized: "Export", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .restoreOnly: return {
+            #if os(Linux)
+            "Restore"
+            #else
+            String(localized: "Restore", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         }
     }
 }
@@ -67,9 +79,21 @@ public enum ArchiveExportState: Equatable, Sendable {
 
     public var message: String? {
         switch self {
-        case .preparing: return String(localized: "Preparing export…", bundle: FeatureLocalization.bundle)
+        case .preparing: return {
+            #if os(Linux)
+            "Preparing export…"
+            #else
+            String(localized: "Preparing export…", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         case .failed(let m): return m
-        case .empty: return String(localized: "No data to export.", bundle: FeatureLocalization.bundle)
+        case .empty: return {
+            #if os(Linux)
+            "No data to export."
+            #else
+            String(localized: "No data to export.", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         case .ready: return nil
         }
     }

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -331,3 +332,4 @@ final class TrainingFactsTests: XCTestCase {
         XCTAssertEqual(fromAll.incompleteCustomExerciseNames, fromPrefiltered.incompleteCustomExerciseNames)
     }
 }
+#endif

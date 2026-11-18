@@ -1,24 +1,24 @@
 import Foundation
-import XCTest
+import Testing
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WorkoutLiveActivityPolicyTests: XCTestCase {
-    func testNoActiveWorkoutEndsEveryActivity() {
+struct WorkoutLiveActivityPolicyTests {
+    @Test func noActiveWorkoutEndsEveryActivity() {
         // Regression (issue #74): an orphaned activity must be ended on launch
         // when no workout is running.
-        XCTAssertEqual(WorkoutLiveActivityPolicy.reconciliation(workoutIsActive: false), .endAllActivities)
+        #expect(WorkoutLiveActivityPolicy.reconciliation(workoutIsActive: false) == .endAllActivities)
     }
 
-    func testActiveWorkoutKeepsActivity() {
-        XCTAssertEqual(WorkoutLiveActivityPolicy.reconciliation(workoutIsActive: true), .runActivity)
+    @Test func activeWorkoutKeepsActivity() {
+        #expect(WorkoutLiveActivityPolicy.reconciliation(workoutIsActive: true) == .runActivity)
     }
 
-    func testStaleDateIsBoundedSoUnrefreshedActivityExpires() {
+    @Test func staleDateIsBoundedSoUnrefreshedActivityExpires() {
         let now = Date(timeIntervalSince1970: 1_000)
         let stale = WorkoutLiveActivityPolicy.staleDate(from: now)
-        XCTAssertEqual(stale.timeIntervalSince(now), WorkoutLiveActivityPolicy.staleAfter)
-        XCTAssertLessThanOrEqual(WorkoutLiveActivityPolicy.staleAfter, 15 * 60)
+        #expect(stale.timeIntervalSince(now) == WorkoutLiveActivityPolicy.staleAfter)
+        #expect(WorkoutLiveActivityPolicy.staleAfter <= 15 * 60)
     }
 }

@@ -1,11 +1,12 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class WorkoutPlanRepStructureTests: XCTestCase {
-    func testApplyingPartnerStructurePreservesOwnerAndOtherPartnerLoads() {
+struct WorkoutPlanRepStructureTests {
+    @Test func applyingPartnerStructurePreservesOwnerAndOtherPartnerLoads() {
         let partner = UUID()
         let other = UUID()
         let sets = [EditableSet(targetReps: 8, targetWeight: 25)]
@@ -18,23 +19,23 @@ final class WorkoutPlanRepStructureTests: XCTestCase {
         })
         plan.applyRepStructure([12, 10, 8], performerID: partner)
         for exercise in plan.exercises {
-            XCTAssertEqual(exercise.sets, sets)
-            XCTAssertEqual(exercise.performerPlans[0].sets, sets)
-            XCTAssertEqual(exercise.performerPlans[1].sets.map(\.targetReps), [12, 10, 8])
-            XCTAssertEqual(exercise.performerPlans[1].sets.map(\.targetWeight), [25, 25, 25])
-            XCTAssertEqual(exercise.performerPlans[2].sets, sets)
+            #expect(exercise.sets == sets)
+            #expect(exercise.performerPlans[0].sets == sets)
+            #expect(exercise.performerPlans[1].sets.map(\.targetReps) == [12, 10, 8])
+            #expect(exercise.performerPlans[1].sets.map(\.targetWeight) == [25, 25, 25])
+            #expect(exercise.performerPlans[2].sets == sets)
         }
-        XCTAssertEqual(plan.performerPrescriptions().first { $0.performerID == partner.uuidString }?
-            .exercises.map { $0.sets.map(\.targetReps) }, [[12, 10, 8], [12, 10, 8]])
+        #expect(plan.performerPrescriptions().first { $0.performerID == partner.uuidString }?
+            .exercises.map { $0.sets.map(\.targetReps) } == [[12, 10, 8], [12, 10, 8]])
         plan.applyRepStructure([5, 5], performerID: nil)
-        XCTAssertTrue(plan.exercises.allSatisfy { $0.sets.map(\.targetReps) == [5, 5] && $0.performerPlans[0].sets == $0.sets })
+        #expect(plan.exercises.allSatisfy { $0.sets.map(\.targetReps) == [5, 5] && $0.performerPlans[0].sets == $0.sets })
     }
 
-    func testMountainClimbersAreBodyweightWithoutAnExternalLoad() {
+    @Test func mountainClimbersAreBodyweightWithoutAnExternalLoad() {
         let exercise = Exercise(name: "Mountain Climbers")
-        XCTAssertTrue(SessionViewModel.isNonWeighted(exercise))
+        #expect(SessionViewModel.isNonWeighted(exercise))
         let entry = SessionViewModel.normalizedSetEntry(exercise: exercise, requestedWeightKg: 20, requestedUsesBodyweight: false)
-        XCTAssertEqual(entry.weightKg, 0)
-        XCTAssertTrue(entry.usesBodyweight)
+        #expect(entry.weightKg == 0)
+        #expect(entry.usesBodyweight)
     }
 }

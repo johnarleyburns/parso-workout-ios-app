@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
@@ -7,7 +8,7 @@ import CadencePhoneFeatures
 /// Field test 2026-08-18 #6: Workouts Today rows carry detail, a plan-source
 /// badge and a startable prescription. Ordering, badge vocabulary and the
 /// planned-volume arithmetic are asserted here, not in the simulator.
-final class WorkoutsTodayPresenterTests: XCTestCase {
+struct WorkoutsTodayPresenterTests {
 
     private var now: Date {
         var c = DateComponents()
@@ -45,88 +46,88 @@ final class WorkoutsTodayPresenterTests: XCTestCase {
 
     // MARK: - Ordering
 
-    func testCompletedRowsComeFirstNewestFirst() {
+    @Test func completedRowsComeFirstNewestFirst() {
         let older = strengthSession("Morning", endedMinutesAgo: 300)
         let newer = strengthSession("Lunch", endedMinutesAgo: 60)
         let rows = WorkoutsTodayPresenter.rows(sessions: [older, newer], cardio: [],
                                                plannedToday: [plan()], now: now, calendar: cal)
-        XCTAssertEqual(rows.map(\.title), ["Lunch", "Morning", "Upper body — push emphasis"])
-        XCTAssertEqual(rows.prefix(2).map(\.status), [.completed, .completed])
+        #expect(rows.map(\.title) == ["Lunch", "Morning", "Upper body — push emphasis"])
+        #expect(rows.prefix(2).map(\.status) == [.completed, .completed])
     }
 
-    func testHistoricalRowsOnlyShowsWorkoutsActuallyCompleted() {
+    @Test func historicalRowsOnlyShowsWorkoutsActuallyCompleted() {
         let completed = strengthSession("Lifted today", endedMinutesAgo: 30)
         let rows = WorkoutsTodayPresenter.historicalRows(
             sessions: [completed], cardio: [], now: now, calendar: cal)
 
-        XCTAssertEqual(rows.map(\.title), ["Lifted today"])
-        XCTAssertTrue(rows.allSatisfy { $0.status == .completed })
-        XCTAssertFalse(rows.contains { $0.title.localizedCaseInsensitiveContains("plan") })
+        #expect(rows.map(\.title) == ["Lifted today"])
+        #expect(rows.allSatisfy { $0.status == .completed })
+        #expect(!rows.contains { $0.title.localizedCaseInsensitiveContains("plan") })
     }
 
-    func testHistoricalRowsIsEmptyWithoutCompletedHistory() {
-        XCTAssertTrue(WorkoutsTodayPresenter.historicalRows(
+    @Test func historicalRowsIsEmptyWithoutCompletedHistory() {
+        #expect(WorkoutsTodayPresenter.historicalRows(
             sessions: [], cardio: [], now: now, calendar: cal).isEmpty)
     }
 
-    func testPlannedRowsFollowInPlanOrder() {
+    @Test func plannedRowsFollowInPlanOrder() {
         let a = plan("a", title: "First")
         let b = plan("b", title: "Second")
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [],
                                                plannedToday: [a, b], now: now, calendar: cal)
-        XCTAssertEqual(rows.map(\.title), ["First", "Second"])
+        #expect(rows.map(\.title) == ["First", "Second"])
     }
 
     // MARK: - Badges
 
-    func testPlannedBadgeSaysCoachsPlanForCoachSource() {
+    @Test func plannedBadgeSaysCoachsPlanForCoachSource() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                source: .coach, now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.status.badgeText, "COACH'S PLAN")
+        #expect(rows.first?.status.badgeText == "COACH'S PLAN")
     }
 
-    func testPlannedBadgeSaysYourPlanForUserSource() {
+    @Test func plannedBadgeSaysYourPlanForUserSource() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                source: .user, now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.status.badgeText, "YOUR PLAN")
+        #expect(rows.first?.status.badgeText == "YOUR PLAN")
     }
 
-    func testPlannedBadgeSaysTrainersPlanForTrainerSource() {
+    @Test func plannedBadgeSaysTrainersPlanForTrainerSource() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                source: .trainer, now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.status.badgeText, "TRAINER'S PLAN")
+        #expect(rows.first?.status.badgeText == "TRAINER'S PLAN")
     }
 
-    func testCompletedBadgeSaysCompleted() {
+    @Test func completedBadgeSaysCompleted() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [strengthSession("Push", endedMinutesAgo: 30)],
                                                cardio: [], plannedToday: [], now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.status.badgeText, "COMPLETED")
+        #expect(rows.first?.status.badgeText == "COMPLETED")
     }
 
     // MARK: - Filtering
 
-    func testNoRowsWhenNothingCompletedOrPlanned() {
-        XCTAssertTrue(WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [],
+    @Test func noRowsWhenNothingCompletedOrPlanned() {
+        #expect(WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [],
                                                   now: now, calendar: cal).isEmpty)
     }
 
-    func testDeletedSessionsAreExcluded() {
+    @Test func deletedSessionsAreExcluded() {
         let deleted = strengthSession("Deleted", endedMinutesAgo: 30)
         deleted.deletedAt = now
         let rows = WorkoutsTodayPresenter.rows(sessions: [deleted], cardio: [], plannedToday: [],
                                                now: now, calendar: cal)
-        XCTAssertTrue(rows.isEmpty)
+        #expect(rows.isEmpty)
     }
 
-    func testInProgressSessionIsNotCompleted() {
+    @Test func inProgressSessionIsNotCompleted() {
         let open = WorkoutSession(title: "Open", date: now.addingTimeInterval(-1800))
-        XCTAssertTrue(open.isResumable, "precondition: a session with no endedAt is resumable")
+        #expect(open.isResumable, "precondition: a session with no endedAt is resumable")
         let rows = WorkoutsTodayPresenter.rows(sessions: [open], cardio: [], plannedToday: [],
                                                now: now, calendar: cal)
-        XCTAssertTrue(rows.isEmpty)
+        #expect(rows.isEmpty)
     }
 
-    func testPartialTwoADayKeepsTheOutstandingPlanVisible() {
+    @Test func partialTwoADayKeepsTheOutstandingPlanVisible() {
         // Strength done this morning, the coach's cardio half still outstanding.
         let done = strengthSession("Push Day", endedMinutesAgo: 240)
         let outstanding = plan("cardio1", kind: .easyAerobic, title: "Easy run",
@@ -134,110 +135,110 @@ final class WorkoutsTodayPresenterTests: XCTestCase {
                                intensity: .easy, modality: .run)
         let rows = WorkoutsTodayPresenter.rows(sessions: [done], cardio: [],
                                                plannedToday: [outstanding], now: now, calendar: cal)
-        XCTAssertEqual(rows.count, 2)
-        XCTAssertEqual(rows.last?.title, "Easy run")
-        XCTAssertEqual(rows.last?.status, .planned(.coach))
+        #expect(rows.count == 2)
+        #expect(rows.last?.title == "Easy run")
+        #expect(rows.last?.status == .planned(.coach))
     }
 
-    func testRestDaysAreNeverRows() {
+    @Test func restDaysAreNeverRows() {
         let rest = plan("rest1", kind: .rest, title: "Rest", exercises: [])
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [rest],
                                                now: now, calendar: cal)
-        XCTAssertTrue(rows.isEmpty)
+        #expect(rows.isEmpty)
     }
 
     // MARK: - Row content
 
-    func testStrengthSubtitleListsExerciseNames() {
+    @Test func strengthSubtitleListsExerciseNames() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.subtitle, "Bench Press, Overhead Press")
+        #expect(rows.first?.subtitle == "Bench Press, Overhead Press")
     }
 
-    func testCardioRowCarriesDistanceAndDuration() {
+    @Test func cardioRowCarriesDistanceAndDuration() {
         let run = CardioWorkout(type: .run, start: now.addingTimeInterval(-3600),
                                 end: now.addingTimeInterval(-1800))
         run.distance = 5200
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [run], plannedToday: [],
                                                now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.modality, .cardio)
-        XCTAssertEqual(rows.first?.value, "5.2 km · 30m")
+        #expect(rows.first?.modality == .cardio)
+        #expect(rows.first?.value == "5.2 km · 30m")
     }
 
-    func testCompletedTodayRowsResolveStableStrengthAndCardioHistoryRoutes() {
+    @Test func completedTodayRowsResolveStableStrengthAndCardioHistoryRoutes() {
         let session = strengthSession("Push", endedMinutesAgo: 30)
         let run = CardioWorkout(type: .run, start: now.addingTimeInterval(-3600),
                                 end: now.addingTimeInterval(-1800))
         let rows = WorkoutsTodayPresenter.historicalRows(
             sessions: [session], cardio: [run], now: now, calendar: cal)
 
-        XCTAssertTrue(rows.allSatisfy { WorkoutsTodayPresenter.historyRoute(for: $0) != nil })
-        XCTAssertTrue(rows.contains {
+        #expect(rows.allSatisfy { WorkoutsTodayPresenter.historyRoute(for: $0) != nil })
+        #expect(rows.contains {
             WorkoutsTodayPresenter.historyRoute(for: $0) == .strength(session.id)
         })
-        XCTAssertTrue(rows.contains {
+        #expect(rows.contains {
             WorkoutsTodayPresenter.historyRoute(for: $0) == .cardio(run.id)
         })
     }
 
-    func testPlannedRowsNeverProduceAHistoryRoute() throws {
+    @Test func plannedRowsNeverProduceAHistoryRoute() throws {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)
-        XCTAssertNil(WorkoutsTodayPresenter.historyRoute(for: try XCTUnwrap(rows.first)))
+        #expect(WorkoutsTodayPresenter.historyRoute(for: try #require(rows.first)) == nil)
     }
 
-    func testPlannedExerciseRowsCarrySetsRepsAndLoad() {
+    @Test func plannedExerciseRowsCarrySetsRepsAndLoad() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)
         let bench = rows.first?.exercises.first
-        XCTAssertEqual(bench?.name, "Bench Press")
-        XCTAssertEqual(bench?.sets, 3)
-        XCTAssertEqual(bench?.repsText, "8–12")
-        XCTAssertEqual(bench?.loadKg, 45)
+        #expect(bench?.name == "Bench Press")
+        #expect(bench?.sets == 3)
+        #expect(bench?.repsText == "8–12")
+        #expect(bench?.loadKg == 45)
     }
 
-    func testPlannedRepsTextUsesTheLadderWhenPresent() {
+    @Test func plannedRepsTextUsesTheLadderWhenPresent() {
         let ladder = plan(exercises: [
             .init(name: "Bench Press", sets: 3, repsLow: 8, repsHigh: 12, loadKg: 45,
                   repLadder: [12, 10, 8])
         ])
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [ladder],
                                                now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.exercises.first?.repsText, "12, 10, 8")
+        #expect(rows.first?.exercises.first?.repsText == "12, 10, 8")
     }
 
-    func testPlannedRepsTextFallsBackToTheRepRange() {
+    @Test func plannedRepsTextFallsBackToTheRepRange() {
         let single = plan(exercises: [.init(name: "Bench Press", sets: 3, repsLow: 10, loadKg: 45)])
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [single],
                                                now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.exercises.first?.repsText, "10")
+        #expect(rows.first?.exercises.first?.repsText == "10")
     }
 
     // MARK: - Planned volume
 
-    func testPlannedVolumeSumsSetsRepsTimesLoad() {
+    @Test func plannedVolumeSumsSetsRepsTimesLoad() {
         // 3 × 8 × 45 = 1080, 3 × 8 × 30 = 720 → 1800 (priced at the bottom of
         // the rep range so the coach never over-promises tonnage).
-        XCTAssertEqual(WorkoutsTodayPresenter.plannedVolumeKg(plan()) ?? 0, 1800, accuracy: 0.001)
+        #expect(abs((WorkoutsTodayPresenter.plannedVolumeKg(plan()) ?? 0) - 1800) <= 0.001)
     }
 
-    func testPlannedVolumeUsesTheLadderWhenPresent() {
+    @Test func plannedVolumeUsesTheLadderWhenPresent() {
         let ladder = plan(exercises: [
             .init(name: "Bench Press", sets: 3, repsLow: 8, repsHigh: 12, loadKg: 45,
                   repLadder: [12, 10, 8])
         ])
-        XCTAssertEqual(WorkoutsTodayPresenter.plannedVolumeKg(ladder) ?? 0, 30 * 45, accuracy: 0.001)
+        #expect(abs((WorkoutsTodayPresenter.plannedVolumeKg(ladder) ?? 0) - 30 * 45) <= 0.001)
     }
 
-    func testPlannedVolumeIsNilForAPureBodyweightPlan() {
+    @Test func plannedVolumeIsNilForAPureBodyweightPlan() {
         let bodyweight = plan(exercises: [
             .init(name: "Push-Up", sets: 3, repsLow: 12),
             .init(name: "Pull-Up", sets: 3, repsLow: 8)
         ])
-        XCTAssertNil(WorkoutsTodayPresenter.plannedVolumeKg(bodyweight))
+        #expect(WorkoutsTodayPresenter.plannedVolumeKg(bodyweight) == nil)
     }
 
-    func testBodyweightExerciseIsFlaggedNotZeroLoaded() {
+    @Test func bodyweightExerciseIsFlaggedNotZeroLoaded() {
         let bodyweight = plan(exercises: [
             .init(name: "Push-Up", sets: 3, repsLow: 12),
             .init(name: "Barbell Row", sets: 3, repsLow: 10)
@@ -245,51 +246,51 @@ final class WorkoutsTodayPresenterTests: XCTestCase {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [bodyweight],
                                                now: now, calendar: cal)
         let exercises = rows.first?.exercises ?? []
-        XCTAssertEqual(exercises.first?.isBodyweight, true)
-        XCTAssertNil(exercises.first?.loadKg)
-        XCTAssertEqual(exercises.last?.isBodyweight, false,
+        #expect(exercises.first?.isBodyweight == true)
+        #expect(exercises.first?.loadKg == nil)
+        #expect(exercises.last?.isBodyweight == false,
                        "A loaded lift with no resolvable history is not bodyweight (field test #2)")
     }
 
     // MARK: - Value text
 
-    func testPlannedValueTextForStrengthAndForCardio() {
-        XCTAssertEqual(WorkoutsTodayPresenter.plannedValueText(plan()), "6 sets · ~45m")
+    @Test func plannedValueTextForStrengthAndForCardio() {
+        #expect(WorkoutsTodayPresenter.plannedValueText(plan()) == "6 sets · ~45m")
         let run = plan("c", kind: .easyAerobic, title: "Easy run", durationMinutes: 30,
                        exercises: [], intensity: .easy, modality: .run)
-        XCTAssertEqual(WorkoutsTodayPresenter.plannedValueText(run), "~30m easy")
+        #expect(WorkoutsTodayPresenter.plannedValueText(run) == "~30m easy")
     }
 
     // MARK: - Interaction affordances
 
-    func testCompletedRowsAreNavigableAndPlannedRowsAreExpandable() {
+    @Test func completedRowsAreNavigableAndPlannedRowsAreExpandable() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [strengthSession("Push", endedMinutesAgo: 30)],
                                                cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)
         let completed = rows.first { $0.status == .completed }
         let planned = rows.first { $0.status == .planned(.coach) }
-        XCTAssertEqual(completed?.isNavigable, true)
-        XCTAssertEqual(completed?.isExpandable, false)
-        XCTAssertEqual(planned?.isExpandable, true)
-        XCTAssertEqual(planned?.isNavigable, false)
+        #expect(completed?.isNavigable == true)
+        #expect(completed?.isExpandable == false)
+        #expect(planned?.isExpandable == true)
+        #expect(planned?.isNavigable == false)
     }
 
-    func testShowMoreHistoryOnlyAppearsForCompletedRows() {
+    @Test func showMoreHistoryOnlyAppearsForCompletedRows() {
         let completed = WorkoutsTodayPresenter.rows(
             sessions: [strengthSession("Push", endedMinutesAgo: 30)],
             cardio: [], plannedToday: [], now: now, calendar: cal)
         let planned = WorkoutsTodayPresenter.rows(
             sessions: [], cardio: [], plannedToday: [plan()], now: now, calendar: cal)
 
-        XCTAssertTrue(WorkoutsTodayPresenter.showsMoreHistory(for: completed))
-        XCTAssertFalse(WorkoutsTodayPresenter.showsMoreHistory(for: planned))
-        XCTAssertFalse(WorkoutsTodayPresenter.showsMoreHistory(for: []))
+        #expect(WorkoutsTodayPresenter.showsMoreHistory(for: completed))
+        #expect(!WorkoutsTodayPresenter.showsMoreHistory(for: planned))
+        #expect(!WorkoutsTodayPresenter.showsMoreHistory(for: []))
     }
 
-    func testPlannedRowCarriesTheSessionCitationIds() {
+    @Test func plannedRowCarriesTheSessionCitationIds() {
         let rows = WorkoutsTodayPresenter.rows(sessions: [], cardio: [], plannedToday: [plan()],
                                                now: now, calendar: cal)
-        XCTAssertEqual(rows.first?.citationIds, ["schoenfeldVolume2017"])
-        XCTAssertEqual(rows.first?.sourceKey, "plan1")
+        #expect(rows.first?.citationIds == ["schoenfeldVolume2017"])
+        #expect(rows.first?.sourceKey == "plan1")
     }
 }

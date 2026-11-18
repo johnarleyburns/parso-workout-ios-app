@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WorkoutDurationEstimatorTests: XCTestCase {
+struct WorkoutDurationEstimatorTests {
     private func plan(setCounts: [Int],
                       warmup: Int = 0, cooldown: Int = 0) -> EditablePlan {
         EditablePlan(warmupMinutes: warmup, cooldownMinutes: cooldown,
@@ -15,18 +16,18 @@ final class WorkoutDurationEstimatorTests: XCTestCase {
                       })
     }
 
-    func testEmptyPlanHasNoEstimate() {
-        XCTAssertNil(WorkoutDurationEstimator.estimate(
-            plan: plan(setCounts: []), history: []))
+    @Test func emptyPlanHasNoEstimate() {
+        #expect(WorkoutDurationEstimator.estimate(
+            plan: plan(setCounts: []), history: []) == nil)
     }
 
-    func testDefaultsIncludeWarmupRestCooldownAndTransitions() {
+    @Test func defaultsIncludeWarmupRestCooldownAndTransitions() {
         let estimate = WorkoutDurationEstimator.estimate(
             plan: plan(setCounts: [2, 1], warmup: 5, cooldown: 5), history: [])
-        XCTAssertEqual(estimate, DurationEstimate(minutes: 20, basis: .defaults))
+        #expect(estimate == DurationEstimate(minutes: 20, basis: .defaults))
     }
 
-    func testHistoryUsesMedianAndClampsPace() {
+    @Test func historyUsesMedianAndClampsPace() {
         let dates = [Date(timeIntervalSince1970: 0), Date(timeIntervalSince1970: 1000),
                      Date(timeIntervalSince1970: 2000)]
         let history = dates.map { date in
@@ -38,7 +39,7 @@ final class WorkoutDurationEstimatorTests: XCTestCase {
         }
         let estimate = WorkoutDurationEstimator.estimate(
             plan: plan(setCounts: [2]), history: history)
-        XCTAssertEqual(estimate?.basis, .history(sessionCount: 3))
-        XCTAssertEqual(estimate?.minutes, 5)
+        #expect(estimate?.basis == .history(sessionCount: 3))
+        #expect(estimate?.minutes == 5)
     }
 }

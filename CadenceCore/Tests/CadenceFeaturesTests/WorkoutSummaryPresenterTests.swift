@@ -1,28 +1,28 @@
-import XCTest
+import Testing
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class WorkoutSummaryPresenterTests: XCTestCase {
-    func testTopLabelLoaded() {
-        XCTAssertEqual(WorkoutSummaryPresenter.topLabel(topKg: 100, bodyweight: false, unit: .kilograms), "100 kg")
+struct WorkoutSummaryPresenterTests {
+    @Test func topLabelLoaded() {
+        #expect(WorkoutSummaryPresenter.topLabel(topKg: 100, bodyweight: false, unit: .kilograms) == "100 kg")
     }
 
-    func testTopLabelBodyweightOnly() {
-        XCTAssertEqual(WorkoutSummaryPresenter.topLabel(topKg: 0, bodyweight: true, unit: .kilograms), "BW")
+    @Test func topLabelBodyweightOnly() {
+        #expect(WorkoutSummaryPresenter.topLabel(topKg: 0, bodyweight: true, unit: .kilograms) == "BW")
     }
 
-    func testTopLabelBodyweightPlus() {
-        XCTAssertEqual(WorkoutSummaryPresenter.topLabel(topKg: 10, bodyweight: true, unit: .kilograms), "BW + 10 kg")
+    @Test func topLabelBodyweightPlus() {
+        #expect(WorkoutSummaryPresenter.topLabel(topKg: 10, bodyweight: true, unit: .kilograms) == "BW + 10 kg")
     }
 
-    func testHRSummaryEmpty() {
-        XCTAssertEqual(WorkoutSummaryPresenter.hrChartAXSummary([]), "No heart rate samples")
+    @Test func hRSummaryEmpty() {
+        #expect(WorkoutSummaryPresenter.hrChartAXSummary([]) == "No heart rate samples")
     }
 
-    func testHRSummaryIgnoresZeros() {
-        XCTAssertEqual(WorkoutSummaryPresenter.hrChartAXSummary([0, 120, 140, 160]),
+    @Test func hRSummaryIgnoresZeros() {
+        #expect(WorkoutSummaryPresenter.hrChartAXSummary([0, 120, 140, 160]) ==
                        "Average 140, range 120 to 160 beats per minute, 3 samples")
     }
 
@@ -32,69 +32,69 @@ final class WorkoutSummaryPresenterTests: XCTestCase {
         WorkoutSummaryData.SetLine(weightKg: kg, reps: reps, usesBodyweight: bw)
     }
 
-    func testSetLineUsesPoundsWhenPreferred() {
-        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(81.6466, 12), unit: .pounds), "180 lb x 12")
+    @Test func setLineUsesPoundsWhenPreferred() {
+        #expect(WorkoutSummaryPresenter.setLine(setLine(81.6466, 12), unit: .pounds) == "180 lb x 12")
     }
 
-    func testSetLineUsesKilogramsWhenPreferred() {
-        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(100, 5), unit: .kilograms), "100 kg x 5")
+    @Test func setLineUsesKilogramsWhenPreferred() {
+        #expect(WorkoutSummaryPresenter.setLine(setLine(100, 5), unit: .kilograms) == "100 kg x 5")
     }
 
-    func testSetLineRendersBodyweight() {
-        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(0, 12, bw: true), unit: .pounds), "BW x 12")
+    @Test func setLineRendersBodyweight() {
+        #expect(WorkoutSummaryPresenter.setLine(setLine(0, 12, bw: true), unit: .pounds) == "BW x 12")
     }
 
-    func testZeroLoadNonBodyweightStaysZeroNotBW() {
-        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(0, 20), unit: .pounds), "0 lb x 20")
-        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(0, 20, bw: true), unit: .pounds), "BW x 20")
+    @Test func zeroLoadNonBodyweightStaysZeroNotBW() {
+        #expect(WorkoutSummaryPresenter.setLine(setLine(0, 20), unit: .pounds) == "0 lb x 20")
+        #expect(WorkoutSummaryPresenter.setLine(setLine(0, 20, bw: true), unit: .pounds) == "BW x 20")
     }
 
-    func testSetLineRendersWeightedBodyweight() {
-        XCTAssertEqual(WorkoutSummaryPresenter.setLine(setLine(10, 12, bw: true), unit: .kilograms),
+    @Test func setLineRendersWeightedBodyweight() {
+        #expect(WorkoutSummaryPresenter.setLine(setLine(10, 12, bw: true), unit: .kilograms) ==
                        "BW + 10 kg x 12")
     }
 
-    func testPerformerSetsTextJoinsWithCommaSpace() {
+    @Test func performerSetsTextJoinsWithCommaSpace() {
         let me = WorkoutSummaryData.PerformerLine(
             name: "Me", isMe: true,
             sets: [setLine(81.6466, 12), setLine(86.1826, 10), setLine(90.7185, 8)])
-        XCTAssertEqual(WorkoutSummaryPresenter.performerSetsText(me, unit: .pounds),
+        #expect(WorkoutSummaryPresenter.performerSetsText(me, unit: .pounds) ==
                        "180 lb x 12, 190 lb x 10, 200 lb x 8")
     }
 
-    func testOrderedPerformersPutsMeFirst() {
+    @Test func orderedPerformersPutsMeFirst() {
         let line = exerciseLine(performers: [
             WorkoutSummaryData.PerformerLine(name: "Alex", isMe: false, sets: [setLine(60, 10)]),
             WorkoutSummaryData.PerformerLine(name: "Me", isMe: true, sets: [setLine(100, 5)])
         ])
-        XCTAssertEqual(WorkoutSummaryPresenter.orderedPerformers(line).map(\.name), ["Me", "Alex"])
+        #expect(WorkoutSummaryPresenter.orderedPerformers(line).map(\.name) == ["Me", "Alex"])
     }
 
-    func testOrderedPerformersDropsEmptyPerformers() {
+    @Test func orderedPerformersDropsEmptyPerformers() {
         let line = exerciseLine(performers: [
             WorkoutSummaryData.PerformerLine(name: "Me", isMe: true, sets: [setLine(100, 5)]),
             WorkoutSummaryData.PerformerLine(name: "Ghost", isMe: false, sets: [])
         ])
-        XCTAssertEqual(WorkoutSummaryPresenter.orderedPerformers(line).map(\.name), ["Me"])
+        #expect(WorkoutSummaryPresenter.orderedPerformers(line).map(\.name) == ["Me"])
     }
 
-    func testDoneSummaryKeepsSetsAttachedToTheirPerformer() {
+    @Test func doneSummaryKeepsSetsAttachedToTheirPerformer() {
         let line = exerciseLine(performers: [
             WorkoutSummaryData.PerformerLine(name: "Me", isMe: true,
                                              sets: [setLine(100, 5)]),
             WorkoutSummaryData.PerformerLine(name: "Alex", isMe: false,
                                              sets: [setLine(60, 12)])
         ])
-        XCTAssertEqual(WorkoutSummaryPresenter.doneSummary(line, unit: .kilograms),
+        #expect(WorkoutSummaryPresenter.doneSummary(line, unit: .kilograms) ==
                        "Done: Me: 100 kg x 5; Alex: 60 kg x 12")
     }
 
-    func testExpandedAccessibilityValueNamesEachPerformer() {
+    @Test func expandedAccessibilityValueNamesEachPerformer() {
         let line = exerciseLine(performers: [
             WorkoutSummaryData.PerformerLine(name: "Me", isMe: true, sets: [setLine(100, 5)]),
             WorkoutSummaryData.PerformerLine(name: "Alex", isMe: false, sets: [setLine(60, 10)])
         ])
-        XCTAssertEqual(WorkoutSummaryPresenter.expandedAccessibilityValue(line, unit: .kilograms),
+        #expect(WorkoutSummaryPresenter.expandedAccessibilityValue(line, unit: .kilograms) ==
                        "Me: 100 kg x 5. Alex: 60 kg x 10")
     }
 

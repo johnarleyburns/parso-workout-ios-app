@@ -1,96 +1,111 @@
-import XCTest
+import Testing
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WorkoutMirrorLifecycleTests: XCTestCase {
-    func testFirstAttach() {
+struct WorkoutMirrorLifecycleTests {
+    @Test func firstAttach() {
         var l = WorkoutMirrorLifecycle()
-        XCTAssertEqual(l.apply(.startRequested), .starting)
-        XCTAssertEqual(l.apply(.attached), .mirrored(generation: 1))
+        let startState = l.apply(.startRequested)
+        #expect(startState == .starting)
+        let attachedState = l.apply(.attached)
+        #expect(attachedState == .mirrored(generation: 1))
     }
 
-    func testReconnectReplacesAndIncrementsGeneration() {
+    @Test func reconnectReplacesAndIncrementsGeneration() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached)
-        XCTAssertEqual(l.apply(.attached), .mirrored(generation: 2))
+        let state = l.apply(.attached)
+        #expect(state == .mirrored(generation: 2))
     }
 
-    func testOldSessionDisconnectCannotClearNewer() {
+    @Test func oldSessionDisconnectCannotClearNewer() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached); l.apply(.attached)
-        XCTAssertEqual(l.apply(.disconnected(generation: 1)), .mirrored(generation: 2))
-        XCTAssertEqual(l.apply(.failed(generation: 1)), .mirrored(generation: 2))
-        XCTAssertEqual(l.apply(.disconnected(generation: 2)), .disconnected(generation: 2))
+        let disconnected1 = l.apply(.disconnected(generation: 1))
+        #expect(disconnected1 == .mirrored(generation: 2))
+        let failed1 = l.apply(.failed(generation: 1))
+        #expect(failed1 == .mirrored(generation: 2))
+        let disconnected2 = l.apply(.disconnected(generation: 2))
+        #expect(disconnected2 == .disconnected(generation: 2))
     }
 
-    func testEndClearsOnlyCurrent() {
+    @Test func endClearsOnlyCurrent() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached); l.apply(.attached)
-        XCTAssertEqual(l.apply(.ended(generation: 1)), .mirrored(generation: 2))
-        XCTAssertEqual(l.apply(.ended(generation: 2)), .inactive)
+        let ended1 = l.apply(.ended(generation: 1))
+        #expect(ended1 == .mirrored(generation: 2))
+        let ended2 = l.apply(.ended(generation: 2))
+        #expect(ended2 == .inactive)
     }
 
-    func testMirrorFailureStillStartsPrimary() {
-        XCTAssertTrue(WorkoutMirrorLifecycle.shouldStartPrimary(mirrorSucceeded: false))
+    @Test func mirrorFailureStillStartsPrimary() {
+        #expect(WorkoutMirrorLifecycle.shouldStartPrimary(mirrorSucceeded: false))
     }
 
     // MARK: - .disconnected is recoverable, not terminal
 
-    func testEndedAfterDisconnectTransitionsToInactiveInsteadOfStrandingState() {
+    @Test func endedAfterDisconnectTransitionsToInactiveInsteadOfStrandingState() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached) // .mirrored(1)
-        XCTAssertEqual(l.apply(.disconnected(generation: 1)), .disconnected(generation: 1))
+        let disconnected = l.apply(.disconnected(generation: 1))
+        #expect(disconnected == .disconnected(generation: 1))
         // A genuine session-end arriving after the disconnect must not strand
         // the reducer in .disconnected forever.
-        XCTAssertEqual(l.apply(.ended(generation: 1)), .inactive)
+        let ended = l.apply(.ended(generation: 1))
+        #expect(ended == .inactive)
     }
 
-    func testFailedAfterDisconnectTransitionsToInactiveInsteadOfStrandingState() {
+    @Test func failedAfterDisconnectTransitionsToInactiveInsteadOfStrandingState() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached) // .mirrored(1)
         l.apply(.disconnected(generation: 1))
-        XCTAssertEqual(l.apply(.failed(generation: 1)), .inactive)
+        let failed = l.apply(.failed(generation: 1))
+        #expect(failed == .inactive)
     }
 
-    func testStaleEndedOrFailedWhileDisconnectedDoesNotClearNewerGeneration() {
+    @Test func staleEndedOrFailedWhileDisconnectedDoesNotClearNewerGeneration() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached); l.apply(.attached) // .mirrored(2)
         l.apply(.disconnected(generation: 2)) // .disconnected(2)
         // A stale generation-1 end/fail arriving late must not touch the
         // current generation-2 disconnected state.
-        XCTAssertEqual(l.apply(.ended(generation: 1)), .disconnected(generation: 2))
-        XCTAssertEqual(l.apply(.failed(generation: 1)), .disconnected(generation: 2))
+        let ended = l.apply(.ended(generation: 1))
+        #expect(ended == .disconnected(generation: 2))
+        let failed = l.apply(.failed(generation: 1))
+        #expect(failed == .disconnected(generation: 2))
     }
 
     // MARK: - Reconnect after disconnect
 
-    func testReconnectAfterDisconnectProducesNewMirroredGeneration() {
+    @Test func reconnectAfterDisconnectProducesNewMirroredGeneration() {
         var l = WorkoutMirrorLifecycle()
         l.apply(.attached) // .mirrored(1)
-        XCTAssertEqual(l.apply(.disconnected(generation: 1)), .disconnected(generation: 1))
+        let disconnected = l.apply(.disconnected(generation: 1))
+        #expect(disconnected == .disconnected(generation: 1))
         // HealthKit supplies a replacement mirrored session on reconnect.
-        XCTAssertEqual(l.apply(.attached), .mirrored(generation: 2))
+        let reattached = l.apply(.attached)
+        #expect(reattached == .mirrored(generation: 2))
     }
 
     // MARK: - shouldForwardData
 
-    func testShouldForwardDataOnlyTrueForCurrentMirroredGeneration() {
+    @Test func shouldForwardDataOnlyTrueForCurrentMirroredGeneration() {
         var l = WorkoutMirrorLifecycle()
-        XCTAssertFalse(l.shouldForwardData(generation: 1)) // .inactive
+        #expect(!l.shouldForwardData(generation: 1)) // .inactive
 
         l.apply(.startRequested)
-        XCTAssertFalse(l.shouldForwardData(generation: 1)) // .starting
+        #expect(!l.shouldForwardData(generation: 1)) // .starting
 
         l.apply(.attached) // .mirrored(1)
-        XCTAssertTrue(l.shouldForwardData(generation: 1))
-        XCTAssertFalse(l.shouldForwardData(generation: 2)) // wrong generation
+        #expect(l.shouldForwardData(generation: 1))
+        #expect(!l.shouldForwardData(generation: 2)) // wrong generation
 
         l.apply(.attached) // reconnect: .mirrored(2)
-        XCTAssertFalse(l.shouldForwardData(generation: 1)) // stale/old generation
-        XCTAssertTrue(l.shouldForwardData(generation: 2))
+        #expect(!l.shouldForwardData(generation: 1)) // stale/old generation
+        #expect(l.shouldForwardData(generation: 2))
 
         l.apply(.disconnected(generation: 2)) // .disconnected(2)
-        XCTAssertFalse(l.shouldForwardData(generation: 2)) // not mirrored anymore
+        #expect(!l.shouldForwardData(generation: 2)) // not mirrored anymore
     }
 }

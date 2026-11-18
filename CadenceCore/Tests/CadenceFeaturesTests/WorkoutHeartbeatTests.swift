@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFeatures
@@ -8,23 +9,23 @@ import CadencePhoneFeatures
 
 /// Launch-blockers Phase 1e: the UserDefaults-backed liveness heartbeat.
 @MainActor
-final class WorkoutHeartbeatTests: XCTestCase {
+struct WorkoutHeartbeatTests {
 
     private func testDefaults() -> UserDefaults {
         UserDefaults(suiteName: "heartbeat-tests-\(UUID().uuidString)")!
     }
 
-    func testWriteReadRoundTrip() {
+    @Test func writeReadRoundTrip() {
         let defaults = testDefaults()
         let hb = WorkoutHeartbeat(sessionID: UUID(),
                                   lastAlive: Date(timeIntervalSince1970: 12_345),
                                   elapsed: 678.9,
                                   isPaused: true)
         WorkoutHeartbeatStore.write(hb, defaults: defaults)
-        XCTAssertEqual(WorkoutHeartbeatStore.read(defaults: defaults), hb)
+        #expect(WorkoutHeartbeatStore.read(defaults: defaults) == hb)
     }
 
-    func testClearedOnEnd() throws {
+    @Test func clearedOnEnd() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let ctx = ModelContext(container)
         let session = WorkoutSession(title: "Push", date: Date())
@@ -33,12 +34,12 @@ final class WorkoutHeartbeatTests: XCTestCase {
         let m = ActiveWorkoutModel(defaults: defaults)
         m.startStrength(session)
         m.writeHeartbeat()
-        XCTAssertNotNil(WorkoutHeartbeatStore.read(defaults: defaults))
+        #expect(WorkoutHeartbeatStore.read(defaults: defaults) != nil)
         m.endStrength()
-        XCTAssertNil(WorkoutHeartbeatStore.read(defaults: defaults))
+        #expect(WorkoutHeartbeatStore.read(defaults: defaults) == nil)
     }
 
-    func testClearedOnDiscard() throws {
+    @Test func clearedOnDiscard() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let ctx = ModelContext(container)
         let session = WorkoutSession(title: "Push", date: Date())
@@ -48,10 +49,10 @@ final class WorkoutHeartbeatTests: XCTestCase {
         m.startStrength(session)
         m.writeHeartbeat()
         m.discardActive()
-        XCTAssertNil(WorkoutHeartbeatStore.read(defaults: defaults))
+        #expect(WorkoutHeartbeatStore.read(defaults: defaults) == nil)
     }
 
-    func testWriteCapturesClockElapsedAndSessionID() throws {
+    @Test func writeCapturesClockElapsedAndSessionID() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let ctx = ModelContext(container)
         let start = Date(timeIntervalSince1970: 1_000_000)
@@ -63,15 +64,15 @@ final class WorkoutHeartbeatTests: XCTestCase {
         let now = start.addingTimeInterval(300)
         m.writeHeartbeat(now: now)
         let hb = WorkoutHeartbeatStore.read(defaults: defaults)
-        XCTAssertEqual(hb?.sessionID, session.id)
-        XCTAssertEqual(hb?.lastAlive, now)
-        XCTAssertEqual(hb?.elapsed ?? -1, 300, accuracy: 0.001)
-        XCTAssertEqual(hb?.isPaused, false)
+        #expect(hb?.sessionID == session.id)
+        #expect(hb?.lastAlive == now)
+        #expect(abs((hb?.elapsed ?? -1) - 300) <= 0.001)
+        #expect(hb?.isPaused == false)
     }
 
-    func testMismatchedSessionIgnoredOnAdoption() {
+    @Test func mismatchedSessionIgnoredOnAdoption() {
         let hb = WorkoutHeartbeat(sessionID: UUID(), lastAlive: Date(), elapsed: 500, isPaused: false)
-        XCTAssertEqual(ActiveSessionRecovery.adoptedElapsed(sessionID: UUID(), heartbeat: hb), 0)
+        #expect(ActiveSessionRecovery.adoptedElapsed(sessionID: UUID(), heartbeat: hb) == 0)
     }
 }
 #endif

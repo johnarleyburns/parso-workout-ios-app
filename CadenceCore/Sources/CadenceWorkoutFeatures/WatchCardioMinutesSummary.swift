@@ -10,6 +10,9 @@ public struct WatchCardioMinutesSummary: Equatable, Sendable {
     public let moderateMinutes: Double
     public let vigorousMinutes: Double
     public let totalMinutes: Double
+    /// Guideline-weighted attributed minutes (moderate + 2x vigorous) -- same
+    /// formula as the phone's "Guideline credit" row, not a plain sum.
+    public let attributedMinutes: Double
 
     /// Minutes come solely from the shared phone classifier; unmeasured time stays unclassified
     /// (so `totalMinutes` is the classified time, never the full session).
@@ -31,6 +34,7 @@ public struct WatchCardioMinutesSummary: Equatable, Sendable {
             belowModerateMinutes: summary.belowModerateDuration / 60,
             moderateMinutes: summary.moderateDuration / 60,
             vigorousMinutes: summary.vigorousDuration / 60,
-            totalMinutes: summary.classifiedDuration / 60)
+            totalMinutes: summary.classifiedDuration / 60,
+            attributedMinutes: summary.moderateEquivalentMinutes)
     }
 }

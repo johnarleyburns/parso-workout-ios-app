@@ -72,10 +72,10 @@ struct WatchHeartRateSection: View {
                 let summary = storedSummary ?? WatchStrengthHRCoverage.summary(
                     samples: hrSamples, duration: sessionDuration, profile: intensityProfile)
                 if let minutes = WatchCardioMinutesSummary.make(summary: summary) {
-                    row(String(localized: "Below moderate"), CardioMinutesDisplay.zone(minutes.belowModerateMinutes))
+                    row(String(localized: "Light"), CardioMinutesDisplay.zone(minutes.belowModerateMinutes))
                     row(String(localized: "Moderate"), CardioMinutesDisplay.zone(minutes.moderateMinutes))
                     row(String(localized: "Vigorous"), CardioMinutesDisplay.zone(minutes.vigorousMinutes))
-                    row(String(localized: "Cardio minutes"), CardioMinutesDisplay.zone(minutes.totalMinutes))
+                    row(String(localized: "Cardio attr"), CardioMinutesDisplay.zone(minutes.attributedMinutes))
                 }
                 if let note = WatchStrengthHRCoverage.unclassifiedNote(summary: summary) {
                     Text(note).font(.caption2).foregroundStyle(.secondary)

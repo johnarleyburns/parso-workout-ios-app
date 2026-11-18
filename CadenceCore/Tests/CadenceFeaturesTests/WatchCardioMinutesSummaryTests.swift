@@ -31,6 +31,20 @@ final class WatchCardioMinutesSummaryTests: XCTestCase {
         assertMatchesAccumulator(samples, duration: 600, profile: hrrProfile)
     }
 
+    /// E (field testing): the Watch summary's "Cardio attr" row must show the
+    /// same guideline-weighted figure (moderate + 2x vigorous) the phone's
+    /// "Guideline credit" row already shows -- not the plain unweighted total.
+    func testAttributedMinutesMatchesModerateEquivalentFormula() {
+        let samples = dense(111, from: 0, count: 5) + dense(130, from: 300, count: 5)
+        let accumulated = CardioMinuteAccumulator.summarize(duration: 600, samples: samples, profile: hrrProfile)
+        let summary = WatchCardioMinutesSummary.make(hrSamples: samples, sessionDuration: 600, profile: hrrProfile)
+        XCTAssertEqual(summary?.attributedMinutes ?? -1, accumulated.moderateEquivalentMinutes, accuracy: 0.0001)
+        // Moderate + 2x vigorous must differ from the plain unweighted total
+        // whenever there's any vigorous time, or this test can't tell the two
+        // formulas apart.
+        XCTAssertNotEqual(summary?.attributedMinutes, summary?.totalMinutes)
+    }
+
     func testPercentMaxFallbackWithoutRestingHRMatchesAccumulator() {
         let samples = dense(100, from: 0, count: 4) + dense(125, from: 240, count: 4) + dense(160, from: 480, count: 4)
         assertMatchesAccumulator(samples, duration: 720, profile: maxOnlyProfile)

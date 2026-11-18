@@ -9,6 +9,7 @@ struct WatchSentWorkoutsSection: View {
     let onStartCardio: (WatchSync.TodayPlan.Session) -> Void
     private let store = WatchSentWorkoutStore.shared
     @State private var startingStrength: WatchSync.TodayPlan.Session?
+    @Environment(\.watchHomeResetToken) private var homeResetToken
 
     var body: some View {
         Group {
@@ -37,6 +38,7 @@ struct WatchSentWorkoutsSection: View {
                                   planPayload: session.planPayload)
             }
         }
+        .onChange(of: homeResetToken) { _, _ in startingStrength = nil }
     }
 
     private func title(_ session: WatchSync.TodayPlan.Session) -> String {

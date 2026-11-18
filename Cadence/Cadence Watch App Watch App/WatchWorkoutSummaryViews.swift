@@ -70,11 +70,15 @@ struct WatchSummaryHeartRateBlock: View {
                         ? WatchStrengthHRCoverage.presentation(
                             summary: storedSummary, sampleCount: presentation.hrSamples.count, pending: true)
                         : coverage
-                    Text(shown.text).font(.caption2).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .accessibilityLabel(shown.accessibilityLabel)
-                        .accessibilityIdentifier("watchSummary.hrCoverage")
+                    // Silence on success: only say something when there's a
+                    // problem (partial/missing coverage) worth acting on.
+                    if shown.kind != .complete {
+                        Text(shown.text).font(.caption2).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityLabel(shown.accessibilityLabel)
+                            .accessibilityIdentifier("watchSummary.hrCoverage")
+                    }
                 }
             }
         }

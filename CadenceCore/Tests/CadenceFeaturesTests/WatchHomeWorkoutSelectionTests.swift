@@ -19,7 +19,11 @@ final class WatchHomeWorkoutSelectionTests: XCTestCase {
             XCTAssertNil(state.launchChoice)
         }
         state.show(.cardio)
-        XCTAssertEqual(Set(state.choices), Set(HomeWorkoutStartChoice.cardioChoices))
+        // "Personalized Cardio" is phone-only: no Watch destination exists for
+        // it yet, so it's deliberately excluded here rather than shown as a
+        // dead wheel entry.
+        XCTAssertEqual(Set(state.choices), Set(HomeWorkoutStartChoice.cardioChoices.filter { $0 != .suggestedCardio }))
+        XCTAssertFalse(state.choices.contains(.suggestedCardio))
         for choice in state.choices {
             state.select(choice)
             XCTAssertNil(state.launchChoice)
@@ -59,6 +63,17 @@ final class WatchHomeWorkoutSelectionTests: XCTestCase {
         XCTAssertEqual(restored.selection, .cardio(.rowing))
         XCTAssertNil(restored.launchChoice)
         XCTAssertNil(defaults.string(forKey: HomeWorkoutStartChoice.selectionStorageKey))
+    }
+
+    /// D7 (field testing): tapping a row in the instantly-displayed choice
+    /// list must pick AND launch it in a single step, not require a separate
+    /// Start tap afterward.
+    func testSelectAndStartPicksAndLaunchesInOneStep() {
+        var state = WatchHomeWorkoutSelection()
+        state.show(.cardio)
+        state.selectAndStart(.cardio(.swim))
+        XCTAssertEqual(state.selection, .cardio(.swim))
+        XCTAssertEqual(state.launchChoice, .cardio(.swim))
     }
 
     func testInvalidCrossModeChoicesAndLegacyPreferencesRestoreSafely() {

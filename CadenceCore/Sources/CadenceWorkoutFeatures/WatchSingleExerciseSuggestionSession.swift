@@ -31,11 +31,40 @@ public final class WatchSingleExerciseSuggestionSession {
     private var transientExcluded: Set<String> = []
     private var generation = 0
     private let generator: Generator
+    /// Bounds how long a single generation can run before the session gives up
+    /// and surfaces `.failed` instead of leaving the UI in `.calculating`
+    /// ("Finding an exercise...") forever -- large candidate pools can be slow
+    /// on Watch hardware.
+    private let timeout: TimeInterval
     /// The in-flight calculation; exposed so tests can await completion.
     private(set) var pendingTask: Task<Void, Never>?
 
-    public init(generator: @escaping Generator = WatchSingleExerciseSuggestionSession.defaultGenerator) {
+    public init(generator: @escaping Generator = WatchSingleExerciseSuggestionSession.defaultGenerator,
+                timeout: TimeInterval = 8) {
         self.generator = generator
+        self.timeout = timeout
+    }
+
+    private struct SuggestionTimedOut: Error, LocalizedError {
+        var errorDescription: String? { "Suggestion took too long" }
+    }
+
+    /// Races `operation` against a `timeout`-second deadline. The loser is
+    /// cancelled; a synchronous, non-cooperatively-cancellable `generator` may
+    /// keep running in the background briefly, but the caller moves on.
+    private static func withTimeout<T: Sendable>(
+        seconds: TimeInterval, operation: @escaping @Sendable () async -> T
+    ) async -> Result<T, Error> {
+        await withTaskGroup(of: Result<T, Error>.self) { group in
+            group.addTask { .success(await operation()) }
+            group.addTask {
+                try? await Task.sleep(for: .seconds(seconds))
+                return .failure(SuggestionTimedOut())
+            }
+            let result = await group.next() ?? .failure(SuggestionTimedOut())
+            group.cancelAll()
+            return result
+        }
     }
 
     /// Starts a fresh session: previous session-only exclusions are dropped.
@@ -71,10 +100,18 @@ public final class WatchSingleExerciseSuggestionSession {
         state = .calculating
         let excluded = transientExcluded
         let generator = generator
+        let timeout = timeout
         pendingTask = Task { [weak self] in
-            let result: Result<SuggestedWorkoutExercise?, Error> = await Task.detached {
-                Result { try generator(input, excluded) }
-            }.value
+            let raced = await Self.withTimeout(seconds: timeout) {
+                await Task.detached {
+                    Result { try generator(input, excluded) }
+                }.value
+            }
+            let result: Result<SuggestedWorkoutExercise?, Error>
+            switch raced {
+            case .success(let inner): result = inner
+            case .failure(let timeoutError): result = .failure(timeoutError)
+            }
             guard let self, token == self.generation else { return }
             switch result {
             case .success(let exercise?): self.state = .ready(exercise)

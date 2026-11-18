@@ -32,7 +32,23 @@ struct WatchRootView: View {
     @State private var startingQuickLift = false
     @State private var showingCardio = false
     @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
+    /// Bumped on every `returnToHome()` call so nested views with their own
+    /// local navigation-gating state (e.g. `WatchSentWorkoutsSection`) can
+    /// reset it too, regardless of how deep they are.
+    @State private var homeResetToken = 0
     private let launchRequests = WatchLaunchRequests.shared
+
+    /// Every strength-launch path that ends in a full return to Home calls
+    /// this instead of `@Environment(\.dismiss)`, whose destination otherwise
+    /// depends on launch depth (direct from Home vs. via a setup/preview
+    /// screen vs. via a previous-workout detail screen).
+    private func returnToHome() {
+        resumingSession = nil
+        startingQuickLift = false
+        plannedStrengthSession = nil
+        homeSelection.dismissStart()
+        homeResetToken += 1
+    }
 
     var body: some View {
         Group {
@@ -156,6 +172,8 @@ struct WatchRootView: View {
                 Text("The sets logged on this watch are removed.")
             }
         }
+        .environment(\.watchReturnToHome, returnToHome)
+        .environment(\.watchHomeResetToken, homeResetToken)
     }
 
     private var launcherList: some View {

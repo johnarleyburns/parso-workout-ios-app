@@ -211,12 +211,13 @@ struct WatchIntervalView: View {
             .tint(.green)
             .accessibilityLabel("Save workout")
 
-            Button("Discard") {
+            Button(role: .destructive) {
                 watchManager.finishCardioSession(save: false)
                 onDone()
+            } label: {
+                Label("Discard", systemImage: "trash")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
             .accessibilityLabel("Discard workout")
           }
           .padding(.vertical, 8)

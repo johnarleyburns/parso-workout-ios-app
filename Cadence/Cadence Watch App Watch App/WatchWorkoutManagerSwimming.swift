@@ -24,13 +24,15 @@ extension WatchWorkoutManager {
         if !device.isWaterLockEnabled { device.enableWaterLock() }
     }
 
-    func enableWaterLock() {
+    @discardableResult
+    func enableWaterLock() -> Bool {
         let device = WKInterfaceDevice.current()
         guard !simulatesHealthKit, session?.state == .running || session?.state == .paused,
               WKApplication.shared().applicationState == .active,
-              device.waterResistanceRating == .wr50 else { return }
+              device.waterResistanceRating == .wr50 else { return false }
         swimWaterLockPending = false
         device.enableWaterLock()
+        return true
     }
 
     func applyLapEvent(builderID: ObjectIdentifier) {

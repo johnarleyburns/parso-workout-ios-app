@@ -19,7 +19,7 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
             $0.id == (savedStrengthID ?? legacyChoiceID)
         } ?? .strength(.suggested)
         cardioChoice = HomeWorkoutStartChoice.cardioChoices.first {
-            $0.id == (savedCardioID ?? legacyChoiceID)
+            $0 != .suggestedCardio && $0.id == (savedCardioID ?? legacyChoiceID)
         } ?? .cardio(.hiit)
     }
 
@@ -34,8 +34,12 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
         defaults.set(cardioChoice.id, forKey: Self.cardioStorageKey)
     }
 
+    /// "Personalized Cardio" (`.suggestedCardio`) is phone-only for now — the
+    /// Watch has no suggestion-preview destination for it yet, so it's
+    /// excluded here rather than shown as a dead/blank wheel entry.
     public var choices: [HomeWorkoutStartChoice] {
-        mode == .strength ? HomeWorkoutStartChoice.strengthChoices : HomeWorkoutStartChoice.cardioChoices
+        if mode == .strength { return HomeWorkoutStartChoice.strengthChoices }
+        return HomeWorkoutStartChoice.cardioChoices.filter { $0 != .suggestedCardio }
     }
 
     public var selection: HomeWorkoutStartChoice {
@@ -60,4 +64,12 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
 
     public mutating func start() { launchChoice = selection }
     public mutating func dismissStart() { launchChoice = nil }
+
+    /// Picks `choice` and launches it in one step -- tapping a row in the
+    /// instantly-displayed list is itself the start action, collapsing the
+    /// old two-step "scroll the wheel, then tap Start" interaction.
+    public mutating func selectAndStart(_ choice: HomeWorkoutStartChoice) {
+        select(choice)
+        start()
+    }
 }

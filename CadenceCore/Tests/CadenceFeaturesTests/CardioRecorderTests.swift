@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
@@ -29,61 +30,61 @@ private final class FakeHRM: HeartRateMonitoring {
     func injectExternalBPM(_ bpm: Double) { currentBPM = bpm }
 }
 
-final class CardioRecorderTests: XCTestCase {
+struct CardioRecorderTests {
 
-    func testStartBeginsRecordingAndStartsGPSForGPSType() {
+    @Test func startBeginsRecordingAndStartsGPSForGPSType() {
         let loc = FakeLocation(); let hrm = FakeHRM()
         let rec = CardioRecorder(location: loc, hrm: hrm)
         rec.start(type: .run)
-        XCTAssertTrue(rec.isRecording)
-        XCTAssertFalse(rec.isPaused)
-        XCTAssertTrue(loc.started)
+        #expect(rec.isRecording)
+        #expect(!rec.isPaused)
+        #expect(loc.started)
     }
 
-    func testNonGPSTypeDoesNotStartLocation() {
+    @Test func nonGPSTypeDoesNotStartLocation() {
         let loc = FakeLocation(); let hrm = FakeHRM()
         let rec = CardioRecorder(location: loc, hrm: hrm)
         rec.start(type: .boxing)
-        XCTAssertFalse(loc.started)
+        #expect(!loc.started)
     }
 
-    func testIndoorDistanceActivityDoesNotStartLocationOrSaveRoute() {
+    @Test func indoorDistanceActivityDoesNotStartLocationOrSaveRoute() {
         let loc = FakeLocation(); let hrm = FakeHRM()
         loc.fixes = [LocationFix(t: 0, lat: 0, lon: 0), LocationFix(t: 10, lat: 0.001, lon: 0.001)]
         let rec = CardioRecorder(location: loc, hrm: hrm)
         rec.start(type: .run, usesGPS: false)
 
-        XCTAssertTrue(rec.isRecording)
-        XCTAssertFalse(rec.usesGPS)
-        XCTAssertFalse(loc.started)
-        XCTAssertEqual(rec.distanceMeters, 0)
+        #expect(rec.isRecording)
+        #expect(!rec.usesGPS)
+        #expect(!loc.started)
+        #expect(rec.distanceMeters == 0)
 
         let summary = rec.end()
-        XCTAssertFalse(loc.stopped)
-        XCTAssertNil(summary.distanceMeters)
-        XCTAssertTrue(summary.route.isEmpty)
+        #expect(!loc.stopped)
+        #expect(summary.distanceMeters == nil)
+        #expect(summary.route.isEmpty)
     }
 
-    func testTickCapturesHeartRateSamples() {
+    @Test func tickCapturesHeartRateSamples() {
         let loc = FakeLocation(); let hrm = FakeHRM()
         hrm.currentBPM = 150
         let rec = CardioRecorder(location: loc, hrm: hrm)
         rec.start(type: .run)
         rec.tick(); rec.tick()
-        XCTAssertEqual(rec.elapsed, 2)
-        XCTAssertEqual(rec.hrSamples.count, 2)
-        XCTAssertEqual(rec.avgHR, 150)
+        #expect(rec.elapsed == 2)
+        #expect(rec.hrSamples.count == 2)
+        #expect(rec.avgHR == 150)
     }
 
-    func testPauseStopsTicking() {
+    @Test func pauseStopsTicking() {
         let rec = CardioRecorder(location: FakeLocation(), hrm: FakeHRM())
         rec.start(type: .run)
         rec.pause()
         rec.tick()
-        XCTAssertEqual(rec.elapsed, 0)
+        #expect(rec.elapsed == 0)
     }
 
-    func testEndReturnsSummaryAndStopsGPS() {
+    @Test func endReturnsSummaryAndStopsGPS() {
         let loc = FakeLocation(); let hrm = FakeHRM()
         loc.fixes = [LocationFix(t: 0, lat: 0, lon: 0), LocationFix(t: 10, lat: 0.001, lon: 0.001)]
         hrm.currentBPM = 140
@@ -91,22 +92,22 @@ final class CardioRecorderTests: XCTestCase {
         rec.start(type: .run)
         rec.tick()
         let summary = rec.end()
-        XCTAssertFalse(rec.isRecording)
-        XCTAssertTrue(loc.stopped)
-        XCTAssertEqual(summary.type, .run)
-        XCTAssertEqual(summary.hrSamples.count, 1)
-        XCTAssertNotNil(summary.distanceMeters)
-        XCTAssertGreaterThan(summary.distanceMeters ?? 0, 0)
+        #expect(!rec.isRecording)
+        #expect(loc.stopped)
+        #expect(summary.type == .run)
+        #expect(summary.hrSamples.count == 1)
+        #expect(summary.distanceMeters != nil)
+        #expect((summary.distanceMeters ?? 0) > 0)
     }
 
-    func testConnectStrapScansAndConnectsFirstDiscovered() {
+    @Test func connectStrapScansAndConnectsFirstDiscovered() {
         let hrm = FakeHRM()
         let id = UUID()
         hrm.discovered = [DiscoveredHRM(id: id, name: "Polar H10")]
         let rec = CardioRecorder(location: FakeLocation(), hrm: hrm)
         rec.connectStrap()
-        XCTAssertTrue(hrm.scanning)
-        XCTAssertEqual(hrm.connectedID, id)
-        XCTAssertTrue(rec.strapConnected)
+        #expect(hrm.scanning)
+        #expect(hrm.connectedID == id)
+        #expect(rec.strapConnected)
     }
 }

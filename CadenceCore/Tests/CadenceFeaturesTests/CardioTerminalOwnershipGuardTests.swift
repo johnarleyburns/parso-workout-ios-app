@@ -1,5 +1,5 @@
-import XCTest
 import Foundation
+import Testing
 import CadencePhoneFeatures
 
 /// Architecture guard (issue #488): automatic cardio/interval pause/end is owned by durable
@@ -7,7 +7,7 @@ import CadencePhoneFeatures
 /// persisted record + armed deadline task), never only by SwiftUI `Timer.publish`,
 /// `TimelineView`, or `onAppear`. UI timers may refresh display and *call* reconcile, but the
 /// terminal decision and its side effects must not live in view files.
-final class CardioTerminalOwnershipGuardTests: XCTestCase {
+struct CardioTerminalOwnershipGuardTests {
     private var repo: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -29,38 +29,38 @@ final class CardioTerminalOwnershipGuardTests: XCTestCase {
         "pauseCardioForInactivity", "recordAutoPause", "recordAutoEnd"
     ]
 
-    func testViewsDoNotOwnAutomaticTerminalBehavior() throws {
+    @Test func viewsDoNotOwnAutomaticTerminalBehavior() throws {
         var views = try swiftFiles(in: "Cadence/Cadence/Features/Cardio") { _ in true }
         views += try swiftFiles(in: "Cadence/Cadence Watch App Watch App") {
             ($0.hasPrefix("WatchCardio") || $0.hasPrefix("WatchInterval")) && !$0.contains("Manager")
         }
-        XCTAssertFalse(views.isEmpty)
+        #expect(!views.isEmpty)
         for file in views {
             let text = try read(file)
             for sym in terminalSymbols {
-                XCTAssertFalse(text.contains(sym),
+                #expect(!text.contains(sym),
                                "[guard:view-owns-terminal] \(file) references \(sym); terminal behavior belongs to a durable coordinator")
             }
         }
     }
 
-    func testPhoneCoordinatorIsDrivenFromAppLevelHooksNotOnlyLiveViews() throws {
+    @Test func phoneCoordinatorIsDrivenFromAppLevelHooksNotOnlyLiveViews() throws {
         let root = try read("Cadence/Cadence/App/RootTabView.swift")
-        XCTAssertGreaterThanOrEqual(root.components(separatedBy: "reconcilePhoneCardio").count - 1, 2,
+        #expect(root.components(separatedBy: "reconcilePhoneCardio").count - 1 >= 2,
                                     "[guard:phone] root scene/heartbeat hooks must reconcile phone cardio")
         let model = try read("Cadence/Cadence/App/AppModel+PhoneCardio.swift")
-        XCTAssertTrue(model.contains("extension AppModel: PhoneCardioLifecycleActions"))
-        XCTAssertTrue(model.contains("phoneCardio.reconcile(now:"))
+        #expect(model.contains("extension AppModel: PhoneCardioLifecycleActions"))
+        #expect(model.contains("phoneCardio.reconcile(now:"))
     }
 
-    func testWatchManagerOwnsDurableDeadlineTaskAndHealthKitHooks() throws {
+    @Test func watchManagerOwnsDurableDeadlineTaskAndHealthKitHooks() throws {
         let owner = try read("Cadence/Cadence Watch App Watch App/WatchWorkoutManager+CardioInactivity.swift")
-        XCTAssertTrue(owner.contains("Task.sleep"), "[guard:watch] manager must arm its own deadline task")
-        XCTAssertTrue(owner.contains("func autoFinishCardioForInactivity"))
-        XCTAssertTrue(owner.contains("func restoreCardioInactivity"), "[guard:watch] relaunch recovery")
+        #expect(owner.contains("Task.sleep"), "[guard:watch] manager must arm its own deadline task")
+        #expect(owner.contains("func autoFinishCardioForInactivity"))
+        #expect(owner.contains("func restoreCardioInactivity"), "[guard:watch] relaunch recovery")
         let manager = try read("Cadence/Cadence Watch App Watch App/WatchWorkoutManager.swift")
-        XCTAssertTrue(manager.contains("reconcileCardioInactivity"), "[guard:watch] HK callbacks reconcile")
+        #expect(manager.contains("reconcileCardioInactivity"), "[guard:watch] HK callbacks reconcile")
         let app = try read("Cadence/Cadence Watch App Watch App/Cadence_Watch_AppApp.swift")
-        XCTAssertTrue(app.contains("reconcileCardioInactivity"), "[guard:watch] app lifecycle reconciles")
+        #expect(app.contains("reconcileCardioInactivity"), "[guard:watch] app lifecycle reconciles")
     }
 }

@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class ConsistencyHeatmapPresenterTests: XCTestCase {
+struct ConsistencyHeatmapPresenterTests {
 
     private func utcCalendar() -> Calendar {
         var c = Calendar(identifier: .gregorian)
@@ -16,7 +17,7 @@ final class ConsistencyHeatmapPresenterTests: XCTestCase {
         ISO8601DateFormatter().date(from: iso)!
     }
 
-    func testDisplayMapsIntensityToShade() {
+    @Test func displayMapsIntensityToShade() {
         let cal = utcCalendar()
         let start = date("2026-01-01T00:00:00Z")
         let end = date("2026-01-03T00:00:00Z")
@@ -27,12 +28,12 @@ final class ConsistencyHeatmapPresenterTests: XCTestCase {
         let d = ConsistencyHeatmapPresenter.display(sessionDates: sessions,
                                                     range: DateInterval(start: start, end: end),
                                                     calendar: cal)
-        XCTAssertEqual(d.cells.count, 2)
-        XCTAssertEqual(d.cells[0].shade, .medium)   // 2 sessions
-        XCTAssertEqual(d.cells[1].shade, .none)     // rest day
+        #expect(d.cells.count == 2)
+        #expect(d.cells[0].shade == .medium)   // 2 sessions
+        #expect(d.cells[1].shade == .none)     // rest day
     }
 
-    func testSummaryMentionsTrainedDaysAndStreak() {
+    @Test func summaryMentionsTrainedDaysAndStreak() {
         let cal = utcCalendar()
         let start = date("2026-01-01T00:00:00Z")
         let end = date("2026-01-04T00:00:00Z")
@@ -43,12 +44,12 @@ final class ConsistencyHeatmapPresenterTests: XCTestCase {
         let d = ConsistencyHeatmapPresenter.display(sessionDates: sessions,
                                                     range: DateInterval(start: start, end: end),
                                                     calendar: cal)
-        XCTAssertEqual(d.trainedDays, 2)
-        XCTAssertEqual(d.currentStreak, 2)
-        XCTAssertEqual(d.summary, "2 days trained \u{00b7} 2-day streak")
+        #expect(d.trainedDays == 2)
+        #expect(d.currentStreak == 2)
+        #expect(d.summary == "2 days trained \u{00b7} 2-day streak")
     }
 
-    func testSummaryOmitsStreakBelowTwo() {
+    @Test func summaryOmitsStreakBelowTwo() {
         let cal = utcCalendar()
         let start = date("2026-01-01T00:00:00Z")
         let end = date("2026-01-03T00:00:00Z")
@@ -56,11 +57,11 @@ final class ConsistencyHeatmapPresenterTests: XCTestCase {
         let d = ConsistencyHeatmapPresenter.display(sessionDates: sessions,
                                                     range: DateInterval(start: start, end: end),
                                                     calendar: cal)
-        XCTAssertTrue(CatalogPlural.renderings("%lld days trained", 1).contains(d.summary), d.summary)
-        XCTAssertEqual(CatalogPlural.english("%lld days trained", 1), "1 day trained")
+        #expect(CatalogPlural.renderings("%lld days trained", 1).contains(d.summary), "\(d.summary)")
+        #expect(CatalogPlural.english("%lld days trained", 1) == "1 day trained")
     }
 
-    func testAccessibilityLabelForRestAndTrained() {
+    @Test func accessibilityLabelForRestAndTrained() {
         let cal = utcCalendar()
         let start = date("2026-01-01T00:00:00Z")
         let end = date("2026-01-03T00:00:00Z")
@@ -68,12 +69,12 @@ final class ConsistencyHeatmapPresenterTests: XCTestCase {
         let d = ConsistencyHeatmapPresenter.display(sessionDates: sessions,
                                                     range: DateInterval(start: start, end: end),
                                                     calendar: cal)
-        XCTAssertTrue(d.cells[0].accessibilityLabel.contains("1 session"))
-        XCTAssertTrue(d.cells[1].accessibilityLabel.contains("rest day"))
+        #expect(d.cells[0].accessibilityLabel.contains("1 session"))
+        #expect(d.cells[1].accessibilityLabel.contains("rest day"))
     }
 
-    func testShadeCoversFullRamp() {
-        XCTAssertEqual(ConsistencyHeatmapPresenter.Shade.allCases.count, 5)
-        XCTAssertEqual(ConsistencyHeatmapPresenter.Shade(rawValue: 4), .peak)
+    @Test func shadeCoversFullRamp() {
+        #expect(ConsistencyHeatmapPresenter.Shade.allCases.count == 5)
+        #expect(ConsistencyHeatmapPresenter.Shade(rawValue: 4) == .peak)
     }
 }

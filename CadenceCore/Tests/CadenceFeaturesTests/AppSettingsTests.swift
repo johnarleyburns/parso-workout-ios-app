@@ -1,4 +1,4 @@
-import XCTest
+import Testing
 import Foundation
 import CadenceCore
 import CadenceFeatures
@@ -8,7 +8,7 @@ import CadencePhoneFeatures
 /// AppSettings (the "SettingsStore" lift, test-pyramid Phase 2) is now headlessly
 /// testable via its injected `UserDefaults`. Covers persistence, defaults, and the
 /// lossless preferences round-trip (FR-6.2).
-final class AppSettingsTests: XCTestCase {
+struct AppSettingsTests {
 
     private func freshDefaults(_ name: String = #function) -> UserDefaults {
         let suite = "AppSettingsTests.\(name)"
@@ -17,22 +17,22 @@ final class AppSettingsTests: XCTestCase {
         return d
     }
 
-    func testDefaultsWhenEmpty() {
+    @Test func defaultsWhenEmpty() {
         let s = AppSettings(defaults: freshDefaults())
-        XCTAssertEqual(s.unit, SettingsDefault.unit)
-        XCTAssertEqual(s.distanceUnit, SettingsDefault.distanceUnit)
-        XCTAssertEqual(s.formula, SettingsDefault.oneRepMaxFormula)
-        XCTAssertEqual(s.restSeconds, SettingsDefault.restSeconds)
+        #expect(s.unit == SettingsDefault.unit)
+        #expect(s.distanceUnit == SettingsDefault.distanceUnit)
+        #expect(s.formula == SettingsDefault.oneRepMaxFormula)
+        #expect(s.restSeconds == SettingsDefault.restSeconds)
     }
 
-    func testLegacyOnboardingFlagDoesNotChangeSettings() {
+    @Test func legacyOnboardingFlagDoesNotChangeSettings() {
         let a = freshDefaults(); a.set(true, forKey: "settings.hasCompletedOnboarding"); a.set("pounds", forKey: "settings.unit")
         let b = freshDefaults(); b.set(false, forKey: "settings.hasCompletedOnboarding"); b.set("pounds", forKey: "settings.unit")
-        XCTAssertEqual(AppSettings(defaults: a).unit, AppSettings(defaults: b).unit)
-        XCTAssertEqual(AppSettings(defaults: a).restSeconds, AppSettings(defaults: b).restSeconds)
+        #expect(AppSettings(defaults: a).unit == AppSettings(defaults: b).unit)
+        #expect(AppSettings(defaults: a).restSeconds == AppSettings(defaults: b).restSeconds)
     }
 
-    func testMutationPersistsAcrossInstances() {
+    @Test func mutationPersistsAcrossInstances() {
         let d = freshDefaults()
         let a = AppSettings(defaults: d)
         a.unit = .pounds
@@ -44,43 +44,43 @@ final class AppSettingsTests: XCTestCase {
         a.hasSeenAlwaysOnTip = true
 
         let b = AppSettings(defaults: d)
-        XCTAssertEqual(b.unit, .pounds)
-        XCTAssertEqual(b.distanceUnit, .miles)
-        XCTAssertEqual(b.restSeconds, 120)
-        XCTAssertEqual(b.trainingGoal, .strength)
-        XCTAssertTrue(b.coachHidden)
-        XCTAssertTrue(b.hasSeenFirstSetCoachMark)
-        XCTAssertTrue(b.hasSeenAlwaysOnTip)
+        #expect(b.unit == .pounds)
+        #expect(b.distanceUnit == .miles)
+        #expect(b.restSeconds == 120)
+        #expect(b.trainingGoal == .strength)
+        #expect(b.coachHidden)
+        #expect(b.hasSeenFirstSetCoachMark)
+        #expect(b.hasSeenAlwaysOnTip)
     }
 
-    func testAlwaysOnTipShowsOnlyOnceAfterWatchRequested() {
-        XCTAssertFalse(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: false, hasSeenTip: false))
-        XCTAssertTrue(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: true, hasSeenTip: false))
-        XCTAssertFalse(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: true, hasSeenTip: true))
-        XCTAssertFalse(AppSettings(defaults: freshDefaults()).hasSeenAlwaysOnTip)
+    @Test func alwaysOnTipShowsOnlyOnceAfterWatchRequested() {
+        #expect(!PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: false, hasSeenTip: false))
+        #expect(PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: true, hasSeenTip: false))
+        #expect(!PreWorkoutHRPresenter.shouldShowAlwaysOnTip(watchRequested: true, hasSeenTip: true))
+        #expect(!AppSettings(defaults: freshDefaults()).hasSeenAlwaysOnTip)
     }
 
-    func testFavoriteRoutineToggle() {
+    @Test func favoriteRoutineToggle() {
         let s = AppSettings(defaults: freshDefaults())
-        XCTAssertFalse(s.isRoutineFavorite("ppl"))
+        #expect(!s.isRoutineFavorite("ppl"))
         s.toggleFavoriteRoutine("ppl")
-        XCTAssertTrue(s.isRoutineFavorite("ppl"))
+        #expect(s.isRoutineFavorite("ppl"))
         s.toggleFavoriteRoutine("ppl")
-        XCTAssertFalse(s.isRoutineFavorite("ppl"))
+        #expect(!s.isRoutineFavorite("ppl"))
     }
 
-    func testCoachScheduleJSONPersistence() {
+    @Test func coachScheduleJSONPersistence() {
         let d = freshDefaults()
         let a = AppSettings(defaults: d)
         a.coachSchedulePreferences = CoachSchedulePreferences.default
             .withTwoADays(true)
             .withDesiredSetsPerExercise(4)
         let b = AppSettings(defaults: d)
-        XCTAssertTrue(b.coachSchedulePreferences.allowsTwoADays)
-        XCTAssertEqual(b.coachSchedulePreferences.desiredSetsPerExercise, 4)
+        #expect(b.coachSchedulePreferences.allowsTwoADays)
+        #expect(b.coachSchedulePreferences.desiredSetsPerExercise == 4)
     }
 
-    func testExportImportRoundTrip() {
+    @Test func exportImportRoundTrip() {
         let src = AppSettings(defaults: freshDefaults("src"))
         src.unit = .pounds
         src.distanceUnit = .miles
@@ -94,13 +94,13 @@ final class AppSettingsTests: XCTestCase {
 
         let dst = AppSettings(defaults: freshDefaults("dst"))
         dst.applyImportedPreferences(snapshot)
-        XCTAssertEqual(dst.unit, .pounds)
-        XCTAssertEqual(dst.distanceUnit, .miles)
-        XCTAssertEqual(dst.experienceLevel, .advanced)
-        XCTAssertEqual(dst.userAge, 41)
-        XCTAssertEqual(dst.warmupMinutes, 7)
-        XCTAssertEqual(dst.celebrationStyle, .quiet)
-        XCTAssertEqual(dst.restAlertMode, .alarm)
-        XCTAssertEqual(dst.coachSchedulePreferences.desiredSetsPerExercise, 4)
+        #expect(dst.unit == .pounds)
+        #expect(dst.distanceUnit == .miles)
+        #expect(dst.experienceLevel == .advanced)
+        #expect(dst.userAge == 41)
+        #expect(dst.warmupMinutes == 7)
+        #expect(dst.celebrationStyle == .quiet)
+        #expect(dst.restAlertMode == .alarm)
+        #expect(dst.coachSchedulePreferences.desiredSetsPerExercise == 4)
     }
 }

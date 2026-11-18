@@ -1,12 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadencePhoneFeatures
 @testable import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 
-final class ConsecutiveWorkoutSuggestionTests: XCTestCase {
+struct ConsecutiveWorkoutSuggestionTests {
     private var latest: SuggestedExerciseCandidate {
         .init(id: "latest", name: "Kettlebell Sumo High Pull", mechanics: .compound,
               primaryMuscles: ["shoulders"], equipment: .kettlebell, isPersonalized: true)
@@ -34,51 +35,51 @@ final class ConsecutiveWorkoutSuggestionTests: XCTestCase {
                 asOf: Date(timeIntervalSince1970: 900_000)) : nil)
     }
 
-    func testInitialBuildersExcludeOnlyLastWorkoutIncludingEnginePath() {
+    @Test func initialBuildersExcludeOnlyLastWorkoutIncludingEnginePath() {
         for engine in [false, true] {
             let request = input(engine: engine)
             for option in SuggestedWorkoutGenerator.generate(input: request).options {
-                XCTAssertFalse(option.exercises.contains { $0.candidateID == latest.id }, "\(option.style)")
+                #expect(!option.exercises.contains { $0.candidateID == latest.id }, "\(option.style)")
             }
             let personalized = SuggestedWorkoutGenerator.generatePersonalized(input: request)
-            XCTAssertTrue(personalized.isLaunchable)
-            XCTAssertEqual(personalized.exercises.map(\.candidateID), [earlier.id])
+            #expect(personalized.isLaunchable)
+            #expect(personalized.exercises.map(\.candidateID) == [earlier.id])
         }
     }
 
-    func testInWorkoutSuggestionAllowsPenultimateAndRejectsLastForEveryStyle() {
+    @Test func inWorkoutSuggestionAllowsPenultimateAndRejectsLastForEveryStyle() {
         for style in SuggestedWorkoutStyle.allCases {
             let result = SuggestedWorkoutGenerator.suggestSingleExercise(
                 input: input(), style: style, allowPersonalizedFallback: true)
-            XCTAssertNotEqual(result?.candidateID, latest.id, "\(style)")
+            #expect(result?.candidateID != latest.id, "\(style)")
             if style == .fitness || style == .personalized {
-                XCTAssertEqual(result?.candidateID, earlier.id)
+                #expect(result?.candidateID == earlier.id)
             }
         }
     }
 
-    func testMaintenanceAndStyleFallbackCannotReintroduceLastWorkout() {
+    @Test func maintenanceAndStyleFallbackCannotReintroduceLastWorkout() {
         for completed in [0.0, 4, 30] {
             let result = SuggestedWorkoutGenerator.suggestSingleExercise(
                 input: input(completed: completed), style: .personalized, allowPersonalizedFallback: true)
-            XCTAssertEqual(result?.candidateID, earlier.id)
-            XCTAssertNil(SuggestedWorkoutGenerator.suggestSingleExercise(
+            #expect(result?.candidateID == earlier.id)
+            #expect(SuggestedWorkoutGenerator.suggestSingleExercise(
                 input: input(completed: completed), style: .personalized,
-                excludingCandidateIDs: [earlier.id], allowPersonalizedFallback: true))
+                excludingCandidateIDs: [earlier.id], allowPersonalizedFallback: true) == nil)
         }
     }
 
-    func testLatestAliasExcludesCanonicalCandidateWithoutBanningOlderSession() throws {
-        let squat = try XCTUnwrap(ExerciseLibrary.template(matching: "Air Squat"))
+    @Test func latestAliasExcludesCanonicalCandidateWithoutBanningOlderSession() throws {
+        let squat = try #require(ExerciseLibrary.template(matching: "Air Squat"))
         let candidates = [SuggestedExerciseCandidate(template: squat), earlier]
         let history = [.init(startedAt: Date(timeIntervalSince1970: 100), endedAt: Date(timeIntervalSince1970: 200),
                              exerciseNames: [earlier.name]),
                        RecentCompletedWorkoutSnapshot(startedAt: Date(timeIntervalSince1970: 300),
                              endedAt: Date(timeIntervalSince1970: 400), exerciseNames: [" Bodyweight Squat "])]
-        XCTAssertEqual(RecentSuggestionExclusion.candidateIDs(from: history, candidates: candidates), [candidates[0].id])
+        #expect(RecentSuggestionExclusion.candidateIDs(from: history, candidates: candidates) == [candidates[0].id])
     }
 
-    func testEngineCannotReintroduceAnExcludedCatalogExercise() throws {
+    @Test func engineCannotReintroduceAnExcludedCatalogExercise() throws {
         let candidates = ExerciseLibrary.starter.map { SuggestedExerciseCandidate(template: $0) }
         func request(_ excluded: Set<String>) -> SuggestedWorkoutInput {
             .init(completedSetsByMuscle: [:], candidates: candidates,
@@ -88,20 +89,20 @@ final class ConsecutiveWorkoutSuggestionTests: XCTestCase {
                       availableEquipment: Equipment.allCases, environment: "commercial_gym",
                       asOf: Date(timeIntervalSince1970: 1_780_000_000)))
         }
-        let first = try XCTUnwrap(SuggestedWorkoutGenerator.generate(input: request([])).option(.fitness).exercises.first)
+        let first = try #require(SuggestedWorkoutGenerator.generate(input: request([])).option(.fitness).exercises.first)
         let excluded = RecentSuggestionExclusion.candidateIDs(
             from: [.init(startedAt: Date(timeIntervalSince1970: 100), endedAt: Date(timeIntervalSince1970: 200),
                          exerciseNames: [first.name])], candidates: candidates)
-        XCTAssertFalse(excluded.isEmpty)
+        #expect(!excluded.isEmpty)
         let next = SuggestedWorkoutGenerator.generate(input: request(excluded))
         let key = ExerciseSuggestionExclusionKey.forName(first.name)
         for option in next.options {
-            XCTAssertFalse(option.exercises.contains { ExerciseSuggestionExclusionKey.forName($0.name) == key }, "\(option.style)")
+            #expect(!option.exercises.contains { ExerciseSuggestionExclusionKey.forName($0.name) == key }, "\(option.style)")
         }
     }
 
     @MainActor
-    func testPersistedHistorySkipsCurrentDeletedAndEmptySessions() throws {
+    @Test func persistedHistorySkipsCurrentDeletedAndEmptySessions() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         func session(_ date: TimeInterval, name: String) throws -> WorkoutSession {
             let value = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: date), in: context)
@@ -121,12 +122,12 @@ final class ConsecutiveWorkoutSuggestionTests: XCTestCase {
         current.endedAt = nil
         let ids = RecentSuggestionExclusion.candidateIDs(sessions: [current, empty, deleted, last, previous],
                     excludingSessionID: current.id, candidates: [latest, earlier])
-        XCTAssertEqual(ids, [latest.id])
+        #expect(ids == [latest.id])
         let result = SuggestedWorkoutGenerator.suggestSingleExercise(
             input: .init(completedSetsByMuscle: [:], candidates: [latest, earlier],
                          recentlyCompletedCandidateIDs: ids, trackedGroups: [.shoulders],
                          preferredSetsPerExercise: 3, trainingGoal: .hypertrophy), style: .fitness)
-        XCTAssertEqual(result?.candidateID, earlier.id)
+        #expect(result?.candidateID == earlier.id)
     }
 }
 #endif

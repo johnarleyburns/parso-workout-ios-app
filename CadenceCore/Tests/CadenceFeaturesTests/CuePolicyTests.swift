@@ -1,24 +1,24 @@
-import XCTest
+import Testing
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class CuePolicyTests: XCTestCase {
-    func testPersonalBestReplacesSetCue() {
+struct CuePolicyTests {
+    @Test func personalBestReplacesSetCue() {
         let policy = CuePolicy()
-        XCTAssertEqual(policy.cue(for: .loggedSet(isPersonalBest: true)), .personalBest)
-        XCTAssertEqual(policy.cue(for: .loggedSet(isPersonalBest: false)), .setLogged)
+        #expect(policy.cue(for: .loggedSet(isPersonalBest: true)) == .personalBest)
+        #expect(policy.cue(for: .loggedSet(isPersonalBest: false)) == .setLogged)
     }
 
-    func testQuietKeepsHapticCuesButOffSuppressesCelebrations() {
-        XCTAssertEqual(CuePolicy(celebrationStyle: .quiet).cue(for: .dayCompleted), .dayClosed)
-        XCTAssertNil(CuePolicy(celebrationStyle: .off).cue(for: .dayCompleted))
-        XCTAssertEqual(CuePolicy(celebrationStyle: .off).cue(for: .restFinished), .restDone)
+    @Test func quietKeepsHapticCuesButOffSuppressesCelebrations() {
+        #expect(CuePolicy(celebrationStyle: .quiet).cue(for: .dayCompleted) == .dayClosed)
+        #expect(CuePolicy(celebrationStyle: .off).cue(for: .dayCompleted) == nil)
+        #expect(CuePolicy(celebrationStyle: .off).cue(for: .restFinished) == .restDone)
     }
 
-    func testRestEndingOnlyFiresForFinalThreeSeconds() {
+    @Test func restEndingOnlyFiresForFinalThreeSeconds() {
         let policy = CuePolicy()
-        XCTAssertNil(policy.cue(for: .rest(secondsRemaining: 4)))
-        XCTAssertEqual(policy.cue(for: .rest(secondsRemaining: 3)), .restEnding)
+        #expect(policy.cue(for: .rest(secondsRemaining: 4)) == nil)
+        #expect(policy.cue(for: .rest(secondsRemaining: 3)) == .restEnding)
     }
 }

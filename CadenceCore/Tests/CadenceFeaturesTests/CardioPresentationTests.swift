@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
@@ -26,74 +27,82 @@ private final class HRM: HeartRateMonitoring {
     func injectExternalBPM(_ bpm: Double) { currentBPM = bpm }
 }
 
-final class CardioPresentationTests: XCTestCase {
+struct CardioPresentationTests {
 
-    func testRunningCannotBeDismissedOrMinimized() {
+    @Test func runningCannotBeDismissedOrMinimized() {
         var p = CardioPresentation()
-        XCTAssertFalse(p.allowsInteractiveMinimize)
-        XCTAssertFalse(p.apply(.minimize))
-        XCTAssertEqual(p.state, .running)
+        #expect(!p.allowsInteractiveMinimize)
+        let minimized = p.apply(.minimize)
+        #expect(!minimized)
+        #expect(p.state == .running)
     }
 
-    func testPauseMinimizeReopenResumeEnd() {
+    @Test func pauseMinimizeReopenResumeEnd() {
         var p = CardioPresentation()
-        XCTAssertTrue(p.apply(.pause))
-        XCTAssertTrue(p.allowsInteractiveMinimize)
-        XCTAssertTrue(p.apply(.minimize))
-        XCTAssertEqual(p.state, .minimized)
-        XCTAssertTrue(p.isPaused)
-        XCTAssertTrue(p.apply(.reopen))
-        XCTAssertEqual(p.state, .paused)
-        XCTAssertTrue(p.apply(.resume))
-        XCTAssertFalse(p.apply(.resume), "resume works once")
-        XCTAssertTrue(p.apply(.end))
-        XCTAssertFalse(p.allowsInteractiveMinimize)
-        XCTAssertFalse(p.apply(.reopen))
+        let paused = p.apply(.pause)
+        #expect(paused)
+        #expect(p.allowsInteractiveMinimize)
+        let minimized = p.apply(.minimize)
+        #expect(minimized)
+        #expect(p.state == .minimized)
+        #expect(p.isPaused)
+        let reopened = p.apply(.reopen)
+        #expect(reopened)
+        #expect(p.state == .paused)
+        let resumed = p.apply(.resume)
+        #expect(resumed)
+        let resumedAgain = p.apply(.resume)
+        #expect(!resumedAgain, "resume works once")
+        let ended = p.apply(.end)
+        #expect(ended)
+        #expect(!p.allowsInteractiveMinimize)
+        let reopenedAfterEnd = p.apply(.reopen)
+        #expect(!reopenedAfterEnd)
     }
 
-    func testEndIsDistinctFromMinimize() {
+    @Test func endIsDistinctFromMinimize() {
         var p = CardioPresentation.live(isPaused: true)
         p.apply(.minimize)
-        XCTAssertNotEqual(p.state, .ended)
+        #expect(p.state != .ended)
     }
 
-    func testParkedRecorderSurvivesMinimizeReopenAndResume() {
+    @Test func parkedRecorderSurvivesMinimizeReopenAndResume() {
         let loc = Loc()
         let rec = CardioRecorder(location: loc, hrm: HRM())
         rec.start(type: .boxing, usesGPS: false)
         for _ in 0..<5 { rec.tick() }
         rec.pause()
         let store = ParkedCardioStore()
-        XCTAssertTrue(store.park(ParkedCardioSession(route: .record, type: .boxing, recorder: rec)))
-        XCTAssertFalse(loc.stopped, "minimize must not end the recorder")
+        #expect(store.park(ParkedCardioSession(route: .record, type: .boxing, recorder: rec)))
+        #expect(!loc.stopped, "minimize must not end the recorder")
         let back = store.take()
-        XCTAssertTrue(back?.recorder === rec)
-        XCTAssertFalse(store.isParked)
-        XCTAssertEqual(rec.elapsed, 5)
-        XCTAssertTrue(rec.isRecording && rec.isPaused)
+        #expect(back?.recorder === rec)
+        #expect(!store.isParked)
+        #expect(rec.elapsed == 5)
+        #expect(rec.isRecording && rec.isPaused)
         rec.tick()
-        XCTAssertEqual(rec.elapsed, 5, "still paused")
+        #expect(rec.elapsed == 5, "still paused")
         rec.resume()
         rec.tick()
-        XCTAssertEqual(rec.elapsed, 6)
+        #expect(rec.elapsed == 6)
     }
 
-    func testOnlyOneParkedSession() {
+    @Test func onlyOneParkedSession() {
         let store = ParkedCardioStore()
         let a = ParkedCardioSession(route: .swim, type: .swim)
-        XCTAssertTrue(store.park(a))
-        XCTAssertTrue(store.park(a))
-        XCTAssertFalse(store.park(ParkedCardioSession(route: .outdoor, type: .run)))
-        XCTAssertTrue(store.session === a)
+        #expect(store.park(a))
+        #expect(store.park(a))
+        #expect(!store.park(ParkedCardioSession(route: .outdoor, type: .run)))
+        #expect(store.session === a)
     }
 
-    func testParkedOutdoorClockAndIntervalRunnerKeepState() {
+    @Test func parkedOutdoorClockAndIntervalRunnerKeepState() {
         var clock = WorkoutClock(startedAt: Date(timeIntervalSinceNow: -100))
         clock.pause(now: Date())
         let outdoor = ParkedCardioSession(route: .outdoor, type: .run, clock: clock, goalMeters: 5000)
-        XCTAssertTrue(outdoor.clock.isPaused)
-        XCTAssertEqual(outdoor.goalMeters, 5000)
+        #expect(outdoor.clock.isPaused)
+        #expect(outdoor.goalMeters == 5000)
         let swim = ParkedCardioSession(route: .swim, type: .swim, laps: 7, targetLaps: 20)
-        XCTAssertEqual(swim.laps, 7)
+        #expect(swim.laps == 7)
     }
 }

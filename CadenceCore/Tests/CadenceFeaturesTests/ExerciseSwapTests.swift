@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadencePhoneFeatures
@@ -7,7 +8,7 @@ import CadencePhoneFeatures
 @testable import CadenceWorkoutFeatures
 
 /// Phase E (field-test-fixes): swap + remove exercise.
-final class ExerciseSwapTests: XCTestCase {
+struct ExerciseSwapTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -15,7 +16,7 @@ final class ExerciseSwapTests: XCTestCase {
 
     // MARK: - item-based handler survives dismissal
 
-    func testSwapTargetItemSurvivesDismissal() throws {
+    @Test func swapTargetItemSurvivesDismissal() throws {
         // The old handler used derived isPresented bindings (swappingPlannedName != nil)
         // which nilled the payload on dismissal BEFORE onPick was called.
         // SwapTarget as an Identifiable item in .sheet(item:) cannot lose its payload.
@@ -23,14 +24,14 @@ final class ExerciseSwapTests: XCTestCase {
         let target2 = ExerciseSwap.SwapTarget.logged(exerciseID: UUID())
 
         // Both targets should be uniquely identifiable.
-        XCTAssertNotEqual(target1.id, target2.id)
+        #expect(target1.id != target2.id)
         // The id is stable — calling .sheet(item: $swapTarget) with this item
         // keeps the payload alive until the sheet finishes presenting.
     }
 
     // MARK: - changeExercise
 
-    func testChangeExerciseMovesSetsAndDedupsPlannedNames() throws {
+    @Test func changeExerciseMovesSetsAndDedupsPlannedNames() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
         let old = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", primaryMuscles: ["chest"], in: ctx)
@@ -42,16 +43,16 @@ final class ExerciseSwapTests: XCTestCase {
 
         let moved = try WorkoutRepository.changeExercise(in: session, from: old, to: new, in: ctx)
 
-        XCTAssertEqual(moved, 2, "Both sets should move to the new exercise")
+        #expect(moved == 2, "Both sets should move to the new exercise")
         let newExerciseSets = session.orderedSets.filter { $0.exercise?.id == new.id }
-        XCTAssertEqual(newExerciseSets.count, 2, "Sets should be assigned to new exercise")
-        XCTAssertTrue(session.plannedExerciseNames.contains("Dumbbell Press"), "Planned name should update")
-        XCTAssertFalse(session.plannedExerciseNames.contains("Bench Press"), "Old name should be removed")
+        #expect(newExerciseSets.count == 2, "Sets should be assigned to new exercise")
+        #expect(session.plannedExerciseNames.contains("Dumbbell Press"), "Planned name should update")
+        #expect(!session.plannedExerciseNames.contains("Bench Press"), "Old name should be removed")
     }
 
     // MARK: - removePlannedExercise
 
-    func testRemovePlannedExerciseRemovesExactlyThatCard() throws {
+    @Test func removePlannedExerciseRemovesExactlyThatCard() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
         session.plannedExerciseNames = ["Squat", "Bench Press", "Deadlift"]
@@ -59,13 +60,13 @@ final class ExerciseSwapTests: XCTestCase {
 
         try WorkoutRepository.removePlannedExercise(named: "Bench Press", from: session, in: ctx)
 
-        XCTAssertEqual(session.plannedExerciseNames, ["Squat", "Deadlift"],
+        #expect(session.plannedExerciseNames == ["Squat", "Deadlift"],
                        "Only the named card should be removed")
     }
 
     // MARK: - removeExercise
 
-    func testRemoveExerciseDeletesSetsAndPlannedName() throws {
+    @Test func removeExerciseDeletesSetsAndPlannedName() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Lat Pulldown", primaryMuscles: ["lats"], in: ctx)
@@ -77,9 +78,9 @@ final class ExerciseSwapTests: XCTestCase {
 
         let removed = try WorkoutRepository.removeExercise(ex, from: session, in: ctx)
 
-        XCTAssertEqual(removed, 2, "Both sets should be deleted")
-        XCTAssertTrue(session.orderedSets.isEmpty, "All sets for this exercise should be gone")
-        XCTAssertFalse(session.plannedExerciseNames.contains("Lat Pulldown"),
+        #expect(removed == 2, "Both sets should be deleted")
+        #expect(session.orderedSets.isEmpty, "All sets for this exercise should be gone")
+        #expect(!session.plannedExerciseNames.contains("Lat Pulldown"),
                        "Planned name should also be removed")
     }
 }

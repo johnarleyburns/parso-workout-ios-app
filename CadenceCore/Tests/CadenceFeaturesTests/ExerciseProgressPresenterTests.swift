@@ -1,11 +1,12 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class ExerciseProgressPresenterTests: XCTestCase {
-    func testSummaryChoosesLatestDateBestValueAndSessionCount() {
+struct ExerciseProgressPresenterTests {
+    @Test func summaryChoosesLatestDateBestValueAndSessionCount() {
         let calendar = Calendar(identifier: .gregorian)
         let first = calendar.date(from: DateComponents(year: 2026, month: 1, day: 3))!
         let second = calendar.date(from: DateComponents(year: 2026, month: 1, day: 10))!
@@ -16,17 +17,17 @@ final class ExerciseProgressPresenterTests: XCTestCase {
 
         let summary = ExerciseProgressPresenter.summary(points: points)
 
-        XCTAssertEqual(summary.latest?.date, second)
-        XCTAssertEqual(summary.latest?.value, 92)
-        XCTAssertEqual(summary.best, 100)
-        XCTAssertEqual(summary.sessionCount, 2)
+        #expect(summary.latest?.date == second)
+        #expect(summary.latest?.value == 92)
+        #expect(summary.best == 100)
+        #expect(summary.sessionCount == 2)
     }
 
-    func testSummaryIsEmptyWithoutHistory() {
+    @Test func summaryIsEmptyWithoutHistory() {
         let summary = ExerciseProgressPresenter.summary(points: [])
 
-        XCTAssertNil(summary.latest)
-        XCTAssertNil(summary.best)
-        XCTAssertEqual(summary.sessionCount, 0)
+        #expect(summary.latest == nil)
+        #expect(summary.best == nil)
+        #expect(summary.sessionCount == 0)
     }
 }

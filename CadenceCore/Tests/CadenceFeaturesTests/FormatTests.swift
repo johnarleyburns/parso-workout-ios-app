@@ -1,55 +1,55 @@
-import XCTest
+import Testing
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 
-final class FormatTests: XCTestCase {
-    func testWeightKilograms() {
-        XCTAssertEqual(Format.weight(100, unit: .kilograms, decimals: 0), "100 kg")
+struct FormatTests {
+    @Test func weightKilograms() {
+        #expect(Format.weight(100, unit: .kilograms, decimals: 0) == "100 kg")
     }
 
-    func testWeightValueNoUnit() {
-        XCTAssertEqual(Format.weightValue(60, unit: .kilograms, decimals: 0), "60")
+    @Test func weightValueNoUnit() {
+        #expect(Format.weightValue(60, unit: .kilograms, decimals: 0) == "60")
     }
 
-    func testWeightValueQuarterPreservesQuarterUnitLoads() {
-        XCTAssertEqual(Format.weightValueQuarter(20.25, unit: .kilograms), "20.25")
-        XCTAssertEqual(Format.weightValueQuarter(20.26, unit: .kilograms), "20.25")
+    @Test func weightValueQuarterPreservesQuarterUnitLoads() {
+        #expect(Format.weightValueQuarter(20.25, unit: .kilograms) == "20.25")
+        #expect(Format.weightValueQuarter(20.26, unit: .kilograms) == "20.25")
     }
 
-    func testPreviousShort() {
-        XCTAssertEqual(Format.previousShort(60, reps: 8, unit: .kilograms), "60×8")
+    @Test func previousShort() {
+        #expect(Format.previousShort(60, reps: 8, unit: .kilograms) == "60×8")
     }
 
-    func testDuration() {
-        XCTAssertEqual(Format.duration(90), "1:30")
-        XCTAssertEqual(Format.duration(3661), "1:01:01")
-        XCTAssertEqual(Format.duration(0), "0:00")
+    @Test func duration() {
+        #expect(Format.duration(90) == "1:30")
+        #expect(Format.duration(3661) == "1:01:01")
+        #expect(Format.duration(0) == "0:00")
     }
 
-    func testClock() {
-        XCTAssertEqual(Format.clock(90), "1:30")
-        XCTAssertEqual(Format.clock(5), "0:05")
+    @Test func clock() {
+        #expect(Format.clock(90) == "1:30")
+        #expect(Format.clock(5) == "0:05")
     }
 
-    func testDistance() {
-        XCTAssertEqual(Format.distance(1500), "1.50 km")
-        XCTAssertEqual(Format.distance(500), "500 m")
+    @Test func distance() {
+        #expect(Format.distance(1500) == "1.50 km")
+        #expect(Format.distance(500) == "500 m")
     }
 
-    func testHeartRate() {
-        XCTAssertEqual(Format.heartRate(nil), "—")
-        XCTAssertEqual(Format.heartRate(180), "180 bpm")
+    @Test func heartRate() {
+        #expect(Format.heartRate(nil) == "—")
+        #expect(Format.heartRate(180) == "180 bpm")
     }
 
-    func testRxLoadPounds() {
-        XCTAssertEqual(Format.rxLoad(male: 95, female: 65, unit: .pounds), "95/65 lb")
-        XCTAssertEqual(Format.rxLoad(male: 95, female: nil, unit: .pounds), "95 lb")
-        XCTAssertEqual(Format.rxLoad(male: 95, female: 95, unit: .pounds), "95 lb")
-        XCTAssertNil(Format.rxLoad(male: nil, female: 65, unit: .pounds))
+    @Test func rxLoadPounds() {
+        #expect(Format.rxLoad(male: 95, female: 65, unit: .pounds) == "95/65 lb")
+        #expect(Format.rxLoad(male: 95, female: nil, unit: .pounds) == "95 lb")
+        #expect(Format.rxLoad(male: 95, female: 95, unit: .pounds) == "95 lb")
+        #expect(Format.rxLoad(male: nil, female: 65, unit: .pounds) == nil)
     }
 
-    func testRxLoadKilogramsAddsConversion() {
-        XCTAssertEqual(Format.rxLoad(male: 95, female: 65, unit: .kilograms), "95/65 lb (43/29 kg)")
+    @Test func rxLoadKilogramsAddsConversion() {
+        #expect(Format.rxLoad(male: 95, female: 65, unit: .kilograms) == "95/65 lb (43/29 kg)")
     }
 }

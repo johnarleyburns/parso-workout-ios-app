@@ -1,52 +1,53 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class HomeWorkoutStartChoiceTests: XCTestCase {
-    func testStrengthChoicesAndRecentCardioLimit() {
-        XCTAssertEqual(HomeStrengthStartChoice.allCases.map(\.title), ["Quick Start", "Personalized", "Previous"])
-        XCTAssertEqual(HomeRecentCardioChoices.recent(["run", "run", "walk", "cycle", "swim"]),
+struct HomeWorkoutStartChoiceTests {
+    @Test func strengthChoicesAndRecentCardioLimit() {
+        #expect(HomeStrengthStartChoice.allCases.map(\.title) == ["Quick Start", "Personalized", "Previous"])
+        #expect(HomeRecentCardioChoices.recent(["run", "run", "walk", "cycle", "swim"]) ==
                        ["run", "walk", "cycle"])
-        XCTAssertEqual(HomeRecentCardioChoices.recent([String]()), [])
+        #expect(HomeRecentCardioChoices.recent([String]()) == [])
     }
-    func testUnifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
+    @Test func unifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
         let choices = HomeWorkoutStartChoice.allChoices
-        XCTAssertEqual(choices.map(\.title), [
+        #expect(choices.map(\.title) == [
             "Personalized Lifts", "Repeat Lifts", "Quick Start", "Personalized Cardio", "HIIT",
             "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Cardio"
         ])
-        XCTAssertEqual(Set(choices.map(\.id)).count, choices.count)
+        #expect(Set(choices.map(\.id)).count == choices.count)
         for type in WorkoutType.allCases where type != .weights {
-            XCTAssertTrue(choices.contains(.cardio(type)))
+            #expect(choices.contains(.cardio(type)))
         }
-        XCTAssertFalse(choices.contains(.cardio(.weights)))
-        XCTAssertEqual(Set(HomeWorkoutStartChoice.strengthChoices.map(\.symbol)), ["dumbbell.fill"])
-        XCTAssertTrue(choices.allSatisfy { !$0.symbol.isEmpty })
+        #expect(!choices.contains(.cardio(.weights)))
+        #expect(Set(HomeWorkoutStartChoice.strengthChoices.map(\.symbol)) == ["dumbbell.fill"])
+        #expect(choices.allSatisfy { !$0.symbol.isEmpty })
     }
 
-    func testPersonalizedCardioChoiceSuggestsCardioLikeStrengthDoes() {
-        XCTAssertTrue(HomeWorkoutStartChoice.cardioChoices.contains(.suggestedCardio))
-        XCTAssertEqual(HomeWorkoutStartChoice.suggestedCardio.title, "Personalized Cardio")
-        XCTAssertEqual(HomeWorkoutStartChoice.suggestedCardio.id, "cardio.suggested")
+    @Test func personalizedCardioChoiceSuggestsCardioLikeStrengthDoes() {
+        #expect(HomeWorkoutStartChoice.cardioChoices.contains(.suggestedCardio))
+        #expect(HomeWorkoutStartChoice.suggestedCardio.title == "Personalized Cardio")
+        #expect(HomeWorkoutStartChoice.suggestedCardio.id == "cardio.suggested")
     }
 
-    func testEveryChoiceRestoresFromPersistedSelection() throws {
+    @Test func everyChoiceRestoresFromPersistedSelection() throws {
         let suiteName = "HomeWorkoutStartChoiceTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
         defer { defaults.removePersistentDomain(forName: suiteName) }
         let key = HomeWorkoutStartChoice.selectionStorageKey
         for choice in HomeWorkoutStartChoice.allChoices {
             defaults.set(choice.id, forKey: key)
-            let reopened = try XCTUnwrap(UserDefaults(suiteName: suiteName))
-            let saved = try XCTUnwrap(reopened.string(forKey: key))
-            XCTAssertEqual(HomeWorkoutStartChoice.restored(from: saved), choice)
+            let reopened = try #require(UserDefaults(suiteName: suiteName))
+            let saved = try #require(reopened.string(forKey: key))
+            #expect(HomeWorkoutStartChoice.restored(from: saved) == choice)
         }
     }
 
-    func testMissingOrObsoleteSelectionUsesSuggestedStrength() {
+    @Test func missingOrObsoleteSelectionUsesSuggestedStrength() {
         for identifier in ["", "cardio.removedActivity", "strength.removedSource", "cardio.weights"] {
-            XCTAssertEqual(HomeWorkoutStartChoice.restored(from: identifier), .strength(.suggested))
+            #expect(HomeWorkoutStartChoice.restored(from: identifier) == .strength(.suggested))
         }
     }
 

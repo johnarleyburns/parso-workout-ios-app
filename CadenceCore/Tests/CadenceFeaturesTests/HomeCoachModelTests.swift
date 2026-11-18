@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFeatures
@@ -13,7 +14,7 @@ import CadencePhoneFeatures
 /// every logged set) or shows stale coaching. Previously guarded only by one flaky
 /// XCUITest; now covered headlessly.
 @MainActor
-final class HomeCoachModelTests: XCTestCase {
+struct HomeCoachModelTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
@@ -37,22 +38,22 @@ final class HomeCoachModelTests: XCTestCase {
                                  schedule: schedule, profile: profile, now: now)
     }
 
-    func testIdenticalInputsProduceEqualSignatures() {
+    @Test func identicalInputsProduceEqualSignatures() {
         let token = UUID()
-        XCTAssertEqual(sig(token: token), sig(token: token))
+        #expect(sig(token: token) == sig(token: token))
     }
 
-    func testAddingASessionChangesSignature() throws {
+    @Test func addingASessionChangesSignature() throws {
         let ctx = try makeContext()
         let token = UUID()
         let s1 = WorkoutSession(title: "A", date: Date()); ctx.insert(s1)
         let before = sig(token: token, sessions: [s1])
         let s2 = WorkoutSession(title: "B", date: Date()); ctx.insert(s2)
         let after = sig(token: token, sessions: [s1, s2])
-        XCTAssertNotEqual(before, after)
+        #expect(before != after)
     }
 
-    func testAddingASetToExistingSessionDoesNotChangeSignature() throws {
+    @Test func addingASetToExistingSessionDoesNotChangeSignature() throws {
         // The whole point of the optimization: per-set churn must NOT invalidate the
         // coach cache. Session count is unchanged and the token is not bumped.
         let ctx = try makeContext()
@@ -63,55 +64,55 @@ final class HomeCoachModelTests: XCTestCase {
         ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: s.date, session: s, exercise: bench))
         try ctx.save()
         let after = sig(token: token, sessions: [s])
-        XCTAssertEqual(before, after)
+        #expect(before == after)
     }
 
-    func testBumpingTokenChangesSignature() {
+    @Test func bumpingTokenChangesSignature() {
         let base = sig(token: UUID())
         let bumped = sig(token: UUID())
-        XCTAssertNotEqual(base, bumped)
+        #expect(base != bumped)
     }
 
-    func testChangingGoalChangesSignature() {
+    @Test func changingGoalChangesSignature() {
         let token = UUID()
-        XCTAssertNotEqual(sig(token: token, goal: .strength), sig(token: token, goal: .hypertrophy))
+        #expect(sig(token: token, goal: .strength) != sig(token: token, goal: .hypertrophy))
     }
 
-    func testChangingSchedulePreferencesChangesSignature() {
+    @Test func changingSchedulePreferencesChangesSignature() {
         let token = UUID()
         let a = sig(token: token, schedule: .default)
         let b = sig(token: token, schedule: CoachSchedulePreferences.default.withRestPreference(.rolling(everyNDays: 5)))
-        XCTAssertNotEqual(a, b)
+        #expect(a != b)
     }
 
-    func testChangingDesiredSetsChangesSignature() {
+    @Test func changingDesiredSetsChangesSignature() {
         let token = UUID()
         let a = sig(token: token, schedule: .default)
         let b = sig(token: token, schedule: CoachSchedulePreferences.default.withDesiredSetsPerExercise(4))
-        XCTAssertNotEqual(a, b)
+        #expect(a != b)
     }
 
-    func testPainTodayChangesSignature() throws {
+    @Test func painTodayChangesSignature() throws {
         let ctx = try makeContext()
         let token = UUID()
         let painful = ReadinessEntry(date: Date(), hasPainOrIllnessConcern: true)
         ctx.insert(painful)
         let withPain = sig(token: token, readiness: [painful])
         let withoutPain = sig(token: token, readiness: [])
-        XCTAssertNotEqual(withPain, withoutPain)
-        XCTAssertTrue(withPain.painToday)
-        XCTAssertFalse(withoutPain.painToday)
+        #expect(withPain != withoutPain)
+        #expect(withPain.painToday)
+        #expect(!withoutPain.painToday)
     }
 
-    func testPainYesterdayDoesNotCountAsPainToday() throws {
+    @Test func painYesterdayDoesNotCountAsPainToday() throws {
         let ctx = try makeContext()
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
         let old = ReadinessEntry(date: yesterday, hasPainOrIllnessConcern: true)
         ctx.insert(old)
-        XCTAssertFalse(HomeCoachModel.painToday(readiness: [old]))
+        #expect(!HomeCoachModel.painToday(readiness: [old]))
     }
 
-    func testSnapshotRunsPipelineFromSeededHistory() throws {
+    @Test func snapshotRunsPipelineFromSeededHistory() throws {
         let ctx = try makeContext()
         Fixtures.coachAerobicGap(into: ctx)
         let sessions = try ctx.fetch(FetchDescriptor<WorkoutSession>())
@@ -120,10 +121,10 @@ final class HomeCoachModelTests: XCTestCase {
             sessions: sessions, cardio: cardio, assessments: [], readiness: [],
             goal: .strength, experience: .intermediate, formula: .epley,
             schedule: .default, profile: .empty)
-        XCTAssertNotNil(snapshot.decision.primary)
+        #expect(snapshot.decision.primary != nil)
     }
 
-    func testSnapshotAsyncConcurrentCallersDoNotFaultCardioRelationshipsOffMainActor() async throws {
+    @Test func snapshotAsyncConcurrentCallersDoNotFaultCardioRelationshipsOffMainActor() async throws {
         let ctx = try makeContext()
         let start = Date().addingTimeInterval(-3_600)
         let workout = CardioWorkout(type: .run,
@@ -148,11 +149,11 @@ final class HomeCoachModelTests: XCTestCase {
                 schedule: .default, profile: .empty))
         }
 
-        XCTAssertEqual(snapshots.count, 8)
-        XCTAssertTrue(snapshots.allSatisfy { $0.coachFacts.events.count == 1 })
+        #expect(snapshots.count == 8)
+        #expect(snapshots.allSatisfy { $0.coachFacts.events.count == 1 })
     }
 
-    func testSnapshotAsyncRetainsFinalizedPhoneCustomExerciseVolume() async throws {
+    @Test func snapshotAsyncRetainsFinalizedPhoneCustomExerciseVolume() async throws {
         let now = Date(timeIntervalSince1970: 1_750_000_000)
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(
@@ -176,29 +177,29 @@ final class HomeCoachModelTests: XCTestCase {
             goal: .strength, experience: .intermediate, formula: .epley,
             schedule: .default, profile: .empty, now: now)
 
-        XCTAssertEqual(snapshot.facts.weeklySetsByGroup[.abdominals], 3)
-        XCTAssertEqual(snapshot.engineObservation?.effectiveSetsByGroup[.abdominals], 3)
+        #expect(snapshot.facts.weeklySetsByGroup[.abdominals] == 3)
+        #expect(snapshot.engineObservation?.effectiveSetsByGroup[.abdominals] == 3)
         let dashboard = HomeDashboardPresenter.make(
             snapshot: snapshot, schedule: .default, goal: .strength,
             experience: .intermediate, userAge: nil)
-        XCTAssertEqual(dashboard.volume.first { $0.group == .abdominals }?.sets, 3)
+        #expect(dashboard.volume.first { $0.group == .abdominals }?.sets == 3)
     }
 
-    func testTestRecommendationNilWhenCoachHidden() throws {
+    @Test func testRecommendationNilWhenCoachHidden() throws {
         let ctx = try makeContext()
         _ = ctx
-        XCTAssertNil(HomeCoachModel.testRecommendation(
-            coachHidden: true, assessments: [], lastRecommendedAt: nil, snoozedUntil: [:]))
+        #expect(HomeCoachModel.testRecommendation(
+            coachHidden: true, assessments: [], lastRecommendedAt: nil, snoozedUntil: [:]) == nil)
     }
 
-    func testMaximumHROverrideInvalidatesCoachSignature() {
+    @Test func maximumHROverrideInvalidatesCoachSignature() {
         let token = UUID()
         let base = HomeCoachModel.Signature(token: token, sessionCount: 0, cardioCount: 0,
             assessmentCount: 0, goal: .strength, experience: .intermediate, formula: .epley,
             schedule: .default, profile: .empty, painToday: false, userAge: 50)
         var edited = base
         edited.cardioMaximumHROverride = 180
-        XCTAssertNotEqual(edited, base)
+        #expect(edited != base)
     }
 
 }

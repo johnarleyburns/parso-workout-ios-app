@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class HRSummaryCoverageTests: XCTestCase {
+struct HRSummaryCoverageTests {
     private let profile = CardioIntensityProfile.ageEstimated(age: 40)
     private func summary(unclassified: TimeInterval) -> CardioMinuteSummary {
         let pts = unclassified > 0
@@ -19,56 +20,56 @@ final class HRSummaryCoverageTests: XCTestCase {
                            hrCoverage: coverage, hrSampleCount: count, hrCompletionPending: pending)
     }
 
-    func testStateUsesTrueSampleCountNotSynthetic() {
-        XCTAssertEqual(data(count: 0).hrCoverageState, .none)
-        XCTAssertEqual(data(count: 1).hrCoverageState, .complete)
+    @Test func stateUsesTrueSampleCountNotSynthetic() {
+        #expect(data(count: 0).hrCoverageState == .none)
+        #expect(data(count: 1).hrCoverageState == .complete)
         let cov = HeartRateCoverage(source: .phone, sampleCount: 0, firstOffset: 0, lastOffset: 0, largestGap: 0, recordedAt: Date())
-        XCTAssertEqual(data(count: 5, coverage: cov).hrCoverageState, .none)
+        #expect(data(count: 5, coverage: cov).hrCoverageState == .none)
     }
 
-    func testSparseSamplesCarryForwardAndRemainDistinctFromZero() {
+    @Test func sparseSamplesCarryForwardAndRemainDistinctFromZero() {
         let sparse = data(count: 4, unclassified: 600)
-        XCTAssertEqual(sparse.hrCoverageState, .complete)
-        XCTAssertEqual(sparse.hrCoveragePresentation?.kind, .complete)
-        XCTAssertEqual(data(count: 0).hrCoveragePresentation?.kind, .noMeasurements)
-        XCTAssertEqual(data(count: 200).hrCoveragePresentation?.kind, .complete)
-        XCTAssertEqual(data(count: 3, pending: true).hrCoveragePresentation?.kind, .pending)
+        #expect(sparse.hrCoverageState == .complete)
+        #expect(sparse.hrCoveragePresentation?.kind == .complete)
+        #expect(data(count: 0).hrCoveragePresentation?.kind == .noMeasurements)
+        #expect(data(count: 200).hrCoveragePresentation?.kind == .complete)
+        #expect(data(count: 3, pending: true).hrCoveragePresentation?.kind == .pending)
     }
 
-    func testDiagnosticsLineIsPrivacySafe() {
+    @Test func diagnosticsLineIsPrivacySafe() {
         let c = HeartRateCoverage(source: .repairedHealthKit, sampleCount: 9, firstOffset: 0, lastOffset: 90, largestGap: 130, recordedAt: Date())
-        XCTAssertEqual(c.diagnosticsLine, "HR coverage: samples=9 largestGap=130s source=repairedHealthKit")
+        #expect(c.diagnosticsLine == "HR coverage: samples=9 largestGap=130s source=repairedHealthKit")
     }
 
-    func testSessionWithoutCoverageMetadataStillBuilds() {
+    @Test func sessionWithoutCoverageMetadataStillBuilds() {
         let s = WorkoutSession(title: "Old", date: Date(), endedAt: Date().addingTimeInterval(600))
         let d = WorkoutSummaryData.from(session: s)
-        XCTAssertNil(d.hrCoverage)
-        XCTAssertEqual(d.hrCoverageState, .none)
+        #expect(d.hrCoverage == nil)
+        #expect(d.hrCoverageState == .none)
     }
 }
 
-final class WatchStrengthHRCoverageTests: XCTestCase {
+struct WatchStrengthHRCoverageTests {
     private let profile = CardioIntensityProfile.ageEstimated(age: 40)
     private func present(_ samples: [HRSamplePoint], pending: Bool = false) -> HeartRateCoveragePresentation {
         WatchStrengthHRCoverage.presentation(samples: samples, duration: 1_000, profile: profile, pending: pending)
     }
 
-    func testWatchSummaryStates() {
+    @Test func watchSummaryStates() {
         let dense = stride(from: 0.0, to: 1_000, by: 5).map { HRSamplePoint(t: $0, bpm: 130) }
         let sparse = [0, 100, 200, 300].map { HRSamplePoint(t: Double($0), bpm: 130) }
-        XCTAssertEqual(present([]).kind, .noMeasurements)
-        XCTAssertEqual(present(sparse).kind, .complete)
-        XCTAssertEqual(present(dense).kind, .complete)
-        XCTAssertEqual(present(sparse, pending: true).kind, .pending)
-        XCTAssertTrue(present([]).accessibilityLabel.contains("unknown"))
-        XCTAssertTrue(present(sparse).accessibilityLabel.contains("complete"))
+        #expect(present([]).kind == .noMeasurements)
+        #expect(present(sparse).kind == .complete)
+        #expect(present(dense).kind == .complete)
+        #expect(present(sparse, pending: true).kind == .pending)
+        #expect(present([]).accessibilityLabel.contains("unknown"))
+        #expect(present(sparse).accessibilityLabel.contains("complete"))
     }
 
-    func testDiagnosticsLineIsPrivacySafe() {
+    @Test func diagnosticsLineIsPrivacySafe() {
         let c = HeartRateCoverage(source: .phone, sampleCount: 9, firstOffset: 0, lastOffset: 10, largestGap: 130, recordedAt: Date())
         let line = c.diagnosticsLine
-        XCTAssertFalse(line.contains("bpm"))
-        XCTAssertFalse(line.contains("-"), "no UUIDs or dates")
+        #expect(!line.contains("bpm"))
+        #expect(!line.contains("-"), "no UUIDs or dates")
     }
 }

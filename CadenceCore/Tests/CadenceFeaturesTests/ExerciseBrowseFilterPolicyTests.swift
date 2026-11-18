@@ -1,20 +1,21 @@
-import XCTest
+import Foundation
+import Testing
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class ExerciseBrowseFilterPolicyTests: XCTestCase {
-    func testEquipmentFirstBrowsePreservesEquipmentWhenGroupChanges() {
-        XCTAssertFalse(ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(mode: .byEquipment))
+struct ExerciseBrowseFilterPolicyTests {
+    @Test func equipmentFirstBrowsePreservesEquipmentWhenGroupChanges() {
+        #expect(!ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(mode: .byEquipment))
     }
 
-    func testMuscleFirstBrowseResetsEquipmentWhenGroupChanges() {
-        XCTAssertTrue(ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(mode: .byMuscleGroup))
+    @Test func muscleFirstBrowseResetsEquipmentWhenGroupChanges() {
+        #expect(ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(mode: .byMuscleGroup))
     }
 }
 
-final class ExerciseBrowseFilterStateTests: XCTestCase {
+struct ExerciseBrowseFilterStateTests {
     private func entry(_ name: String, groups: Set<MuscleGroup>, equipment: Equipment?) -> ExerciseCatalogEntry {
         ExerciseCatalogEntry(id: UUID(), name: name, primaryMuscleGroups: Array(groups),
                              trainedMuscleGroups: groups, equipmentValue: equipment)
@@ -27,45 +28,45 @@ final class ExerciseBrowseFilterStateTests: XCTestCase {
          entry("Barbell Curl", groups: [.biceps], equipment: .barbell)]
     }
 
-    func testTextSearchWithBarbellAndGlutesReturnsOnlyMatchingExercises() {
+    @Test func textSearchWithBarbellAndGlutesReturnsOnlyMatchingExercises() {
         let state = ExerciseBrowseFilterState(mode: .byEquipment, group: .glutes, equipment: .barbell)
-        XCTAssertEqual(state.filterSearchResults(results).map(\.name), ["Hip Thrust", "Barbell Squat"])
+        #expect(state.filterSearchResults(results).map(\.name) == ["Hip Thrust", "Barbell Squat"])
     }
 
-    func testSearchAllExercisesClearsFacetConstraintsButNotQuery() {
+    @Test func searchAllExercisesClearsFacetConstraintsButNotQuery() {
         var state = ExerciseBrowseFilterState(tab: .browse, group: .glutes, equipment: .barbell)
         state.clearFacets()
-        XCTAssertFalse(state.hasFacets)
-        XCTAssertEqual(state.filterSearchResults(results).count, results.count)
+        #expect(!state.hasFacets)
+        #expect(state.filterSearchResults(results).count == results.count)
     }
 
-    func testEquipmentFirstGroupNarrowingPreservesEquipment() {
-        XCTAssertFalse(ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(mode: .byEquipment))
+    @Test func equipmentFirstGroupNarrowingPreservesEquipment() {
+        #expect(!ExerciseBrowseFilterPolicy.resetsEquipmentOnGroupChange(mode: .byEquipment))
     }
 
-    func testClearAllReturnsToUnfilteredBrowse() {
+    @Test func clearAllReturnsToUnfilteredBrowse() {
         var state = ExerciseBrowseFilterState(tab: .popular, mode: .byEquipment, group: .glutes, equipment: .barbell)
         state.clearAll()
-        XCTAssertEqual(state.tab, .browse)
-        XCTAssertNil(state.group)
-        XCTAssertNil(state.equipment)
+        #expect(state.tab == .browse)
+        #expect(state.group == nil)
+        #expect(state.equipment == nil)
     }
 
-    func testNoMatchesForFiltersOffersClearFilters() {
+    @Test func noMatchesForFiltersOffersClearFilters() {
         let state = ExerciseBrowseFilterState(group: .calves, equipment: .barbell)
-        XCTAssertTrue(state.filterSearchResults(results).isEmpty)
-        XCTAssertTrue(state.hasFacets, "empty result with facets must offer Clear filters")
+        #expect(state.filterSearchResults(results).isEmpty)
+        #expect(state.hasFacets, "empty result with facets must offer Clear filters")
     }
 
-    func testSingleFacetStillAppliesAfterClearingOtherChip() {
+    @Test func singleFacetStillAppliesAfterClearingOtherChip() {
         var state = ExerciseBrowseFilterState(group: .glutes, equipment: .barbell)
         state.group = nil
-        XCTAssertEqual(state.filterSearchResults(results).count, 3)
+        #expect(state.filterSearchResults(results).count == 3)
     }
 
-    func testFilterControlsExposeSelectedAccessibilityStateAndMinimumHitArea() {
-        XCTAssertGreaterThanOrEqual(ExerciseFilterAccessibility.minimumHitTarget, 44)
-        XCTAssertTrue(ExerciseFilterAccessibility.selectedValue(isSelected: true))
-        XCTAssertEqual(ExerciseFilterAccessibility.removeChipLabel("Barbell"), "Remove Barbell filter")
+    @Test func filterControlsExposeSelectedAccessibilityStateAndMinimumHitArea() {
+        #expect(ExerciseFilterAccessibility.minimumHitTarget >= 44)
+        #expect(ExerciseFilterAccessibility.selectedValue(isSelected: true))
+        #expect(ExerciseFilterAccessibility.removeChipLabel("Barbell") == "Remove Barbell filter")
     }
 }

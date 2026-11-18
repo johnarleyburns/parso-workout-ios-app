@@ -1,38 +1,38 @@
-import XCTest
+import Testing
 import Foundation
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class HomePerformanceContractTests: XCTestCase {
-    func testCachedRestoreBeforeHeavyWorkIsValid() {
+struct HomePerformanceContractTests {
+    @Test func cachedRestoreBeforeHeavyWorkIsValid() {
         let sink = RecordingHomePerformanceEventSink()
         for e: HomePerformanceEvent in [.firstTodayFrame, .heroRestored, .suggestionRestored, .thisWeekInteractive,
                                         .historyReadStarted, .coachIdentityEvaluated, .fullSnapshotStarted,
                                         .weeklyProjectionStarted, .weeklyProjectionPublished] {
             sink.record(e)
         }
-        XCTAssertEqual(HomePerformanceContract.violations(in: sink.events), [])
+        #expect(HomePerformanceContract.violations(in: sink.events) == [])
         let times = sink.entries.map(\.uptimeNanoseconds)
-        XCTAssertEqual(times, times.sorted(), "timestamps must be monotonic")
+        #expect(times == times.sorted(), "timestamps must be monotonic")
     }
 
-    func testRestoreAfterHistoryReadIsRejected() {
+    @Test func restoreAfterHistoryReadIsRejected() {
         let events: [HomePerformanceEvent] = [.firstTodayFrame, .historyReadStarted, .heroRestored,
                                               .suggestionRestored, .thisWeekInteractive]
-        XCTAssertFalse(HomePerformanceContract.violations(in: events).isEmpty)
+        #expect(!HomePerformanceContract.violations(in: events).isEmpty)
     }
 
-    func testMissingRestoreAndLateInteractivityAreRejected() {
-        XCTAssertFalse(HomePerformanceContract.violations(in: [.firstTodayFrame]).isEmpty)
+    @Test func missingRestoreAndLateInteractivityAreRejected() {
+        #expect(!HomePerformanceContract.violations(in: [.firstTodayFrame]).isEmpty)
         let late: [HomePerformanceEvent] = [.heroRestored, .suggestionRestored, .weeklyProjectionStarted,
                                             .weeklyProjectionPublished, .thisWeekInteractive]
-        XCTAssertFalse(HomePerformanceContract.violations(in: late).isEmpty)
+        #expect(!HomePerformanceContract.violations(in: late).isEmpty)
     }
 
-    func testEventNamesAreContentFree() {
+    @Test func eventNamesAreContentFree() {
         for e in HomePerformanceEvent.allCases {
-            XCTAssertNil(e.rawValue.rangeOfCharacter(from: .decimalDigits))
+            #expect(e.rawValue.rangeOfCharacter(from: .decimalDigits) == nil)
         }
     }
 }

@@ -1,13 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Independent regression test for the in-progress path. A workout abandoned
 /// by an app restart is still user history and must remain resumable.
 @MainActor
-final class ActiveHistoryPersistenceSafetyTests: XCTestCase {
-    func testReopeningPersistentStorePreservesActiveWorkout() throws {
+struct ActiveHistoryPersistenceSafetyTests {
+    @Test func reopeningPersistentStorePreservesActiveWorkout() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("CadenceActiveHistorySafety-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -37,12 +37,12 @@ final class ActiveHistoryPersistenceSafetyTests: XCTestCase {
                                                             cloudKitEnabled: false,
                                                             storeURL: storeURL)
         let context = ModelContext(reopened)
-        let session = try XCTUnwrap(
+        let session = try #require(
             try context.fetch(FetchDescriptor<WorkoutSession>()).first(where: { $0.id == id }))
-        XCTAssertTrue(session.isResumable)
-        XCTAssertNil(session.endedAt)
-        XCTAssertEqual(session.plannedExerciseNames, ["Active Test Exercise"])
-        XCTAssertEqual(session.orderedSets.count, 1)
+        #expect(session.isResumable)
+        #expect(session.endedAt == nil)
+        #expect(session.plannedExerciseNames == ["Active Test Exercise"])
+        #expect(session.orderedSets.count == 1)
     }
 }
 #endif

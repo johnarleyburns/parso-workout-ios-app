@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
 /// strength-pivot P4 — assessment-driven engine rules over `TrainingFacts`.
-final class AssessmentInsightTests: XCTestCase {
+struct AssessmentInsightTests {
 
     private let day: TimeInterval = 86_400
 
@@ -19,113 +20,113 @@ final class AssessmentInsightTests: XCTestCase {
 
     // MARK: cold-start is bypassed once an assessment exists
 
-    func testAssessmentBreaksColdStart() {
+    @Test func assessmentBreaksColdStart() {
         let now = Date()
         let f = facts([a(.pushupMax, 25, daysAgo: 2, now: now)], now: now)
         let insights = InsightEngine.run(f)
-        XCTAssertFalse(insights.contains { $0.kind == .coldStart })
+        #expect(!insights.contains { $0.kind == .coldStart })
     }
 
     // MARK: progress rule
 
-    func testImprovementProducesInfoInsight() {
+    @Test func improvementProducesInfoInsight() {
         let now = Date()
         let f = facts([a(.pushupMax, 20, daysAgo: 40, now: now),
                        a(.pushupMax, 32, daysAgo: 2, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.pushupMax" }
-        XCTAssertEqual(i?.kind, .assessment)
-        XCTAssertEqual(i?.severity, .info)
-        XCTAssertTrue(i?.message.contains("+12 reps") ?? false, "got: \(i?.message ?? "nil")")
+        #expect(i?.kind == .assessment)
+        #expect(i?.severity == .info)
+        #expect(i?.message.contains("+12 reps") ?? false, "got: \(i?.message ?? "nil")")
     }
 
-    func testDeclineProducesAttentionInsight() {
+    @Test func declineProducesAttentionInsight() {
         let now = Date()
         let f = facts([a(.plankHold, 120, daysAgo: 40, now: now),
                        a(.plankHold, 80, daysAgo: 2, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.plankHold" }
-        XCTAssertEqual(i?.severity, .attention)
+        #expect(i?.severity == .attention)
     }
 
-    func testSingleResultProducesNoProgressInsight() {
+    @Test func singleResultProducesNoProgressInsight() {
         let now = Date()
         let f = facts([a(.pushupMax, 20, daysAgo: 2, now: now)], now: now)
-        XCTAssertNil(InsightEngine.run(f).first { $0.id == "assessment.pushupMax" })
+        #expect(InsightEngine.run(f).first { $0.id == "assessment.pushupMax" } == nil)
     }
 
     // MARK: retest rule
 
-    func testStaleSeriesTriggersRetestInsight() {
+    @Test func staleSeriesTriggersRetestInsight() {
         let now = Date()
         let f = facts([a(.pushupMax, 20, daysAgo: 50, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.retest.pushupMax" }
-        XCTAssertEqual(i?.kind, .assessment)
-        XCTAssertEqual(i?.severity, .info)
+        #expect(i?.kind == .assessment)
+        #expect(i?.severity == .info)
     }
 
-    func testFreshSeriesDoesNotTriggerRetest() {
+    @Test func freshSeriesDoesNotTriggerRetest() {
         let now = Date()
         let f = facts([a(.pushupMax, 20, daysAgo: 5, now: now)], now: now)
-        XCTAssertNil(InsightEngine.run(f).first { $0.id.hasPrefix("assessment.retest") })
+        #expect(InsightEngine.run(f).first { $0.id.hasPrefix("assessment.retest") } == nil)
     }
 
     // MARK: D3 — assessment insights are cited from the known registry
 
-    func testAssessmentInsightsAreCited() {
+    @Test func assessmentInsightsAreCited() {
         let now = Date()
         let f = facts([a(.e1RM, 100, daysAgo: 50, lift: "Bench", now: now),
                        a(.e1RM, 112, daysAgo: 2, lift: "Bench", now: now)], now: now)
         let known = Set(CitationRegistry.all.map(\.id))
         let assessmentInsights = InsightEngine.run(f).filter { $0.kind == .assessment }
-        XCTAssertFalse(assessmentInsights.isEmpty)
+        #expect(!assessmentInsights.isEmpty)
         for i in assessmentInsights {
-            XCTAssertTrue(known.contains(i.citation.id), "\(i.id) cites unknown \(i.citation.id)")
+            #expect(known.contains(i.citation.id), "\(i.id) cites unknown \(i.citation.id)")
         }
     }
 
-    func testDeterministic() {
+    @Test func deterministic() {
         let now = Date()
         let f = facts([a(.e1RM, 100, daysAgo: 50, lift: "Bench", now: now),
                        a(.e1RM, 112, daysAgo: 2, lift: "Bench", now: now)], now: now)
-        XCTAssertEqual(InsightEngine.run(f).map(\.id), InsightEngine.run(f).map(\.id))
+        #expect(InsightEngine.run(f).map(\.id) == InsightEngine.run(f).map(\.id))
     }
 
     // MARK: P6 — cardio assessment insights
 
-    func testVo2maxImprovementProducesInfoInsight() {
+    @Test func vo2maxImprovementProducesInfoInsight() {
         let now = Date()
         let f = facts([a(.vo2maxField, 38, daysAgo: 60, now: now),
                        a(.vo2maxField, 45, daysAgo: 2, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.vo2maxField" }
-        XCTAssertEqual(i?.kind, .assessment)
-        XCTAssertEqual(i?.severity, .info)
-        XCTAssertTrue(i?.message.contains("+7.0 mL/kg/min") ?? false, "got: \(i?.message ?? "nil")")
+        #expect(i?.kind == .assessment)
+        #expect(i?.severity == .info)
+        #expect(i?.message.contains("+7.0 mL/kg/min") ?? false, "got: \(i?.message ?? "nil")")
     }
 
-    func testVo2maxDeclineProducesAttentionInsight() {
+    @Test func vo2maxDeclineProducesAttentionInsight() {
         let now = Date()
         let f = facts([a(.vo2maxField, 45, daysAgo: 60, now: now),
                        a(.vo2maxField, 38, daysAgo: 2, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.vo2maxField" }
-        XCTAssertEqual(i?.severity, .attention)
+        #expect(i?.severity == .attention)
     }
 
-    func testWingateDeclineProducesAttentionInsight() {
+    @Test func wingateDeclineProducesAttentionInsight() {
         let now = Date()
         let f = facts([a(.wingate, 600, daysAgo: 60, now: now),
                        a(.wingate, 500, daysAgo: 2, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.wingate" }
-        XCTAssertEqual(i?.severity, .attention)
+        #expect(i?.severity == .attention)
     }
 
-    func testStaleCardioSeriesTriggersRetest() {
+    @Test func staleCardioSeriesTriggersRetest() {
         let now = Date()
         let f = facts([a(.wingate, 500, daysAgo: 50, now: now)], now: now)
         let i = InsightEngine.run(f).first { $0.id == "assessment.cardio.retest.wingate" }
-        XCTAssertEqual(i?.kind, .assessment)
-        XCTAssertEqual(i?.severity, .info)
+        #expect(i?.kind == .assessment)
+        #expect(i?.severity == .info)
     }
 
-    func testCardioInsightsUseCardioCitations() {
+    @Test func cardioInsightsUseCardioCitations() {
         let now = Date()
         let f = facts([a(.vo2maxField, 38, daysAgo: 60, now: now),
                        a(.vo2maxField, 45, daysAgo: 2, now: now),
@@ -134,7 +135,7 @@ final class AssessmentInsightTests: XCTestCase {
         let insights = InsightEngine.run(f).filter { $0.id.hasPrefix("assessment.cardio") }
         for i in insights {
             let ids = Set(CitationRegistry.all.map(\.id))
-            XCTAssertTrue(ids.contains(i.citation.id), "\(i.id) cites unknown \(i.citation.id)")
+            #expect(ids.contains(i.citation.id), "\(i.id) cites unknown \(i.citation.id)")
         }
     }
 }

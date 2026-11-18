@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class CoachPreferenceProfileTests: XCTestCase {
+struct CoachPreferenceProfileTests {
 
-    func testRecordAerobicSelectionIncrementsPreference() {
+    @Test func recordAerobicSelectionIncrementsPreference() {
         var profile = CoachPreferenceProfile.empty
         let session = CoachSession(
             id: "aerobic.moderateCycle",
@@ -22,14 +23,14 @@ final class CoachPreferenceProfileTests: XCTestCase {
 
         profile.recordSelection(session, from: alternatives, at: Date())
 
-        XCTAssertEqual(profile.selectionEvents.count, 1)
-        XCTAssertEqual(profile.aerobicPreferences.count, 1)
-        XCTAssertEqual(profile.aerobicPreferences.first?.modality, .cycle)
-        XCTAssertEqual(profile.aerobicPreferences.first?.intent, .moderateAerobic)
-        XCTAssertEqual(profile.aerobicPreferences.first?.score, 1)
+        #expect(profile.selectionEvents.count == 1)
+        #expect(profile.aerobicPreferences.count == 1)
+        #expect(profile.aerobicPreferences.first?.modality == .cycle)
+        #expect(profile.aerobicPreferences.first?.intent == .moderateAerobic)
+        #expect(profile.aerobicPreferences.first?.score == 1)
     }
 
-    func testRecentRepeatedSelectionOutranksOlderSelection() {
+    @Test func recentRepeatedSelectionOutranksOlderSelection() {
         var profile = CoachPreferenceProfile.empty
         let now = Date()
         let older = now.addingTimeInterval(-3600)
@@ -44,14 +45,14 @@ final class CoachPreferenceProfileTests: XCTestCase {
         profile.recordSelection(cycleSession, from: [], at: older)
         profile.recordSelection(cycleSession, from: [], at: now)
 
-        XCTAssertEqual(profile.aerobicPreferences.first { $0.modality == .cycle }?.score, 2)
+        #expect(profile.aerobicPreferences.first { $0.modality == .cycle }?.score == 2)
         let cyclePref = profile.aerobicPreferences.first { $0.modality == .cycle }
         let runPref = profile.aerobicPreferences.first { $0.modality == .run }
-        XCTAssertNil(runPref)
-        XCTAssertNotNil(cyclePref)
+        #expect(runPref == nil)
+        #expect(cyclePref != nil)
     }
 
-    func testStrengthPreferenceIsScopedToMovementPattern() {
+    @Test func strengthPreferenceIsScopedToMovementPattern() {
         var profile = CoachPreferenceProfile.empty
         let session = CoachSession(
             id: "strength.general", kind: .strength,
@@ -67,12 +68,12 @@ final class CoachPreferenceProfileTests: XCTestCase {
 
         profile.recordSelection(session, from: [], at: Date())
 
-        XCTAssertEqual(profile.strengthPreferences.count, 1)
-        XCTAssertEqual(profile.strengthPreferences.first?.exerciseName, "Back Squat")
-        XCTAssertEqual(profile.strengthPreferences.first?.pattern, .squat)
+        #expect(profile.strengthPreferences.count == 1)
+        #expect(profile.strengthPreferences.first?.exerciseName == "Back Squat")
+        #expect(profile.strengthPreferences.first?.pattern == .squat)
     }
 
-    func testProfileCodableRoundTrip() throws {
+    @Test func profileCodableRoundTrip() throws {
         var profile = CoachPreferenceProfile.empty
         let session = CoachSession(
             id: "aerobic.moderateCycle", kind: .moderateAerobic,
@@ -85,13 +86,13 @@ final class CoachPreferenceProfileTests: XCTestCase {
         let encoded = try JSONEncoder().encode(profile)
         let decoded = try JSONDecoder().decode(CoachPreferenceProfile.self, from: encoded)
 
-        XCTAssertEqual(decoded.version, profile.version)
-        XCTAssertEqual(decoded.aerobicPreferences.count, profile.aerobicPreferences.count)
-        XCTAssertEqual(decoded.aerobicPreferences.first?.modality, .cycle)
-        XCTAssertEqual(decoded.selectionEvents.count, 1)
+        #expect(decoded.version == profile.version)
+        #expect(decoded.aerobicPreferences.count == profile.aerobicPreferences.count)
+        #expect(decoded.aerobicPreferences.first?.modality == .cycle)
+        #expect(decoded.selectionEvents.count == 1)
     }
 
-    func testChoosingEasierWorkRecordsHardAvoidance() {
+    @Test func choosingEasierWorkRecordsHardAvoidance() {
         var profile = CoachPreferenceProfile.empty
         let easy = CoachSession(
             id: "aerobic.easyWalk",
@@ -116,10 +117,10 @@ final class CoachPreferenceProfileTests: XCTestCase {
 
         profile.recordSelection(easy, from: [hard], at: Date())
 
-        XCTAssertTrue(profile.avoidedTags.contains("hard"))
-        XCTAssertTrue(profile.avoidedTags.contains("highImpact"))
-        XCTAssertTrue(profile.avoidedTags.contains("anaerobic"))
-        XCTAssertLessThan(profile.preferenceScore(for: hard), 0)
-        XCTAssertGreaterThan(profile.avoidancePenalty(forTags: hard.trainingLoadTags), 0)
+        #expect(profile.avoidedTags.contains("hard"))
+        #expect(profile.avoidedTags.contains("highImpact"))
+        #expect(profile.avoidedTags.contains("anaerobic"))
+        #expect(profile.preferenceScore(for: hard) < 0)
+        #expect(profile.avoidancePenalty(forTags: hard.trainingLoadTags) > 0)
     }
 }

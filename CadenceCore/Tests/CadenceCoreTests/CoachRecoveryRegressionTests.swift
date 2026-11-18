@@ -1,11 +1,12 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Tests for the recovery-aware CoachDecision engine and eligibility policy.
 /// Verifies that recently-trained lifts are properly gated from being recommended again.
-final class CoachRecoveryRegressionTests: XCTestCase {
+struct CoachRecoveryRegressionTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -24,7 +25,7 @@ final class CoachRecoveryRegressionTests: XCTestCase {
 
     // MARK: - Recovery gate tests
 
-    func testNewEngineDeadliftOnly42MinAgoBlocksStrength() throws {
+    @Test func newEngineDeadliftOnly42MinAgoBlocksStrength() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try deadliftOnlySession(context: ctx, date: now.addingTimeInterval(-42 * 60))
@@ -33,13 +34,11 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         let event = TrainingEvent.from(session: session)!
         let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
-        XCTAssertNotEqual(decision.primary.kind, .strength,
-                          "New engine: should NOT recommend strength 42 min after deadlifting")
-        XCTAssertTrue(decision.primary.kind == .easyAerobic || decision.primary.kind == .rest || decision.primary.kind == .recovery,
-                      "New engine: should recommend rest or easy aerobic after strength")
+        #expect(decision.primary.kind != .strength, "New engine: should NOT recommend strength 42 min after deadlifting")
+        #expect(decision.primary.kind == .easyAerobic || decision.primary.kind == .rest || decision.primary.kind == .recovery, "New engine: should recommend rest or easy aerobic after strength")
     }
 
-    func testNewEngineFullBody42MinAgoNotStrength() throws {
+    @Test func newEngineFullBody42MinAgoNotStrength() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try fullBodySession(context: ctx, date: now.addingTimeInterval(-42 * 60))
@@ -48,11 +47,10 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         let event = TrainingEvent.from(session: session)!
         let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
-        XCTAssertNotEqual(decision.primary.kind, .strength,
-                          "New engine: should NOT recommend strength 42 min after full-body")
+        #expect(decision.primary.kind != .strength, "New engine: should NOT recommend strength 42 min after full-body")
     }
 
-    func testNewEngineDeadlift23h59mAgoIsDeferred() throws {
+    @Test func newEngineDeadlift23h59mAgoIsDeferred() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try deadliftOnlySession(context: ctx, date: now.addingTimeInterval(-23.98 * 3600))
@@ -62,11 +60,10 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let deferredStrength = decision.deferred.filter { $0.session.kind == .strength }
-        XCTAssertFalse(deferredStrength.isEmpty,
-                       "New engine: deadlift at 23h59m should be in deferred candidates")
+        #expect(!deferredStrength.isEmpty, "New engine: deadlift at 23h59m should be in deferred candidates")
     }
 
-    func testNewEngineDecisionIsDeterministic() throws {
+    @Test func newEngineDecisionIsDeterministic() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try deadliftOnlySession(context: ctx, date: now.addingTimeInterval(-3 * 86400))
@@ -76,12 +73,12 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
         let d1 = CoachDecisionEngine.run(facts)
         let d2 = CoachDecisionEngine.run(facts)
-        XCTAssertEqual(d1.primary.id, d2.primary.id)
+        #expect(d1.primary.id == d2.primary.id)
     }
 
     // MARK: - Card payload integrity
 
-    func testProgressionRecommendationPrescribedSessionIsConcrete() throws {
+    @Test func progressionRecommendationPrescribedSessionIsConcrete() throws {
         let ctx = try makeContext()
         let now = testNow
         _ = try deadliftOnlySession(context: ctx, date: now.addingTimeInterval(-3 * 86_400))
@@ -90,11 +87,11 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         let f = TrainingFacts.make(sessions: [session2], now: now,
                                     goal: .strength, experience: .intermediate)
         let rec = RecommendationEngine.run(f).first { $0.id == "progression.Deadlift" }
-        XCTAssertNotNil(rec, "Should have a deadlift progression recommendation")
+        #expect(rec != nil, "Should have a deadlift progression recommendation")
         let session = rec?.prescribedSession()
-        XCTAssertNotNil(session)
-        XCTAssertFalse(session?.exerciseNames.isEmpty ?? true, "Prescribed session should name the movement")
-        XCTAssertFalse(session?.repLadder.isEmpty ?? true, "Prescribed session should have target reps")
+        #expect(session != nil)
+        #expect(!(session?.exerciseNames.isEmpty ?? true), "Prescribed session should name the movement")
+        #expect(!(session?.repLadder.isEmpty ?? true), "Prescribed session should have target reps")
     }
 
     // MARK: - Helpers

@@ -1,9 +1,9 @@
 #if canImport(SwiftData)
-import XCTest
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class ExerciseAliasResolutionTests: XCTestCase {
+struct ExerciseAliasResolutionTests {
 
     private func makeContext(seed: Bool = false) throws -> ModelContext {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -13,34 +13,34 @@ final class ExerciseAliasResolutionTests: XCTestCase {
         return context
     }
 
-    func testCommonAliasesResolveToBuiltInTemplates() {
+    @Test func commonAliasesResolveToBuiltInTemplates() {
         let lateral = ExerciseLibrary.template(matching: "Lateral Raise")
-        XCTAssertEqual(lateral?.name, "Dumbbell Lateral Raise")
-        XCTAssertEqual(lateral?.primaryMuscles, ["shoulders"])
+        #expect(lateral?.name == "Dumbbell Lateral Raise")
+        #expect(lateral?.primaryMuscles == ["shoulders"])
 
         let pushdown = ExerciseLibrary.template(matching: "Tricep Pushdown")
-        XCTAssertEqual(pushdown?.name, "Triceps Pushdown")
-        XCTAssertEqual(pushdown?.primaryMuscles, ["triceps"])
+        #expect(pushdown?.name == "Triceps Pushdown")
+        #expect(pushdown?.primaryMuscles == ["triceps"])
     }
 
-    func testFindOrCreateUsesBuiltInsForWatchAliasNames() throws {
+    @Test func findOrCreateUsesBuiltInsForWatchAliasNames() throws {
         let context = try makeContext()
 
         let lateral = try WorkoutRepository.findOrCreateExercise(named: "Lateral Raise", in: context)
-        XCTAssertEqual(lateral.name, "Dumbbell Lateral Raise")
-        XCTAssertFalse(lateral.isCustom)
-        XCTAssertEqual(lateral.primaryMuscles, ["shoulders"])
+        #expect(lateral.name == "Dumbbell Lateral Raise")
+        #expect(!lateral.isCustom)
+        #expect(lateral.primaryMuscles == ["shoulders"])
 
         let pushdown = try WorkoutRepository.findOrCreateExercise(named: "Tricep Pushdown", in: context)
-        XCTAssertEqual(pushdown.name, "Triceps Pushdown")
-        XCTAssertFalse(pushdown.isCustom)
-        XCTAssertEqual(pushdown.primaryMuscles, ["triceps"])
+        #expect(pushdown.name == "Triceps Pushdown")
+        #expect(!pushdown.isCustom)
+        #expect(pushdown.primaryMuscles == ["triceps"])
 
         let customs = try WorkoutRepository.allExercises(context).filter(\.isCustom)
-        XCTAssertTrue(customs.isEmpty)
+        #expect(customs.isEmpty)
     }
 
-    func testSeedRepairsEmptyCustomAliasesPreservingWatchSets() throws {
+    @Test func seedRepairsEmptyCustomAliasesPreservingWatchSets() throws {
         let context = try makeContext()
         let custom = Exercise(name: "Tricep Pushdown", isCustom: true)
         custom.isFavorite = true
@@ -54,26 +54,26 @@ final class ExerciseAliasResolutionTests: XCTestCase {
 
         let before = TrainingFacts.make(sessions: [session], now: session.date,
                                         goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(before.incompleteCustomExerciseNames, ["Tricep Pushdown"])
+        #expect(before.incompleteCustomExerciseNames == ["Tricep Pushdown"])
 
-        XCTAssertTrue(try WorkoutRepository.seedStarterLibraryIfNeeded(context))
+        #expect(try WorkoutRepository.seedStarterLibraryIfNeeded(context))
 
         let exercises = try WorkoutRepository.allExercises(context)
-        XCTAssertFalse(exercises.contains { $0.isCustom && $0.name == "Tricep Pushdown" })
-        let builtIn = try XCTUnwrap(exercises.first { !$0.isCustom && $0.name == "Triceps Pushdown" })
-        XCTAssertEqual(builtIn.primaryMuscles, ["triceps"])
-        XCTAssertEqual(builtIn.sets?.count, 1)
-        XCTAssertTrue(builtIn.isFavorite)
+        #expect(!exercises.contains { $0.isCustom && $0.name == "Tricep Pushdown" })
+        let builtIn = try #require(exercises.first { !$0.isCustom && $0.name == "Triceps Pushdown" })
+        #expect(builtIn.primaryMuscles == ["triceps"])
+        #expect(builtIn.sets?.count == 1)
+        #expect(builtIn.isFavorite)
 
-        let savedSession = try XCTUnwrap(try WorkoutRepository.allSessions(context).first)
-        XCTAssertEqual(savedSession.plannedExerciseNames, ["Triceps Pushdown"])
-        XCTAssertEqual(savedSession.orderedSets.first?.exercise?.name, "Triceps Pushdown")
+        let savedSession = try #require(try WorkoutRepository.allSessions(context).first)
+        #expect(savedSession.plannedExerciseNames == ["Triceps Pushdown"])
+        #expect(savedSession.orderedSets.first?.exercise?.name == "Triceps Pushdown")
         let after = TrainingFacts.make(sessions: [savedSession], now: session.date,
                                        goal: .hypertrophy, experience: .intermediate)
-        XCTAssertTrue(after.incompleteCustomExerciseNames.isEmpty)
+        #expect(after.incompleteCustomExerciseNames.isEmpty)
     }
 
-    func testImportMapsEmptyCustomAliasExportToBuiltIn() throws {
+    @Test func importMapsEmptyCustomAliasExportToBuiltIn() throws {
         let context = try makeContext(seed: true)
         let now = Date(timeIntervalSince1970: 1_800_000_100)
         let export = CadenceExport(
@@ -96,17 +96,17 @@ final class ExerciseAliasResolutionTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(try WorkoutRepository.merge(export, in: context), 1)
+        #expect(try WorkoutRepository.merge(export, in: context) == 1)
 
         let exercises = try WorkoutRepository.allExercises(context)
-        XCTAssertFalse(exercises.contains { $0.isCustom && $0.name == "Lateral Raise" })
-        let builtIn = try XCTUnwrap(exercises.first { !$0.isCustom && $0.name == "Dumbbell Lateral Raise" })
-        XCTAssertEqual(builtIn.primaryMuscles, ["shoulders"])
-        XCTAssertEqual(builtIn.sets?.count, 1)
+        #expect(!exercises.contains { $0.isCustom && $0.name == "Lateral Raise" })
+        let builtIn = try #require(exercises.first { !$0.isCustom && $0.name == "Dumbbell Lateral Raise" })
+        #expect(builtIn.primaryMuscles == ["shoulders"])
+        #expect(builtIn.sets?.count == 1)
 
-        let session = try XCTUnwrap(try WorkoutRepository.allSessions(context).first)
-        XCTAssertEqual(session.plannedExerciseNames, ["Dumbbell Lateral Raise"])
-        XCTAssertEqual(session.orderedSets.first?.exercise?.name, "Dumbbell Lateral Raise")
+        let session = try #require(try WorkoutRepository.allSessions(context).first)
+        #expect(session.plannedExerciseNames == ["Dumbbell Lateral Raise"])
+        #expect(session.orderedSets.first?.exercise?.name == "Dumbbell Lateral Raise")
     }
 }
 #endif

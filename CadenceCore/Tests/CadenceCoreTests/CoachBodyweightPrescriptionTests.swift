@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -7,7 +8,7 @@ import SwiftData
 /// the coach must not stamp the goal's loaded 6–12 range onto crunches / air
 /// squats. Bodyweight movements track the user's real logged reps, or default to
 /// a high-rep range absent history; weighted lifts and time holds are unchanged.
-final class CoachBodyweightPrescriptionTests: XCTestCase {
+struct CoachBodyweightPrescriptionTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -22,41 +23,41 @@ final class CoachBodyweightPrescriptionTests: XCTestCase {
 
     // MARK: - PrescriptionMath.repRange
 
-    func testBodyweightWithHistoryTracksLoggedReps() {
+    @Test func bodyweightWithHistoryTracksLoggedReps() {
         let range = PrescriptionMath.repRange(forExerciseNamed: "Crunch", goal: .hypertrophy,
                                               recentTopReps: 40)
-        XCTAssertEqual(range.upperBound, 40, "top of the range tracks the user's real 40-rep set")
-        XCTAssertGreaterThanOrEqual(range.lowerBound, 12, "range stays high-rep, never 6–12")
-        XCTAssertNotEqual(range, TrainingGoal.hypertrophy.repRange)
+        #expect(range.upperBound == 40, "top of the range tracks the user's real 40-rep set")
+        #expect(range.lowerBound >= 12, "range stays high-rep, never 6–12")
+        #expect(range != TrainingGoal.hypertrophy.repRange)
     }
 
-    func testBodyweightWithoutHistoryDefaultsToHighRep() {
+    @Test func bodyweightWithoutHistoryDefaultsToHighRep() {
         let range = PrescriptionMath.repRange(forExerciseNamed: "Air Squat", goal: .hypertrophy)
-        XCTAssertEqual(range, 15...25, "a high-rep bodyweight move defaults to 15–25 absent history")
+        #expect(range == 15...25, "a high-rep bodyweight move defaults to 15–25 absent history")
     }
 
-    func testWeightedLiftKeepsGoalRangeEvenWithRepHistory() {
+    @Test func weightedLiftKeepsGoalRangeEvenWithRepHistory() {
         let range = PrescriptionMath.repRange(forExerciseNamed: "Back Squat", goal: .hypertrophy,
                                               recentTopReps: 40)
-        XCTAssertEqual(range, TrainingGoal.hypertrophy.repRange,
+        #expect(range == TrainingGoal.hypertrophy.repRange,
                        "weighted lifts keep the goal's loaded range; reps aren't the progression variable")
     }
 
-    func testTimeHoldKeepsGoalRange() {
-        XCTAssertEqual(PrescriptionMath.repRange(forExerciseNamed: "Plank", goal: .hypertrophy),
+    @Test func timeHoldKeepsGoalRange() {
+        #expect(PrescriptionMath.repRange(forExerciseNamed: "Plank", goal: .hypertrophy) ==
                        TrainingGoal.hypertrophy.repRange,
                        "time holds are unchanged (builders special-case them)")
     }
 
-    func testStrengthBiasedBodyweightWithoutHistoryStaysConservative() {
-        XCTAssertEqual(PrescriptionMath.repRange(forExerciseNamed: "Pull-Up", goal: .hypertrophy),
+    @Test func strengthBiasedBodyweightWithoutHistoryStaysConservative() {
+        #expect(PrescriptionMath.repRange(forExerciseNamed: "Pull-Up", goal: .hypertrophy) ==
                        TrainingGoal.hypertrophy.repRange,
                        "pull-ups are bodyweight but low-rep — no aggressive 15–25 default without history")
     }
 
     // MARK: - End-to-end: planned session prescribes high reps for bodyweight history
 
-    func testPlannedBodyweightExercisePrescribesHighReps() throws {
+    @Test func plannedBodyweightExercisePrescribesHighReps() throws {
         let ctx = try makeContext()
         let now = fixedWednesday()
 
@@ -93,26 +94,26 @@ final class CoachBodyweightPrescriptionTests: XCTestCase {
         let absExercise = optimized.plannedStrengthSessions
             .flatMap { $0.exercises ?? [] }
             .first { $0.name == "Crunch" }
-        let ex = try XCTUnwrap(absExercise, "coach should route abs volume to the user's crunches")
-        XCTAssertEqual(ex.repsHigh, 40, "prescription tracks the logged 40-rep top set")
-        XCTAssertEqual(ex.repsLow, 20, "history-based high-rep range uses a conservative half-top-set floor")
-        XCTAssertEqual(Array((ex.repLadder ?? []).prefix(3)), [40, 30, 20],
+        let ex = try #require(absExercise, "coach should route abs volume to the user's crunches")
+        #expect(ex.repsHigh == 40, "prescription tracks the logged 40-rep top set")
+        #expect(ex.repsLow == 20, "history-based high-rep range uses a conservative half-top-set floor")
+        #expect(Array((ex.repLadder ?? []).prefix(3)) == [40, 30, 20],
                        "high-rep bodyweight ladders drop by 10 reps, not 2")
     }
 
-    func testLowRepBodyweightDoesNotUseHighRepDecrement() {
+    @Test func lowRepBodyweightDoesNotUseHighRepDecrement() {
         let pullUpRange = PrescriptionMath.repRange(forExerciseNamed: "Pull-Up", goal: .hypertrophy)
-        XCTAssertEqual(pullUpRange, TrainingGoal.hypertrophy.repRange)
-        XCTAssertEqual(
-            RepLadder.ladder(low: pullUpRange.lowerBound, high: pullUpRange.upperBound, sets: 3),
+        #expect(pullUpRange == TrainingGoal.hypertrophy.repRange)
+        #expect(
+            RepLadder.ladder(low: pullUpRange.lowerBound, high: pullUpRange.upperBound, sets: 3) ==
             [12, 10, 8]
         )
 
         let muscleUpRange = PrescriptionMath.repRange(forExerciseNamed: "Muscle-Up", goal: .strength,
                                                       recentTopReps: 8)
-        XCTAssertLessThan(muscleUpRange.upperBound, 30)
-        XCTAssertNotEqual(
-            RepLadder.ladder(low: muscleUpRange.lowerBound, high: muscleUpRange.upperBound, sets: 3),
+        #expect(muscleUpRange.upperBound < 30)
+        #expect(
+            RepLadder.ladder(low: muscleUpRange.lowerBound, high: muscleUpRange.upperBound, sets: 3) !=
             [8, 3, 3]
         )
     }

@@ -1,16 +1,17 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
 /// Phase 6 regressions for the `BodyPart` → `MuscleGroup` migration: the optimizer
 /// now plans against 20 named groups instead of 8 coarse body parts, and these
 /// tests pin the three properties that change had to preserve — a bounded
 /// candidate universe, a bounded session size, and group-level recovery gating.
-final class CoachPlanOptimizerMuscleGroupTests: XCTestCase {
+struct CoachPlanOptimizerMuscleGroupTests {
 
     /// The candidate universe is the user's tracked groups, never all 20. Without
     /// this the optimizer chases `tibialis`, `neck` and `rotatorCuff` — groups the
     /// catalog has no depth behind, so their deficits could never close (D4).
-    func testOptimizerOnlyTargetsTrackedGroups() {
+    @Test func optimizerOnlyTargetsTrackedGroups() {
         let now = fixedWednesday()
         let facts = trainingFacts([:])   // cold start: everything is a deficit
         let optimized = CoachPlanOptimizer.optimize(
@@ -22,16 +23,16 @@ final class CoachPlanOptimizerMuscleGroupTests: XCTestCase {
 
         let untracked = MuscleGroup.canonicalOrder.filter { !$0.isTrackedByDefault }
         for group in untracked {
-            XCTAssertNil(optimized.unresolvedDeficits[group],
+            #expect(optimized.unresolvedDeficits[group] == nil,
                          "\(group.displayName) is untracked and must never carry a deficit")
         }
-        XCTAssertTrue(optimized.unresolvedDeficits.keys.allSatisfy(\.isTrackedByDefault),
+        #expect(optimized.unresolvedDeficits.keys.allSatisfy { $0.isTrackedByDefault },
                       "Every reported deficit must belong to a tracked group")
     }
 
     /// 13 tracked dimensions instead of 8 must not make sessions longer: the policy
     /// caps exercises and total sets, and a cold-start plan has to respect it.
-    func testSessionExerciseCountDoesNotGrowVersusEightPartBaseline() {
+    @Test func sessionExerciseCountDoesNotGrowVersusEightPartBaseline() {
         let now = fixedWednesday()
         let optimized = CoachPlanOptimizer.optimize(
             trainingFacts: trainingFacts([:]),
@@ -40,14 +41,14 @@ final class CoachPlanOptimizerMuscleGroupTests: XCTestCase {
             schedulePreferences: preferences(),
             candidates: [genericStrengthSession()])
 
-        XCTAssertFalse(optimized.plannedStrengthSessions.isEmpty, "expected a planned session")
+        #expect(!optimized.plannedStrengthSessions.isEmpty, "expected a planned session")
         for session in optimized.plannedStrengthSessions {
             let exercises = session.exercises ?? []
-            XCTAssertLessThanOrEqual(exercises.count,
+            #expect(exercises.count <=
                                      PlanningConstraintPolicy.safe.maxExercisesPerSession,
                                      "\(session.title) grew past the per-session exercise cap")
             let sets = exercises.reduce(0) { $0 + ($1.sets ?? 0) }
-            XCTAssertLessThanOrEqual(sets, PlanningConstraintPolicy.safe.maxTotalSetsPerSession,
+            #expect(sets <= PlanningConstraintPolicy.safe.maxTotalSetsPerSession,
                                      "\(session.title) grew past the per-session set cap")
         }
     }
@@ -55,32 +56,32 @@ final class CoachPlanOptimizerMuscleGroupTests: XCTestCase {
     /// Upper/lower classification reads the 20-group vocabulary: every lower-body
     /// group (not just the retired `.legs`/`.calves` pair) counts as lower, and
     /// abdominals stay neutral so a leg day is not misread as full-body.
-    func testUpperLowerSplitAssignsGroupsCorrectly() {
+    @Test func upperLowerSplitAssignsGroupsCorrectly() {
         let lower = strengthSession(named: "Lower", exercises: [
             .init(name: "Back Squat", primaryMuscles: ["quadriceps"], sets: 3),
             .init(name: "Romanian Deadlift", primaryMuscles: ["hamstrings"], sets: 3),
             .init(name: "Standing Calf Raise", primaryMuscles: ["calves"], sets: 3),
         ])
-        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: lower), .lowerFocus,
+        #expect(CoachPlanOptimizer.classifyStructure(of: lower) == .lowerFocus,
                        "Quads/hamstrings/calves is a lower-body session")
 
         let upper = strengthSession(named: "Upper", exercises: [
             .init(name: "Bench Press", primaryMuscles: ["chest"], sets: 3),
             .init(name: "Barbell Row", primaryMuscles: ["middle back"], sets: 3),
         ])
-        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: upper), .upperFocus,
+        #expect(CoachPlanOptimizer.classifyStructure(of: upper) == .upperFocus,
                        "Chest and upper back with no leg work is an upper-body session")
 
         let coreOnly = strengthSession(named: "Core", exercises: [
             .init(name: "Cable Crunch", primaryMuscles: ["abdominals"], sets: 3),
         ])
-        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: coreOnly), .focused,
+        #expect(CoachPlanOptimizer.classifyStructure(of: coreOnly) == .focused,
                        "Abdominals are neither upper nor lower, so a core day is focused")
     }
 
     /// Hard-recovery windows are keyed by muscle group. A quadriceps window still
     /// standing must keep a squat out of today's plan.
-    func testRecoveryGatingUsesGroupWindows() {
+    @Test func recoveryGatingUsesGroupWindows() {
         let now = fixedWednesday()
         let blocked = RecoveryWindow(lastExposedAt: now.addingTimeInterval(-3600),
                                      hardEligibleAt: now.addingTimeInterval(72 * 3600),
@@ -97,9 +98,9 @@ final class CoachPlanOptimizerMuscleGroupTests: XCTestCase {
             candidates: [genericStrengthSession()])
 
         let planned = optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }
-        XCTAssertFalse(planned.contains { $0.name == "Back Squat" },
+        #expect(!planned.contains { $0.name == "Back Squat" },
                        "A standing quadriceps recovery window must gate direct quad work")
-        XCTAssertFalse(planned.isEmpty,
+        #expect(!planned.isEmpty,
                        "The rest of the body is still trainable — the coach suggests, it does not cancel")
     }
 

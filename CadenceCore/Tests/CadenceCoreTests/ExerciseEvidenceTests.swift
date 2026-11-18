@@ -1,64 +1,64 @@
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class ExerciseEvidenceTests: XCTestCase {
-    func testAllPackageReferencesBecomeCitations() {
-        XCTAssertEqual(ExerciseEvidence.citations.count, 78)
+struct ExerciseEvidenceTests {
+    @Test func allPackageReferencesBecomeCitations() {
+        #expect(ExerciseEvidence.citations.count == 78)
     }
 
-    func testEveryEvidenceCitationHasUrlAndAnHonestDate() {
+    @Test func everyEvidenceCitationHasUrlAndAnHonestDate() {
         for citation in ExerciseEvidence.citations {
-            XCTAssertTrue(citation.id.hasPrefix("exdb."))
-            XCTAssertFalse(citation.url.isEmpty)
+            #expect(citation.id.hasPrefix("exdb."))
+            #expect(!citation.url.isEmpty)
             let key = String(citation.id.dropFirst("exdb.".count))
             let reference = TrainingEngineBridge.evidenceReferences[key]
             if citation.year == 0 {
-                XCTAssertTrue(["clinical_exercise_guide", "manufacturer_exercise_guide"].contains(reference?.type ?? ""))
+                #expect(["clinical_exercise_guide", "manufacturer_exercise_guide"].contains(reference?.type ?? ""))
             } else {
-                XCTAssertGreaterThan(citation.year, 1900)
+                #expect(citation.year > 1900)
             }
         }
     }
 
-    func testCitationRegistryResolvesExerciseEvidenceIds() {
+    @Test func citationRegistryResolvesExerciseEvidenceIds() {
         for citation in ExerciseEvidence.citations {
-            XCTAssertEqual(CitationRegistry.citation(forId: citation.id), citation)
+            #expect(CitationRegistry.citation(forId: citation.id) == citation)
         }
     }
 
-    func testCuratedRegistryIsUnchanged() {
-        XCTAssertEqual(CitationRegistry.all.count, 73)
-        XCTAssertEqual(CitationRegistry.usageReasons.count, CitationRegistry.all.count)
+    @Test func curatedRegistryIsUnchanged() {
+        #expect(CitationRegistry.all.count == 73)
+        #expect(CitationRegistry.usageReasons.count == CitationRegistry.all.count)
     }
 
-    func testShortTextHandlesEmptyAuthors() {
+    @Test func shortTextHandlesEmptyAuthors() {
         let citation = ExerciseEvidence.citations[0]
-        XCTAssertEqual(citation.shortText, citation.year > 0 ? "\(citation.source) (\(citation.year))" : citation.source)
+        #expect(citation.shortText == (citation.year > 0 ? "\(citation.source) (\(citation.year))" : citation.source))
     }
 
-    func testEveryPatternHasSummaryAndAtLeastOneCitation() {
-        XCTAssertEqual(ExerciseEvidence.patterns.count, 93)
+    @Test func everyPatternHasSummaryAndAtLeastOneCitation() {
+        #expect(ExerciseEvidence.patterns.count == 93)
         for pattern in ExerciseEvidence.patterns.values {
-            XCTAssertFalse(pattern.summary.isEmpty)
+            #expect(!pattern.summary.isEmpty)
             if pattern.citationIDs.isEmpty {
-                XCTAssertEqual(pattern.status, "provisional")
+                #expect(pattern.status == "provisional")
             } else {
-                for id in pattern.citationIDs { XCTAssertNotNil(CitationRegistry.citation(forId: id)) }
+                for id in pattern.citationIDs { #expect(CitationRegistry.citation(forId: id) != nil) }
             }
         }
     }
 
-    func testEveryExercisePatternResolves() {
+    @Test func everyExercisePatternResolves() {
         for record in TrainingEngineBridge.exerciseRecords {
             for id in record.patterns {
-                XCTAssertNotNil(ExerciseEvidence.patterns[id], "Missing pattern \(id)")
+                #expect(ExerciseEvidence.patterns[id] != nil, "Missing pattern \(id)")
             }
         }
     }
 
-    func testPatternDisplayNamesAreHumanReadable() {
+    @Test func patternDisplayNamesAreHumanReadable() {
         for pattern in ExerciseEvidence.patterns.values {
-            XCTAssertFalse(pattern.displayName.contains("_"))
+            #expect(!pattern.displayName.contains("_"))
         }
     }
 }

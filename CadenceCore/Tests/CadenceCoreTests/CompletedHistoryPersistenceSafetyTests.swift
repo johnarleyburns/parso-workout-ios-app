@@ -1,13 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Regression test for the schema-3 data-loss incident: a completed workout
 /// must survive the same local-store reopen used by an app update.
 @MainActor
-final class CompletedHistoryPersistenceSafetyTests: XCTestCase {
-    func testReopeningPersistentStorePreservesCompletedWorkout() throws {
+struct CompletedHistoryPersistenceSafetyTests {
+    @Test func reopeningPersistentStorePreservesCompletedWorkout() throws {
         let directory = try makeTemporaryStoreDirectory()
         defer { try? FileManager.default.removeItem(at: directory) }
         let storeURL = directory.appendingPathComponent("history.store")
@@ -21,12 +21,12 @@ final class CompletedHistoryPersistenceSafetyTests: XCTestCase {
                                                             storeURL: storeURL)
         let context = ModelContext(reopened)
         let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
-        let session = try XCTUnwrap(sessions.first(where: { $0.id == id }))
-        XCTAssertEqual(session.title, "Persistence Regression")
-        XCTAssertEqual(session.date, start)
-        XCTAssertEqual(session.endedAt, start.addingTimeInterval(1_800))
-        XCTAssertEqual(session.orderedSets.count, 1)
-        XCTAssertEqual(session.orderedSets.first?.reps, 8)
+        let session = try #require(sessions.first(where: { $0.id == id }))
+        #expect(session.title == "Persistence Regression")
+        #expect(session.date == start)
+        #expect(session.endedAt == start.addingTimeInterval(1_800))
+        #expect(session.orderedSets.count == 1)
+        #expect(session.orderedSets.first?.reps == 8)
     }
 
     private func saveCompletedWorkout(id: UUID, start: Date, at storeURL: URL) throws {

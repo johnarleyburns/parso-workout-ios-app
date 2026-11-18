@@ -1,9 +1,9 @@
 #if canImport(SwiftData)
-import XCTest
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class CardioProvenanceTests: XCTestCase {
+struct CardioProvenanceTests {
     private func makeStore() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
@@ -14,55 +14,55 @@ final class CardioProvenanceTests: XCTestCase {
         deviceModel: "Watch", deviceHardwareVersion: "Watch7,1", deviceSoftwareVersion: "11.0",
         workoutBrandName: "Peloton", isAppleFitnessPlus: true)
 
-    func testProvenanceRoundTripsFullAndEmpty() {
-        XCTAssertEqual(HealthKitWorkoutProvenance.decode(full.encodedString()), full)
+    @Test func provenanceRoundTripsFullAndEmpty() {
+        #expect(HealthKitWorkoutProvenance.decode(full.encodedString()) == full)
         let empty = HealthKitWorkoutProvenance(sourceName: "", sourceBundleIdentifier: "")
-        XCTAssertEqual(HealthKitWorkoutProvenance.decode(empty.encodedString()), empty)
-        XCTAssertNil(HealthKitWorkoutProvenance.decode(""))
-        XCTAssertNil(HealthKitWorkoutProvenance.decode("{\"version\":99,\"provenance\":{}}"))
+        #expect(HealthKitWorkoutProvenance.decode(empty.encodedString()) == empty)
+        #expect(HealthKitWorkoutProvenance.decode("") == nil)
+        #expect(HealthKitWorkoutProvenance.decode("{\"version\":99,\"provenance\":{}}") == nil)
     }
 
-    func testLegacyAndUnknownOrigins() {
+    @Test func legacyAndUnknownOrigins() {
         let legacy = CardioWorkout()
-        XCTAssertEqual(legacy.originValue, .cladironRecorded)
-        XCTAssertNil(legacy.recordOriginRaw, "reading must not mutate")
+        #expect(legacy.originValue == .cladironRecorded)
+        #expect(legacy.recordOriginRaw == nil, "reading must not mutate")
         let kind = CardioWorkout(importedWorkoutKind: .running)
-        XCTAssertEqual(kind.originValue, .healthKitImported)
+        #expect(kind.originValue == .healthKitImported)
         let future = CardioWorkout()
         future.recordOriginRaw = "someFutureOrigin"
-        XCTAssertEqual(future.originValue, .unrecognized)
-        XCTAssertFalse(future.isCladironHealthBackupEligible)
+        #expect(future.originValue == .unrecognized)
+        #expect(!future.isCladironHealthBackupEligible)
     }
 
-    func testBackupEligibility() {
+    @Test func backupEligibility() {
         let authored = CardioWorkout(source: .watch)
-        XCTAssertTrue(authored.isCladironHealthBackupEligible)
+        #expect(authored.isCladironHealthBackupEligible)
         let imported = CardioWorkout(source: .watch)
         imported.originValue = .healthKitImported
-        XCTAssertFalse(imported.isCladironHealthBackupEligible)
-        XCTAssertNil(HealthBackupEncoder.cardioBackupSummary(for: imported))
-        XCTAssertNotNil(HealthBackupEncoder.cardioBackupSummary(for: authored))
+        #expect(!imported.isCladironHealthBackupEligible)
+        #expect(HealthBackupEncoder.cardioBackupSummary(for: imported) == nil)
+        #expect(HealthBackupEncoder.cardioBackupSummary(for: authored) != nil)
         // Documented policy: manually logged rows are not backed up.
-        XCTAssertFalse(CardioWorkout(isLogged: true).isCladironHealthBackupEligible)
+        #expect(!CardioWorkout(isLogged: true).isCladironHealthBackupEligible)
     }
 
-    func testIngestMarksImportedAndExportRoundTrips() throws {
+    @Test func ingestMarksImportedAndExportRoundTrips() throws {
         let ctx = try makeStore()
         let w = IngestedWorkout(id: UUID(), type: .run, start: Date(timeIntervalSince1970: 1000),
                                 end: Date(timeIntervalSince1970: 2000), source: .watch,
                                 importedKind: .running, provenance: full)
         try WorkoutRepository.ingest([w], in: ctx)
-        let row = try XCTUnwrap(try ctx.fetch(FetchDescriptor<CardioWorkout>()).first)
-        XCTAssertEqual(row.originValue, .healthKitImported)
-        XCTAssertEqual(row.healthKitProvenance, full)
-        XCTAssertFalse(row.isCladironHealthBackupEligible)
+        let row = try #require(try ctx.fetch(FetchDescriptor<CardioWorkout>()).first)
+        #expect(row.originValue == .healthKitImported)
+        #expect(row.healthKitProvenance == full)
+        #expect(!row.isCladironHealthBackupEligible)
 
         let export = try WorkoutRepository.buildExport(ctx)
         let other = try makeStore()
         _ = try WorkoutRepository.merge(export, in: other)
-        let copy = try XCTUnwrap(try other.fetch(FetchDescriptor<CardioWorkout>()).first)
-        XCTAssertEqual(copy.originValue, .healthKitImported)
-        XCTAssertEqual(copy.healthKitProvenance, full)
+        let copy = try #require(try other.fetch(FetchDescriptor<CardioWorkout>()).first)
+        #expect(copy.originValue == .healthKitImported)
+        #expect(copy.healthKitProvenance == full)
     }
 }
 #endif

@@ -1,9 +1,10 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class CoachLaunchIntegrityTests: XCTestCase {
+struct CoachLaunchIntegrityTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -18,7 +19,7 @@ final class CoachLaunchIntegrityTests: XCTestCase {
 
     // MARK: - Integrity: exercises preserved in plan mapping
 
-    func testCoachSessionExercisesArePreservedInPlan() throws {
+    @Test func coachSessionExercisesArePreservedInPlan() throws {
         let exercises: [CoachSession.RecommendedExercise] = [
             CoachSession.RecommendedExercise(
                 name: "Back Squat", primaryMuscles: ["quadriceps"],
@@ -38,35 +39,35 @@ final class CoachLaunchIntegrityTests: XCTestCase {
             guard let ex = session.exercises, !ex.isEmpty else { return false }
             return true
         }()
-        XCTAssertTrue(guardResult, "Session with 3 exercises should pass guard")
+        #expect(guardResult, "Session with 3 exercises should pass guard")
 
-        guard let exs = session.exercises else { XCTFail("Exercises should not be nil"); return }
-        XCTAssertEqual(exs.count, 3)
-        XCTAssertEqual(exs[0].name, "Back Squat")
-        XCTAssertEqual(exs[1].name, "Bench Press")
-        XCTAssertEqual(exs[2].name, "Barbell Row")
+        guard let exs = session.exercises else { Issue.record("Exercises should not be nil"); return }
+        #expect(exs.count == 3)
+        #expect(exs[0].name == "Back Squat")
+        #expect(exs[1].name == "Bench Press")
+        #expect(exs[2].name == "Barbell Row")
 
-        XCTAssertEqual(exs[0].sets, 3)
-        XCTAssertEqual(exs[1].sets, 4)
-        XCTAssertEqual(exs[2].sets, 3)
+        #expect(exs[0].sets == 3)
+        #expect(exs[1].sets == 4)
+        #expect(exs[2].sets == 3)
 
-        XCTAssertEqual(exs[0].repsLow, 6)
-        XCTAssertEqual(exs[0].repsHigh, 10)
-        XCTAssertEqual(exs[1].repsLow, 8)
-        XCTAssertEqual(exs[1].repsHigh, 12)
+        #expect(exs[0].repsLow == 6)
+        #expect(exs[0].repsHigh == 10)
+        #expect(exs[1].repsLow == 8)
+        #expect(exs[1].repsHigh == 12)
 
-        XCTAssertEqual(exs[0].loadKg, 80)
-        XCTAssertEqual(exs[1].loadKg, 60)
-        XCTAssertNil(exs[2].loadKg)
+        #expect(exs[0].loadKg == 80)
+        #expect(exs[1].loadKg == 60)
+        #expect(exs[2].loadKg == nil)
 
-        XCTAssertEqual(exs[0].rir, 2)
-        XCTAssertEqual(exs[1].rir, 2)
-        XCTAssertNil(exs[2].rir)
+        #expect(exs[0].rir == 2)
+        #expect(exs[1].rir == 2)
+        #expect(exs[2].rir == nil)
     }
 
     // MARK: - Empty exercises guard
 
-    func testEmptyExercisesReturnsNil() throws {
+    @Test func emptyExercisesReturnsNil() throws {
         let nilSession = CoachSession(
             id: "test.nil",
             kind: .strength,
@@ -78,7 +79,7 @@ final class CoachLaunchIntegrityTests: XCTestCase {
             guard let ex = nilSession.exercises, !ex.isEmpty else { return false }
             return true
         }()
-        XCTAssertFalse(nilGuard, "Nil exercises should fail guard")
+        #expect(!nilGuard, "Nil exercises should fail guard")
 
         let emptySession = CoachSession(
             id: "test.empty",
@@ -91,12 +92,12 @@ final class CoachLaunchIntegrityTests: XCTestCase {
             guard let ex = emptySession.exercises, !ex.isEmpty else { return false }
             return true
         }()
-        XCTAssertFalse(emptyGuard, "Empty exercises should fail guard")
+        #expect(!emptyGuard, "Empty exercises should fail guard")
     }
 
     // MARK: - Coach exercises diverge from pickRoutine
 
-    func testLaunchPayloadDifferentFromPickRoutine() throws {
+    @Test func launchPayloadDifferentFromPickRoutine() throws {
         let coachExercises: [CoachSession.RecommendedExercise] = [
             CoachSession.RecommendedExercise(
                 name: "Back Squat", primaryMuscles: ["quadriceps"],
@@ -127,17 +128,17 @@ final class CoachLaunchIntegrityTests: XCTestCase {
         let overlap = coachExerciseNames.intersection(planMovements)
         // The coach session has 4 exercises — even with overlap, the full
         // prescribed set should differ from any single catalog routine.
-        XCTAssertNotEqual(
-            coachExerciseNames.sorted(), planMovements.sorted(),
+        #expect(
+            coachExerciseNames.sorted() != planMovements.sorted(),
             "Coach's prescribed exercises should differ from a generic pickRoutine plan.\nCoach: \(coachExerciseNames.sorted())\nPlan: \(planMovements.sorted())")
-        XCTAssertLessThan(
-            overlap.count, coachExerciseNames.count,
+        #expect(
+            overlap.count < coachExerciseNames.count,
             "Coach prescription should not be fully contained in one catalog routine")
     }
 
     // MARK: - Coach-sourced plan carries RIR notes
 
-    func testCoachSessionExercisesCarryRIR() throws {
+    @Test func coachSessionExercisesCarryRIR() throws {
         let exercises: [CoachSession.RecommendedExercise] = [
             CoachSession.RecommendedExercise(
                 name: "Back Squat", primaryMuscles: ["quadriceps"],
@@ -150,21 +151,21 @@ final class CoachLaunchIntegrityTests: XCTestCase {
             id: "test.strength", kind: .strength, title: "Coach strength",
             exercises: exercises, launchPayload: .strengthPlan("test"))
 
-        guard let exs = session.exercises else { XCTFail(); return }
+        guard let exs = session.exercises else { Issue.record(""); return }
 
-        XCTAssertEqual(exs[0].rir, 2, "RIR 2 should be carried on squats")
+        #expect(exs[0].rir == 2, "RIR 2 should be carried on squats")
         let squatRIRNote = exs[0].rir.map { "Target ≤\($0) RIR" } ?? ""
-        XCTAssertFalse(squatRIRNote.isEmpty)
-        XCTAssertTrue(squatRIRNote.contains("RIR"))
+        #expect(!squatRIRNote.isEmpty)
+        #expect(squatRIRNote.contains("RIR"))
 
-        XCTAssertNil(exs[1].rir, "Bench press has no RIR")
+        #expect(exs[1].rir == nil, "Bench press has no RIR")
         let benchRIRNote = exs[1].rir.map { "Target ≤\($0) RIR" } ?? ""
-        XCTAssertTrue(benchRIRNote.isEmpty)
+        #expect(benchRIRNote.isEmpty)
     }
 
     // MARK: - CoachSession.candidates() produces valid exercises
 
-    func testCandidatesProduceValidStrengthExercises() throws {
+    @Test func candidatesProduceValidStrengthExercises() throws {
         let facts = CoachFacts.make(
             from: [], goal: .strength, experience: .intermediate,
             now: testNow)
@@ -172,18 +173,18 @@ final class CoachLaunchIntegrityTests: XCTestCase {
         let candidates = CoachSession.candidates(for: facts)
 
         let strengthSessions = candidates.filter { $0.kind == .strength }
-        XCTAssertFalse(strengthSessions.isEmpty, "Should produce at least one strength candidate")
+        #expect(!strengthSessions.isEmpty, "Should produce at least one strength candidate")
 
         for s in strengthSessions {
             guard let exercises = s.exercises, !exercises.isEmpty else {
-                XCTFail("Strength session \(s.id) should have exercises")
+                Issue.record("Strength session \(s.id) should have exercises")
                 continue
             }
-            XCTAssertFalse(exercises.isEmpty, "Exercises should not be empty")
+            #expect(!exercises.isEmpty, "Exercises should not be empty")
             for ex in exercises {
-                XCTAssertFalse(ex.name.isEmpty, "Exercise should have a name")
+                #expect(!ex.name.isEmpty, "Exercise should have a name")
                 let sets = ex.sets ?? 3
-                XCTAssertGreaterThan(sets, 0, "Sets should be positive")
+                #expect(sets > 0, "Sets should be positive")
             }
         }
     }

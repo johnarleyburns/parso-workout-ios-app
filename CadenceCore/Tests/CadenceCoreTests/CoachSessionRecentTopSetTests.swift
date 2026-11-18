@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
 /// Field test 2026-08-18 issue 2. `liftSnapshots` only covers the trailing week,
 /// so the coach needs an all-history top set to keep plan weights real.
-final class CoachSessionRecentTopSetTests: XCTestCase {
+struct CoachSessionRecentTopSetTests {
     private let now = Date(timeIntervalSince1970: 1_760_000_000)
 
     private func perExercise(_ name: String,
@@ -60,27 +61,27 @@ final class CoachSessionRecentTopSetTests: XCTestCase {
             rolling28dCompletedEvents: [])
     }
 
-    func testRecentTopSetPrefersTheNewestEvent() {
+    @Test func recentTopSetPrefersTheNewestEvent() {
         let f = facts([
             event([perExercise("Standing Dumbbell Upright Row", weightKg: 20, reps: 12, e1rm: 28, at: now.addingTimeInterval(-21 * 86_400))], daysAgo: 21),
             event([perExercise("Standing Dumbbell Upright Row", weightKg: 25, reps: 10, e1rm: 33, at: now.addingTimeInterval(-9 * 86_400))], daysAgo: 9),
         ])
         let top = CoachSession.recentTopSet(forExerciseNamed: "Standing Dumbbell Upright Row", facts: f)
-        XCTAssertEqual(top?.weightKg, 25)
-        XCTAssertEqual(top?.reps, 10)
+        #expect(top?.weightKg == 25)
+        #expect(top?.reps == 10)
     }
 
-    func testRecentTopSetMatchesByCanonicalName() {
+    @Test func recentTopSetMatchesByCanonicalName() {
         let f = facts([event([perExercise("bench press", weightKg: 100, reps: 5, e1rm: 116, at: now)], daysAgo: 30)])
-        XCTAssertEqual(CoachSession.recentTopSet(forExerciseNamed: "Bench Press", facts: f)?.weightKg, 100)
+        #expect(CoachSession.recentTopSet(forExerciseNamed: "Bench Press", facts: f)?.weightKg == 100)
     }
 
-    func testRecentTopSetIgnoresZeroWeightSets() {
+    @Test func recentTopSetIgnoresZeroWeightSets() {
         let f = facts([event([perExercise("Push-Up", weightKg: 0, reps: 30, e1rm: 0, at: now)], daysAgo: 3)])
-        XCTAssertNil(CoachSession.recentTopSet(forExerciseNamed: "Push-Up", facts: f))
+        #expect(CoachSession.recentTopSet(forExerciseNamed: "Push-Up", facts: f) == nil)
     }
 
-    func testRecentTopSetIsNilWithNoHistory() {
-        XCTAssertNil(CoachSession.recentTopSet(forExerciseNamed: "Bench Press", facts: facts([])))
+    @Test func recentTopSetIsNilWithNoHistory() {
+        #expect(CoachSession.recentTopSet(forExerciseNamed: "Bench Press", facts: facts([])) == nil)
     }
 }

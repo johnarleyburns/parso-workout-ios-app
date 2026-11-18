@@ -1,8 +1,10 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @MainActor
 final class SessionViewModelTests: XCTestCase {
@@ -200,3 +202,4 @@ final class SessionViewModelTests: XCTestCase {
         }
     }
 }
+#endif

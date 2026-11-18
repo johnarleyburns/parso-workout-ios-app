@@ -20,11 +20,23 @@ public enum WorkoutSummaryPresenter {
     /// Spoken summary of an HR series for VoiceOver (the chart itself is opaque).
     public static func hrChartAXSummary(_ bpms: [Double]) -> String {
         let valid = bpms.filter { $0 > 0 }
-        guard !valid.isEmpty else { return String(localized: "No heart rate samples", bundle: FeatureLocalization.bundle) }
+        guard !valid.isEmpty else { return {
+            #if os(Linux)
+            "No heart rate samples"
+            #else
+            String(localized: "No heart rate samples", bundle: FeatureLocalization.bundle)
+            #endif
+        }() }
         let lo = Int(valid.min() ?? 0)
         let hi = Int(valid.max() ?? 0)
         let avg = Int(valid.reduce(0, +) / Double(valid.count))
-        return String(localized: "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples"
+            #else
+            String(localized: "Average \(avg), range \(lo) to \(hi) beats per minute, \(valid.count) samples", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 
     // MARK: Read-only exercise detail (field test 2026-08-18 #1)
@@ -50,7 +62,13 @@ public enum WorkoutSummaryPresenter {
                                    unit: MeasurementUnitPreference) -> String? {
         let performers = orderedPerformers(line)
         guard !performers.isEmpty else { return nil }
-        return String(localized: "Done: ", bundle: FeatureLocalization.bundle) + performers.map {
+        return {
+            #if os(Linux)
+            "Done: "
+            #else
+            String(localized: "Done: ", bundle: FeatureLocalization.bundle)
+            #endif
+        }() + performers.map {
             "\($0.name): \(performerSetsText($0, unit: unit))"
         }.joined(separator: "; ")
     }

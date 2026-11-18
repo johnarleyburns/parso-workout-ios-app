@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -161,3 +162,4 @@ final class RecommendationPrescriptionTests: XCTestCase {
         XCTAssertEqual(session.plannedExerciseNames.count, 3, "starter fills default compounds")
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -224,3 +225,4 @@ final class WatchSuggestionPhoneParityTests: XCTestCase {
         XCTAssertLessThan(Date().timeIntervalSince(start), 30)
     }
 }
+#endif

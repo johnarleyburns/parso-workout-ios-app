@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -201,3 +202,4 @@ final class HomeCoachModelTests: XCTestCase {
     }
 
 }
+#endif

@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceWorkoutFeatures
 
 public struct WeeklyIntentRingDisplay: Equatable, Sendable {
     public let normalizedProgress: Double
@@ -21,11 +22,23 @@ public enum WeeklyIntentPresenter {
         WeeklyIntentDisplay(
             strengthRing: ring(completed: strength.completed, target: strength.target,
                                valueText: strength.displayText,
-                               label: String(localized: "Weekly strength sets", bundle: FeatureLocalization.bundle),
+                               label: {
+                                   #if os(Linux)
+                                   "Weekly strength sets"
+                                   #else
+                                   String(localized: "Weekly strength sets", bundle: FeatureLocalization.bundle)
+                                   #endif
+                               }(),
                                tint: WeeklyActivityColor.strength(strength.completed)),
             cardioRing: ring(completed: cardio.completed, target: cardio.target,
                              valueText: cardio.displayText,
-                             label: String(localized: "Weekly cardio minutes", bundle: FeatureLocalization.bundle),
+                             label: {
+                                 #if os(Linux)
+                                 "Weekly cardio minutes"
+                                 #else
+                                 String(localized: "Weekly cardio minutes", bundle: FeatureLocalization.bundle)
+                                 #endif
+                             }(),
                              tint: WeeklyActivityColor.cardio(cardio.completed)))
     }
 

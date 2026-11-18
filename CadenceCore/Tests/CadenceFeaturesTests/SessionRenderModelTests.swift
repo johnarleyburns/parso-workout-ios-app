@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -774,3 +775,4 @@ final class SessionRenderModelTests: XCTestCase {
                        "BW + 220.5 lb × 5")
     }
 }
+#endif

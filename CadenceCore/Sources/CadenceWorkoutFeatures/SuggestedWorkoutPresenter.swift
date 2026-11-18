@@ -22,22 +22,76 @@ public struct SuggestedWorkoutChoice: Equatable, Sendable, Identifiable {
 }
 
 public enum SuggestedWorkoutPresenter {
-    public static let navigationTitle = String(localized: "View Personalized Workout", bundle: FeatureLocalization.bundle)
-    public static let calculatingTitle = String(localized: "Calculating personalized workouts…", bundle: FeatureLocalization.bundle)
-    public static let aboutAccessibilityLabel = String(localized: "About personalized workouts", bundle: FeatureLocalization.bundle)
-    public static let chooserIntro = String(localized: "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting.", bundle: FeatureLocalization.bundle)
-    public static let choosingAPlan = String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: FeatureLocalization.bundle)
+    public static let navigationTitle = {
+        #if os(Linux)
+        "View Personalized Workout"
+        #else
+        String(localized: "View Personalized Workout", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let calculatingTitle = {
+        #if os(Linux)
+        "Calculating personalized workouts…"
+        #else
+        String(localized: "Calculating personalized workouts…", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let aboutAccessibilityLabel = {
+        #if os(Linux)
+        "About personalized workouts"
+        #else
+        String(localized: "About personalized workouts", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let chooserIntro = {
+        #if os(Linux)
+        "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting."
+        #else
+        String(localized: "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting.", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let choosingAPlan = {
+        #if os(Linux)
+        "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself."
+        #else
+        String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
 
     public static func historyNotice(for quality: SuggestedWorkoutHistoryQuality) -> String? {
         switch quality {
         case .sufficient:
             return nil
         case .unavailable:
-            return String(localized: "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout."
+                #else
+                String(localized: "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         case .limited(let workoutCount, let workingSetCount):
-            return String(localized: "Limited history: \(workoutCount) workouts", bundle: FeatureLocalization.bundle) + ", "
-                + String(localized: "\(workingSetCount) working sets", bundle: FeatureLocalization.bundle) + ". "
-                + String(localized: "This personalized workout also uses your onboarding preferences, so review it before starting.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Limited history: \(workoutCount) workouts"
+                #else
+                String(localized: "Limited history: \(workoutCount) workouts", bundle: FeatureLocalization.bundle)
+                #endif
+            }() + ", "
+                + {
+                    #if os(Linux)
+                    "\(workingSetCount) working sets"
+                    #else
+                    String(localized: "\(workingSetCount) working sets", bundle: FeatureLocalization.bundle)
+                    #endif
+                }() + ". "
+                + {
+                    #if os(Linux)
+                    "This personalized workout also uses your onboarding preferences, so review it before starting."
+                    #else
+                    String(localized: "This personalized workout also uses your onboarding preferences, so review it before starting.", bundle: FeatureLocalization.bundle)
+                    #endif
+                }()
         }
     }
 
@@ -63,7 +117,13 @@ public enum SuggestedWorkoutPresenter {
                 option: option,
                 title: style.displayName,
                 styleDescription: style.subtitle,
-                subtitle: String(localized: "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount).", bundle: FeatureLocalization.bundle),
+                subtitle: {
+                    #if os(Linux)
+                    "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount)."
+                    #else
+                    String(localized: "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount).", bundle: FeatureLocalization.bundle)
+                    #endif
+                }(),
                 isDisabled: true)
         }
         if !option.isLaunchable {
@@ -72,8 +132,20 @@ public enum SuggestedWorkoutPresenter {
                 title: style.displayName,
                 styleDescription: style.subtitle,
                 subtitle: style == .personalized
-                    ? String(localized: "No exercises from your history cover this week's gaps.", bundle: FeatureLocalization.bundle)
-                    : String(localized: "No available \(style.displayName.lowercased()) exercises cover this week's gaps.", bundle: FeatureLocalization.bundle),
+                    ? {
+                        #if os(Linux)
+                        "No exercises from your history cover this week's gaps."
+                        #else
+                        String(localized: "No exercises from your history cover this week's gaps.", bundle: FeatureLocalization.bundle)
+                        #endif
+                    }()
+                    : {
+                        #if os(Linux)
+                        "No available \(style.displayName.lowercased()) exercises cover this week's gaps."
+                        #else
+                        String(localized: "No available \(style.displayName.lowercased()) exercises cover this week's gaps.", bundle: FeatureLocalization.bundle)
+                        #endif
+                    }(),
                 isDisabled: true)
         }
         return SuggestedWorkoutChoice(
@@ -94,15 +166,33 @@ public enum SuggestedWorkoutPresenter {
         guard total > 0 else { return "no movements" }
         return inStyle == total
             ? "all \(name) movements"
-            : String(localized: "\(inStyle) of \(total) \(name) movements", bundle: FeatureLocalization.bundle)
+            : {
+                #if os(Linux)
+                "\(inStyle) of \(total) \(name) movements"
+                #else
+                String(localized: "\(inStyle) of \(total) \(name) movements", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
     }
 
     public static func remainingGapText(_ option: SuggestedWorkoutOption) -> String {
         let gaps = option.unresolvedDeficits
-        guard !gaps.isEmpty else { return String(localized: "All current gaps covered", bundle: FeatureLocalization.bundle) }
+        guard !gaps.isEmpty else { return {
+            #if os(Linux)
+            "All current gaps covered"
+            #else
+            String(localized: "All current gaps covered", bundle: FeatureLocalization.bundle)
+            #endif
+        }() }
         let names = gaps.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
             .map(displayName)
-        return String(localized: "Remaining gaps: \(names.formatted(.list(type: .and)))", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "Remaining gaps: \(names.formatted(.list(type: .and)))"
+            #else
+            String(localized: "Remaining gaps: \(names.formatted(.list(type: .and)))", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 
     public static func editablePlan(for option: SuggestedWorkoutOption,
@@ -123,13 +213,55 @@ public enum SuggestedWorkoutPresenter {
     /// Plain-language algorithm steps for the About sheet. Kept here so tests
     /// prevent the explanation and engine contract from drifting apart.
     public static let aboutSteps = [
-        String(localized: "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises.", bundle: FeatureLocalization.bundle),
-        String(localized: "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track.", bundle: FeatureLocalization.bundle),
-        String(localized: "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.", bundle: FeatureLocalization.bundle),
-        String(localized: "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.", bundle: FeatureLocalization.bundle),
-        String(localized: "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.", bundle: FeatureLocalization.bundle),
-        String(localized: "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason.", bundle: FeatureLocalization.bundle),
-        String(localized: "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: FeatureLocalization.bundle)
+        {
+            #if os(Linux)
+            "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises."
+            #else
+            String(localized: "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track."
+            #else
+            String(localized: "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order."
+            #else
+            String(localized: "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles."
+            #else
+            String(localized: "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement."
+            #else
+            String(localized: "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason."
+            #else
+            String(localized: "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum."
+            #else
+            String(localized: "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     ]
 
     public static let pseudocode = [

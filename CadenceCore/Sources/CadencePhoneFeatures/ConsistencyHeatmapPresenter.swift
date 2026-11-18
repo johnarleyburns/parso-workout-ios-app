@@ -66,9 +66,21 @@ public enum ConsistencyHeatmapPresenter {
     }
 
     static func summary(trainedDays: Int, currentStreak: Int) -> String {
-        let base = String(localized: "\(trainedDays) days trained", bundle: FeatureLocalization.bundle)
+        let base = {
+            #if os(Linux)
+            "\(trainedDays) days trained"
+            #else
+            String(localized: "\(trainedDays) days trained", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         guard currentStreak >= 2 else { return base }
-        return base + " \u{00b7} " + String(localized: "\(currentStreak)-day streak", bundle: FeatureLocalization.bundle)
+        return base + " \u{00b7} " + {
+            #if os(Linux)
+            "\(currentStreak)-day streak"
+            #else
+            String(localized: "\(currentStreak)-day streak", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 
     static func cell(for day: HeatmapDay, calendar: Calendar) -> Cell {
@@ -88,7 +100,13 @@ public enum ConsistencyHeatmapPresenter {
         switch day.sessionCount {
         case 0: return "\(dateStr): rest day"
         case 1: return "\(dateStr): 1 session"
-        default: return String(localized: "\(dateStr): \(day.sessionCount) sessions", bundle: FeatureLocalization.bundle)
+        default: return {
+            #if os(Linux)
+            "\(dateStr): \(day.sessionCount) sessions"
+            #else
+            String(localized: "\(dateStr): \(day.sessionCount) sessions", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         }
     }
 }

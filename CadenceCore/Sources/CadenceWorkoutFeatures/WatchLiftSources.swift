@@ -136,7 +136,7 @@ public struct WatchPreviousWorkout: Equatable, Sendable, Identifiable {
 extension WatchLiftSources {
     /// Bounded read: newest sessions by start date, then filtered. Never mutates.
     public static func load(from context: ModelContext, scan: Int = 60) -> [WatchPreviousWorkout] {
-        list(from: (try? WorkoutRepository.recentSessions(context, limit: scan)) ?? [])
+        WatchPreviousWorkout.list(from: (try? WorkoutRepository.recentSessions(context, limit: scan)) ?? [])
     }
 }
 #endif

@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class WatchCardioInactivityTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 1_000_000)

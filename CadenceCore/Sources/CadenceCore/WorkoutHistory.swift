@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 
 /// A single entry in the unified (strength + cardio) workout history
 /// (field-testing Round 4 A4). Wraps the underlying `@Model` row so the list
@@ -26,14 +28,6 @@ public enum WorkoutHistoryEntry: Identifiable {
 }
 
 extension WorkoutRepository {
-    /// All strength sessions + cardio workouts, merged and sorted newest-first
-    /// by `date`/`start` (field-testing Round 4 A4). An empty store returns `[]`.
-    public static func unifiedHistory(_ context: ModelContext) throws -> [WorkoutHistoryEntry] {
-        let strength = try allSessions(context).map(WorkoutHistoryEntry.strength)
-        let cardio = try allCardio(context).map(WorkoutHistoryEntry.cardio)
-        return (strength + cardio).sorted { $0.date > $1.date }
-    }
-
     /// Ranks past strength sessions by how many of the `missing` muscle groups they
     /// cover (feedback batch 8 — Home muscle-group quick-start). A session's coverage
     /// is the union of its logged exercises' groups intersected with `missing`.
@@ -64,3 +58,15 @@ extension WorkoutRepository {
             .map { ($0.element.0, $0.element.1) }
     }
 }
+
+#if canImport(SwiftData)
+extension WorkoutRepository {
+    /// All strength sessions + cardio workouts, merged and sorted newest-first
+    /// by `date`/`start` (field-testing Round 4 A4). An empty store returns `[]`.
+    public static func unifiedHistory(_ context: ModelContext) throws -> [WorkoutHistoryEntry] {
+        let strength = try allSessions(context).map(WorkoutHistoryEntry.strength)
+        let cardio = try allCardio(context).map(WorkoutHistoryEntry.cardio)
+        return (strength + cardio).sorted { $0.date > $1.date }
+    }
+}
+#endif

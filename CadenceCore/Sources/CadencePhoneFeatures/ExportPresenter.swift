@@ -25,7 +25,13 @@ public enum ExportPresenter {
         guard let first = s.firstWorkoutDate, let last = s.lastWorkoutDate else { return nil }
         let df = DateFormatter(); df.dateStyle = dateStyle
         if s.daysCovered <= 1 { return df.string(from: first) }
-        return String(localized: "\(df.string(from: first)) \u{2013} \(df.string(from: last)) \u{00b7} \(s.daysCovered) days", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "\(df.string(from: first)) \u{2013} \(df.string(from: last)) \u{00b7} \(s.daysCovered) days"
+            #else
+            String(localized: "\(df.string(from: first)) \u{2013} \(df.string(from: last)) \u{00b7} \(s.daysCovered) days", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 
     /// Backup size string: raw bytes for CSV/uncompressed, else "compressed (raw)".
@@ -35,6 +41,12 @@ public enum ExportPresenter {
         if isCSV || s.compressedByteCount == 0 {
             return fmt.string(fromByteCount: Int64(s.rawByteCount))
         }
-        return String(localized: "\(fmt.string(fromByteCount: Int64(s.compressedByteCount))) (\(fmt.string(fromByteCount: Int64(s.rawByteCount))) raw)", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "\(fmt.string(fromByteCount: Int64(s.compressedByteCount))) (\(fmt.string(fromByteCount: Int64(s.rawByteCount))) raw)"
+            #else
+            String(localized: "\(fmt.string(fromByteCount: Int64(s.compressedByteCount))) (\(fmt.string(fromByteCount: Int64(s.rawByteCount))) raw)", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 }

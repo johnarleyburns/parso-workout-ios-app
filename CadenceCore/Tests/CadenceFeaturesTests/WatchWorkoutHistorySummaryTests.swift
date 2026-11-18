@@ -1,9 +1,11 @@
+#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import Testing
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @MainActor
 struct WatchWorkoutHistorySummaryTests {
@@ -147,3 +149,4 @@ struct WatchWorkoutHistorySummaryTests {
         #expect(rows.count == 1)
     }
 }
+#endif

@@ -1,6 +1,8 @@
 import CadenceFeatures
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 import CadenceCore
 
 /// One exercise as the pickers need it: plain values, read once.
@@ -127,7 +129,10 @@ public struct ExerciseCatalogSnapshot: Sendable {
         guard !trimmed.isEmpty, limit > 0 else { return [] }
         return Array(searchIndex.rank(trimmed).prefix(limit))
     }
+}
 
+#if canImport(SwiftData)
+extension ExerciseCatalogSnapshot {
     /// Builds the snapshot from `context`. Run it on a background context; it
     /// reads every stored exercise once.
     public static func build(in context: ModelContext, recentLimit: Int = 25) throws -> ExerciseCatalogSnapshot {
@@ -168,6 +173,7 @@ public struct ExerciseCatalogSnapshot: Sendable {
         return descriptor
     }
 }
+#endif
 
 /// Swap candidates, prepared off the main actor. The swap sheet used to
 /// prepare all ~900 exercises and rank them several times per render.
@@ -182,7 +188,10 @@ public enum ExerciseSwapCandidates {
                                            modalities: Set(exercise.modalities), trainingTypes: Set(exercise.trainingTypes),
                                            volumeEligible: exercise.volumeEligible)
     }
+}
 
+#if canImport(SwiftData)
+extension ExerciseSwapCandidates {
     /// Prepares every stored exercise and builds the presenter on a background
     /// context.
     public static func presenter(source: ExerciseSimilarity.Prepared,
@@ -193,3 +202,4 @@ public enum ExerciseSwapCandidates {
         }.value
     }
 }
+#endif

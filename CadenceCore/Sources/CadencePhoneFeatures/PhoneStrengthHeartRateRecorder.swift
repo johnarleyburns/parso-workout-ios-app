@@ -1,21 +1,13 @@
 import CadenceFeatures
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
+#if canImport(OSLog)
 import OSLog
+#endif
 import CadenceCore
-
-/// Where a phone-owned strength workout's heart-rate observation came from.
-public enum HeartRateObservationSource: String, Codable, Sendable {
-    case watchHealthKit, watchBLE, phoneBLE
-
-    var coverageSource: HeartRateSource {
-        switch self {
-        case .watchHealthKit: return .watchHealthKit
-        case .watchBLE: return .watchBLE
-        case .phoneBLE: return .phone
-        }
-    }
-}
+import CadenceWorkoutFeatures
 
 /// One real physiological measurement. `observedAt` is the measurement's own end
 /// time (never the receipt time); relay heartbeats/retries must reuse the
@@ -62,7 +54,9 @@ public final class PhoneStrengthHeartRateRecorder {
     /// Tolerance for clock skew around the session boundaries.
     public static let boundaryTolerance: TimeInterval = 5
 
+    #if canImport(OSLog)
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "PhoneHeartRate")
+    #endif
 
     public let sessionID: UUID
     private let session: WorkoutSession
@@ -80,7 +74,11 @@ public final class PhoneStrengthHeartRateRecorder {
     public init(session: WorkoutSession, save: (() throws -> Void)? = nil) {
         self.session = session
         self.sessionID = session.id
+        #if canImport(SwiftData)
         self.save = save ?? { try session.modelContext?.save() }
+        #else
+        self.save = save ?? {}
+        #endif
         self.samples = session.hrSamplePoints.sorted { $0.t < $1.t }
     }
 
@@ -101,12 +99,16 @@ public final class PhoneStrengthHeartRateRecorder {
 
         if let id = obs.sampleID {
             guard knownIDs.insert(id).inserted else {
+                #if canImport(OSLog)
                 Self.log.debug("observation deduplicated (identity)")
+                #endif
                 return .duplicate
             }
         }
         if samples.contains(where: { abs($0.t - clampedT) < 0.0005 }) {
+            #if canImport(OSLog)
             Self.log.debug("observation deduplicated (timestamp)")
+            #endif
             return .duplicate
         }
         finalizedCount = nil
@@ -115,7 +117,9 @@ public final class PhoneStrengthHeartRateRecorder {
         if samples.count > Self.maximumStoredSamples { downsample() }
         source = obs.source
         unflushed += 1
+        #if canImport(OSLog)
         Self.log.debug("observation accepted, count \(self.samples.count, privacy: .public)")
+        #endif
         if unflushed >= Self.flushBatchSize || persistencePending { _ = flush() }
         return .accepted
     }
@@ -130,12 +134,16 @@ public final class PhoneStrengthHeartRateRecorder {
             try save()
             unflushed = 0
             persistencePending = false
+            #if canImport(OSLog)
             Self.log.debug("persisted, count \(self.samples.count, privacy: .public)")
+            #endif
             return true
         } catch {
             session.hrSamplesData = previous
             persistencePending = true
+            #if canImport(OSLog)
             Self.log.error("persistence failed, held pending")
+            #endif
             return false
         }
     }
@@ -170,12 +178,16 @@ public final class PhoneStrengthHeartRateRecorder {
             session.hasManualCardioMinutesOverride = prior.override
             session.updatedAt = prior.updatedAt
             persistencePending = true
+            #if canImport(OSLog)
             Self.log.error("finalize save failed, prior state restored")
+            #endif
             return false
         }
         finalizedCount = samples.count
         let gap = zip(samples, samples.dropFirst()).map { $1.t - $0.t }.max() ?? 0
+        #if canImport(OSLog)
         Self.log.debug("finalized, maximum gap \(Int(gap), privacy: .public)s")
+        #endif
         return true
     }
 

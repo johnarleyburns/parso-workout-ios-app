@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -560,3 +561,4 @@ final class WorkoutRepositoryTests: XCTestCase {
         XCTAssertFalse(cids.contains(cOld.id))
     }
 }
+#endif

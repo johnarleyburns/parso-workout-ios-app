@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -365,3 +366,4 @@ public enum WatchStrengthSyncApplier {
         return nil
     }
 }
+#endif

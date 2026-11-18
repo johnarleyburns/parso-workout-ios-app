@@ -44,16 +44,52 @@ public struct SupporterSurfacePresentation: Equatable, Sendable {
     public init(isSupporter: Bool, result: SupporterPurchaseResult, productName: String) {
         showsTodayBadge = isSupporter
         if isSupporter {
-            settingsTitle = String(localized: "Thanks for supporting \(productName)")
-            settingsDetail = String(localized: "You have the Supporter badge")
+            settingsTitle = {
+                #if os(Linux)
+                "Thanks for supporting \(productName)"
+                #else
+                String(localized: "Thanks for supporting \(productName)")
+                #endif
+            }()
+            settingsDetail = {
+                #if os(Linux)
+                "You have the Supporter badge"
+                #else
+                String(localized: "You have the Supporter badge")
+                #endif
+            }()
         } else {
-            settingsTitle = String(localized: "Contribute to Development")
-            settingsDetail = String(localized: "A one-time, optional $9.99 — every feature is already free")
+            settingsTitle = {
+                #if os(Linux)
+                "Contribute to Development"
+                #else
+                String(localized: "Contribute to Development")
+                #endif
+            }()
+            settingsDetail = {
+                #if os(Linux)
+                "A one-time, optional $9.99 — every feature is already free"
+                #else
+                String(localized: "A one-time, optional $9.99 — every feature is already free")
+                #endif
+            }()
         }
         isPurchaseEnabled = result != .purchasing
         switch result {
-        case .succeeded: resultMessage = String(localized: "Thank you for supporting \(productName)!")
-        case .failed(let m): resultMessage = String(localized: "Purchase failed: \(m)")
+        case .succeeded: resultMessage = {
+            #if os(Linux)
+            "Thank you for supporting \(productName)!"
+            #else
+            String(localized: "Thank you for supporting \(productName)!")
+            #endif
+        }()
+        case .failed(let m): resultMessage = {
+            #if os(Linux)
+            "Purchase failed: \(m)"
+            #else
+            String(localized: "Purchase failed: \(m)")
+            #endif
+        }()
         default: resultMessage = nil
         }
     }

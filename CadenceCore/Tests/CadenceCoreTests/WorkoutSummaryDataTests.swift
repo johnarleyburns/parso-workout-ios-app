@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -399,3 +400,4 @@ final class WorkoutSummaryDataTests: XCTestCase {
         XCTAssertEqual(s.exercises.map(\.name), ["Bench Press"])
     }
 }
+#endif

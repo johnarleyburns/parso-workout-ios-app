@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -475,3 +476,4 @@ final class CoachSchedulePreferencesTests: XCTestCase {
         return try XCTUnwrap(exercises.first)
     }
 }
+#endif

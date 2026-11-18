@@ -705,12 +705,42 @@ public enum SetKind: String, Codable, Sendable, Hashable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .warmup: return String(localized: "Warm-up", bundle: .module)
-        case .working: return String(localized: "Working", bundle: .module)
-        case .backoff: return String(localized: "Back-off", bundle: .module)
+        case .warmup: return {
+            #if os(Linux)
+            "Warm-up"
+            #else
+            String(localized: "Warm-up", bundle: .module)
+            #endif
+        }()
+        case .working: return {
+            #if os(Linux)
+            "Working"
+            #else
+            String(localized: "Working", bundle: .module)
+            #endif
+        }()
+        case .backoff: return {
+            #if os(Linux)
+            "Back-off"
+            #else
+            String(localized: "Back-off", bundle: .module)
+            #endif
+        }()
         case .amrap: return "AMRAP"
-        case .drop: return String(localized: "Drop", bundle: .module)
-        case .failure: return String(localized: "Failure", bundle: .module)
+        case .drop: return {
+            #if os(Linux)
+            "Drop"
+            #else
+            String(localized: "Drop", bundle: .module)
+            #endif
+        }()
+        case .failure: return {
+            #if os(Linux)
+            "Failure"
+            #else
+            String(localized: "Failure", bundle: .module)
+            #endif
+        }()
         }
     }
 }

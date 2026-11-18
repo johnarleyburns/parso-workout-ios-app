@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import Foundation
 import SwiftData
@@ -48,3 +49,4 @@ final class WorkoutEntryPreferenceTests: XCTestCase {
         XCTAssertNil(WorkoutEntryPreference.reps(in: WorkoutSession(title: "Next"), performerID: nil))
     }
 }
+#endif

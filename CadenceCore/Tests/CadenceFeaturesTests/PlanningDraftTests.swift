@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -105,3 +106,4 @@ final class PlanningDraftTests: XCTestCase {
         XCTAssertTrue(ExportNativeDatabase.entityNames.contains("PlanningDraft"))
     }
 }
+#endif

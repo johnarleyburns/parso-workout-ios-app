@@ -15,17 +15,83 @@ public enum MovementFamily: String, CaseIterable, Sendable, Codable {
 
     public var displayName: String {
         switch self {
-        case .squat: String(localized: "Squat", bundle: .module)
-        case .hinge: String(localized: "Hinge", bundle: .module)
-        case .horizontalPush: String(localized: "Horizontal Push", bundle: .module)
-        case .horizontalPull: String(localized: "Horizontal Pull", bundle: .module)
-        case .verticalPush: String(localized: "Vertical Push", bundle: .module)
-        case .verticalPull: String(localized: "Vertical Pull", bundle: .module)
-        case .carry: String(localized: "Carry", bundle: .module)
-        case .core: String(localized: "Core", bundle: .module)
-        case .locomotion: String(localized: "Locomotion", bundle: .module)
-        case .olympic: String(localized: "Olympic", bundle: .module)
-        case .other: String(localized: "Other", bundle: .module)
+        case .squat: {
+            #if os(Linux)
+            "Squat"
+            #else
+            String(localized: "Squat", bundle: .module)
+            #endif
+        }()
+        case .hinge: {
+            #if os(Linux)
+            "Hinge"
+            #else
+            String(localized: "Hinge", bundle: .module)
+            #endif
+        }()
+        case .horizontalPush: {
+            #if os(Linux)
+            "Horizontal Push"
+            #else
+            String(localized: "Horizontal Push", bundle: .module)
+            #endif
+        }()
+        case .horizontalPull: {
+            #if os(Linux)
+            "Horizontal Pull"
+            #else
+            String(localized: "Horizontal Pull", bundle: .module)
+            #endif
+        }()
+        case .verticalPush: {
+            #if os(Linux)
+            "Vertical Push"
+            #else
+            String(localized: "Vertical Push", bundle: .module)
+            #endif
+        }()
+        case .verticalPull: {
+            #if os(Linux)
+            "Vertical Pull"
+            #else
+            String(localized: "Vertical Pull", bundle: .module)
+            #endif
+        }()
+        case .carry: {
+            #if os(Linux)
+            "Carry"
+            #else
+            String(localized: "Carry", bundle: .module)
+            #endif
+        }()
+        case .core: {
+            #if os(Linux)
+            "Core"
+            #else
+            String(localized: "Core", bundle: .module)
+            #endif
+        }()
+        case .locomotion: {
+            #if os(Linux)
+            "Locomotion"
+            #else
+            String(localized: "Locomotion", bundle: .module)
+            #endif
+        }()
+        case .olympic: {
+            #if os(Linux)
+            "Olympic"
+            #else
+            String(localized: "Olympic", bundle: .module)
+            #endif
+        }()
+        case .other: {
+            #if os(Linux)
+            "Other"
+            #else
+            String(localized: "Other", bundle: .module)
+            #endif
+        }()
         }
     }
 

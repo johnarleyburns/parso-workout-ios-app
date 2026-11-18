@@ -14,19 +14,49 @@ public enum WatchHRRejection: String, Codable, Sendable {
     public var userMessage: String {
         switch self {
         case .alreadyActive:
-            return String(localized: "Your Apple Watch is still finishing an earlier heart-rate session. Tap Check for Live HR again.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Your Apple Watch is still finishing an earlier heart-rate session. Tap Check for Live HR again."
+                #else
+                String(localized: "Your Apple Watch is still finishing an earlier heart-rate session. Tap Check for Live HR again.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         case .watchWorkoutActive:
             return "A workout is already running in Cladiron on your Apple Watch. End it there, then tap Check for Live HR."
         case .unavailable:
-            return String(localized: "Heart rate isn’t available from your Apple Watch right now. Tap Check for Live HR to try again.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Heart rate isn’t available from your Apple Watch right now. Tap Check for Live HR to try again."
+                #else
+                String(localized: "Heart rate isn’t available from your Apple Watch right now. Tap Check for Live HR to try again.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         case .unsupported:
-            return String(localized: "This Apple Watch can’t stream heart rate to your iPhone.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "This Apple Watch can’t stream heart rate to your iPhone."
+                #else
+                String(localized: "This Apple Watch can’t stream heart rate to your iPhone.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         case .healthPermissionDenied:
             // The one case the user must act on the Watch: watchOS shows the
             // Health permission sheet only there.
-            return String(localized: "Cladiron doesn’t have Health access on your Apple Watch yet. Open Cladiron on the Watch once to allow it, then tap Check for Live HR.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Cladiron doesn’t have Health access on your Apple Watch yet. Open Cladiron on the Watch once to allow it, then tap Check for Live HR."
+                #else
+                String(localized: "Cladiron doesn’t have Health access on your Apple Watch yet. Open Cladiron on the Watch once to allow it, then tap Check for Live HR.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         case .sessionStartFailed:
-            return String(localized: "Your Apple Watch couldn’t start the workout. Tap Check for Live HR to try again.", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Your Apple Watch couldn’t start the workout. Tap Check for Live HR to try again."
+                #else
+                String(localized: "Your Apple Watch couldn’t start the workout. Tap Check for Live HR to try again.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         }
     }
 }
@@ -69,7 +99,13 @@ public final class WatchHRRelay {
     nonisolated public static let staleAfter: TimeInterval = 3 * WatchHRRelaySchedule.heartbeatInterval
 
     public init(initial: WatchHRConnectionState? = nil) {
-        state = initial ?? .actionRequired(message: String(localized: "Tap Check for Live HR to connect your Apple Watch", bundle: FeatureLocalization.bundle))
+        state = initial ?? .actionRequired(message: {
+            #if os(Linux)
+            "Tap Check for Live HR to connect your Apple Watch"
+            #else
+            String(localized: "Tap Check for Live HR to connect your Apple Watch", bundle: FeatureLocalization.bundle)
+            #endif
+        }())
     }
     /// Starts a request. `launchingWatchApp` when the phone is opening
     /// Cladiron on the Watch first; otherwise the Watch app is already running.
@@ -122,12 +158,24 @@ public final class WatchHRRelay {
     }
 
     public func timeout() {
-        state = .timedOut(message: String(localized: "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR.", bundle: FeatureLocalization.bundle))
+        state = .timedOut(message: {
+            #if os(Linux)
+            "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR."
+            #else
+            String(localized: "No heart rate arrived from your Apple Watch. Check that it’s on your wrist and unlocked, then tap Check for Live HR.", bundle: FeatureLocalization.bundle)
+            #endif
+        }())
     }
     public func fail(_ message: String) { state = .failed(message: message) }
     public func cancel() {
         requestID = nil
-        state = .actionRequired(message: String(localized: "Apple Watch HR is not connected", bundle: FeatureLocalization.bundle))
+        state = .actionRequired(message: {
+            #if os(Linux)
+            "Apple Watch HR is not connected"
+            #else
+            String(localized: "Apple Watch HR is not connected", bundle: FeatureLocalization.bundle)
+            #endif
+        }())
     }
     public var activeRequestID: UUID? {
         requestID

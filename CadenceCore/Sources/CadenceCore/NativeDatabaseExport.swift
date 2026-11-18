@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 
 // MARK: - JSON v8 native-store archive
 
@@ -387,6 +389,7 @@ private enum NativeArchiveCodec {
     }
 }
 
+#if canImport(SwiftData)
 public enum NativeDatabaseExport {
     public static func build(from context: ModelContext) throws -> ExportNativeDatabase {
         var records: [ExportNativeRecord] = []
@@ -1074,3 +1077,4 @@ public enum NativeDatabaseExport {
         }
     }
 }
+#endif

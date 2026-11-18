@@ -14,9 +14,21 @@ public enum TodayQuickRepeatPresenter {
     public static func make(sessions: [WorkoutSession], hasActiveOrResumableSession: Bool) -> TodayQuickRepeatDisplay? {
         guard !hasActiveOrResumableSession else { return nil }
         guard let session = PreviousWorkoutPickerPolicy.candidates(sessions: sessions).first else { return nil }
-        let name = session.title.isEmpty ? String(localized: "Workout", bundle: FeatureLocalization.bundle) : session.title
+        let name = session.title.isEmpty ? {
+            #if os(Linux)
+            "Workout"
+            #else
+            String(localized: "Workout", bundle: FeatureLocalization.bundle)
+            #endif
+        }() : session.title
         let day = session.date.formatted(.dateTime.weekday(.abbreviated))
         return TodayQuickRepeatDisplay(sessionID: session.id,
-                                        title: String(localized: "Repeat: \(name) — \(day)", bundle: FeatureLocalization.bundle))
+                                        title: {
+                                            #if os(Linux)
+                                            "Repeat: \(name) — \(day)"
+                                            #else
+                                            String(localized: "Repeat: \(name) — \(day)", bundle: FeatureLocalization.bundle)
+                                            #endif
+                                        }())
     }
 }

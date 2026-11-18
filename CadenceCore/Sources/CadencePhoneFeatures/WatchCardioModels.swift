@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import Observation
 import CadenceCore
 import CadenceWorkoutFeatures
 

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -374,3 +375,4 @@ final class CardioInactivityRegressionSuite: XCTestCase {
         XCTAssertEqual(intervalDecision(stalled, enabled: false, now: at(48 * 3600)), .continueRunning, "interval")
     }
 }
+#endif

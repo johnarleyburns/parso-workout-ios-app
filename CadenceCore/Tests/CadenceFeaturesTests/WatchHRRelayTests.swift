@@ -1,68 +1,69 @@
-import XCTest
+import Testing
+import Foundation
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
 @MainActor
-final class WatchHRRelayTests: XCTestCase {
-    func testSamplesFromAnOlderRequestAreRejected() {
+@Suite final class WatchHRRelayTests {
+    @Test func samplesFromAnOlderRequestAreRejected() {
         let relay = WatchHRRelay()
         let oldRequest = UUID()
         let currentRequest = UUID()
         let start = Date(timeIntervalSince1970: 100)
         relay.begin(requestID: currentRequest, now: start)
 
-        XCTAssertFalse(relay.receive(bpm: 140, requestID: oldRequest, now: start.addingTimeInterval(1)))
-        XCTAssertNil(relay.freshBPM(at: start.addingTimeInterval(1)))
-        XCTAssertTrue(relay.receive(bpm: 141, requestID: currentRequest, now: start.addingTimeInterval(2)))
-        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(2)), 141)
+        #expect(!relay.receive(bpm: 140, requestID: oldRequest, now: start.addingTimeInterval(1)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(1)) == nil)
+        #expect(relay.receive(bpm: 141, requestID: currentRequest, now: start.addingTimeInterval(2)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(2)) == 141)
     }
 
-    func testLiveHeartRateBecomesStaleAfterThreeMissedHeartbeats() {
+    @Test func liveHeartRateBecomesStaleAfterThreeMissedHeartbeats() {
         let relay = WatchHRRelay()
         let request = UUID()
         let start = Date(timeIntervalSince1970: 200)
         relay.begin(requestID: request, now: start)
-        XCTAssertTrue(relay.receive(bpm: 132, requestID: request, now: start.addingTimeInterval(1)))
-        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(16)), 132)
-        XCTAssertNil(relay.freshBPM(at: start.addingTimeInterval(16.01)))
+        #expect(relay.receive(bpm: 132, requestID: request, now: start.addingTimeInterval(1)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(16)) == 132)
+        #expect(relay.freshBPM(at: start.addingTimeInterval(16.01)) == nil)
     }
 
-    func testPhoneLaunchedWatchAppStepsThroughLaunchingConnectingAndLive() {
+    @Test func phoneLaunchedWatchAppStepsThroughLaunchingConnectingAndLive() {
         let relay = WatchHRRelay()
         let request = UUID()
         let start = Date(timeIntervalSince1970: 400)
         relay.begin(requestID: request, launchingWatchApp: true, now: start)
-        XCTAssertEqual(relay.state, .launchingWatchApp(requestID: request, startedAt: start))
+        #expect(relay.state == .launchingWatchApp(requestID: request, startedAt: start))
         relay.watchAppLaunched(now: start.addingTimeInterval(3))
-        XCTAssertEqual(relay.state, .connecting(requestID: request, startedAt: start.addingTimeInterval(3)))
+        #expect(relay.state == .connecting(requestID: request, startedAt: start.addingTimeInterval(3)))
         relay.acknowledged(now: start.addingTimeInterval(4))
-        XCTAssertEqual(relay.state, .waitingForSample(requestID: request, acknowledgedAt: start.addingTimeInterval(4)))
-        XCTAssertTrue(relay.receive(bpm: 118, requestID: request, now: start.addingTimeInterval(6)))
-        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(6)), 118)
+        #expect(relay.state == .waitingForSample(requestID: request, acknowledgedAt: start.addingTimeInterval(4)))
+        #expect(relay.receive(bpm: 118, requestID: request, now: start.addingTimeInterval(6)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(6)) == 118)
     }
 
-    func testWatchReplyCanBeatTheLaunchCallback() {
+    @Test func watchReplyCanBeatTheLaunchCallback() {
         let relay = WatchHRRelay()
         let request = UUID()
         let start = Date(timeIntervalSince1970: 500)
         relay.begin(requestID: request, launchingWatchApp: true, now: start)
         relay.acknowledged(now: start.addingTimeInterval(2))
         relay.watchAppLaunched(now: start.addingTimeInterval(3))
-        XCTAssertEqual(relay.state, .waitingForSample(requestID: request, acknowledgedAt: start.addingTimeInterval(2)),
+        #expect(relay.state == .waitingForSample(requestID: request, acknowledgedAt: start.addingTimeInterval(2)),
                        "a late launch callback must not step back to connecting")
     }
 
-    func testFirstSampleCanArriveWhileStillLaunching() {
+    @Test func firstSampleCanArriveWhileStillLaunching() {
         let relay = WatchHRRelay()
         let request = UUID()
         let start = Date(timeIntervalSince1970: 600)
         relay.begin(requestID: request, launchingWatchApp: true, now: start)
-        XCTAssertFalse(relay.receive(bpm: 120, requestID: UUID(), now: start.addingTimeInterval(1)))
-        XCTAssertTrue(relay.receive(bpm: 120, requestID: request, now: start.addingTimeInterval(1)))
-        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(1)), 120)
+        #expect(!relay.receive(bpm: 120, requestID: UUID(), now: start.addingTimeInterval(1)))
+        #expect(relay.receive(bpm: 120, requestID: request, now: start.addingTimeInterval(1)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(1)) == 120)
     }
 
-    func testTimedOutRelayRecoversWhenTheSameWatchSessionResumes() {
+    @Test func timedOutRelayRecoversWhenTheSameWatchSessionResumes() {
         let relay = WatchHRRelay()
         let request = UUID()
         let start = Date(timeIntervalSince1970: 250)
@@ -70,48 +71,48 @@ final class WatchHRRelayTests: XCTestCase {
         relay.acknowledged(now: start.addingTimeInterval(1))
         relay.timeout()
 
-        XCTAssertTrue(relay.receive(bpm: 128, requestID: request, now: start.addingTimeInterval(20)))
-        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(20)), 128)
-        XCTAssertFalse(relay.receive(bpm: 128, requestID: UUID(), now: start.addingTimeInterval(20)))
+        #expect(relay.receive(bpm: 128, requestID: request, now: start.addingTimeInterval(20)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(20)) == 128)
+        #expect(!relay.receive(bpm: 128, requestID: UUID(), now: start.addingTimeInterval(20)))
     }
 
-    func testEveryRejectionHasAPlainMessage() {
+    @Test func everyRejectionHasAPlainMessage() {
         let all: [WatchHRRejection] = [.alreadyActive, .watchWorkoutActive, .unavailable,
                                        .unsupported, .healthPermissionDenied, .sessionStartFailed]
         for rejection in all {
-            XCTAssertFalse(rejection.userMessage.isEmpty)
-            XCTAssertFalse(rejection.userMessage.contains(rejection.rawValue),
+            #expect(!rejection.userMessage.isEmpty)
+            #expect(!rejection.userMessage.contains(rejection.rawValue),
                            "raw rejection codes are not user-facing text")
         }
     }
 
-    func testAlreadyActiveShouldRetryAfterStop() {
-        XCTAssertTrue(WatchHRRelay.shouldRetryAfterStop(rejection: .alreadyActive))
+    @Test func alreadyActiveShouldRetryAfterStop() {
+        #expect(WatchHRRelay.shouldRetryAfterStop(rejection: .alreadyActive))
     }
 
-    func testNonRetryableRejectionsShouldNotRetry() {
+    @Test func nonRetryableRejectionsShouldNotRetry() {
         let nonRetryable: [WatchHRRejection?] = [.healthPermissionDenied, .unsupported,
                                                  .unavailable, .sessionStartFailed,
                                                  .watchWorkoutActive, nil]
         for rejection in nonRetryable {
-            XCTAssertFalse(WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
+            #expect(!WatchHRRelay.shouldRetryAfterStop(rejection: rejection),
                            "rejection \(String(describing: rejection)) must not auto-retry")
         }
     }
 
-    func testTimeoutRetainsRequestIdentityUntilCancelled() {
+    @Test func timeoutRetainsRequestIdentityUntilCancelled() {
         let relay = WatchHRRelay()
         let request = UUID()
         relay.begin(requestID: request)
         relay.timeout()
 
-        XCTAssertEqual(relay.activeRequestID, request,
+        #expect(relay.activeRequestID == request,
                        "the phone still needs the request ID to stop a timed-out remote session")
         relay.cancel()
-        XCTAssertNil(relay.activeRequestID)
+        #expect(relay.activeRequestID == nil)
     }
 
-    func testRelayRecoverySequence() {
+    @Test func relayRecoverySequence() {
         // The stop-then-retry path: first request fails "already active", the
         // phone tears the stale session down and begins a fresh request which
         // the watch acknowledges and feeds samples to.
@@ -123,8 +124,8 @@ final class WatchHRRelayTests: XCTestCase {
         relay.fail("Apple Watch rejected heart-rate monitoring (alreadyActive)")
         relay.begin(requestID: retry, now: start.addingTimeInterval(2))
         relay.acknowledged(now: start.addingTimeInterval(3))
-        XCTAssertTrue(relay.receive(bpm: 138, requestID: retry, now: start.addingTimeInterval(4)))
-        XCTAssertEqual(relay.freshBPM(at: start.addingTimeInterval(5)), 138)
-        XCTAssertEqual(relay.activeRequestID, retry)
+        #expect(relay.receive(bpm: 138, requestID: retry, now: start.addingTimeInterval(4)))
+        #expect(relay.freshBPM(at: start.addingTimeInterval(5)) == 138)
+        #expect(relay.activeRequestID == retry)
     }
 }

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -179,3 +180,4 @@ public enum TodaySuggestionLaunchBuilder {
             activeSessionID: activeSessionID, settings: settings)
     }
 }
+#endif

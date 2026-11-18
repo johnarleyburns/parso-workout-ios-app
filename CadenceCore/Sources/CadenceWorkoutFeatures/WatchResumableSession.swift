@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -25,3 +26,4 @@ public enum WatchResumableSession {
         return hadSets ? ["action": "discard_session", "session_id": id] : nil
     }
 }
+#endif

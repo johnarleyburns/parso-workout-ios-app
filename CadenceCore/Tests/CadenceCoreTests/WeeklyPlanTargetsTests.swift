@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -141,3 +142,4 @@ final class WeeklyPlanTargetsTests: XCTestCase {
         XCTAssertTrue(note?.contains("lighter") ?? false, "Advice should read as a suggestion")
     }
 }
+#endif

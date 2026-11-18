@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -132,3 +133,4 @@ final class PlanningDraftStoreTests: XCTestCase {
         XCTAssertEqual(try store.exerciseNames(for: draft), ["Squat", "Row"])
     }
 }
+#endif

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -341,3 +342,4 @@ final class StrengthProgressTests: XCTestCase {
         XCTAssertEqual(a.id, b.id)
     }
 }
+#endif

@@ -116,12 +116,48 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Codable, Equatable, Sen
 
     public var displayName: String {
         switch self {
-        case .personalized: String(localized: "Personalized", bundle: .module)
-        case .fitness: String(localized: "Fitness", bundle: .module)
-        case .bodyweight: String(localized: "Bodyweight", bundle: .module)
-        case .powerlifting: String(localized: "Powerlifting", bundle: .module)
-        case .olympic: String(localized: "Olympic Weightlifting", bundle: .module)
-        case .strongman: String(localized: "Strongman", bundle: .module)
+        case .personalized: {
+            #if os(Linux)
+            "Personalized"
+            #else
+            String(localized: "Personalized", bundle: .module)
+            #endif
+        }()
+        case .fitness: {
+            #if os(Linux)
+            "Fitness"
+            #else
+            String(localized: "Fitness", bundle: .module)
+            #endif
+        }()
+        case .bodyweight: {
+            #if os(Linux)
+            "Bodyweight"
+            #else
+            String(localized: "Bodyweight", bundle: .module)
+            #endif
+        }()
+        case .powerlifting: {
+            #if os(Linux)
+            "Powerlifting"
+            #else
+            String(localized: "Powerlifting", bundle: .module)
+            #endif
+        }()
+        case .olympic: {
+            #if os(Linux)
+            "Olympic Weightlifting"
+            #else
+            String(localized: "Olympic Weightlifting", bundle: .module)
+            #endif
+        }()
+        case .strongman: {
+            #if os(Linux)
+            "Strongman"
+            #else
+            String(localized: "Strongman", bundle: .module)
+            #endif
+        }()
         }
     }
 
@@ -130,12 +166,48 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Codable, Equatable, Sen
 
     public var subtitle: String {
         switch self {
-        case .personalized: String(localized: "History-first movements, with your preferred style filling any gaps.", bundle: .module)
-        case .fitness: String(localized: "General gym movements — machines, cables and free weights.", bundle: .module)
-        case .bodyweight: String(localized: "No equipment — movements you load with your own body.", bundle: .module)
-        case .powerlifting: String(localized: "Squat, bench and deadlift variations and their accessories.", bundle: .module)
-        case .olympic: String(localized: "Snatch, clean and jerk variations, pulls and squats.", bundle: .module)
-        case .strongman: String(localized: "Carries, loads, drags and odd-object lifts.", bundle: .module)
+        case .personalized: {
+            #if os(Linux)
+            "History-first movements, with your preferred style filling any gaps."
+            #else
+            String(localized: "History-first movements, with your preferred style filling any gaps.", bundle: .module)
+            #endif
+        }()
+        case .fitness: {
+            #if os(Linux)
+            "General gym movements — machines, cables and free weights."
+            #else
+            String(localized: "General gym movements — machines, cables and free weights.", bundle: .module)
+            #endif
+        }()
+        case .bodyweight: {
+            #if os(Linux)
+            "No equipment — movements you load with your own body."
+            #else
+            String(localized: "No equipment — movements you load with your own body.", bundle: .module)
+            #endif
+        }()
+        case .powerlifting: {
+            #if os(Linux)
+            "Squat, bench and deadlift variations and their accessories."
+            #else
+            String(localized: "Squat, bench and deadlift variations and their accessories.", bundle: .module)
+            #endif
+        }()
+        case .olympic: {
+            #if os(Linux)
+            "Snatch, clean and jerk variations, pulls and squats."
+            #else
+            String(localized: "Snatch, clean and jerk variations, pulls and squats.", bundle: .module)
+            #endif
+        }()
+        case .strongman: {
+            #if os(Linux)
+            "Carries, loads, drags and odd-object lifts."
+            #else
+            String(localized: "Carries, loads, drags and odd-object lifts.", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -1080,11 +1152,23 @@ public enum SuggestedWorkoutGenerator {
             if index.inverted[dimension].isEmpty {
                 return SuggestedCoverageGap(
                     muscleID: id, reason: .noEligibleExercise,
-                    explanation: String(localized: "\(name): no eligible exercise trains it with your current equipment, exclusions, and injury or recovery limits.", bundle: .module))
+                    explanation: {
+                        #if os(Linux)
+                        "\(name): no eligible exercise trains it with your current equipment, exclusions, and injury or recovery limits."
+                        #else
+                        String(localized: "\(name): no eligible exercise trains it with your current equipment, exclusions, and injury or recovery limits.", bundle: .module)
+                        #endif
+                    }())
             }
             return SuggestedCoverageGap(
                 muscleID: id, reason: .styleConstraint,
-                explanation: String(localized: "\(name): the \(option.style.displayName) style allows no remaining eligible exercise that trains it.", bundle: .module))
+                explanation: {
+                    #if os(Linux)
+                    "\(name): the \(option.style.displayName) style allows no remaining eligible exercise that trains it."
+                    #else
+                    String(localized: "\(name): the \(option.style.displayName) style allows no remaining eligible exercise that trains it.", bundle: .module)
+                    #endif
+                }())
         }
     }
 
@@ -1121,11 +1205,29 @@ public enum SuggestedWorkoutGenerator {
         let styleText = option.style == .personalized
             ? "your history-first Personalized style"
             : "your \(option.style.displayName.lowercased()) style"
-        let workoutText = String(localized: "Built to address \(gapText) with \(styleText). ", bundle: .module)
-            + String(localized: "It prioritizes the largest need first and covers each group below its weekly dose at least once, for \(option.plannedSetTotal) working sets (an editable estimate, not a cap) for your \(input.trainingGoal.displayName.lowercased()) goal.", bundle: .module)
+        let workoutText = {
+            #if os(Linux)
+            "Built to address \(gapText) with \(styleText). "
+            #else
+            String(localized: "Built to address \(gapText) with \(styleText). ", bundle: .module)
+            #endif
+        }()
+            + {
+                #if os(Linux)
+                "It prioritizes the largest need first and covers each group below its weekly dose at least once, for \(option.plannedSetTotal) working sets (an editable estimate, not a cap) for your \(input.trainingGoal.displayName.lowercased()) goal."
+                #else
+                String(localized: "It prioritizes the largest need first and covers each group below its weekly dose at least once, for \(option.plannedSetTotal) working sets (an editable estimate, not a cap) for your \(input.trainingGoal.displayName.lowercased()) goal.", bundle: .module)
+                #endif
+            }()
 
         let unsupportedText = option.unsupportedCoverage.isEmpty ? "" : " "
-            + String(localized: "Not covered: ", bundle: .module)
+            + {
+                #if os(Linux)
+                "Not covered: "
+                #else
+                String(localized: "Not covered: ", bundle: .module)
+                #endif
+            }()
             + option.unsupportedCoverage.map(\.explanation).joined(separator: " ")
         let exerciseReasons = option.exercises.map { exercise in
             let relevant = exercise.contributions.filter { startingGapByID[$0.muscleID] ?? 0 > epsilon }
@@ -1133,9 +1235,27 @@ public enum SuggestedWorkoutGenerator {
                 ? "a maintenance option after the main gaps were covered"
                 : "the open target for \(displayName(relevant[0].muscleID))"
             let styleReason = exercise.isInStyle
-                ? String(localized: "It matches the selected style.", bundle: .module)
-                : String(localized: "It is a general-strength fallback because the selected style did not close that gap.", bundle: .module)
-            let whyExercise = String(localized: "Selected for \(gapReasons). \(styleReason)", bundle: .module)
+                ? {
+                    #if os(Linux)
+                    "It matches the selected style."
+                    #else
+                    String(localized: "It matches the selected style.", bundle: .module)
+                    #endif
+                }()
+                : {
+                    #if os(Linux)
+                    "It is a general-strength fallback because the selected style did not close that gap."
+                    #else
+                    String(localized: "It is a general-strength fallback because the selected style did not close that gap.", bundle: .module)
+                    #endif
+                }()
+            let whyExercise = {
+                #if os(Linux)
+                "Selected for \(gapReasons). \(styleReason)"
+                #else
+                String(localized: "Selected for \(gapReasons). \(styleReason)", bundle: .module)
+                #endif
+            }()
             let whySetRep = "\(exercise.plannedSets) sets × \(rangeText(exercise.repRange)) reps, matched to your \(input.trainingGoal.displayName.lowercased()) goal."
             return SuggestedExerciseRationale(exerciseName: exercise.name,
                                               whyExercise: whyExercise,

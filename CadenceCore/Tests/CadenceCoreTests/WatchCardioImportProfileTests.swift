@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -87,3 +88,4 @@ final class WatchCardioImportProfileTests: XCTestCase {
         XCTAssertFalse(body.contains("await"))
     }
 }
+#endif

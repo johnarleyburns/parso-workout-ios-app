@@ -101,7 +101,13 @@ public enum CoachPlanOptimizer {
             diagnostics.append(PlanningDiagnostic(
                 id: "noStrengthSlots",
                 kind: .noStrengthSlots,
-                message: String(localized: "No eligible remaining strength slots were available in this week's plan.", bundle: .module)))
+                message: {
+                    #if os(Linux)
+                    "No eligible remaining strength slots were available in this week's plan."
+                    #else
+                    String(localized: "No eligible remaining strength slots were available in this week's plan.", bundle: .module)
+                    #endif
+                }()))
         }
 
         // When no remaining slots exist at all but today is a valid training day,
@@ -182,7 +188,13 @@ public enum CoachPlanOptimizer {
             diagnostics.append(PlanningDiagnostic(
                 id: "unresolved.\(group.rawValue)",
                 kind: .unresolvedDeficit,
-                message: String(localized: "\(group.displayName) remains \(Format.sets(value)) sets below the starting range after safe planned work.", bundle: .module),
+                message: {
+                    #if os(Linux)
+                    "\(group.displayName) remains \(Format.sets(value)) sets below the starting range after safe planned work."
+                    #else
+                    String(localized: "\(group.displayName) remains \(Format.sets(value)) sets below the starting range after safe planned work.", bundle: .module)
+                    #endif
+                }(),
                 group: group,
                 value: value))
         }
@@ -233,24 +245,66 @@ public enum CoachPlanOptimizer {
         switch structure {
         case .fullBody:
             value = "Full-body"
-            detail = String(localized: "Coach built a full-body session to spread weekly volume efficiently across fewer training days.", bundle: .module)
+            detail = {
+                #if os(Linux)
+                "Coach built a full-body session to spread weekly volume efficiently across fewer training days."
+                #else
+                String(localized: "Coach built a full-body session to spread weekly volume efficiently across fewer training days.", bundle: .module)
+                #endif
+            }()
         case .upperFocus:
-            value = String(localized: "Upper body", bundle: .module)
-            detail = String(localized: "Coach focused this session on your upper body to allow adequate per-muscle volume within a single workout.", bundle: .module)
+            value = {
+                #if os(Linux)
+                "Upper body"
+                #else
+                String(localized: "Upper body", bundle: .module)
+                #endif
+            }()
+            detail = {
+                #if os(Linux)
+                "Coach focused this session on your upper body to allow adequate per-muscle volume within a single workout."
+                #else
+                String(localized: "Coach focused this session on your upper body to allow adequate per-muscle volume within a single workout.", bundle: .module)
+                #endif
+            }()
         case .lowerFocus:
-            value = String(localized: "Lower body", bundle: .module)
-            detail = String(localized: "Coach focused this session on your lower body to allow adequate per-muscle volume within a single workout.", bundle: .module)
+            value = {
+                #if os(Linux)
+                "Lower body"
+                #else
+                String(localized: "Lower body", bundle: .module)
+                #endif
+            }()
+            detail = {
+                #if os(Linux)
+                "Coach focused this session on your lower body to allow adequate per-muscle volume within a single workout."
+                #else
+                String(localized: "Coach focused this session on your lower body to allow adequate per-muscle volume within a single workout.", bundle: .module)
+                #endif
+            }()
         case .focused:
             let names = MuscleGroup.sorted(groups)
                 .prefix(2)
                 .map { $0.displayName.lowercased() }
                 .joined(separator: " & ")
             value = "Focused"
-            detail = String(localized: "Coach targeted \(names) specifically to close a weekly volume deficit.", bundle: .module)
+            detail = {
+                #if os(Linux)
+                "Coach targeted \(names) specifically to close a weekly volume deficit."
+                #else
+                String(localized: "Coach targeted \(names) specifically to close a weekly volume deficit.", bundle: .module)
+                #endif
+            }()
         }
         return ObservedFact(
             kind: .sessionStructure,
-            title: String(localized: "Session structure", bundle: .module),
+            title: {
+                #if os(Linux)
+                "Session structure"
+                #else
+                String(localized: "Session structure", bundle: .module)
+                #endif
+            }(),
             value: value,
             detail: detail,
             occurredAt: now,
@@ -301,18 +355,36 @@ public enum CoachPlanOptimizer {
             diagnostics.append(PlanningDiagnostic(
                 id: "\(kind.rawValue).\(slot.id)",
                 kind: kind,
-                message: String(localized: "Planned \(choice.session.title) for \(slot.id).", bundle: .module)))
+                message: {
+                    #if os(Linux)
+                    "Planned \(choice.session.title) for \(slot.id)."
+                    #else
+                    String(localized: "Planned \(choice.session.title) for \(slot.id).", bundle: .module)
+                    #endif
+                }()))
 
             if choice.session.id.contains(".synthetic.") {
                 diagnostics.append(PlanningDiagnostic(
                     id: "synthesized.\(slot.id)",
                     kind: .synthesizedSession,
-                    message: String(localized: "Synthesized a focused strength session for remaining volume deficits.", bundle: .module)))
+                    message: {
+                        #if os(Linux)
+                        "Synthesized a focused strength session for remaining volume deficits."
+                        #else
+                        String(localized: "Synthesized a focused strength session for remaining volume deficits.", bundle: .module)
+                        #endif
+                    }()))
             } else if choice.session.id.contains(".optimized.") {
                 diagnostics.append(PlanningDiagnostic(
                     id: "reshaped.\(slot.id)",
                     kind: .reshapedCandidate,
-                    message: String(localized: "Reshaped an existing strength candidate to better cover projected deficits.", bundle: .module)))
+                    message: {
+                        #if os(Linux)
+                        "Reshaped an existing strength candidate to better cover projected deficits."
+                        #else
+                        String(localized: "Reshaped an existing strength candidate to better cover projected deficits.", bundle: .module)
+                        #endif
+                    }()))
             }
         }
     }
@@ -777,9 +849,21 @@ public enum CoachPlanOptimizer {
         if groups.isEmpty {
             title = base.title
         } else if groups.count == 1 {
-            title = String(localized: "\(groups[0].displayName) focus", bundle: .module)
+            title = {
+                #if os(Linux)
+                "\(groups[0].displayName) focus"
+                #else
+                String(localized: "\(groups[0].displayName) focus", bundle: .module)
+                #endif
+            }()
         } else {
-            title = String(localized: "Strength focus", bundle: .module)
+            title = {
+                #if os(Linux)
+                "Strength focus"
+                #else
+                String(localized: "Strength focus", bundle: .module)
+                #endif
+            }()
         }
 
         let subtitle: String
@@ -787,7 +871,13 @@ public enum CoachPlanOptimizer {
             subtitle = base.subtitle
         } else {
             let names = groups.prefix(3).map { $0.displayName.lowercased() }.joined(separator: ", ")
-            subtitle = String(localized: "\(names) volume · \(exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) }) planned sets", bundle: .module)
+            subtitle = {
+                #if os(Linux)
+                "\(names) volume · \(exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) }) planned sets"
+                #else
+                String(localized: "\(names) volume · \(exercises.reduce(0) { $0 + max(1, $1.sets ?? 3) }) planned sets", bundle: .module)
+                #endif
+            }()
         }
 
         let idPrefix = synthesized ? "strength.synthetic" : base.id
@@ -813,8 +903,20 @@ public enum CoachPlanOptimizer {
         CoachSession(
             id: "strength.synthetic",
             kind: .strength,
-            title: String(localized: "Strength focus", bundle: .module),
-            subtitle: String(localized: "Targeted volume", bundle: .module),
+            title: {
+                #if os(Linux)
+                "Strength focus"
+                #else
+                String(localized: "Strength focus", bundle: .module)
+                #endif
+            }(),
+            subtitle: {
+                #if os(Linux)
+                "Targeted volume"
+                #else
+                String(localized: "Targeted volume", bundle: .module)
+                #endif
+            }(),
             durationMinutes: 45,
             exercises: [],
             trainingLoadTags: ["strength", "planned"],
@@ -837,7 +939,13 @@ public enum CoachPlanOptimizer {
                 diagnostics.append(PlanningDiagnostic(
                     id: "recoveryBlocked.\(day.id)",
                     kind: .recoveryBlocked,
-                    message: String(localized: "Skipped a planned strength slot that was not recovery eligible.", bundle: .module)))
+                    message: {
+                        #if os(Linux)
+                        "Skipped a planned strength slot that was not recovery eligible."
+                        #else
+                        String(localized: "Skipped a planned strength slot that was not recovery eligible.", bundle: .module)
+                        #endif
+                    }()))
                 return []
             }
             return strengthSessions.map { PlanningSlot(id: $0.id, date: day.date, isExtra: false) }
@@ -861,7 +969,13 @@ public enum CoachPlanOptimizer {
                     diagnostics.append(PlanningDiagnostic(
                         id: "skippedRest.\(day.id)",
                         kind: .skippedRestDay,
-                        message: String(localized: "Did not add strength work on a rest or recovery day.", bundle: .module)))
+                        message: {
+                            #if os(Linux)
+                            "Did not add strength work on a rest or recovery day."
+                            #else
+                            String(localized: "Did not add strength work on a rest or recovery day.", bundle: .module)
+                            #endif
+                        }()))
                     continue
                 }
             }
@@ -870,7 +984,13 @@ public enum CoachPlanOptimizer {
                 diagnostics.append(PlanningDiagnostic(
                     id: "extraRecoveryBlocked.\(day.id)",
                     kind: .recoveryBlocked,
-                    message: String(localized: "Did not add extra strength work before recovery eligibility.", bundle: .module)))
+                    message: {
+                        #if os(Linux)
+                        "Did not add extra strength work before recovery eligibility."
+                        #else
+                        String(localized: "Did not add extra strength work before recovery eligibility.", bundle: .module)
+                        #endif
+                    }()))
                 continue
             }
             extras.append(PlanningSlot(id: "extra-\(day.id)-strength", date: day.date, isExtra: true))

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -178,3 +179,4 @@ public final class PlanningDraftEditorModel {
         }
     }
 }
+#endif

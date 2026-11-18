@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -183,3 +184,4 @@ public struct PlanningDraftStore: PlanningDraftManaging {
         return trimmed.isEmpty ? "Workout" : trimmed
     }
 }
+#endif

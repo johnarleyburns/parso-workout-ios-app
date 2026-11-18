@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -51,3 +52,4 @@ final class TodayQuickRepeatPresenterTests: XCTestCase {
         XCTAssertFalse(display!.title.contains("—  "))
     }
 }
+#endif

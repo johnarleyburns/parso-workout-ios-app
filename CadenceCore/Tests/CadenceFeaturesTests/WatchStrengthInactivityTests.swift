@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -159,3 +160,4 @@ final class WatchStrengthInactivityTests: XCTestCase {
             startedAt: started, ownedByPhone: false, inactivityDeadline: now.addingTimeInterval(1), now: now), .owned)
     }
 }
+#endif

@@ -2,6 +2,7 @@ import XCTest
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class HomeWeeklyIntentCacheTests: XCTestCase {
     private func url() -> URL {

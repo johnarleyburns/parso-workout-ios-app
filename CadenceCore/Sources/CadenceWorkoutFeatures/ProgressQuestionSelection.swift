@@ -17,15 +17,69 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .consistency: return String(localized: "Consistency", bundle: FeatureLocalization.bundle)
-        case .effort: return String(localized: "Effort", bundle: FeatureLocalization.bundle)
-        case .intensity: return String(localized: "Intensity", bundle: FeatureLocalization.bundle)
-        case .personalRecords: return String(localized: "Personal Records", bundle: FeatureLocalization.bundle)
-        case .strengthOverTime: return String(localized: "Strength over time", bundle: FeatureLocalization.bundle)
-        case .tests: return String(localized: "Tests", bundle: FeatureLocalization.bundle)
-        case .workoutHistory: return String(localized: "My Workouts", bundle: FeatureLocalization.bundle)
-        case .readiness: return String(localized: "Readiness", bundle: FeatureLocalization.bundle)
-        case .observations: return String(localized: "Observations", bundle: FeatureLocalization.bundle)
+        case .consistency: return {
+            #if os(Linux)
+            "Consistency"
+            #else
+            String(localized: "Consistency", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .effort: return {
+            #if os(Linux)
+            "Effort"
+            #else
+            String(localized: "Effort", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .intensity: return {
+            #if os(Linux)
+            "Intensity"
+            #else
+            String(localized: "Intensity", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .personalRecords: return {
+            #if os(Linux)
+            "Personal Records"
+            #else
+            String(localized: "Personal Records", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .strengthOverTime: return {
+            #if os(Linux)
+            "Strength over time"
+            #else
+            String(localized: "Strength over time", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .tests: return {
+            #if os(Linux)
+            "Tests"
+            #else
+            String(localized: "Tests", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .workoutHistory: return {
+            #if os(Linux)
+            "My Workouts"
+            #else
+            String(localized: "My Workouts", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .readiness: return {
+            #if os(Linux)
+            "Readiness"
+            #else
+            String(localized: "Readiness", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .observations: return {
+            #if os(Linux)
+            "Observations"
+            #else
+            String(localized: "Observations", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         }
     }
 

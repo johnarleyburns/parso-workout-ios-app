@@ -1,6 +1,7 @@
 import XCTest
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 final class WatchSyncCommitCoordinatorTests: XCTestCase {
     private func envelope(_ revision: Int, version: Int = WatchSyncHandshake.protocolVersion) -> WatchSyncHandshake.Envelope {

@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -843,3 +844,4 @@ final class DataExportTests: XCTestCase {
                        "and the owner's plan must survive untouched")
     }
 }
+#endif

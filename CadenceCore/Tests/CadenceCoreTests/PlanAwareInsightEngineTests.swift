@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -176,3 +177,4 @@ final class PlanAwareInsightEngineTests: XCTestCase {
                      "Late week: Abs 0 done + 8 planned = 8 projected (MEV 6) should NOT produce a projected-low nag — plan covers it")
     }
 }
+#endif

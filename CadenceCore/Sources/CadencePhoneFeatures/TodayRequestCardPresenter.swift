@@ -30,18 +30,48 @@ public enum TodayRequestCardPresenter {
                                            isLoading: false, isTappable: true,
                                            accessibilityLabel: title)
         case .requesting:
-            return TodayRequestCardDisplay(title: title, buttonLabel: String(localized: "Suggesting…", bundle: FeatureLocalization.bundle),
+            return TodayRequestCardDisplay(title: title, buttonLabel: {
+                #if os(Linux)
+                "Suggesting…"
+                #else
+                String(localized: "Suggesting…", bundle: FeatureLocalization.bundle)
+                #endif
+            }(),
                                            isLoading: true, isTappable: false,
-                                           accessibilityLabel: String(localized: "\(title), loading", bundle: FeatureLocalization.bundle))
+                                           accessibilityLabel: {
+                                               #if os(Linux)
+                                               "\(title), loading"
+                                               #else
+                                               String(localized: "\(title), loading", bundle: FeatureLocalization.bundle)
+                                               #endif
+                                           }())
         case .result:
             let shown = (resultSummary?.isEmpty == false ? resultSummary : nil) ?? title
-            return TodayRequestCardDisplay(title: shown, buttonLabel: String(localized: "View", bundle: FeatureLocalization.bundle),
+            return TodayRequestCardDisplay(title: shown, buttonLabel: {
+                #if os(Linux)
+                "View"
+                #else
+                String(localized: "View", bundle: FeatureLocalization.bundle)
+                #endif
+            }(),
                                            isLoading: false, isTappable: true,
                                            accessibilityLabel: shown)
         case .failed(let message):
-            return TodayRequestCardDisplay(title: title, buttonLabel: String(localized: "Try again", bundle: FeatureLocalization.bundle),
+            return TodayRequestCardDisplay(title: title, buttonLabel: {
+                #if os(Linux)
+                "Try again"
+                #else
+                String(localized: "Try again", bundle: FeatureLocalization.bundle)
+                #endif
+            }(),
                                            isLoading: false, isTappable: true,
-                                           accessibilityLabel: String(localized: "\(title) failed: \(message)", bundle: FeatureLocalization.bundle))
+                                           accessibilityLabel: {
+                                               #if os(Linux)
+                                               "\(title) failed: \(message)"
+                                               #else
+                                               String(localized: "\(title) failed: \(message)", bundle: FeatureLocalization.bundle)
+                                               #endif
+                                           }())
         }
     }
 }

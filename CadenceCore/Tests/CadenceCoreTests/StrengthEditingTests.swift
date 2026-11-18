@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -126,3 +127,4 @@ final class StrengthEditingTests: XCTestCase {
         XCTAssertEqual(session.orderedSets.count, 1)
     }
 }
+#endif

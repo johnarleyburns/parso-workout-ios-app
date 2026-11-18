@@ -24,11 +24,29 @@ public enum WatchCardioPlanTarget {
     public static func text(durationSeconds: Int?, zone: Int?) -> String? {
         var parts: [String] = []
         if let durationSeconds, durationSeconds > 0 {
-            parts.append(String(localized: "\(max(1, durationSeconds / 60)) min", bundle: FeatureLocalization.bundle))
+            parts.append({
+                #if os(Linux)
+                "\(max(1, durationSeconds / 60)) min"
+                #else
+                String(localized: "\(max(1, durationSeconds / 60)) min", bundle: FeatureLocalization.bundle)
+                #endif
+            }())
         }
-        if let zone, (1...5).contains(zone) { parts.append(String(localized: "Zone \(zone)", bundle: FeatureLocalization.bundle)) }
+        if let zone, (1...5).contains(zone) { parts.append({
+            #if os(Linux)
+            "Zone \(zone)"
+            #else
+            String(localized: "Zone \(zone)", bundle: FeatureLocalization.bundle)
+            #endif
+        }()) }
         guard !parts.isEmpty else { return nil }
-        return String(localized: "Planned: \(parts.joined(separator: " · "))", bundle: FeatureLocalization.bundle)
+        return {
+            #if os(Linux)
+            "Planned: \(parts.joined(separator: " · "))"
+            #else
+            String(localized: "Planned: \(parts.joined(separator: " · "))", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
     }
 
     /// 0...1 progress towards the planned duration, for the hairline under the target.

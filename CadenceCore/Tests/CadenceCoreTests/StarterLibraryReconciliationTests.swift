@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -127,3 +128,4 @@ final class BoundedSessionFetchTests: XCTestCase {
         XCTAssertEqual(since.map(\.title), ["Day 3", "Day 2"])
     }
 }
+#endif

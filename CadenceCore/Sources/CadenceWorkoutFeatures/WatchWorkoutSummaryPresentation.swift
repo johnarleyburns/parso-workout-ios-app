@@ -52,7 +52,13 @@ public struct WatchWorkoutSummaryPresentation: Equatable, Sendable {
             ExerciseDisplay(name: line.name, setTexts: line.sets.filter { $0.performerID == nil }.map { set in
                 var text = "\(Format.weightValueQuarter(set.weightKg, unit: unit)) \(unit.abbreviation) × \(set.reps)"
                 if let rpe = set.rpe { text += " @\(String(format: "%g", rpe))" }
-                if set.isWarmup { text = String(localized: "Warm-up", bundle: FeatureLocalization.bundle) + " " + text }
+                if set.isWarmup { text = {
+                    #if os(Linux)
+                    "Warm-up"
+                    #else
+                    String(localized: "Warm-up", bundle: FeatureLocalization.bundle)
+                    #endif
+                }() + " " + text }
                 return text
             })
         }.filter { !$0.setTexts.isEmpty }

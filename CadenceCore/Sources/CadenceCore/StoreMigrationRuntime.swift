@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import Foundation
 import SwiftData
 
@@ -156,3 +157,4 @@ public enum StoreMigrationRuntime {
             assessments: try context.fetchCount(FetchDescriptor<Assessment>()))
     }
 }
+#endif

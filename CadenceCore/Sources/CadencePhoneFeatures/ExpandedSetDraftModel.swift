@@ -1,6 +1,7 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
+import CadenceWorkoutFeatures
 
 /// The non-UI contract for the expanded iPhone set editor. Weight is kept in
 /// display units until `canonicalWeightKg`; this avoids conversion/rounding

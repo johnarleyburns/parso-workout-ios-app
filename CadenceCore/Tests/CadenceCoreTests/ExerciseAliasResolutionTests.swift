@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -108,3 +109,4 @@ final class ExerciseAliasResolutionTests: XCTestCase {
         XCTAssertEqual(session.orderedSets.first?.exercise?.name, "Dumbbell Lateral Raise")
     }
 }
+#endif

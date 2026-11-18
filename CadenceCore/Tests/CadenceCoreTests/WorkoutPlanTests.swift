@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -137,3 +138,4 @@ final class WorkoutPlanTests: XCTestCase {
         XCTAssertFalse(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
     }
 }
+#endif

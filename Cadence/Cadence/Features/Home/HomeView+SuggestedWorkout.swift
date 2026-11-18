@@ -49,7 +49,7 @@ extension HomeView {
             // signature changes.
             let historyExerciseKeys = try ExerciseHistoryIndexStore.personalizedExerciseKeys(
                 sessions: completedHistorySessions,
-                storageURL: model.isUITestMode ? nil : ExerciseHistoryIndexStore.defaultStorageURL())
+                storageURL: ExerciseHistoryIndexStore.defaultStorageURL())
 
             let persistedCandidates = try SuggestedWorkoutSignposts.exerciseFetchAndMap {
                 try WorkoutRepository.allExercises(context).map { exercise in

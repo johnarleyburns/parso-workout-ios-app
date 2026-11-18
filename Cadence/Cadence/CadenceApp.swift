@@ -14,7 +14,6 @@ struct CadenceApp: App {
     @State private var active = ActiveWorkoutModel()
     @State private var contributions = ContributionCoordinator()
     @Environment(\.scenePhase) private var scenePhase
-    private let uiTestMode: Bool
     let container: ModelContainer
     /// Store preparation is per process, not per foreground. It used to rerun
     /// the whole catalog reconciliation and a full-history index check every
@@ -22,25 +21,6 @@ struct CadenceApp: App {
     @State private var persistentStorePrepared = false
 
     init() {
-        let args = ProcessInfo.processInfo.arguments
-        let uiTest = args.contains("-uiTest")
-        self.uiTestMode = uiTest
-        let persistentUITest = args.contains("-uiTestPersistentStore")
-        let uiTestStoreURL: URL? = {
-            guard persistentUITest,
-                  let idIndex = args.firstIndex(of: "-uiTestStoreID"),
-                  args.indices.contains(idIndex + 1) else { return nil }
-            let storeID = args[idIndex + 1].filter { $0.isNumber || $0 == "-" }
-            guard !storeID.isEmpty,
-                  let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory,
-                                                                     in: .userDomainMask).first else {
-                return nil
-            }
-            try? FileManager.default.createDirectory(at: applicationSupport,
-                                                     withIntermediateDirectories: true)
-            return applicationSupport.appendingPathComponent("ui-test-\(storeID).store")
-        }()
-
         // Put the audio session in non-interrupting mix mode before any audio
         // object initializes, so workout cues never pause the user's background
         // music/podcast (field-testing: warm-up silenced background audio).
@@ -48,18 +28,11 @@ struct CadenceApp: App {
                                                          options: [.mixWithOthers])
 
         do {
-            if !uiTest && !persistentUITest {
-                // New installs and completed H5 migrations use the split
-                // local/Sync container. Existing legacy installs stay on the
-                // old container until the user explicitly starts migration
-                // from Backup & Restore, preserving an upgrade-safe path.
-                container = try CadenceStore.makeApplicationModelContainer()
-            } else {
-                container = try CadenceStore.makeModelContainer(
-                    inMemory: uiTest && !persistentUITest,
-                    cloudKitEnabled: !persistentUITest,
-                    storeURL: uiTestStoreURL)
-            }
+            // New installs and completed H5 migrations use the split
+            // local/Sync container. Existing legacy installs stay on the
+            // old container until the user explicitly starts migration
+            // from Backup & Restore, preserving an upgrade-safe path.
+            container = try CadenceStore.makeApplicationModelContainer()
         } catch {
             // Never delete or replace an on-disk store on a model-container
             // error. The store contains irreplaceable workout history and may
@@ -70,15 +43,6 @@ struct CadenceApp: App {
         // Attach before the first scene task so an import that starts during
         // ModelContainer setup can still surface its restore state in the UI.
         model.startCloudKitHistoryMonitoring()
-        // UI tests need deterministic fixtures before their first assertion. In
-        // production this work is deferred until after the first frame so a
-        // CloudKit restore and a large exercise-library seed cannot monopolize
-        // app launch.
-        if uiTest {
-            let ctx = ModelContext(container)
-            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
-            UITestSeed.apply(args: args, context: ctx)
-        }
     }
 
     var body: some Scene {
@@ -108,7 +72,6 @@ struct CadenceApp: App {
     }
 
     private func preparePersistentStore() async -> Bool {
-        guard !uiTestMode else { return true }
         // Give SwiftUI a frame for the launch surface before doing synchronous
         // SwiftData seeding. The seed can touch hundreds of exercises during a
         // catalog upgrade, so it must also run in a detached context; a single

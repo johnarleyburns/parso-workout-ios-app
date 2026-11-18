@@ -12,7 +12,7 @@ import CadenceWorkoutFeatures
 /// system sheet has been answered, and never after.
 extension WatchWorkoutManager {
     var needsInitialHealthAuthorization: Bool {
-        !uiTestMode && healthAuthorizationGateActive
+        !simulatesHealthKit && healthAuthorizationGateActive
     }
 
     /// The types every Watch workout reads and writes. One definition keeps
@@ -45,7 +45,7 @@ extension WatchWorkoutManager {
     /// updates the boundary and the launcher's "Health access needed" row.
     /// Called at launch and after every authorization request.
     func refreshHealthAuthorizationState() async {
-        guard !uiTestMode else { return }
+        guard !simulatesHealthKit else { return }
         refreshShareAuthorization()
         let status: WatchHealthAuthorizationGate.RequestStatus
         do {
@@ -91,7 +91,7 @@ extension WatchWorkoutManager {
 
     @discardableResult
     func requestWorkoutAuthorization() async -> Bool {
-        guard !uiTestMode else {
+        guard !simulatesHealthKit else {
             workoutShareAuthorized = true
             hrAuthorized = true
             return true

@@ -11,9 +11,6 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 import os
 import CadencePhoneFeatures
-#if DEBUG
-import CadenceFixtures
-#endif
 
 /// Central dependency container injected through the environment. Chooses real
 /// platform services or deterministic fakes based on launch arguments so the
@@ -129,7 +126,6 @@ final class AppModel: NSObject, @unchecked Sendable {
     var phoneCardioModelContainer: ModelContainer? { _modelContainer }
     let hrm: HeartRateMonitor
     let location: LocationTracker
-    let isUITestMode: Bool
 
     /// Whether the Apple Watch is actively streaming HR (FR-8).
     private(set) var watchActive: Bool = false
@@ -168,13 +164,6 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// completed. Sending before activation is silently dropped by some OS
     /// releases, which used to leave the HR gate waiting forever.
     private var pendingWatchStartType: String?
-    /// UI-test seam (`-uiTestWatchStop`): record every `stopWatchWorkout()` call
-    /// into `UserDefaults("uitest.watchStopCount")` so the iPhone smoke test can
-    /// assert the cardio end paths actually stop the watch session.
-    private let recordsWatchStop: Bool
-    /// Only meaningful while `recordsWatchStop`; the running call count surfaced
-    /// to the smoke test through the same UserDefaults key.
-    private var watchStopCount: Int = 0
 
     /// Cached once at launch — avoids hitting `WCSession.default.isWatchAppInstalled`
     /// (a synchronous IPC call) from SwiftUI body evaluation.
@@ -270,7 +259,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// for this launch; the ready marker deliberately makes the split store
     /// selectable only on the next launch, after the HealthKit outbox is safe.
     func migrateLegacyStore() async {
-        guard !isUITestMode, !storeMigrationStatus.isInProgress,
+        guard !storeMigrationStatus.isInProgress,
               legacyStoreNeedsMigration, let oldContainer = _modelContainer,
               let settings = _settings else {
             storeMigrationStatus = .notNeeded
@@ -306,38 +295,13 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     @MainActor
     override init() {
-        let args = ProcessInfo.processInfo.arguments
-        let uiTest = args.contains("-uiTest")
-        self.isUITestMode = uiTest
-
-        #if DEBUG
-        let healthProvider: HealthDataProviding
-        if uiTest {
-            let fake = FakeHealthProvider()
-            fake.authStatus = .authorized
-            if let idx = args.firstIndex(of: "-todaySteps"), idx + 1 < args.count, let n = Int(args[idx + 1]) {
-                fake.seededTodaySteps = n
-            }
-            if args.contains("-noHealthWorkouts") {
-                fake.pendingWorkouts = []
-            }
-            healthProvider = fake
-        } else {
-            healthProvider = HealthKitProvider()
-        }
-        #else
         let healthProvider: HealthDataProviding = HealthKitProvider()
-        #endif
         self.health = healthProvider
         self.healthBackup = HealthBackupCoordinator(health: healthProvider)
 
-        self.hrm = HeartRateMonitor(simulated: uiTest)
-        self.location = LocationTracker(simulated: uiTest)
+        self.hrm = HeartRateMonitor()
+        self.location = LocationTracker()
         self.watchHRRelay = WatchHRRelay()
-        self.recordsWatchStop = args.contains("-uiTestWatchStop")
-        self.watchStopCount = self.recordsWatchStop
-            ? UserDefaults.standard.integer(forKey: "uitest.watchStopCount")
-            : 0
         self.watchSessionDelegate = WatchSessionDelegateProxy()
 
         super.init()
@@ -353,7 +317,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Is the Apple Watch available to stream HR? Uses cached value to avoid
     /// synchronous IPC calls from SwiftUI body evaluation.
     var watchAvailable: Bool {
-        Self.liveWatchHREnabled && !isUITestMode && watchAppInstalled
+        Self.liveWatchHREnabled && watchAppInstalled
     }
 
     /// A user-facing description of the current Watch connection step. The HR
@@ -388,7 +352,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Activates the WCSession and caches `isWatchAppInstalled`. Called once from
     /// `CadenceApp.task{}` so it doesn't block launch (FR-8 reliability fix).
     func activateWCSession() {
-        guard Self.liveWatchHREnabled, !isUITestMode, WCSession.isSupported() else { return }
+        guard Self.liveWatchHREnabled, WCSession.isSupported() else { return }
         let session = WCSession.default
         // WatchConnectivity invokes its delegate on a private queue. Keep the
         // Objective-C delegate nonisolated and hop into AppModel's main actor.
@@ -571,7 +535,6 @@ final class AppModel: NSObject, @unchecked Sendable {
 
     /// Installs the workout observer once; deliveries run the import without Home.
     func startHealthWorkoutObservation() {
-        guard !isUITestMode else { return }
         health.startWorkoutObservation { [weak self] completion in
             guard let self, let coordinator = self.cardioImportCoordinator() else {
                 completion.finish()
@@ -616,13 +579,8 @@ final class AppModel: NSObject, @unchecked Sendable {
     }
 
     /// Checks the Apple-ID account that backs the private SwiftData store.
-    /// CloudKit account lookup is asynchronous and never blocks the first
-    /// frame; UI tests use a deterministic available state.
+    /// CloudKit account lookup is asynchronous and never blocks the first frame.
     func refreshCloudKitAccountStatus() {
-        guard !isUITestMode else {
-            cloudKitAccountAvailability = .available
-            return
-        }
         cloudKitAccountAvailability = .checking
         CKContainer(identifier: CadenceStore.activeCloudKitContainerID()).accountStatus { [weak self] status, _ in
             Task { @MainActor [weak self] in
@@ -636,7 +594,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// an honest restore indicator without pretending CloudKit exposes byte-level
     /// progress.
     func startCloudKitHistoryMonitoring() {
-        guard !isUITestMode, cloudKitEventObserver == nil else { return }
+        guard cloudKitEventObserver == nil else { return }
         cloudKitEventObserver = NotificationCenter.default.addObserver(
             forName: NSPersistentCloudKitContainer.eventChangedNotification,
             object: nil,
@@ -1036,7 +994,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchRetryArmed = false
         watchStartInProgress = true
         watchError = nil
-        if !isUITestMode, WCSession.isSupported(), WCSession.default.activationState != .activated {
+        if WCSession.isSupported(), WCSession.default.activationState != .activated {
             pendingWatchStartType = rawType
             activateWCSession()
             return
@@ -1379,10 +1337,6 @@ final class AppModel: NSObject, @unchecked Sendable {
         watchReconcileTimer?.invalidate(); watchReconcileTimer = nil
         if watchHRConnection.identity?.requestID == targetRequestID { watchHRConnection.end() }
         watchHRRelay.cancel()
-        if recordsWatchStop {
-            watchStopCount += 1
-            UserDefaults.standard.set(watchStopCount, forKey: "uitest.watchStopCount")
-        }
         watchActive = false
         watchStartInProgress = false
         watchError = nil

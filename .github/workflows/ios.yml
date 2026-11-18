@@ -70,10 +70,10 @@ jobs:
           bash scripts/check-ci-no-simulators.sh
           bash scripts/check-release-safety.sh
 
-  # XCUITest smoke suites are intentionally NOT run in CI: simulator-based UI
-  # tests are unreliable on shared GitHub Actions runners (cold-launch timing,
-  # shared CPU). The reliable CI gate is core-tests (host SwiftPM package tests +
-  # guardrails). UI smoke runs locally via `make smoke` and `make watch-smoke`.
+  # There is no XCUITest/simulator suite in this repo: simulator-based UI tests
+  # were removed (unreliable on shared runners — cold-launch timing, shared CPU —
+  # and this CI environment cannot boot simulators at all). The CI gate is
+  # core-tests (host SwiftPM package tests + guardrails).
 
   archive:
     permissions:

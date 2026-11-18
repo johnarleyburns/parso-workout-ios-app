@@ -25,7 +25,7 @@ struct WatchRootView: View {
     @State private var cardioStartError: String?
     @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
     @State private var activeCardioSpec: WorkoutConfigurationSpec?
-    @State private var activeIntervalSession: ActiveIntervalSession?
+    @State private var activeIntervalSession: ActiveIntervalSession? = nil
     @State private var plannedStrengthSession: WatchSync.TodayPlan.Session?
     @State private var resumingSession: WorkoutSession?
     @State private var confirmDiscardResume = false
@@ -33,17 +33,6 @@ struct WatchRootView: View {
     @State private var showingCardio = false
     @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
     private let launchRequests = WatchLaunchRequests.shared
-
-    init(arguments: [String] = ProcessInfo.processInfo.arguments) {
-        let intervalSession: ActiveIntervalSession?
-        if arguments.contains("-uiTestBoxingInterval") {
-            let model = IntervalSetupModel(kind: "Boxing")
-            intervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: "Boxing")
-        } else {
-            intervalSession = nil
-        }
-        _activeIntervalSession = State(initialValue: intervalSession)
-    }
 
     var body: some View {
         Group {

@@ -16,7 +16,7 @@ extension WatchWorkoutManager {
     /// background. Do not re-lock every wrist raise after the user unlocks.
     func enablePendingSwimWaterLock() {
         let device = WKInterfaceDevice.current()
-        guard !uiTestMode, WatchSwimSetup.shouldWaterLock(
+        guard !simulatesHealthKit, WatchSwimSetup.shouldWaterLock(
             pending: swimWaterLockPending, running: session?.state == .running,
             foreground: WKApplication.shared().applicationState == .active,
             supported: device.waterResistanceRating == .wr50) else { return }
@@ -26,7 +26,7 @@ extension WatchWorkoutManager {
 
     func enableWaterLock() {
         let device = WKInterfaceDevice.current()
-        guard !uiTestMode, session?.state == .running || session?.state == .paused,
+        guard !simulatesHealthKit, session?.state == .running || session?.state == .paused,
               WKApplication.shared().applicationState == .active,
               device.waterResistanceRating == .wr50 else { return }
         swimWaterLockPending = false

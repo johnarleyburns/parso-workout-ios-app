@@ -79,7 +79,7 @@ extension WatchWorkoutManager {
     /// A launch can skip the UI (screen off), and with it the root view's own
     /// activation; queued commands and the relay need the session.
     private func activateWCSessionForBackgroundLaunch() {
-        guard !uiTestMode, wcSession?.activationState != .activated else { return }
+        guard !simulatesHealthKit, wcSession?.activationState != .activated else { return }
         activateWCSession()
     }
 

@@ -72,17 +72,7 @@ struct CadenceWatchApp: App {
     }
 
     init() {
-        bootstrap = WatchStoreBootstrap(arguments: ProcessInfo.processInfo.arguments)
-    }
-
-    private static func seedNames(in args: [String]) -> Set<String> {
-        var result: Set<String> = []
-        var i = 0
-        while i < args.count {
-            if args[i] == "-seed", i + 1 < args.count { result.insert(args[i + 1]) }
-            i += 1
-        }
-        return result
+        bootstrap = WatchStoreBootstrap()
     }
 }
 
@@ -108,48 +98,8 @@ final class WatchStoreBootstrap: ObservableObject {
         return String(localized: "Previous Watch data was recovered to \(url.lastPathComponent).")
     }
 
-    init(arguments: [String]) {
-        let inMemory = arguments.contains("-uiTest")
-        guard !inMemory else {
-            // UI-test fast path, intentionally kept separate from the
-            // WatchStoreBootstrapPolicy wiring below: it opens the in-memory
-            // store first (which only seeds here, under `-uiTest`) and falls
-            // back through the same recovery shape production uses.
-            do {
-                let fresh = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
-                container = fresh
-                result = Policy.Result(container: fresh, state: .ready)
-                seed(fresh, arguments: arguments)
-            } catch {
-                let quarantine: URL?
-                do {
-                    quarantine = try Self.quarantineStore()
-                } catch {
-                    Self.logger.error("Store quarantine failed: \(error.localizedDescription, privacy: .public)")
-                    quarantine = nil
-                }
-                do {
-                    let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
-                    container = fresh
-                    result = Policy.Result(container: fresh, state: .recovered, quarantinedAt: quarantine)
-                    seed(fresh, arguments: arguments)
-                } catch {
-                    do {
-                        let fresh = try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
-                        container = fresh
-                        result = Policy.Result(container: fresh, state: .degraded)
-                    } catch {
-                        // Keep the recovery surface alive even if the platform cannot
-                        // create an in-memory host; no workout UI is presented.
-                        container = nil
-                        result = Policy.Result(container: nil, state: .degraded)
-                    }
-                }
-            }
-            return
-        }
-
-        // Real launch: delegate the open/quarantine/retry/fall-back-to-memory
+    init() {
+        // Delegate the open/quarantine/retry/fall-back-to-memory
         // state machine entirely to the already-tested, generic policy.
         // `seed` is a deliberate no-op here — real users get data via
         // CloudKit sync, never local starter-library seeding (mirrors the
@@ -193,9 +143,7 @@ final class WatchStoreBootstrap: ObservableObject {
     /// runs only when the app build or the stored exercise rows changed since
     /// the last successful run; otherwise launch does two cheap queries.
     func prepareCatalogIfNeeded() {
-        guard !catalogPreparationStarted,
-              let container,
-              !ProcessInfo.processInfo.arguments.contains("-uiTest") else {
+        guard !catalogPreparationStarted, let container else {
             return
         }
         catalogPreparationStarted = true
@@ -203,15 +151,6 @@ final class WatchStoreBootstrap: ObservableObject {
         Task.detached(priority: .utility) {
             let context = ModelContext(container)
             _ = try? StarterLibraryReconciliation.reconcileIfStale(context, revision: revision)
-        }
-    }
-
-    private func seed(_ container: ModelContainer, arguments: [String]) {
-        let context = ModelContext(container)
-        _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(context)
-        for seed in Self.seedNames(in: arguments) where seed.hasPrefix("person.") {
-            let name = String(seed.dropFirst("person.".count))
-            if !name.isEmpty { _ = try? WorkoutRepository.findOrCreatePerson(named: name, in: context) }
         }
     }
 
@@ -227,13 +166,6 @@ final class WatchStoreBootstrap: ObservableObject {
             try fm.moveItem(at: file, to: recovery.appendingPathComponent(file.lastPathComponent))
         }
         return recovery
-    }
-
-    private static func seedNames(in args: [String]) -> Set<String> {
-        var result: Set<String> = []
-        var i = 0
-        while i < args.count { if args[i] == "-seed", i + 1 < args.count { result.insert(args[i + 1]) }; i += 1 }
-        return result
     }
 }
 

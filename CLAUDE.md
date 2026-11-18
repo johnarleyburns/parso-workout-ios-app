@@ -4,7 +4,7 @@ Project memory for Claude Code. This file is the quick, durable context. The cod
 
 ## Swift 6 hard rule
 
-This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the SwiftPM package tests only; simulator smoke is a pre-release gate. A push runs no tests.
+This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the SwiftPM package tests only. A push runs no tests.
 
 ## GitHub CLI only
 
@@ -16,8 +16,9 @@ Always use the `gh` CLI directly for every GitHub interaction (issues, PRs, comm
 change, first write or strengthen the smallest focused automated test that fails
 for the requested behavior; only then implement the production change until that
 test passes. Keep the test at the lowest useful layer (normally a
-`CadenceCore`/`CadenceFeatures` unit test); use the single allowed UI flow only
-when rendering or system integration is the behavior under test. Do not open,
+`CadenceCore`/`CadenceFeatures` unit test). There is no automated UI flow — a
+rendering or system-integration behavior that can't be covered by a headless
+`swift test` needs the narrowest reliable manual/device check instead. Do not open,
 update, or enable auto-merge for a PR with a known behavior change that lacks
 its failing-to-passing regression, unless automatic coverage is genuinely
 impossible and the PR documents the narrowest reliable manual/device check.
@@ -104,7 +105,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - Run host tests through `bash scripts/ci-test.sh` (serial XCTest by default; Swift Testing retains its own scheduling). For worker benchmarks use `CADENCE_TEST_MODE=parallel CADENCE_TEST_WORKERS=N`. Never overlap local package/Xcode jobs; independent CI jobs use separate runners/workspaces.
 - Preserve `CadenceCore/.build` and repo-specific DerivedData across successful runs for incremental builds. Clean only for a diagnosed cache/toolchain problem or an explicit owner request; never remove unrelated projects’ caches. CI caches are scoped by toolchain, architecture, configuration/role, package inputs and commit.
 - Real-device runs are required to test HealthKit — the simulator has no real Health data.
-- **Do not boot or run any simulator, UI smoke suite, or simulator-based Xcode test unless the user explicitly requests it in the current task.** This includes `make smoke`, `make ipad-smoke`, `make watch-smoke`, and `make all-tests`. Prefer the headless package tests, destination-based generic builds, and non-simulator guardrails by default.
+- **There is no simulator/UI test suite in this repo** (removed: this CI environment cannot boot simulators and crashes when anything tries to). Do not boot or run any simulator or simulator-based Xcode test unless the user explicitly requests it in the current task. Prefer the headless package tests, destination-based generic builds, and non-simulator guardrails by default.
 - Git hooks (installed via `scripts/install-git-hooks.sh`): **pre-commit** runs only the host suite through `bash scripts/ci-test.sh` and never boots a simulator; **pre-push** runs no tests.
 - **Set command timeouts for Git hooks:** allow at least **5 minutes (300 seconds)** for `git commit`, because the package suite can be lengthy; `git push` needs little time because pre-push runs no tests.
 
@@ -117,13 +118,11 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
   state struct / view-model and render it; the logic is unit-tested in
   `CadenceFeaturesTests` (headless `swift test`). `CadenceFeatures` imports only
   Foundation + SwiftData + Observation — if an extraction wants a `Color`/`View`,
-  return a semantic enum and let the view map it. The XCUITest suite is
-  **exactly one iPhone test and one watch test** — it grows by extending those
-  end-to-end flows, never by adding test functions, because each one costs a full
-  app launch in the pre-commit hook. Default new coverage to a `swift test`.
-  `scripts/check-test-pyramid.sh` (CI) enforces all three: the import ban, the
-  one-test-per-device cap, and the 400-LOC-per-Features-file budget
-  (grandfathered large views may only shrink).
+  return a semantic enum and let the view map it. There is no XCUITest suite —
+  every behavioral coverage, iPhone and Watch, is a `swift test`.
+  `scripts/check-test-pyramid.sh` (CI) enforces the other two: the import ban
+  and the 400-LOC-per-Features-file budget (grandfathered large views may only
+  shrink).
 
 ## HARD RULE: Every coaching output MUST cite science
 Cladiron never makes a single recommendation, insight, warning, deferred decision, or
@@ -172,7 +171,7 @@ not have.
 - **TestFlight labels are a state machine, not a claim that a person tested it:** `testflight-uploaded` means Apple accepted the binary; `testflight-processing` means Apple has not finished processing; `ready-for-qa` means App Store Connect reports the exact build `VALID`; `testflight-distribution-confirmed` is additional API evidence of an assigned group; and `testflight-access-unverified` means the group lookup was unavailable or empty, not that the build cannot be installed. Never add `ready-for-qa` merely because an upload command succeeded.
 - **Human QA belongs on the issue:** after installing the exact version/build, add the issue checklist result with device, OS, reproduction/acceptance path, and pass/fail. A failed device result starts a repair cycle; it must not be hidden by the TestFlight labels.
 - **Issue traceability (every user-visible issue):** the PR must map each requirement → the real production entry point (the shipped coordinator/presenter/view, never a parallel test-only state machine) → the observable result → the regression that guards it → the issue's device checklist. Show failing→passing evidence for that regression, and finish with an issue-to-diff audit. Helper/refactor-only work must say it is **infrastructure** and cannot claim feature completion.
-- **Hermetic harness:** `bash scripts/run-verification-harness.sh [--self-test]` runs `ProductionFlowHarnessTests` (real production types with injected Watch transport, clock, store and Health boundary; no network, signing, HealthKit hardware, or sleeps) once as an optional focused check; `--self-test` proves it fails when a production binding is removed. Failures print `[harness:<scenario>]` plus a trace artifact path (`HARNESS_ARTIFACT_DIR`). The normal package suite already runs these tests once; CI must not invoke the focused harness again. Extend its scenarios when touching those flows; it is not a prerequisite for other issues — each repair carries its own regression. Rendered-view/reflow checks stay in the single XCUITest (run only when the user requests simulator validation) and the device checklist.
+- **Hermetic harness:** `bash scripts/run-verification-harness.sh [--self-test]` runs `ProductionFlowHarnessTests` (real production types with injected Watch transport, clock, store and Health boundary; no network, signing, HealthKit hardware, or sleeps) once as an optional focused check; `--self-test` proves it fails when a production binding is removed. Failures print `[harness:<scenario>]` plus a trace artifact path (`HARNESS_ARTIFACT_DIR`). The normal package suite already runs these tests once; CI must not invoke the focused harness again. Extend its scenarios when touching those flows; it is not a prerequisite for other issues — each repair carries its own regression. Rendered-view/reflow checks are covered by `LiveWorkoutReflowGuardTests.swift` (a host `swift test` that statically scans the SwiftUI source tree for `minimumScaleFactor` regressions) and the device checklist.
 - **QA labels:** `ready-for-qa` means delivered/eligible for QA; `qa-passed` / `qa-failed` are human-only states. A TestFlight upload never clears `qa-failed`; only a human result does.
 - **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.
 - Scope investigations narrowly; ask before large refactors or new dependencies (this repo aims for zero proprietary deps — see NFR-6).
@@ -208,11 +207,8 @@ This is how large bodies of work (e.g. the field-testing redesign) are run. Mirr
   migration) to keep the local store + older JSON exports working.
 - **Verify, then commit/push/PR.** `swift test` is the reliable default gate
   (Mac toolchain), supplemented by generic destination-based builds and
-  non-simulator guardrails. The `xcodebuild` UI suite is run only when the user
-  explicitly requests simulator validation; if it is requested and launches
-  balloon (~45s, `no debugger version`), restart CoreSimulator
-  (`killall -9 com.apple.CoreSimulator.CoreSimulatorService`) and re-run;
-  report honestly which tests are real vs environment-flaky.
+  non-simulator guardrails. There is no simulator UI suite to run; report
+  honestly which tests are real vs environment-flaky.
 - Reference spec IDs (FR-x, field-testing §n) and end commits with the
   Co-Authored-By trailer.
 

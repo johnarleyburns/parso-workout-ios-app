@@ -1,4 +1,4 @@
-import XCTest
+import Testing
 import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
@@ -6,7 +6,7 @@ import CadencePhoneFeatures
 
 /// The Observations card has no hidden plan preview; the independent suggested
 /// workout action is unconditional in its SwiftUI parent.
-final class ObservationsPresenterTests: XCTestCase {
+struct ObservationsPresenterTests {
     private func suggestion(_ id: String, tone: HomeSuggestion.Tone = .neutral) -> HomeSuggestion {
         HomeSuggestion(id: id,
                        category: tone == .warning ? .safety : .progress,
@@ -18,32 +18,32 @@ final class ObservationsPresenterTests: XCTestCase {
                        confidence: 3)
     }
 
-    func testHeadingIsAlwaysFirstAndNoWorkoutBlocksExist() {
+    @Test func headingIsAlwaysFirstAndNoWorkoutBlocksExist() {
         let blocks = ObservationsPresenter.blocks(
             suggestions: [suggestion("a"), suggestion("b")], expanded: false)
-        XCTAssertEqual(blocks.first, .heading)
-        XCTAssertEqual(blocks, [.heading, .suggestion(suggestion("a")), .showMore(expanded: false)])
+        #expect(blocks.first == .heading)
+        #expect(blocks == [.heading, .suggestion(suggestion("a")), .showMore(expanded: false)])
     }
 
-    func testShowMoreOnlyAppearsWithMoreThanOneSuggestion() {
-        XCTAssertFalse(ObservationsPresenter.blocks(suggestions: [suggestion("a")], expanded: false)
+    @Test func showMoreOnlyAppearsWithMoreThanOneSuggestion() {
+        #expect(!ObservationsPresenter.blocks(suggestions: [suggestion("a")], expanded: false)
             .contains(.showMore(expanded: false)))
-        XCTAssertTrue(ObservationsPresenter.blocks(suggestions: [suggestion("a"), suggestion("b")], expanded: false)
+        #expect(ObservationsPresenter.blocks(suggestions: [suggestion("a"), suggestion("b")], expanded: false)
             .contains(.showMore(expanded: false)))
     }
 
-    func testCollapsedAndExpandedVisibilityRemainCorrect() {
+    @Test func collapsedAndExpandedVisibilityRemainCorrect() {
         let suggestions = [suggestion("a"), suggestion("b"), suggestion("c")]
         let collapsed = ObservationsPresenter.blocks(suggestions: suggestions, expanded: false)
         let expanded = ObservationsPresenter.blocks(suggestions: suggestions, expanded: true)
-        XCTAssertEqual(ids(in: collapsed), ["a"])
-        XCTAssertEqual(ids(in: expanded), ["a", "b", "c"])
+        #expect(ids(in: collapsed) == ["a"])
+        #expect(ids(in: expanded) == ["a", "b", "c"])
     }
 
-    func testToneRoleMapsPositiveWarningNeutral() {
-        XCTAssertEqual(ObservationsPresenter.toneRole(.positive), .positive)
-        XCTAssertEqual(ObservationsPresenter.toneRole(.warning), .warning)
-        XCTAssertEqual(ObservationsPresenter.toneRole(.neutral), .neutral)
+    @Test func toneRoleMapsPositiveWarningNeutral() {
+        #expect(ObservationsPresenter.toneRole(.positive) == .positive)
+        #expect(ObservationsPresenter.toneRole(.warning) == .warning)
+        #expect(ObservationsPresenter.toneRole(.neutral) == .neutral)
     }
 
     private func ids(in blocks: [ObservationsPresenter.Block]) -> [String] {
@@ -51,23 +51,23 @@ final class ObservationsPresenterTests: XCTestCase {
     }
 }
 
-final class ObservationsRoutingTests: XCTestCase {
-    func testRoutingKeepsOwnersSeparate() {
-        XCTAssertEqual(ProgressDataOwner.owner(for: .observations), .observations)
-        XCTAssertEqual(ProgressDataOwner.owner(for: .workoutHistory), .pagedHistory)
+struct ObservationsRoutingTests {
+    @Test func routingKeepsOwnersSeparate() {
+        #expect(ProgressDataOwner.owner(for: .observations) == .observations)
+        #expect(ProgressDataOwner.owner(for: .workoutHistory) == .pagedHistory)
     }
 
-    func testEmptyFeedHasNoShowMore() {
+    @Test func emptyFeedHasNoShowMore() {
         let blocks = ObservationsPresenter.blocks(suggestions: [], expanded: false)
-        XCTAssertEqual(blocks, [.heading])
-        XCTAssertTrue(ObservationsPresenter.isEmpty(suggestions: []))
+        #expect(blocks == [.heading])
+        #expect(ObservationsPresenter.isEmpty(suggestions: []))
     }
 
-    func testTodayCompositionHasNoObservations() {
-        XCTAssertFalse(TodayComposition.sections.contains { $0.rawValue.lowercased().contains("observation") })
+    @Test func todayCompositionHasNoObservations() {
+        #expect(!TodayComposition.sections.contains { $0.rawValue.lowercased().contains("observation") })
     }
 
-    func testFeedMatchesHomePresenterOrderAndFiltersDismissed() {
+    @Test func feedMatchesHomePresenterOrderAndFiltersDismissed() {
         let snapshot = CoachSnapshotBuilder.build(
             sessions: [], cardio: [], assessments: [], hasPainToday: false,
             goal: .strength, experience: .intermediate, formula: .epley,
@@ -77,10 +77,10 @@ final class ObservationsRoutingTests: XCTestCase {
                                                experience: .intermediate, userAge: nil).suggestions
         let feed = ProgressObservationFeed.make(snapshot: snapshot, schedule: schedule, goal: .strength,
                                                 experience: .intermediate, userAge: nil)
-        XCTAssertEqual(feed.suggestions.map(\.id), home.map(\.id))
+        #expect(feed.suggestions.map(\.id) == home.map(\.id))
         let dismissed = ProgressObservationFeed.make(
             snapshot: snapshot, schedule: schedule, goal: .strength, experience: .intermediate,
             userAge: nil, dismissedKeys: Set(home.map(\.sourceClaimKey)))
-        XCTAssertTrue(dismissed.suggestions.isEmpty)
+        #expect(dismissed.suggestions.isEmpty)
     }
 }

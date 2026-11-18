@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadencePhoneFeatures
@@ -7,7 +8,7 @@ import CadencePhoneFeatures
 @testable import CadenceWorkoutFeatures
 
 @MainActor
-final class PlanningDraftPromotionTests: XCTestCase {
+struct PlanningDraftPromotionTests {
     private struct Boom: Error {}
 
     private func makeContext() throws -> ModelContext {
@@ -40,66 +41,66 @@ final class PlanningDraftPromotionTests: XCTestCase {
         try context.fetch(FetchDescriptor<PlanningDraft>()).filter(\.isVisible).count
     }
 
-    func testUndecodablePayloadPreservesDraftOnStart() throws {
+    @Test func undecodablePayloadPreservesDraftOnStart() throws {
         let context = try makeContext(), store = PlanningDraftStore()
         let draft = try richDraft(store, context)
         draft.payloadVersion = 99
-        XCTAssertThrowsError(try store.start(draftID: draft.id, operationID: UUID(), in: context))
-        XCTAssertNil(draft.deletedAt)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 0)
+        #expect(throws: (any Error).self) { try store.start(draftID: draft.id, operationID: UUID(), in: context) }
+        #expect(draft.deletedAt == nil)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 0)
     }
 
-    func testStartMapsPlanAndIsIdempotent() throws {
+    @Test func startMapsPlanAndIsIdempotent() throws {
         let context = try makeContext(), store = PlanningDraftStore()
         let draft = try richDraft(store, context)
         let plan = try PlanningDraftCodec.decode(draft)
         let op = UUID()
         let session = try store.start(draftID: draft.id, operationID: op, in: context)
         let again = try store.start(draftID: draft.id, operationID: op, in: context)
-        XCTAssertTrue(session === again)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 1)
-        XCTAssertEqual(try visible(context), 0)
-        XCTAssertEqual(session.id, op)
-        XCTAssertEqual(session.plannedExerciseNames, ["Bench Press", "Row"])
-        XCTAssertEqual(session.plannedPrescriptions.map(\.supersetGroup), ["A", "A"])
-        XCTAssertEqual(session.plannedPrescriptions[1].sets.first?.targetLoadMode, EditableLoadMode.percentageOfOneRepMax.rawValue)
-        XCTAssertEqual(session.plannedPerformerPrescriptions.count, plan.performerPrescriptions().count)
-        XCTAssertEqual(session.enginePlanId, "plan")
-        XCTAssertEqual(session.engineRevisionId, "rev")
-        XCTAssertEqual(session.notes, "RIR 2")
-        XCTAssertEqual(session.activePartnerIDs, plan.partnerIDs.map(\.uuidString))
+        #expect(session === again)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 1)
+        #expect(try visible(context) == 0)
+        #expect(session.id == op)
+        #expect(session.plannedExerciseNames == ["Bench Press", "Row"])
+        #expect(session.plannedPrescriptions.map(\.supersetGroup) == ["A", "A"])
+        #expect(session.plannedPrescriptions[1].sets.first?.targetLoadMode == EditableLoadMode.percentageOfOneRepMax.rawValue)
+        #expect(session.plannedPerformerPrescriptions.count == plan.performerPrescriptions().count)
+        #expect(session.enginePlanId == "plan")
+        #expect(session.engineRevisionId == "rev")
+        #expect(session.notes == "RIR 2")
+        #expect(session.activePartnerIDs == plan.partnerIDs.map(\.uuidString))
     }
 
-    func testStartSaveFailurePreservesDraftAndLeavesNoSession() throws {
+    @Test func startSaveFailurePreservesDraftAndLeavesNoSession() throws {
         let context = try makeContext()
         let draft = try richDraft(PlanningDraftStore(), context)
         let failing = PlanningDraftStore(save: { _ in throw Boom() })
-        XCTAssertThrowsError(try failing.start(draftID: draft.id, operationID: UUID(), in: context))
-        XCTAssertNil(draft.deletedAt)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 0)
+        #expect(throws: (any Error).self) { try failing.start(draftID: draft.id, operationID: UUID(), in: context) }
+        #expect(draft.deletedAt == nil)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 0)
     }
 
-    func testStartRetryAfterInterruptedRetireFinishesRetiring() throws {
+    @Test func startRetryAfterInterruptedRetireFinishesRetiring() throws {
         let context = try makeContext(), store = PlanningDraftStore()
         let draft = try richDraft(store, context)
         let op = UUID()
         context.insert(WorkoutSession(id: op, title: "Push"))
         try context.save()
         let session = try store.start(draftID: draft.id, operationID: op, in: context)
-        XCTAssertEqual(session.id, op)
-        XCTAssertEqual(try context.fetch(FetchDescriptor<WorkoutSession>()).count, 1)
-        XCTAssertEqual(try visible(context), 0)
+        #expect(session.id == op)
+        #expect(try context.fetch(FetchDescriptor<WorkoutSession>()).count == 1)
+        #expect(try visible(context) == 0)
     }
 
 
-    func testDiscardByIDRetiresAndFailureRestores() throws {
+    @Test func discardByIDRetiresAndFailureRestores() throws {
         let context = try makeContext()
         let draft = try richDraft(PlanningDraftStore(), context)
         let failing = PlanningDraftStore(save: { _ in throw Boom() })
-        XCTAssertThrowsError(try failing.discard(draftID: draft.id, in: context))
-        XCTAssertNil(draft.deletedAt)
+        #expect(throws: (any Error).self) { try failing.discard(draftID: draft.id, in: context) }
+        #expect(draft.deletedAt == nil)
         try PlanningDraftStore().discard(draftID: draft.id, in: context)
-        XCTAssertEqual(try visible(context), 0)
+        #expect(try visible(context) == 0)
     }
 }
 #endif

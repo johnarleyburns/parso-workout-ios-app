@@ -1,12 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class PlanningDraftTests: XCTestCase {
+struct PlanningDraftTests {
     private func fullPlan() -> EditablePlan {
         let partner = UUID()
         let sets = [
@@ -33,35 +34,35 @@ final class PlanningDraftTests: XCTestCase {
                 exercises: [SuggestedExerciseRationale(exerciseName: "Row", whyExercise: "a", whySetRep: "b")]))
     }
 
-    func testRoundTripPreservesEveryField() throws {
+    @Test func roundTripPreservesEveryField() throws {
         let plan = fullPlan()
         let data = try PlanningDraftCodec.encode(plan)
         let decoded = try PlanningDraftCodec.decode(data, version: PlanningDraftPayload.currentVersion)
-        XCTAssertEqual(decoded, plan)
-        XCTAssertEqual(EditablePlanPayload(decoded), EditablePlanPayload(plan))
+        #expect(decoded == plan)
+        #expect(EditablePlanPayload(decoded) == EditablePlanPayload(plan))
     }
 
-    func testUnknownVersionThrows() throws {
+    @Test func unknownVersionThrows() throws {
         let data = try PlanningDraftCodec.encode(fullPlan())
-        XCTAssertThrowsError(try PlanningDraftCodec.decode(data, version: 99)) {
-            XCTAssertEqual($0 as? PlanningDraftCodecError, .unsupportedVersion(99))
+        #expect(throws: PlanningDraftCodecError.unsupportedVersion(99)) {
+            try PlanningDraftCodec.decode(data, version: 99)
         }
     }
 
-    func testCorruptPayloadLeavesRowUntouched() throws {
+    @Test func corruptPayloadLeavesRowUntouched() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let bytes = Data([0xFF, 0x00, 0x13])
         let draft = PlanningDraft(payloadData: bytes)
         context.insert(draft)
         try context.save()
-        XCTAssertThrowsError(try PlanningDraftCodec.decode(draft))
+        #expect(throws: (any Error).self) { try PlanningDraftCodec.decode(draft) }
         let rows = try context.fetch(FetchDescriptor<PlanningDraft>())
-        XCTAssertEqual(rows.count, 1)
-        XCTAssertEqual(rows.first?.payloadData, bytes)
-        XCTAssertNil(rows.first?.deletedAt)
+        #expect(rows.count == 1)
+        #expect(rows.first?.payloadData == bytes)
+        #expect(rows.first?.deletedAt == nil)
     }
 
-    func testPersistsAcrossReopenAndSkipsSoftDeleted() throws {
+    @Test func persistsAcrossReopenAndSkipsSoftDeleted() throws {
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("draft-\(UUID().uuidString).store")
         defer { try? FileManager.default.removeItem(at: url) }
@@ -81,13 +82,13 @@ final class PlanningDraftTests: XCTestCase {
         let container = try ModelContainer(for: CadenceStore.schema,
                                            configurations: ModelConfiguration(schema: CadenceStore.schema, url: url))
         let context = ModelContext(container)
-        let current = try XCTUnwrap(PlanningDraft.current(in: context))
-        XCTAssertEqual(current.id, id)
-        XCTAssertEqual(current.originDevice, "phone")
-        XCTAssertEqual(try PlanningDraftCodec.decode(current), plan)
+        let current = try #require(PlanningDraft.current(in: context))
+        #expect(current.id == id)
+        #expect(current.originDevice == "phone")
+        #expect(try PlanningDraftCodec.decode(current) == plan)
     }
 
-    func testExportMergeRestoresDraft() throws {
+    @Test func exportMergeRestoresDraft() throws {
         let source = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let plan = fullPlan()
         source.insert(PlanningDraft(title: "Push", payloadData: try PlanningDraftCodec.encode(plan)))
@@ -95,15 +96,15 @@ final class PlanningDraftTests: XCTestCase {
         let archive = try NativeDatabaseExport.build(from: source)
         let destination = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         _ = try NativeDatabaseExport.merge(archive, in: destination)
-        let restored = try XCTUnwrap(PlanningDraft.current(in: destination))
-        XCTAssertEqual(try PlanningDraftCodec.decode(restored), plan)
+        let restored = try #require(PlanningDraft.current(in: destination))
+        #expect(try PlanningDraftCodec.decode(restored) == plan)
     }
 
-    func testRegisteredInSchemas() {
-        XCTAssertTrue(CadenceStore.schema.entities.contains { $0.name == "PlanningDraft" })
-        XCTAssertTrue(CadenceStore.syncSchema.entities.contains { $0.name == "PlanningDraft" })
-        XCTAssertFalse(CadenceStore.localSchema.entities.contains { $0.name == "PlanningDraft" })
-        XCTAssertTrue(ExportNativeDatabase.entityNames.contains("PlanningDraft"))
+    @Test func registeredInSchemas() {
+        #expect(CadenceStore.schema.entities.contains { $0.name == "PlanningDraft" })
+        #expect(CadenceStore.syncSchema.entities.contains { $0.name == "PlanningDraft" })
+        #expect(!CadenceStore.localSchema.entities.contains { $0.name == "PlanningDraft" })
+        #expect(ExportNativeDatabase.entityNames.contains("PlanningDraft"))
     }
 }
 #endif

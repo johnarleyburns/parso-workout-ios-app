@@ -1,36 +1,37 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class PlannedDayPreviewPresenterTests: XCTestCase {
-    func testRestDayFooterUsesRestCopy() {
+struct PlannedDayPreviewPresenterTests {
+    @Test func restDayFooterUsesRestCopy() {
         let day = day([
             PlannedSession(id: "rest", kind: .rest, label: "Rest", isHard: false, isRest: true)
         ])
 
-        XCTAssertEqual(
-            PlannedDayPreviewPresenter.footerText(for: day),
-            "This is a rest day, enjoy it, you earned it!"
+        #expect(
+            PlannedDayPreviewPresenter.footerText(for: day)
+            == "This is a rest day, enjoy it, you earned it!"
         )
     }
 
-    func testPlannedTrainingDayKeepsStartFromWorkoutCopy() {
+    @Test func plannedTrainingDayKeepsStartFromWorkoutCopy() {
         let day = day([
             PlannedSession(id: "strength", kind: .strength, label: "Strength", isHard: true, isRest: false)
         ])
 
-        XCTAssertEqual(
-            PlannedDayPreviewPresenter.footerText(for: day),
-            "This is a planned day. Start it from the Workout tab when it's today."
+        #expect(
+            PlannedDayPreviewPresenter.footerText(for: day)
+            == "This is a planned day. Start it from the Workout tab when it's today."
         )
     }
 
-    func testStrengthPrescriptionUsesConfiguredSets() {
-        XCTAssertEqual(
-            PlannedDayPreviewPresenter.strengthPrescription(goal: .hypertrophy, sets: 4),
-            "4 sets · 12-10-8-6 reps · ~1 RIR"
+    @Test func strengthPrescriptionUsesConfiguredSets() {
+        #expect(
+            PlannedDayPreviewPresenter.strengthPrescription(goal: .hypertrophy, sets: 4)
+            == "4 sets · 12-10-8-6 reps · ~1 RIR"
         )
     }
 

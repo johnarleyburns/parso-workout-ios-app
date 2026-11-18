@@ -1,25 +1,25 @@
-import XCTest
+import Testing
 import CadenceFeatures
 import CadenceWorkoutFeatures
 
-final class LiveHeartRateDisplayTests: XCTestCase {
-    func testNoSample() {
+struct LiveHeartRateDisplayTests {
+    @Test func noSample() {
         let d = LiveHeartRateDisplay(bpm: nil)
-        XCTAssertEqual(d.valueText, "--")
-        XCTAssertFalse(d.hasSample)
+        #expect(d.valueText == "--")
+        #expect(!d.hasSample)
     }
 
-    func testActiveSample() {
-        XCTAssertEqual(LiveHeartRateDisplay(bpm: 118).valueText, "118")
+    @Test func activeSample() {
+        #expect(LiveHeartRateDisplay(bpm: 118).valueText == "118")
     }
 
-    func testFractionalRounds() {
-        XCTAssertEqual(LiveHeartRateDisplay(bpm: 117.5).valueText, "118")
-        XCTAssertEqual(LiveHeartRateDisplay(bpm: 117.4).valueText, "117")
+    @Test func fractionalRounds() {
+        #expect(LiveHeartRateDisplay(bpm: 117.5).valueText == "118")
+        #expect(LiveHeartRateDisplay(bpm: 117.4).valueText == "117")
     }
 
-    func testNonPositiveOrNonFiniteIsNoSample() {
-        XCTAssertFalse(LiveHeartRateDisplay(bpm: 0).hasSample)
-        XCTAssertFalse(LiveHeartRateDisplay(bpm: .nan).hasSample)
+    @Test func nonPositiveOrNonFiniteIsNoSample() {
+        #expect(!LiveHeartRateDisplay(bpm: 0).hasSample)
+        #expect(!LiveHeartRateDisplay(bpm: .nan).hasSample)
     }
 }

@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class IntervalInactivityEvidenceAdapterTests: XCTestCase {
+struct IntervalInactivityEvidenceAdapterTests {
     private let t0 = Date(timeIntervalSince1970: 1_000_000)
 
     private func runner(started: Bool) -> CombinedPlanRunner {
@@ -27,32 +28,32 @@ final class IntervalInactivityEvidenceAdapterTests: XCTestCase {
         return CardioInactivityPolicy.decide(evidence: e, now: now, enabled: true)
     }
 
-    func testRunningRunnerNeverInactive() {
-        XCTAssertEqual(decide(runner(started: true), at: t0.addingTimeInterval(3 * 3600)), .continueRunning)
+    @Test func runningRunnerNeverInactive() {
+        #expect(decide(runner(started: true), at: t0.addingTimeInterval(3 * 3600)) == .continueRunning)
     }
 
-    func testStalledRunnerAutoPausesAtTenMinutesThenEnds() {
+    @Test func stalledRunnerAutoPausesAtTenMinutesThenEnds() {
         let r = runner(started: false)
-        XCTAssertEqual(decide(r, at: t0.addingTimeInterval(599)), .continueRunning)
+        #expect(decide(r, at: t0.addingTimeInterval(599)) == .continueRunning)
         let pauseAt = t0.addingTimeInterval(600)
-        XCTAssertEqual(decide(r, at: pauseAt), .autoPause(at: pauseAt))
+        #expect(decide(r, at: pauseAt) == .autoPause(at: pauseAt))
         let end = CardioInactivityPolicy.terminalDeadline(autoPausedAt: pauseAt)
-        XCTAssertEqual(decide(r, origin: .automatic, autoPausedAt: pauseAt, at: end.addingTimeInterval(-1)), .continuePaused)
-        XCTAssertEqual(decide(r, origin: .automatic, autoPausedAt: pauseAt, at: end), .autoEnd(at: end))
+        #expect(decide(r, origin: .automatic, autoPausedAt: pauseAt, at: end.addingTimeInterval(-1)) == .continuePaused)
+        #expect(decide(r, origin: .automatic, autoPausedAt: pauseAt, at: end) == .autoEnd(at: end))
     }
 
-    func testManualPauseNeverEnds() {
+    @Test func manualPauseNeverEnds() {
         let r = runner(started: true)
         r.pause()
-        XCTAssertTrue(r.isPaused)
-        XCTAssertEqual(decide(r, origin: .manual, at: t0.addingTimeInterval(10 * 3600)), .continuePaused)
+        #expect(r.isPaused)
+        #expect(decide(r, origin: .manual, at: t0.addingTimeInterval(10 * 3600)) == .continuePaused)
     }
 
-    func testResumeClearsTerminalDeadline() {
+    @Test func resumeClearsTerminalDeadline() {
         var s = CardioInactivityState()
         s.recordAutoPause(at: t0)
-        XCTAssertNotNil(s.autoEndDeadline)
+        #expect(s.autoEndDeadline != nil)
         s.recordResume(at: t0.addingTimeInterval(60))
-        XCTAssertNil(s.autoEndDeadline)
+        #expect(s.autoEndDeadline == nil)
     }
 }

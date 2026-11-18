@@ -1,41 +1,42 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class ProgressQuestionSelectionTests: XCTestCase {
-    func testStrengthOverTimeIsTheDefault() {
-        XCTAssertEqual(ProgressQuestionSelection().selected, .strengthOverTime)
+struct ProgressQuestionSelectionTests {
+    @Test func strengthOverTimeIsTheDefault() {
+        #expect(ProgressQuestionSelection().selected == .strengthOverTime)
     }
 
-    func testSelectingAnotherQuestionReplacesTheCurrentSummary() {
+    @Test func selectingAnotherQuestionReplacesTheCurrentSummary() {
         var selection = ProgressQuestionSelection()
 
         selection.select(.personalRecords)
-        XCTAssertEqual(selection.selected, .personalRecords)
+        #expect(selection.selected == .personalRecords)
 
         selection.select(.intensity)
-        XCTAssertEqual(selection.selected, .intensity)
+        #expect(selection.selected == .intensity)
     }
 
-    func testAlphabeticalContainsEveryCaseExactlyOnce() {
+    @Test func alphabeticalContainsEveryCaseExactlyOnce() {
         let list = ProgressQuestion.alphabetical
-        XCTAssertEqual(list.count, ProgressQuestion.allCases.count - 1)
-        XCTAssertEqual(Set(list), Set(ProgressQuestion.allCases.filter { $0 != .workoutHistory }))
-        XCTAssertTrue(list.contains(.observations))
+        #expect(list.count == ProgressQuestion.allCases.count - 1)
+        #expect(Set(list) == Set(ProgressQuestion.allCases.filter { $0 != .workoutHistory }))
+        #expect(list.contains(.observations))
     }
 
-    func testHistoryLivesOutsideProgress() {
-        XCTAssertFalse(ProgressQuestion.alphabetical.contains(.workoutHistory))
-        XCTAssertEqual(ProgressQuestionSelection(selected: .workoutHistory).selected, .strengthOverTime)
+    @Test func historyLivesOutsideProgress() {
+        #expect(!ProgressQuestion.alphabetical.contains(.workoutHistory))
+        #expect(ProgressQuestionSelection(selected: .workoutHistory).selected == .strengthOverTime)
     }
 
-    func testAlphabeticalIsLocalizedLabelSorted() {
+    @Test func alphabeticalIsLocalizedLabelSorted() {
         let names = ProgressQuestion.alphabetical.map(\.displayName)
         let sorted = names.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
-        XCTAssertEqual(names, sorted)
+        #expect(names == sorted)
     }
 
-    func testPersistedRawValuesRestoreSelection() {
+    @Test func persistedRawValuesRestoreSelection() {
         let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -43,32 +44,32 @@ final class ProgressQuestionSelectionTests: XCTestCase {
                                 ("observations", .observations),
                                 ("bogus", .strengthOverTime)] {
             defaults.set(raw, forKey: ProgressQuestionSelection.persistenceKey)
-            XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected, expected)
+            #expect(ProgressQuestionSelection.persisted(defaults: defaults).selected == expected)
         }
     }
 
-    func testSelectionPersistsAndDefaultsToStrengthOverTime() {
+    @Test func selectionPersistsAndDefaultsToStrengthOverTime() {
         let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
 
-        XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected,
-                       .strengthOverTime)
+        #expect(ProgressQuestionSelection.persisted(defaults: defaults).selected
+                       == .strengthOverTime)
         let selection = ProgressQuestionSelection(selected: .personalRecords)
         selection.persist(defaults: defaults)
-        XCTAssertEqual(ProgressQuestionSelection.persisted(defaults: defaults).selected,
-                       .personalRecords)
+        #expect(ProgressQuestionSelection.persisted(defaults: defaults).selected
+                       == .personalRecords)
     }
 
-    func testOnlyWorkoutHistoryHostsItsOwnList() {
-        XCTAssertEqual(ProgressQuestion.allCases.filter(\.hostsOwnList), [.workoutHistory])
+    @Test func onlyWorkoutHistoryHostsItsOwnList() {
+        #expect(ProgressQuestion.allCases.filter(\.hostsOwnList) == [.workoutHistory])
     }
 
-    func testSelectingHistoryKeepsPickerStateStable() {
+    @Test func selectingHistoryKeepsPickerStateStable() {
         var selection = ProgressQuestionSelection(selected: .tests)
         selection.select(.workoutHistory)
-        XCTAssertEqual(selection.selected, .strengthOverTime)
+        #expect(selection.selected == .strengthOverTime)
         selection.select(.tests)
-        XCTAssertEqual(selection.selected, .tests)
+        #expect(selection.selected == .tests)
     }
 }

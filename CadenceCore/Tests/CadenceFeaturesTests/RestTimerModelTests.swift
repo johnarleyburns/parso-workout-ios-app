@@ -1,51 +1,51 @@
-import XCTest
+import Testing
 import CadenceFeatures
 import CadenceWorkoutFeatures
 
 /// Moved from Cadence/CadenceTests/CadenceTests.swift (test-pyramid Phase 2).
-final class RestTimerModelTests: XCTestCase {
-    func testStartSetsRemainingAndRuns() {
+struct RestTimerModelTests {
+    @Test func startSetsRemainingAndRuns() {
         let m = RestTimerModel()
         m.start(seconds: 90)
-        XCTAssertEqual(m.remaining, 90)
-        XCTAssertEqual(m.total, 90)
-        XCTAssertTrue(m.isRunning)
+        #expect(m.remaining == 90)
+        #expect(m.total == 90)
+        #expect(m.isRunning)
     }
 
-    func testTickDecrementsAndStopsAtZero() {
+    @Test func tickDecrementsAndStopsAtZero() {
         let m = RestTimerModel()
         m.start(seconds: 2)
-        m.tick(); XCTAssertEqual(m.remaining, 1); XCTAssertTrue(m.isRunning)
-        m.tick(); XCTAssertEqual(m.remaining, 0); XCTAssertFalse(m.isRunning)
-        m.tick(); XCTAssertEqual(m.remaining, 0)
+        m.tick(); #expect(m.remaining == 1); #expect(m.isRunning)
+        m.tick(); #expect(m.remaining == 0); #expect(!m.isRunning)
+        m.tick(); #expect(m.remaining == 0)
     }
 
-    func testSkipStopsImmediately() {
+    @Test func skipStopsImmediately() {
         let m = RestTimerModel()
         m.start(seconds: 90)
         m.skip()
-        XCTAssertEqual(m.remaining, 0)
-        XCTAssertFalse(m.isRunning)
+        #expect(m.remaining == 0)
+        #expect(!m.isRunning)
     }
 
-    func testAdd30ExtendsRunningTimer() {
+    @Test func add30ExtendsRunningTimer() {
         let m = RestTimerModel()
         m.start(seconds: 10)
         m.add(30)
-        XCTAssertEqual(m.remaining, 40)
+        #expect(m.remaining == 40)
     }
 
-    func testProgressReflectsElapsed() {
+    @Test func progressReflectsElapsed() {
         let m = RestTimerModel()
         m.start(seconds: 10)
         m.tick(); m.tick()
-        XCTAssertEqual(m.progress, 0.2, accuracy: 1e-9)
+        #expect(abs(m.progress - 0.2) <= 1e-9)
     }
 
-    func testZeroDurationDoesNotRun() {
+    @Test func zeroDurationDoesNotRun() {
         let m = RestTimerModel()
         m.start(seconds: 0)
-        XCTAssertFalse(m.isRunning)
-        XCTAssertEqual(m.progress, 0)
+        #expect(!m.isRunning)
+        #expect(m.progress == 0)
     }
 }

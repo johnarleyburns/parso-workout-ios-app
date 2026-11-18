@@ -1,30 +1,30 @@
-import XCTest
 import Foundation
+import Testing
 import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class RestAlarmPlannerTests: XCTestCase {
-    func testStartExtendAndCancel() {
+struct RestAlarmPlannerTests {
+    @Test func startExtendAndCancel() {
         var planner = RestAlarmPlanner()
         let start = Date(timeIntervalSince1970: 100)
-        XCTAssertEqual(planner.start(endsAt: start), .schedule(start))
+        #expect(planner.start(endsAt: start) == .schedule(start))
         let extended = start.addingTimeInterval(30)
-        XCTAssertEqual(planner.extend(to: extended), .schedule(extended))
-        XCTAssertEqual(planner.skip(), .cancel)
-        XCTAssertNil(planner.endsAt)
+        #expect(planner.extend(to: extended) == .schedule(extended))
+        #expect(planner.skip() == .cancel)
+        #expect(planner.endsAt == nil)
     }
 
-    func testWatchOwnedRestNeverSchedulesPhoneAlarm() {
+    @Test func watchOwnedRestNeverSchedulesPhoneAlarm() {
         var planner = RestAlarmPlanner()
-        XCTAssertEqual(planner.start(endsAt: Date(), watchOwnsCue: true), .cancel)
-        XCTAssertEqual(planner.extend(to: Date().addingTimeInterval(30)), .cancel)
+        #expect(planner.start(endsAt: Date(), watchOwnsCue: true) == .cancel)
+        #expect(planner.extend(to: Date().addingTimeInterval(30)) == .cancel)
     }
 
-    func testEndWorkoutAlwaysCancels() {
+    @Test func endWorkoutAlwaysCancels() {
         var planner = RestAlarmPlanner()
         _ = planner.start(endsAt: Date())
-        XCTAssertEqual(planner.endWorkout(), .cancel)
-        XCTAssertNil(planner.endsAt)
+        #expect(planner.endWorkout() == .cancel)
+        #expect(planner.endsAt == nil)
     }
 }

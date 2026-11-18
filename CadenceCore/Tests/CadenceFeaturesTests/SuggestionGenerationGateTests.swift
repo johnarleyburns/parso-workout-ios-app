@@ -1,24 +1,24 @@
-import XCTest
+import Testing
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class SuggestionGenerationGateTests: XCTestCase {
-    func testNewGenerationRejectsThePreviousResult() {
+struct SuggestionGenerationGateTests {
+    @Test func newGenerationRejectsThePreviousResult() {
         var gate = SuggestionGenerationGate()
         let first = gate.begin()
         let second = gate.begin()
 
-        XCTAssertFalse(gate.accepts(first))
-        XCTAssertTrue(gate.accepts(second))
+        #expect(!gate.accepts(first))
+        #expect(gate.accepts(second))
     }
 
-    func testInvalidationRejectsACompletedSnapshot() {
+    @Test func invalidationRejectsACompletedSnapshot() {
         var gate = SuggestionGenerationGate()
         let generation = gate.begin()
 
         gate.invalidate()
 
-        XCTAssertFalse(gate.accepts(generation))
+        #expect(!gate.accepts(generation))
     }
 }

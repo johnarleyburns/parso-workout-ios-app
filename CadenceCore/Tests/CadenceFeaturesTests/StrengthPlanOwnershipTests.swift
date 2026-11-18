@@ -1,50 +1,51 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class StrengthPlanOwnershipTests: XCTestCase {
-    func testOnlyManualFindDraftIsDurable() {
-        XCTAssertEqual(StrengthPlanPolicy.persistence(for: .manualFindDraft), .durablePlanningDraft)
+struct StrengthPlanOwnershipTests {
+    @Test func onlyManualFindDraftIsDurable() {
+        #expect(StrengthPlanPolicy.persistence(for: .manualFindDraft) == .durablePlanningDraft)
         for origin in [StrengthPlanOrigin.muscleCoverageSuggestion, .personalizedSuggestion, .library, .scheduled] {
-            XCTAssertEqual(StrengthPlanPolicy.persistence(for: origin), .transientEditor)
+            #expect(StrengthPlanPolicy.persistence(for: origin) == .transientEditor)
         }
     }
 
-    func testDraftSectionEmptyWhenNoDraft() {
-        XCTAssertEqual(StrengthDraftSectionPresenter.state(for: nil), .empty)
-        XCTAssertEqual(StrengthDraftSectionPresenter.state(for: PlanningDraftSummary(id: UUID(), title: "X", exerciseCount: 0)), .empty)
+    @Test func draftSectionEmptyWhenNoDraft() {
+        #expect(StrengthDraftSectionPresenter.state(for: nil) == .empty)
+        #expect(StrengthDraftSectionPresenter.state(for: PlanningDraftSummary(id: UUID(), title: "X", exerciseCount: 0)) == .empty)
     }
 
-    func testDraftSectionSummary() {
+    @Test func draftSectionSummary() {
         let id = UUID()
         let state = StrengthDraftSectionPresenter.state(for: PlanningDraftSummary(id: id, title: "Push", exerciseCount: 3))
-        XCTAssertEqual(state, .summary(title: "Push", exerciseCount: 3))
-        XCTAssertEqual(StrengthDraftSectionPresenter.sectionIdentifier, "weights.draftWorkout")
-        XCTAssertEqual(StrengthDraftSectionPresenter.emptyIdentifier, "weights.draftWorkout.empty")
-        XCTAssertEqual(StrengthDraftSectionPresenter.continueIdentifier, "weights.draftWorkout.continue")
+        #expect(state == .summary(title: "Push", exerciseCount: 3))
+        #expect(StrengthDraftSectionPresenter.sectionIdentifier == "weights.draftWorkout")
+        #expect(StrengthDraftSectionPresenter.emptyIdentifier == "weights.draftWorkout.empty")
+        #expect(StrengthDraftSectionPresenter.continueIdentifier == "weights.draftWorkout.continue")
     }
 
-    func testDraftIsFinalStrengthSectionOnceAndNotGlobal() {
+    @Test func draftIsFinalStrengthSectionOnceAndNotGlobal() {
         let s = StrengthScreenLayout.sections
-        XCTAssertEqual(s.last, .draftWorkout)
-        XCTAssertEqual(s.filter { $0 == .draftWorkout }.count, 1)
-        XCTAssertEqual(s.dropLast().last, .hrMonitoring)
-        XCTAssertFalse(RootDraftPresentationPolicy.showsGlobalDraftStrip)
-        XCTAssertFalse(RootDraftPresentationPolicy.showsGlobalDraftSheet)
+        #expect(s.last == .draftWorkout)
+        #expect(s.filter { $0 == .draftWorkout }.count == 1)
+        #expect(s.dropLast().last == .hrMonitoring)
+        #expect(!RootDraftPresentationPolicy.showsGlobalDraftStrip)
+        #expect(!RootDraftPresentationPolicy.showsGlobalDraftSheet)
     }
 
-    func testSuggestionScreenLayout() {
-        XCTAssertEqual(MuscleCoverageSuggestionLayout.title, "Strength Workout")
+    @Test func suggestionScreenLayout() {
+        #expect(MuscleCoverageSuggestionLayout.title == "Strength Workout")
         let rows = MuscleCoverageSuggestionLayout.sections
-        XCTAssertEqual(rows, [.suggestedExercises])
+        #expect(rows == [.suggestedExercises])
     }
 
-    func testTransientEditorContentOrder() {
-        XCTAssertEqual(TransientStrengthEditorContent.order, [
+    @Test func transientEditorContentOrder() {
+        #expect(TransientStrengthEditorContent.order == [
             .startWorkout, .sendToWatch, .scheduleThisWorkout,
             .exerciseRows, .addExercise, .suggestExercise,
             .trainingPartners, .volumeSummary])
-        XCTAssertEqual(TransientStrengthEditorContent.order.last, .volumeSummary)
+        #expect(TransientStrengthEditorContent.order.last == .volumeSummary)
     }
 }

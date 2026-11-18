@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadencePhoneFeatures
@@ -7,7 +8,7 @@ import CadencePhoneFeatures
 @testable import CadenceWorkoutFeatures
 
 @MainActor
-final class TodayQuickRepeatPresenterTests: XCTestCase {
+struct TodayQuickRepeatPresenterTests {
     private func make() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
@@ -22,34 +23,34 @@ final class TodayQuickRepeatPresenterTests: XCTestCase {
         return s
     }
 
-    func testPresentWhenHistoryExistsAndNothingActive() throws {
+    @Test func presentWhenHistoryExistsAndNothingActive() throws {
         let ctx = try make()
         let recent = session(ctx, daysAgo: 1)
         let display = TodayQuickRepeatPresenter.make(sessions: [recent], hasActiveOrResumableSession: false)
-        XCTAssertEqual(display?.sessionID, recent.id)
+        #expect(display?.sessionID == recent.id)
     }
 
-    func testAbsentWithNoEligibleHistory() throws {
+    @Test func absentWithNoEligibleHistory() throws {
         let ctx = try make()
-        XCTAssertNil(TodayQuickRepeatPresenter.make(sessions: [], hasActiveOrResumableSession: false))
+        #expect(TodayQuickRepeatPresenter.make(sessions: [], hasActiveOrResumableSession: false) == nil)
 
         let empty = session(ctx, daysAgo: 1, withSets: false)
-        XCTAssertNil(TodayQuickRepeatPresenter.make(sessions: [empty], hasActiveOrResumableSession: false))
+        #expect(TodayQuickRepeatPresenter.make(sessions: [empty], hasActiveOrResumableSession: false) == nil)
     }
 
-    func testAbsentWhenSomethingIsActiveOrResumable() throws {
+    @Test func absentWhenSomethingIsActiveOrResumable() throws {
         let ctx = try make()
         let recent = session(ctx, daysAgo: 1)
-        XCTAssertNil(TodayQuickRepeatPresenter.make(sessions: [recent], hasActiveOrResumableSession: true))
+        #expect(TodayQuickRepeatPresenter.make(sessions: [recent], hasActiveOrResumableSession: true) == nil)
     }
 
-    func testTitleFallsBackWhenSessionHasNoTitle() throws {
+    @Test func titleFallsBackWhenSessionHasNoTitle() throws {
         let ctx = try make()
         let recent = session(ctx, daysAgo: 1, title: "")
         let display = TodayQuickRepeatPresenter.make(sessions: [recent], hasActiveOrResumableSession: false)
-        XCTAssertNotNil(display)
-        XCTAssertTrue(display!.title.contains("Workout"))
-        XCTAssertFalse(display!.title.contains("—  "))
+        #expect(display != nil)
+        #expect(display!.title.contains("Workout"))
+        #expect(!display!.title.contains("—  "))
     }
 }
 #endif

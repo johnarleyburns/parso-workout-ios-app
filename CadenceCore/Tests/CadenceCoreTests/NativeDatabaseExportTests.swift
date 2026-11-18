@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -8,8 +9,8 @@ import SwiftData
 /// persisted entity and verifies a fresh-store round trip byte-for-byte at the
 /// decoded row-payload level.
 @MainActor
-final class NativeDatabaseExportTests: XCTestCase {
-    func testEveryNativeEntityRoundTripsWithoutLossOrDuplicateRows() throws {
+struct NativeDatabaseExportTests {
+    @Test func everyNativeEntityRoundTripsWithoutLossOrDuplicateRows() throws {
         let source = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let date = Date(timeIntervalSince1970: 1_735_689_600)
 
@@ -92,25 +93,25 @@ final class NativeDatabaseExportTests: XCTestCase {
         try source.save()
 
         let original = try NativeDatabaseExport.build(from: source)
-        XCTAssertEqual(original.entityNamesPresent, Set(ExportNativeDatabase.entityNames))
-        XCTAssertEqual(original.records.count, ExportNativeDatabase.entityNames.count)
+        #expect(original.entityNamesPresent == Set(ExportNativeDatabase.entityNames))
+        #expect(original.records.count == ExportNativeDatabase.entityNames.count)
 
         let encoded = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(ExportNativeDatabase.self, from: encoded)
         let destination = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
-        XCTAssertEqual(try NativeDatabaseExport.merge(decoded, in: destination), original.records.count)
-        XCTAssertEqual(try NativeDatabaseExport.merge(decoded, in: destination), 0,
+        #expect(try NativeDatabaseExport.merge(decoded, in: destination) == original.records.count)
+        #expect(try NativeDatabaseExport.merge(decoded, in: destination) == 0,
                        "re-importing the same v8 archive must be idempotent")
 
         let roundTripped = try NativeDatabaseExport.build(from: destination)
         let expected = sorted(original.records)
         let actual = sorted(roundTripped.records)
-        XCTAssertEqual(expected.count, actual.count)
+        #expect(expected.count == actual.count)
         for (lhs, rhs) in zip(expected, actual) {
-            XCTAssertEqual(lhs.entity, rhs.entity)
-            XCTAssertEqual(lhs.id, rhs.id)
-            XCTAssertEqual(lhs.updatedAt, rhs.updatedAt)
-            XCTAssertEqual(canonicalJSON(lhs.payload), canonicalJSON(rhs.payload),
+            #expect(lhs.entity == rhs.entity)
+            #expect(lhs.id == rhs.id)
+            #expect(lhs.updatedAt == rhs.updatedAt)
+            #expect(canonicalJSON(lhs.payload) == canonicalJSON(rhs.payload),
                            "native payload changed for \(lhs.entity)")
         }
     }

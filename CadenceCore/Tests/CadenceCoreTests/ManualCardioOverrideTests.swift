@@ -1,7 +1,8 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class ManualCardioOverrideTests: XCTestCase {
+struct ManualCardioOverrideTests {
     private let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 200, maximumHRSource: .fieldTest)
     private let since = Date(timeIntervalSince1970: 0)
     private var samples: [HRSamplePoint] { (0..<60).map { HRSamplePoint(t: Double($0 * 60), bpm: 185) } }
@@ -13,57 +14,57 @@ final class ManualCardioOverrideTests: XCTestCase {
         return s
     }
 
-    func testManualMinutesWinOverHRSamples() {
+    @Test func manualMinutesWinOverHRSamples() {
         let s = session()
         s.setManualCardioMinutes(moderate: 17, vigorous: 11)
-        XCTAssertTrue(s.hasManualCardioMinutesOverride)
+        #expect(s.hasManualCardioMinutesOverride)
         let r = WeeklyCardioAggregator.summarize([], since: since, profile: profile, sessions: [s])
-        XCTAssertEqual(r.moderateMinutes, 17, accuracy: 0.001)
-        XCTAssertEqual(r.vigorousMinutes, 11, accuracy: 0.001)
-        XCTAssertEqual(r.moderateEquivalentMinutes, 39, accuracy: 0.001)
-        XCTAssertTrue(r.zoneMinutes.isEmpty)
+        #expect(abs(r.moderateMinutes - 17) <= 0.001)
+        #expect(abs(r.vigorousMinutes - 11) <= 0.001)
+        #expect(abs(r.moderateEquivalentMinutes - 39) <= 0.001)
+        #expect(r.zoneMinutes.isEmpty)
     }
 
-    func testZeroZeroRemainsOverride() {
+    @Test func zeroZeroRemainsOverride() {
         let s = session()
         s.setManualCardioMinutes(moderate: 0, vigorous: 0)
-        XCTAssertTrue(s.hasManualCardioMinutesOverride)
+        #expect(s.hasManualCardioMinutesOverride)
         let r = WeeklyCardioAggregator.summarize([], since: since, profile: profile, sessions: [s])
-        XCTAssertEqual(r.moderateEquivalentMinutes, 0, accuracy: 0.001)
+        #expect(abs(r.moderateEquivalentMinutes - 0) <= 0.001)
     }
 
-    func testNonManualSessionRecomputesFromHR() {
+    @Test func nonManualSessionRecomputesFromHR() {
         let s = session()
         let r = WeeklyCardioAggregator.summarize([], since: since, profile: profile, sessions: [s])
-        XCTAssertGreaterThan(r.vigorousMinutes, 0)
+        #expect(r.vigorousMinutes > 0)
     }
 
-    func testLegacyRecognition() {
+    @Test func legacyRecognition() {
         let s = session()
         s.intensitySummary = CardioMinuteSummary.manual(moderate: 10, vigorous: 0, sessionDuration: 3600)
-        XCTAssertFalse(s.hasManualCardioMinutesOverride)
-        XCTAssertTrue(s.isManualCardioMinutesOverride)
+        #expect(!s.hasManualCardioMinutesOverride)
+        #expect(s.isManualCardioMinutesOverride)
         let r = WeeklyCardioAggregator.summarize([], since: since, profile: profile, sessions: [s])
-        XCTAssertEqual(r.moderateMinutes, 10, accuracy: 0.001)
+        #expect(abs(r.moderateMinutes - 10) <= 0.001)
 
         let zero = session()
         zero.intensitySummary = CardioMinuteSummary.manual(moderate: 0, vigorous: 0, sessionDuration: 3600)
-        XCTAssertFalse(zero.isManualCardioMinutesOverride)
+        #expect(!zero.isManualCardioMinutesOverride)
 
         let withZones = session()
         withZones.intensitySummary = CardioMinuteAccumulator.summarize(duration: 3600, samples: samples, profile: profile)
-        XCTAssertFalse(withZones.isManualCardioMinutesOverride)
+        #expect(!withZones.isManualCardioMinutesOverride)
     }
 
-    func testAggregationDoesNotMutateAndNewHRClearsOverride() {
+    @Test func aggregationDoesNotMutateAndNewHRClearsOverride() {
         let s = session()
         s.setManualCardioMinutes(moderate: 5, vigorous: 5)
         let data = s.intensitySummaryData, stamp = s.updatedAt
         _ = WeeklyCardioAggregator.summarize([], since: since, profile: profile, sessions: [s])
-        XCTAssertEqual(s.intensitySummaryData, data)
-        XCTAssertEqual(s.updatedAt, stamp)
-        XCTAssertTrue(s.hasManualCardioMinutesOverride)
+        #expect(s.intensitySummaryData == data)
+        #expect(s.updatedAt == stamp)
+        #expect(s.hasManualCardioMinutesOverride)
         s.recordHeartRate(samples, profile: profile)
-        XCTAssertFalse(s.hasManualCardioMinutesOverride)
+        #expect(!s.hasManualCardioMinutesOverride)
     }
 }

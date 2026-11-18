@@ -1,5 +1,5 @@
 import Foundation
-import XCTest
+import Testing
 #if canImport(NaturalLanguage)
 import NaturalLanguage
 #endif
@@ -9,7 +9,7 @@ import NaturalLanguage
 /// adapter. The same Apple NaturalLanguage framework is available on macOS and
 /// iOS; macOS tokenization is used here as a fast headless parity check while
 /// the semantic assertions remain deterministic and app-owned.
-final class NaturalLanguagePlanningParserTests: XCTestCase {
+struct NaturalLanguagePlanningParserTests {
     private struct PhraseCase {
         let phrase: String
         let goal: TrainingGoal
@@ -21,7 +21,7 @@ final class NaturalLanguagePlanningParserTests: XCTestCase {
         let equipment: [Equipment]
     }
 
-    func testMacOSNaturalLanguageTokenizesEverySupportedPlanningPhrase() {
+    @Test func macOSNaturalLanguageTokenizesEverySupportedPlanningPhrase() {
 #if canImport(NaturalLanguage)
         let tagger = NLTagger(tagSchemes: [.lexicalClass])
         for item in phraseCases {
@@ -35,30 +35,30 @@ final class NaturalLanguagePlanningParserTests: XCTestCase {
                     wordCount += 1
                     return true
                 }
-            XCTAssertGreaterThan(wordCount, 0, item.phrase)
+            #expect(wordCount > 0, "\(item.phrase)")
         }
 #else
-        XCTAssertTrue(true, "NaturalLanguage is unavailable on this host; parser cases still run below.")
+        #expect(Bool(true), "NaturalLanguage is unavailable on this host; parser cases still run below.")
 #endif
     }
 
-    func testSixtyNaturalLanguagePlanningPhrasesMapToStructuredIntent() throws {
-        XCTAssertGreaterThanOrEqual(phraseCases.count, 60)
+    @Test func sixtyNaturalLanguagePlanningPhrasesMapToStructuredIntent() throws {
+        #expect(phraseCases.count >= 60)
         for item in phraseCases {
             let result = BoundedPlanningRequestParser.parse(item.phrase)
-            XCTAssertTrue(result.isActionable, "Expected actionable phrase: \(item.phrase)\n\(result)")
-            let request = try XCTUnwrap(result.request, item.phrase)
-            XCTAssertEqual(request.goal, item.goal, item.phrase)
-            XCTAssertEqual(request.experience, item.experience, item.phrase)
-            XCTAssertEqual(request.daysPerWeek, item.days, item.phrase)
-            XCTAssertEqual(request.wantsConditioning, item.conditioning, item.phrase)
-            XCTAssertEqual(request.progression, item.progression, item.phrase)
-            XCTAssertEqual(request.periodization, item.periodization, item.phrase)
-            XCTAssertEqual(request.equipmentProfile, item.equipment, item.phrase)
+            #expect(result.isActionable, "Expected actionable phrase: \(item.phrase)\n\(result)")
+            let request = try #require(result.request, "\(item.phrase)")
+            #expect(request.goal == item.goal, "\(item.phrase)")
+            #expect(request.experience == item.experience, "\(item.phrase)")
+            #expect(request.daysPerWeek == item.days, "\(item.phrase)")
+            #expect(request.wantsConditioning == item.conditioning, "\(item.phrase)")
+            #expect(request.progression == item.progression, "\(item.phrase)")
+            #expect(request.periodization == item.periodization, "\(item.phrase)")
+            #expect(request.equipmentProfile == item.equipment, "\(item.phrase)")
         }
     }
 
-    func testNaturalLanguageVariantsPreserveDurationsHorizonsPreferencesAndConstraints() throws {
+    @Test func naturalLanguageVariantsPreserveDurationsHorizonsPreferencesAndConstraints() throws {
         let durationPhrases: [(String, Int, PlanHorizon)] = [
             ("four days, 30 minutes", 30, .singleWeek),
             ("four days, 45 min", 45, .singleWeek),
@@ -70,22 +70,22 @@ final class NaturalLanguagePlanningParserTests: XCTestCase {
             ("one day, 90 minutes", 90, .singleWeek)
         ]
         for (phrase, minutes, horizon) in durationPhrases {
-            let request = try XCTUnwrap(BoundedPlanningRequestParser.parse(phrase).request, phrase)
-            if minutes > 0 { XCTAssertEqual(request.sessionLengthMinutes, minutes, phrase) }
-            XCTAssertEqual(request.horizon, horizon, phrase)
+            let request = try #require(BoundedPlanningRequestParser.parse(phrase).request, "\(phrase)")
+            if minutes > 0 { #expect(request.sessionLengthMinutes == minutes, "\(phrase)") }
+            #expect(request.horizon == horizon, "\(phrase)")
         }
 
-        let upperLower = try XCTUnwrap(BoundedPlanningRequestParser.parse("four days upper lower split").request)
-        XCTAssertEqual(upperLower.preferences, ["upper/lower"])
-        let fullBody = try XCTUnwrap(BoundedPlanningRequestParser.parse("three days full body").request)
-        XCTAssertEqual(fullBody.preferences, ["full body"])
+        let upperLower = try #require(BoundedPlanningRequestParser.parse("four days upper lower split").request)
+        #expect(upperLower.preferences == ["upper/lower"])
+        let fullBody = try #require(BoundedPlanningRequestParser.parse("three days full body").request)
+        #expect(fullBody.preferences == ["full body"])
 
-        let noSquats = try XCTUnwrap(BoundedPlanningRequestParser.parse("four days, no squats").request)
-        XCTAssertEqual(noSquats.constraints, [.avoidMovementPattern(.squat)])
-        let noLats = try XCTUnwrap(BoundedPlanningRequestParser.parse("four days, avoid lats").request)
-        XCTAssertEqual(noLats.constraints, [.avoidMuscleGroup(.lats)])
-        let noBarbells = try XCTUnwrap(BoundedPlanningRequestParser.parse("four days without barbells").request)
-        XCTAssertEqual(noBarbells.constraints, [.unavailableEquipment(.barbell)])
+        let noSquats = try #require(BoundedPlanningRequestParser.parse("four days, no squats").request)
+        #expect(noSquats.constraints == [.avoidMovementPattern(.squat)])
+        let noLats = try #require(BoundedPlanningRequestParser.parse("four days, avoid lats").request)
+        #expect(noLats.constraints == [.avoidMuscleGroup(.lats)])
+        let noBarbells = try #require(BoundedPlanningRequestParser.parse("four days without barbells").request)
+        #expect(noBarbells.constraints == [.unavailableEquipment(.barbell)])
     }
 
     private var phraseCases: [PhraseCase] {

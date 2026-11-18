@@ -1,11 +1,12 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Issue #422: HealthKit-imported cardio must carry intensity provenance and credit.
 @MainActor
-final class ImportedCardioIntensityTests: XCTestCase {
+struct ImportedCardioIntensityTests {
     private let t0 = Date(timeIntervalSince1970: 50_000)
 
     private func ctx() throws -> ModelContext {
@@ -22,64 +23,64 @@ final class ImportedCardioIntensityTests: XCTestCase {
                                hrSamples: hr, importedKind: .running)
     }
 
-    func testInsertStoresProfileAndSummaryWithCredit() throws {
+    @Test func insertStoresProfileAndSummaryWithCredit() throws {
         let c = try ctx()
         let report = try WorkoutRepository.ingest([workout()], intensityProfile: profile, in: c)
-        XCTAssertEqual(report.inserted, 1)
-        let row = try XCTUnwrap(try WorkoutRepository.allCardio(c).first)
-        let s = try XCTUnwrap(row.intensitySummary)
-        XCTAssertGreaterThan(s.moderateDuration + s.vigorousDuration, 0)
-        XCTAssertEqual(row.cardioAlgorithmVersion, s.algorithmVersion)
-        XCTAssertEqual(row.intensityProfile, profile)
-        XCTAssertEqual(row.trainingZonePolicy, CardioIntensityPolicy.trainingZonePolicy)
+        #expect(report.inserted == 1)
+        let row = try #require(try WorkoutRepository.allCardio(c).first)
+        let s = try #require(row.intensitySummary)
+        #expect(s.moderateDuration + s.vigorousDuration > 0)
+        #expect(row.cardioAlgorithmVersion == s.algorithmVersion)
+        #expect(row.intensityProfile == profile)
+        #expect(row.trainingZonePolicy == CardioIntensityPolicy.trainingZonePolicy)
     }
 
-    func testNoHRFollowsAccumulatorFallback() throws {
+    @Test func noHRFollowsAccumulatorFallback() throws {
         let c = try ctx()
         let w = workout(samples: [])
         _ = try WorkoutRepository.ingest([w], intensityProfile: profile, in: c)
-        let row = try XCTUnwrap(try WorkoutRepository.allCardio(c).first)
+        let row = try #require(try WorkoutRepository.allCardio(c).first)
         let expected = CardioMinuteAccumulator.summarize(duration: 600, samples: [], profile: profile)
-        XCTAssertEqual(row.intensitySummary, expected)
+        #expect(row.intensitySummary == expected)
     }
 
-    func testReplayBackfillsLegacyOnceWithoutDuplicate() throws {
+    @Test func replayBackfillsLegacyOnceWithoutDuplicate() throws {
         let c = try ctx()
         let w = workout()
         _ = try WorkoutRepository.ingest([w], in: c) // legacy: no intensity
-        XCTAssertNil(try WorkoutRepository.allCardio(c).first?.intensitySummary)
+        #expect(try WorkoutRepository.allCardio(c).first?.intensitySummary == nil)
         let first = try WorkoutRepository.ingest([w], intensityProfile: profile, in: c)
-        XCTAssertEqual(first.enriched, 1)
-        XCTAssertEqual(try WorkoutRepository.allCardio(c).count, 1)
-        let stamp = try XCTUnwrap(try WorkoutRepository.allCardio(c).first).updatedAt
+        #expect(first.enriched == 1)
+        #expect(try WorkoutRepository.allCardio(c).count == 1)
+        let stamp = try #require(try WorkoutRepository.allCardio(c).first).updatedAt
         let second = try WorkoutRepository.ingest([w], intensityProfile: profile, in: c)
-        XCTAssertEqual(second.enriched, 0)
-        XCTAssertEqual(second.unchanged, 1)
-        XCTAssertFalse(second.changedHistory)
-        XCTAssertEqual(try WorkoutRepository.allCardio(c).first?.updatedAt, stamp)
+        #expect(second.enriched == 0)
+        #expect(second.unchanged == 1)
+        #expect(!second.changedHistory)
+        #expect(try WorkoutRepository.allCardio(c).first?.updatedAt == stamp)
     }
 
-    func testBackfillUpdatesImportedOnlyAndRerunIsNoOp() throws {
+    @Test func backfillUpdatesImportedOnlyAndRerunIsNoOp() throws {
         let c = try ctx()
         _ = try WorkoutRepository.ingest([workout()], in: c)
         let recorded = CardioWorkout(type: .run, start: t0, end: t0.addingTimeInterval(600),
                                      source: .iphone)
         c.insert(recorded)
         try c.save()
-        XCTAssertEqual(try WorkoutRepository.backfillImportedCardioIntensity(profile: profile, in: c), 1)
-        XCTAssertEqual(try WorkoutRepository.backfillImportedCardioIntensity(profile: profile, in: c), 0)
-        XCTAssertNil(recorded.intensitySummary)
+        #expect(try WorkoutRepository.backfillImportedCardioIntensity(profile: profile, in: c) == 1)
+        #expect(try WorkoutRepository.backfillImportedCardioIntensity(profile: profile, in: c) == 0)
+        #expect(recorded.intensitySummary == nil)
         let imported = try WorkoutRepository.allCardio(c).first { $0.originValue == .healthKitImported }
-        let s = try XCTUnwrap(imported?.intensitySummary)
-        XCTAssertGreaterThan(s.moderateDuration + s.vigorousDuration, 0)
+        let s = try #require(imported?.intensitySummary)
+        #expect(s.moderateDuration + s.vigorousDuration > 0)
     }
 
-    func testApplyCardioImportCarriesProfile() throws {
+    @Test func applyCardioImportCarriesProfile() throws {
         let c = try ctx()
         let r = try WorkoutRepository.applyCardioImport(upserts: [workout()], deletedIDs: [],
                                                         intensityProfile: profile, in: c)
-        XCTAssertEqual(r.inserted, 1)
-        XCTAssertNotNil(try WorkoutRepository.allCardio(c).first?.intensitySummary)
+        #expect(r.inserted == 1)
+        #expect(try WorkoutRepository.allCardio(c).first?.intensitySummary != nil)
     }
 }
 #endif

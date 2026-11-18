@@ -1,37 +1,38 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class ImportedWorkoutKindTests: XCTestCase {
+struct ImportedWorkoutKindTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
-    func testAutoImportRejectsWatchStrength() throws {
+    @Test func autoImportRejectsWatchStrength() throws {
         let ctx = try makeContext()
         let ingested = IngestedWorkout(
             id: UUID(), type: .other, start: Date(), end: Date().addingTimeInterval(3600),
             source: .watch, importedKind: .traditionalStrength
         )
         let inserted = try WorkoutRepository.ingest([ingested], in: ctx)
-        XCTAssertEqual(inserted, 0)
+        #expect(inserted == 0)
 
         let all = try WorkoutRepository.allCardio(ctx)
-        XCTAssertTrue(all.isEmpty)
+        #expect(all.isEmpty)
     }
 
-    func testAutoImportAcceptsAnyLegacySourceField() throws {
+    @Test func autoImportAcceptsAnyLegacySourceField() throws {
         let ctx = try makeContext()
         let ingested = IngestedWorkout(
             id: UUID(), type: .run, start: Date(), end: Date().addingTimeInterval(1800),
             source: .iphone, importedKind: .running
         )
-        XCTAssertEqual(try WorkoutRepository.ingest([ingested], in: ctx), 1)
+        #expect(try WorkoutRepository.ingest([ingested], in: ctx) == 1)
     }
 
-    func testAutoImportAcceptsOtherCardioButRejectsUnclassifiedKind() throws {
+    @Test func autoImportAcceptsOtherCardioButRejectsUnclassifiedKind() throws {
         let ctx = try makeContext()
         let other = IngestedWorkout(
             id: UUID(), type: .other, start: Date(), end: Date().addingTimeInterval(1200),
@@ -42,11 +43,11 @@ final class ImportedWorkoutKindTests: XCTestCase {
             source: .watch, importedKind: nil
         )
 
-        XCTAssertEqual(try WorkoutRepository.ingest([other, ambiguous], in: ctx), 1)
-        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
+        #expect(try WorkoutRepository.ingest([other, ambiguous], in: ctx) == 1)
+        #expect(try WorkoutRepository.allCardio(ctx).count == 1)
     }
 
-    func testDeduplicationByHKUUID() throws {
+    @Test func deduplicationByHKUUID() throws {
         let ctx = try makeContext()
         let uuid = UUID()
         let first = IngestedWorkout(
@@ -59,13 +60,13 @@ final class ImportedWorkoutKindTests: XCTestCase {
         )
         _ = try WorkoutRepository.ingest([first], in: ctx)
         let inserted2 = try WorkoutRepository.ingest([second], in: ctx)
-        XCTAssertEqual(inserted2, 0)
+        #expect(inserted2 == 0)
 
         let all = try WorkoutRepository.allCardio(ctx)
-        XCTAssertEqual(all.count, 1)
+        #expect(all.count == 1)
     }
 
-    func testAutoImportAcceptsWatchCardioKinds() throws {
+    @Test func autoImportAcceptsWatchCardioKinds() throws {
         let ctx = try makeContext()
         let accepted: [IngestedWorkout] = [
             IngestedWorkout(id: UUID(), type: .run, start: Date(), end: Date().addingTimeInterval(600),
@@ -84,12 +85,12 @@ final class ImportedWorkoutKindTests: XCTestCase {
                             source: .watch, importedKind: .boxing)
         ]
 
-        XCTAssertEqual(try WorkoutRepository.ingest(accepted, in: ctx), accepted.count)
+        #expect(try WorkoutRepository.ingest(accepted, in: ctx) == accepted.count)
         let all = try WorkoutRepository.allCardio(ctx)
-        XCTAssertEqual(all.count, accepted.count)
+        #expect(all.count == accepted.count)
     }
 
-    func testRunningWalkingSwimmingMappedCorrectly() {
+    @Test func runningWalkingSwimmingMappedCorrectly() {
         let running = IngestedWorkout(
             id: UUID(), type: .run, start: Date(), end: Date().addingTimeInterval(3600),
             source: .watch, importedKind: .running
@@ -103,9 +104,9 @@ final class ImportedWorkoutKindTests: XCTestCase {
             source: .watch, importedKind: .swimming
         )
 
-        XCTAssertEqual(running.importedKind, .running)
-        XCTAssertEqual(walking.importedKind, .walking)
-        XCTAssertEqual(swim.importedKind, .swimming)
+        #expect(running.importedKind == .running)
+        #expect(walking.importedKind == .walking)
+        #expect(swim.importedKind == .swimming)
     }
 
     // MARK: - Imported workouts are never treated as strength (field-test issue #3)
@@ -113,7 +114,7 @@ final class ImportedWorkoutKindTests: XCTestCase {
     /// Even a strength-labeled imported cardio workout must map to an aerobic
     /// event, never `.unknown` — the coach must never reason about "imported
     /// strength" or defer training because of it.
-    func testStrengthKindImportBecomesAerobicNotUnknown() {
+    @Test func strengthKindImportBecomesAerobicNotUnknown() {
         let now = Date()
         let cardio = CardioWorkout(type: .other, start: now.addingTimeInterval(-3600), end: now,
                                    avgHeartRate: 120, source: .watch,
@@ -121,13 +122,13 @@ final class ImportedWorkoutKindTests: XCTestCase {
                                    importedWorkoutKind: .traditionalStrength)
         let event = TrainingEvent.from(cardio: cardio)
         if case .unknown = event.kind {
-            XCTFail("Imported strength-kind cardio must not become an .unknown event")
+            Issue.record("Imported strength-kind cardio must not become an .unknown event")
         }
     }
 
     /// A recent imported strength-kind workout must not create any import-based
     /// deferral message or recovery gate in the coach's decision.
-    func testImportedWorkoutNeverProducesImportDeferralMessage() {
+    @Test func importedWorkoutNeverProducesImportDeferralMessage() {
         let now = Date()
         let cardio = CardioWorkout(type: .other, start: now.addingTimeInterval(-3600), end: now,
                                    avgHeartRate: 120, source: .watch,
@@ -138,7 +139,7 @@ final class ImportedWorkoutKindTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         let messages = decision.deferred.map { $0.reason.message } + decision.warnings.map { $0.message }
-        XCTAssertFalse(messages.contains { $0.localizedCaseInsensitiveContains("imported") },
+        #expect(!messages.contains { $0.localizedCaseInsensitiveContains("imported") },
                        "Coach must never surface 'imported workout' language. Got: \(messages)")
     }
 }

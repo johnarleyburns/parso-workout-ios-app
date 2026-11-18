@@ -1,4 +1,4 @@
-import XCTest
+import Testing
 @testable import CadenceCore
 
 /// Pins the templates `ImportedExerciseLibrary` produces from the package-backed
@@ -11,7 +11,7 @@ import XCTest
 /// lists than the hand-mapped upstream strings produced. This file is the record of
 /// what they became, so a future data refresh or mapping edit cannot move them
 /// again unnoticed.
-final class ImportedExerciseLibraryBaselineTests: XCTestCase {
+struct ImportedExerciseLibraryBaselineTests {
 
     private struct Fixture {
         let name: String
@@ -115,97 +115,97 @@ final class ImportedExerciseLibraryBaselineTests: XCTestCase {
                 modalities: "free_weight", imageName: "Zottman_Preacher_Curl", level: "intermediate", instructionCount: 6),
     ]
 
-    func testTemplateCount() {
-        XCTAssertEqual(ImportedExerciseLibrary.templates.count, 938)
+    @Test func templateCount() {
+        #expect(ImportedExerciseLibrary.templates.count == 938)
     }
 
-    func testSampledTemplatesMatchTheAnnotation() throws {
+    @Test func sampledTemplatesMatchTheAnnotation() throws {
         let byName = Dictionary(ImportedExerciseLibrary.templates.map { ($0.name, $0) },
                                 uniquingKeysWith: { a, _ in a })
         for expected in Self.fixtures {
-            let actual = try XCTUnwrap(byName[expected.name], "missing template \(expected.name)")
-            XCTAssertEqual(actual.category.rawValue, expected.category, expected.name)
-            XCTAssertEqual(actual.equipment?.rawValue ?? "", expected.equipment, expected.name)
-            XCTAssertEqual(actual.force?.rawValue ?? "", expected.force, expected.name)
-            XCTAssertEqual(actual.mechanics.rawValue, expected.mechanics, expected.name)
-            XCTAssertEqual(actual.isLateral, expected.lateral, expected.name)
-            XCTAssertEqual(actual.primaryMuscles.joined(separator: "|"), expected.primary, expected.name)
-            XCTAssertEqual(actual.secondaryMuscles.joined(separator: "|"), expected.secondary, expected.name)
-            XCTAssertEqual(actual.stabilizerMuscles.map(\.rawValue).joined(separator: "|"),
-                           expected.stabilizers, expected.name)
-            XCTAssertEqual(actual.volumeEligible, expected.volumeEligible, expected.name)
-            XCTAssertEqual(actual.trainingTypes.map(\.rawValue).joined(separator: "|"),
-                           expected.trainingTypes, expected.name)
-            XCTAssertEqual(actual.modalities.map(\.rawValue).joined(separator: "|"),
-                           expected.modalities, expected.name)
-            XCTAssertEqual(actual.imageName ?? "", expected.imageName, expected.name)
-            XCTAssertEqual(actual.level ?? "", expected.level, expected.name)
-            XCTAssertEqual(actual.instructions.count, expected.instructionCount, expected.name)
+            let actual = try #require(byName[expected.name], "missing template \(expected.name)")
+            #expect(actual.category.rawValue == expected.category, "\(expected.name)")
+            #expect((actual.equipment?.rawValue ?? "") == expected.equipment, "\(expected.name)")
+            #expect((actual.force?.rawValue ?? "") == expected.force, "\(expected.name)")
+            #expect(actual.mechanics.rawValue == expected.mechanics, "\(expected.name)")
+            #expect(actual.isLateral == expected.lateral, "\(expected.name)")
+            #expect(actual.primaryMuscles.joined(separator: "|") == expected.primary, "\(expected.name)")
+            #expect(actual.secondaryMuscles.joined(separator: "|") == expected.secondary, "\(expected.name)")
+            #expect(actual.stabilizerMuscles.map(\.rawValue).joined(separator: "|") ==
+                           expected.stabilizers, "\(expected.name)")
+            #expect(actual.volumeEligible == expected.volumeEligible, "\(expected.name)")
+            #expect(actual.trainingTypes.map(\.rawValue).joined(separator: "|") ==
+                           expected.trainingTypes, "\(expected.name)")
+            #expect(actual.modalities.map(\.rawValue).joined(separator: "|") ==
+                           expected.modalities, "\(expected.name)")
+            #expect((actual.imageName ?? "") == expected.imageName, "\(expected.name)")
+            #expect((actual.level ?? "") == expected.level, "\(expected.name)")
+            #expect(actual.instructions.count == expected.instructionCount, "\(expected.name)")
         }
     }
 
     /// Order is what keeps the curated/imported merge stable across launches.
-    func testTemplateOrderFollowsSortedExerciseIDs() {
+    @Test func templateOrderFollowsSortedExerciseIDs() {
         let templateNames = ImportedExerciseLibrary.templates.map(\.name)
         let expected = TrainingEngineBridge.exerciseRecords
             .compactMap { ImportedExerciseLibrary.template(from: $0)?.name }
-        XCTAssertEqual(templateNames, expected)
+        #expect(templateNames == expected)
     }
 
     /// The specific attributions the old hand-mapping got wrong. Each of these was
     /// verified against the DB++ annotation and its cited literature.
-    func testAnnotationCorrectsTheOldHandMapping() throws {
+    @Test func annotationCorrectsTheOldHandMapping() throws {
         let byName = Dictionary(ImportedExerciseLibrary.templates.map { ($0.name, $0) },
                                 uniquingKeysWith: { a, _ in a })
 
         // Was primary "hamstrings" — a snatch is not a hamstring movement.
-        let snatch = try XCTUnwrap(byName["Power Snatch"])
-        XCTAssertEqual(snatch.directMuscles, [.quadriceps, .glutes, .traps])
-        XCTAssertEqual(snatch.trainingTypes, [.strength, .olympicWeightlifting])
+        let snatch = try #require(byName["Power Snatch"])
+        #expect(snatch.directMuscles == [.quadriceps, .glutes, .traps])
+        #expect(snatch.trainingTypes == [.strength, .olympicWeightlifting])
 
         // Was primary "traps": upstream `neck` used to be folded into traps because
         // our old catalog had no neck. DB++ does.
-        let neck = try XCTUnwrap(byName["Seated Head Harness Neck Resistance"])
-        XCTAssertEqual(neck.directMuscles, [.neck])
+        let neck = try #require(byName["Seated Head Harness Neck Resistance"])
+        #expect(neck.directMuscles == [.neck])
 
         // Was primary "triceps" only; the chest is a prime mover in a floor press.
-        let floorPress = try XCTUnwrap(byName["Floor Press"])
-        XCTAssertEqual(floorPress.directMuscles, [.triceps, .chest])
-        XCTAssertEqual(floorPress.trainingTypes, [.strength, .powerlifting])
+        let floorPress = try #require(byName["Floor Press"])
+        #expect(floorPress.directMuscles == [.triceps, .chest])
+        #expect(floorPress.trainingTypes == [.strength, .powerlifting])
 
         // Hamstrings and calves were credited as secondary work in a lunge. They
         // stabilise; they no longer earn half a set each.
-        let lunge = try XCTUnwrap(byName["Dumbbell Lunges"])
-        XCTAssertEqual(lunge.directMuscles, [.quadriceps, .glutes])
-        XCTAssertEqual(lunge.indirectMuscles, [.adductors])
-        XCTAssertTrue(lunge.stabilizerMuscles.contains(.hamstrings))
-        XCTAssertEqual(lunge.volumeCredits[.hamstrings], nil)
+        let lunge = try #require(byName["Dumbbell Lunges"])
+        #expect(lunge.directMuscles == [.quadriceps, .glutes])
+        #expect(lunge.indirectMuscles == [.adductors])
+        #expect(lunge.stabilizerMuscles.contains(.hamstrings))
+        #expect(lunge.volumeCredits[.hamstrings] == nil)
     }
 
     /// Volume eligibility is what stops a stretch inflating the weekly set count.
-    func testNonVolumeMovementsKeepTheirMusclesButEarnNoCredit() throws {
+    @Test func nonVolumeMovementsKeepTheirMusclesButEarnNoCredit() throws {
         let stretches = ImportedExerciseLibrary.templates.filter {
             $0.trainingTypes.contains(.stretching)
         }
-        XCTAssertEqual(stretches.count, 123)
+        #expect(stretches.count == 123)
         for stretch in stretches {
-            XCTAssertFalse(stretch.volumeEligible, stretch.name)
-            XCTAssertTrue(stretch.directMuscles.isEmpty, stretch.name)
-            XCTAssertFalse(stretch.primaryMuscles.isEmpty,
+            #expect(!stretch.volumeEligible, "\(stretch.name)")
+            #expect(stretch.directMuscles.isEmpty, "\(stretch.name)")
+            #expect(!stretch.primaryMuscles.isEmpty,
                            "\(stretch.name) must stay browsable by muscle")
-            XCTAssertTrue(stretch.volumeCredits.isEmpty, stretch.name)
+            #expect(stretch.volumeCredits.isEmpty, "\(stretch.name)")
         }
-        XCTAssertEqual(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count, 735)
+        #expect(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count == 735)
     }
 
     /// No template may carry a muscle string the volume engine cannot resolve.
-    func testEveryTemplateMuscleIsCanonical() {
+    @Test func everyTemplateMuscleIsCanonical() {
         for template in ImportedExerciseLibrary.templates + ExerciseLibrary.starter {
             for id in template.primaryMuscles + template.secondaryMuscles {
-                XCTAssertNotNil(MuscleGroup(rawValue: id),
+                #expect(MuscleGroup(rawValue: id) != nil,
                                 "\(template.name) carries non-canonical muscle id \(id)")
             }
-            XCTAssertTrue(Set(template.primaryMuscles).isDisjoint(with: Set(template.secondaryMuscles)),
+            #expect(Set(template.primaryMuscles).isDisjoint(with: Set(template.secondaryMuscles)),
                           "\(template.name) repeats a muscle across primary/secondary")
         }
     }

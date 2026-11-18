@@ -1,65 +1,64 @@
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class MuscleMapLayoutTests: XCTestCase {
-    func testSourceIsSplitIntoTwoAspectPreservingHalves() {
-        XCTAssertEqual(MuscleMapLayout.panelRatio,
-                       MuscleMapLayout.panelPixelWidth / MuscleMapLayout.panelPixelHeight,
-                       accuracy: 0.0001)
-        XCTAssertGreaterThan(MuscleMapLayout.panelRatio, 0)
-        XCTAssertLessThan(MuscleMapLayout.panelRatio, 1)
-        XCTAssertEqual(MuscleMapLayout.panelPixelWidth, 1024, accuracy: 0.0001)
-        XCTAssertEqual(MuscleMapLayout.panelPixelHeight, 1782, accuracy: 0.0001)
+struct MuscleMapLayoutTests {
+    @Test func sourceIsSplitIntoTwoAspectPreservingHalves() {
+        #expect(abs(MuscleMapLayout.panelRatio -
+                       MuscleMapLayout.panelPixelWidth / MuscleMapLayout.panelPixelHeight) <= 0.0001)
+        #expect(MuscleMapLayout.panelRatio > 0)
+        #expect(MuscleMapLayout.panelRatio < 1)
+        #expect(abs(MuscleMapLayout.panelPixelWidth - 1024) <= 0.0001)
+        #expect(abs(MuscleMapLayout.panelPixelHeight - 1782) <= 0.0001)
     }
 
-    func testEveryAnchorStaysInsideItsAssignedHalf() {
+    @Test func everyAnchorStaysInsideItsAssignedHalf() {
         for callout in MuscleMapLayout.callouts {
-            XCTAssertTrue((0...1).contains(callout.anchorX), callout.id)
-            XCTAssertTrue((0...1).contains(callout.anchorY), callout.id)
+            #expect((0...1).contains(callout.anchorX), "\(callout.id)")
+            #expect((0...1).contains(callout.anchorY), "\(callout.id)")
             switch callout.side {
             case .left:
-                XCTAssertLessThan(callout.anchorX, 0.5, callout.id)
+                #expect(callout.anchorX < 0.5, "\(callout.id)")
             case .right:
-                XCTAssertGreaterThan(callout.anchorX, 0.5, callout.id)
+                #expect(callout.anchorX > 0.5, "\(callout.id)")
             }
         }
     }
 
-    func testCalloutsAreDeterministicAndHaveBothSides() {
+    @Test func calloutsAreDeterministicAndHaveBothSides() {
         let front = MuscleMapLayout.callouts(for: .front)
         let back = MuscleMapLayout.callouts(for: .back)
-        XCTAssertEqual(front.count, 12)
-        XCTAssertEqual(back.count, 13)
-        XCTAssertFalse(front.isEmpty)
-        XCTAssertFalse(back.isEmpty)
-        XCTAssertTrue(front.contains { $0.side == .left })
-        XCTAssertTrue(front.contains { $0.side == .right })
-        XCTAssertTrue(back.contains { $0.side == .left })
-        XCTAssertTrue(back.contains { $0.side == .right })
+        #expect(front.count == 12)
+        #expect(back.count == 13)
+        #expect(!front.isEmpty)
+        #expect(!back.isEmpty)
+        #expect(front.contains { $0.side == .left })
+        #expect(front.contains { $0.side == .right })
+        #expect(back.contains { $0.side == .left })
+        #expect(back.contains { $0.side == .right })
         let ids = MuscleMapLayout.callouts.map(\.id)
-        XCTAssertEqual(ids.count, Set(ids).count)
-        XCTAssertEqual(MuscleMapLayout.callouts,
+        #expect(ids.count == Set(ids).count)
+        #expect(MuscleMapLayout.callouts ==
                        MuscleMapLayout.callouts(for: .front) + MuscleMapLayout.callouts(for: .back))
     }
 
-    func testCalloutsCoverEveryTrackedMuscleGroup() {
+    @Test func calloutsCoverEveryTrackedMuscleGroup() {
         let visible = Set(MuscleMapLayout.callouts.map(\.group))
-        XCTAssertEqual(visible, Set(MuscleGroup.allCases))
+        #expect(visible == Set(MuscleGroup.allCases))
     }
 
-    func testSpecializedGroupsUseTheirOwnDefaultMapColours() {
+    @Test func specializedGroupsUseTheirOwnDefaultMapColours() {
         for group in [MuscleGroup.hipFlexors, .tibialis, .neck, .rotatorCuff] {
-            XCTAssertEqual(MuscleMapLayout.colourGroup(for: group,
-                visibleGroups: MuscleGroup.defaultTracked), group)
-            XCTAssertTrue(MuscleMapLayout.callouts.contains { $0.group == group })
+            #expect(MuscleMapLayout.colourGroup(for: group,
+                visibleGroups: MuscleGroup.defaultTracked) == group)
+            #expect(MuscleMapLayout.callouts.contains { $0.group == group })
         }
     }
 
-    func testVisibleCalloutsCanMatchTheVolumeScope() {
+    @Test func visibleCalloutsCanMatchTheVolumeScope() {
         let visible = MuscleMapLayout.callouts(
             for: .back,
             visibleGroups: MuscleGroup.defaultTracked)
-        XCTAssertTrue(visible.contains { $0.group == .rotatorCuff })
-        XCTAssertTrue(visible.contains { $0.group == .lats })
+        #expect(visible.contains { $0.group == .rotatorCuff })
+        #expect(visible.contains { $0.group == .lats })
     }
 }

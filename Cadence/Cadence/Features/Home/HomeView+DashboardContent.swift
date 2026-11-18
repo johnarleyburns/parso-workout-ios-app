@@ -8,9 +8,14 @@ extension HomeView {
 
     @ViewBuilder
     var dashboardTopContent: some View {
-        WeeklyIntentRingsCard(
-            display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
-            tabSelection: rootTabSelection)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("This Week").font(.headline)
+            WeeklyIntentRingsCard(
+                display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
+                tabSelection: rootTabSelection)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceCard()
         if resumeSession != nil {
             todayHeroCard
         }
@@ -22,7 +27,8 @@ extension HomeView {
             onSuggested: { openTodaySuggestion() },
             onPreviousStart: handleEditorStart,
             onCardio: { start($0) },
-            onCustomCardio: { startOtherCardio(description: $0, gps: $1) })
+            onCustomCardio: { startOtherCardio(description: $0, gps: $1) },
+            onSuggestedCardio: requestSuggestedCardio)
     }
 
     /// Rows for the compact dual card; empty keeps the existing hero. Only the

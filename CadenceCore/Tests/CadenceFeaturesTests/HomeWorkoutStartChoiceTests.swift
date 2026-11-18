@@ -13,8 +13,8 @@ final class HomeWorkoutStartChoiceTests: XCTestCase {
     func testUnifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
         let choices = HomeWorkoutStartChoice.allChoices
         XCTAssertEqual(choices.map(\.title), [
-            "Optimal Lifts", "Repeat Lifts", "Quick Start", "HIIT",
-            "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Custom Cardio"
+            "Personalized Lifts", "Repeat Lifts", "Quick Start", "Personalized Cardio", "HIIT",
+            "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Cardio"
         ])
         XCTAssertEqual(Set(choices.map(\.id)).count, choices.count)
         for type in WorkoutType.allCases where type != .weights {
@@ -23,6 +23,12 @@ final class HomeWorkoutStartChoiceTests: XCTestCase {
         XCTAssertFalse(choices.contains(.cardio(.weights)))
         XCTAssertEqual(Set(HomeWorkoutStartChoice.strengthChoices.map(\.symbol)), ["dumbbell.fill"])
         XCTAssertTrue(choices.allSatisfy { !$0.symbol.isEmpty })
+    }
+
+    func testPersonalizedCardioChoiceSuggestsCardioLikeStrengthDoes() {
+        XCTAssertTrue(HomeWorkoutStartChoice.cardioChoices.contains(.suggestedCardio))
+        XCTAssertEqual(HomeWorkoutStartChoice.suggestedCardio.title, "Personalized Cardio")
+        XCTAssertEqual(HomeWorkoutStartChoice.suggestedCardio.id, "cardio.suggested")
     }
 
     func testEveryChoiceRestoresFromPersistedSelection() throws {

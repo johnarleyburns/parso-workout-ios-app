@@ -60,10 +60,14 @@ struct HomeWeekDashboardSection: View {
             if scope == .strength {
                 sectionCard {
                     VStack(alignment: .leading, spacing: 12) {
+                        let totals = HomeMuscleMapView.weeklyTotals(for: displayedVolumeRows)
                         HStack {
                             Text("Muscle coverage").font(.headline)
                                 .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(dashboard.strength.completed)))
                             Spacer()
+                            Text("\(WeeklySetProgress.formattedSets(totals.totals)) / \(totals.target) sets")
+                                .font(.headline)
+                                .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals.totals)))
                         }
                         muscleMapSummary
                     }

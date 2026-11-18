@@ -67,7 +67,8 @@ extension HomeView {
                         onCustomCardio: { description, gps in
                             workoutControlsPresented = false
                             startOtherCardio(description: description, gps: gps)
-                        })
+                        },
+                        onSuggestedCardio: { workoutControlsPresented = false; requestSuggestedCardio() })
                     .padding()
                 }
             }

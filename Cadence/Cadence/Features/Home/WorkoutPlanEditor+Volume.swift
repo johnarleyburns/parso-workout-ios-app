@@ -17,7 +17,8 @@ struct SuggestedStrengthEditorHooks {
 
 extension WorkoutPlanEditor {
     var startButton: some View {
-        CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill") {
+        CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill",
+                            tint: CadenceTheme.accent) {
             saveAndStart()
         }
         .accessibilityIdentifier("editor.start")

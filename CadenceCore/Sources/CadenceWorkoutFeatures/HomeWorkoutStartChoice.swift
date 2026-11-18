@@ -27,6 +27,10 @@ public enum HomeRecentCardioChoices {
 public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     case strength(HomeStrengthStartChoice)
     case cardio(WorkoutType)
+    /// Cardio's counterpart to `.strength(.suggested)`: suggests a cardio
+    /// session the same way strength suggestions already work, rather than
+    /// picking a fixed `WorkoutType`.
+    case suggestedCardio
 
     public static let selectionStorageKey = "home.workoutStartChoice"
     public static let defaultChoice: Self = .strength(.suggested)
@@ -38,7 +42,7 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     }
 
     public static let strengthChoices: [Self] = [.strength(.suggested), .strength(.previous), .strength(.quickStart)]
-    public static let cardioChoices: [Self] = ([WorkoutType.hiit] + WorkoutType.allCases.filter {
+    public static let cardioChoices: [Self] = [.suggestedCardio] + ([WorkoutType.hiit] + WorkoutType.allCases.filter {
         $0 != .weights && $0 != .hiit
     }).map { .cardio($0) }
     public static let allChoices = strengthChoices + cardioChoices
@@ -47,16 +51,18 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
         switch self {
         case .strength(let source): "strength.\(source.rawValue)"
         case .cardio(let type): "cardio.\(type.rawValue)"
+        case .suggestedCardio: "cardio.suggested"
         }
     }
 
     public var title: String {
         switch self {
-        case .strength(.suggested): "Optimal Lifts"
+        case .strength(.suggested): "Personalized Lifts"
         case .strength(.previous): "Repeat Lifts"
         case .strength(.quickStart): "Quick Start"
-        case .cardio(.other): "Custom Cardio"
+        case .cardio(.other): "Cardio"
         case .cardio(let type): type.displayName
+        case .suggestedCardio: "Personalized Cardio"
         }
     }
 
@@ -66,6 +72,7 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
         case .strength(.previous): "dumbbell.fill"
         case .strength(.quickStart): "dumbbell.fill"
         case .cardio(let type): type.symbol
+        case .suggestedCardio: "wand.and.stars"
         }
     }
 }

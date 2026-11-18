@@ -44,7 +44,7 @@ struct WatchLiftSourcesTests {
         try addSession(ctx, title: "Open", end: nil, sets: [("Bench Press", 8)])
         try addSession(ctx, title: "Empty", end: Date(timeIntervalSince1970: 5000), sets: [])
         try addSession(ctx, title: "ZeroReps", end: Date(timeIntervalSince1970: 5000), sets: [("Bench Press", 0)])
-        let list = WatchPreviousWorkout.load(from: ctx)
+        let list = WatchLiftSources.load(from: ctx)
         #expect(list.map(\.title) == ["W6", "W5", "W4", "W3", "W2"])
         #expect(list[0].exerciseCount == 2)
         #expect(list[0].workingSetCount == 3)
@@ -54,12 +54,12 @@ struct WatchLiftSourcesTests {
 
     @Test func previousEmptyAndFallbackOrdering() throws {
         let ctx = try makeContext()
-        #expect(WatchPreviousWorkout.load(from: ctx).isEmpty)
+        #expect(WatchLiftSources.load(from: ctx).isEmpty)
         try addSession(ctx, title: "", end: Date(timeIntervalSince1970: 500), sets: [("Squat", 5)],
                        date: Date(timeIntervalSince1970: 10))
         try addSession(ctx, title: "Later", end: Date(timeIntervalSince1970: 600), sets: [("Squat", 5)],
                        date: Date(timeIntervalSince1970: 5))
-        let list = WatchPreviousWorkout.load(from: ctx)
+        let list = WatchLiftSources.load(from: ctx)
         #expect(list.map(\.title) == ["Later", "Strength"])
     }
 
@@ -67,7 +67,7 @@ struct WatchLiftSourcesTests {
         let ctx = try makeContext()
         let source = try addSession(ctx, title: "Push", end: Date(timeIntervalSince1970: 900),
                                     sets: [("Bench Press", 8), ("Bench Press", 6)])
-        let template = try #require(WatchPreviousWorkout.load(from: ctx).first)
+        let template = try #require(WatchLiftSources.load(from: ctx).first)
         let sourceSetIDs = source.orderedSets.map(\.id)
 
         let model = WatchStrengthFlowModel(context: ctx)

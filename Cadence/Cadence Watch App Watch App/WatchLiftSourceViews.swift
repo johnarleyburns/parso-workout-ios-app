@@ -72,7 +72,7 @@ struct WatchPreviousListView: View {
         }
         .navigationTitle("Previous")
         .onAppear {
-            workouts = WatchPreviousWorkout.load(from: context)
+            workouts = WatchLiftSources.load(from: context)
             loaded = true
         }
     }

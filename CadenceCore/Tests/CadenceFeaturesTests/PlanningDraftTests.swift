@@ -39,7 +39,9 @@ struct PlanningDraftTests {
         let data = try PlanningDraftCodec.encode(plan)
         let decoded = try PlanningDraftCodec.decode(data, version: PlanningDraftPayload.currentVersion)
         #expect(decoded == plan)
-        #expect(EditablePlanPayload(decoded) == EditablePlanPayload(plan))
+        let decodedPayload = EditablePlanPayload(decoded)
+        let planPayload = EditablePlanPayload(plan)
+        #expect(decodedPayload == planPayload)
     }
 
     @Test func unknownVersionThrows() throws {

@@ -1,43 +1,43 @@
-import XCTest
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WatchSentWorkoutsTests: XCTestCase {
-    func testContextRoundTripKeepsStrengthAndCardio() {
+struct WatchSentWorkoutsTests {
+    @Test func contextRoundTripKeepsStrengthAndCardio() {
         let strength = WatchSentWorkouts.strengthSession(
             title: "Push", exercises: [(name: "Bench Press", repTargets: [8, 8, 6])])
         let cardio = WatchSentWorkouts.cardioSession(title: "Run", cardioType: "run", durationMinutes: 30, zone: 2)
         let context = WatchSentWorkouts.contextDict([strength, cardio])
         let decoded = WatchSentWorkouts.sessions(from: context)
-        XCTAssertEqual(decoded.map(\.id), [strength.id, cardio.id])
-        XCTAssertEqual(decoded[0].exerciseNames, ["Bench Press"])
-        XCTAssertEqual(decoded[0].repLadder, [8, 8, 6])
-        XCTAssertEqual(decoded[1].cardioType, "run")
-        XCTAssertEqual(decoded[1].durationMinutes, 30)
+        #expect(decoded.map(\.id) == [strength.id, cardio.id])
+        #expect(decoded[0].exerciseNames == ["Bench Press"])
+        #expect(decoded[0].repLadder == [8, 8, 6])
+        #expect(decoded[1].cardioType == "run")
+        #expect(decoded[1].durationMinutes == 30)
     }
 
-    func testLatestSentWorkoutSupersedesOlderPendingWorkout() {
+    @Test func latestSentWorkoutSupersedesOlderPendingWorkout() {
         let a = WatchSentWorkouts.strengthSession(title: "A", exercises: [])
         let b = WatchSentWorkouts.cardioSession(title: "B", cardioType: "walk", durationMinutes: 20)
         let sent = WatchSentWorkouts.adding(b, to: WatchSentWorkouts.adding(a, to: []))
-        XCTAssertEqual(WatchSentWorkouts.pending(sent, consumedIDs: []).map(\.id), [b.id])
-        XCTAssertTrue(WatchSentWorkouts.pending(sent, consumedIDs: [b.id]).isEmpty)
+        #expect(WatchSentWorkouts.pending(sent, consumedIDs: []).map(\.id) == [b.id])
+        #expect(WatchSentWorkouts.pending(sent, consumedIDs: [b.id]).isEmpty)
     }
 
-    func testSendingSameWorkoutTwiceRetainsOnePendingSession() {
+    @Test func sendingSameWorkoutTwiceRetainsOnePendingSession() {
         let first = WatchSentWorkouts.cardioSession(title: "Run", cardioType: "run", durationMinutes: 20)
         let secondTap = WatchSentWorkouts.cardioSession(title: "Run", cardioType: "run", durationMinutes: 20)
         let sent = WatchSentWorkouts.adding(secondTap, to: [first])
-        XCTAssertEqual(sent.count, 1)
-        XCTAssertEqual(sent.first?.id, first.id)
+        #expect(sent.count == 1)
+        #expect(sent.first?.id == first.id)
     }
 
-    func testIncomingContextCarriesSentWorkoutsOnlyWhenPresent() {
+    @Test func incomingContextCarriesSentWorkoutsOnlyWhenPresent() {
         let none = WatchSync.IncomingContext.from(context: [:], applyingTo: .init())
-        XCTAssertNil(none.sentWorkouts)
+        #expect(none.sentWorkouts == nil)
         let sent = WatchSentWorkouts.cardioSession(title: "Row", cardioType: "rowing", durationMinutes: 15)
         let some = WatchSync.IncomingContext.from(context: WatchSentWorkouts.contextDict([sent]), applyingTo: .init())
-        XCTAssertEqual(some.sentWorkouts?.map(\.id), [sent.id])
+        #expect(some.sentWorkouts?.map(\.id) == [sent.id])
     }
 }

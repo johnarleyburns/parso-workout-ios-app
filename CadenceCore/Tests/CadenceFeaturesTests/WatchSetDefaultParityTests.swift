@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadencePhoneFeatures
 @testable import CadenceFeatures
@@ -9,14 +10,14 @@ import CadenceCore
 /// Issue #433: phone history → built snapshot → context round trip → persisted → Watch flow
 /// chooses the same defaults the phone's `PerformerSetPlanner.resolve` inputs would.
 @MainActor
-final class WatchSetDefaultParityTests: XCTestCase {
+final class WatchSetDefaultParityTests {
     private var phone: ModelContext!
     private var watch: ModelContext!
     private var sam: Person!
     private let base = Date(timeIntervalSince1970: 1_700_000_000)
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
-    override func setUpWithError() throws {
+    init() throws {
         phone = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         watch = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         _ = try WorkoutRepository.seedStarterLibraryIfNeeded(watch)
@@ -57,14 +58,14 @@ final class WatchSetDefaultParityTests: XCTestCase {
         let built = try WatchSetDefaultSnapshotBuilder.make(context: phone, now: now)
         let ctx = WatchSync.IncomingContext.from(
             context: [WatchSync.Key.setDefaultSnapshot: built.propertyList], applyingTo: .init())
-        let received = try XCTUnwrap(ctx.setDefaultSnapshot)
-        XCTAssertEqual(received, built)
+        let received = try #require(ctx.setDefaultSnapshot)
+        #expect(received == built)
         let suite = "parity-\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
-        XCTAssertEqual(WatchSetDefaultSnapshotPersistence(defaults: defaults).replaceIfNewer(received), .replaced)
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        #expect(WatchSetDefaultSnapshotPersistence(defaults: defaults).replaceIfNewer(received) == .replaced)
         // Relaunch: a fresh persistence object, phone unreachable.
-        return try XCTUnwrap(WatchSetDefaultSnapshotPersistence(defaults: defaults).load())
+        return try #require(WatchSetDefaultSnapshotPersistence(defaults: defaults).load())
     }
 
     private func flow(_ snapshot: WatchSetDefaultSnapshot, partner: Person? = nil,
@@ -88,17 +89,17 @@ final class WatchSetDefaultParityTests: XCTestCase {
             history: snap.history(exerciseKey: "Bench Press", performerID: performer))
     }
 
-    func testOwnerHistoryMatchesPhoneAfterRelaunch() throws {
+    @Test func ownerHistoryMatchesPhoneAfterRelaunch() throws {
         addSession(day: 1, [("Bench Press", 80, 8, nil), ("Bench Press", 80, 8, nil)])
         let snap = try syncedSnapshot()
         let m = flow(snap)
         m.startLogSet(for: m.exerciseList[0].exercise)
         let d = direct(snap, performer: "owner", owner: true)
-        XCTAssertEqual(m.currentWeight, d.weightKg); XCTAssertEqual(m.currentReps, Double(d.reps))
-        XCTAssertEqual(m.currentWeight, 80)
+        #expect(m.currentWeight == d.weightKg); #expect(m.currentReps == Double(d.reps))
+        #expect(m.currentWeight == 80)
     }
 
-    func testWatchLoggedSetThenExplicitPlan() throws {
+    @Test func watchLoggedSetThenExplicitPlan() throws {
         addSession(day: 1, [("Bench Press", 80, 8, nil)])
         let snap = try syncedSnapshot()
         let m = flow(snap)
@@ -107,41 +108,41 @@ final class WatchSetDefaultParityTests: XCTestCase {
         m.currentWeight = 85; m.currentReps = 5
         _ = m.logSet(); m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.currentWeight, 85); XCTAssertEqual(m.currentReps, 5)
+        #expect(m.currentWeight == 85); #expect(m.currentReps == 5)
 
         let planned = flow(snap, plan: .init(exerciseNames: ["Bench Press"], prescriptions: [
             PlannedExercisePrescription(exerciseName: "Bench Press",
                                         sets: [PlannedSetPrescription(targetReps: 6, targetWeightKg: 90)])]))
         planned.startLogSet(for: planned.exerciseList[0].exercise)
-        XCTAssertEqual(planned.currentWeight, 90); XCTAssertEqual(planned.currentReps, 6)
+        #expect(planned.currentWeight == 90); #expect(planned.currentReps == 6)
     }
 
-    func testPartnerNeverInheritsOwnerLoad() throws {
+    @Test func partnerNeverInheritsOwnerLoad() throws {
         addSession(day: 1, [("Bench Press", 100, 5, nil), ("Bench Press", 40, 12, sam), ("Squat", 60, 15, sam)])
         addSession(day: 2, [("Curl", 20, 15, sam)])
         let snap = try syncedSnapshot()
         let m = flow(snap, partner: sam)
         m.startLogSet(for: m.exerciseList[0].exercise)
         let d = direct(snap, performer: sam.id.uuidString, owner: false)
-        XCTAssertEqual(m.currentWeight, d.weightKg); XCTAssertEqual(m.currentReps, Double(d.reps))
-        XCTAssertEqual(m.currentWeight, 40)
+        #expect(m.currentWeight == d.weightKg); #expect(m.currentReps == Double(d.reps))
+        #expect(m.currentWeight == 40)
     }
 
-    func testPartnerGeneralHistoryAndFreshPersonUseSafeFallback() throws {
+    @Test func partnerGeneralHistoryAndFreshPersonUseSafeFallback() throws {
         addSession(day: 1, [("Bench Press", 100, 5, nil), ("Curl", 15, 15, sam)])
         let snap = try syncedSnapshot()
         let m = flow(snap, partner: sam)
         m.startLogSet(for: m.exerciseList[0].exercise)
         let d = direct(snap, performer: sam.id.uuidString, owner: false)
-        XCTAssertEqual(m.currentReps, Double(d.reps))
-        XCTAssertEqual(m.currentWeight, d.weightKg ?? 20)
-        XCTAssertNotEqual(m.currentWeight, 100)
+        #expect(m.currentReps == Double(d.reps))
+        #expect(m.currentWeight == (d.weightKg ?? 20))
+        #expect(m.currentWeight != 100)
 
         let fresh = WatchSetDefaultSnapshot(generatedAt: now, performers: [])
         let f = flow(fresh)
         f.startLogSet(for: f.exerciseList[0].exercise)
         let fd = direct(fresh, performer: "owner", owner: true)
-        XCTAssertEqual(f.currentWeight, fd.weightKg ?? 20); XCTAssertEqual(f.currentReps, Double(fd.reps))
+        #expect(f.currentWeight == (fd.weightKg ?? 20)); #expect(f.currentReps == Double(fd.reps))
     }
 
     /// Issue (field testing): a partner added by typed name only — no `performers:`
@@ -149,7 +150,7 @@ final class WatchSetDefaultParityTests: XCTestCase {
     /// path — must still resolve that name's previous weight from synced history by
     /// matching the snapshot performer's `displayName`, not fall through to the flat
     /// 45 lb/20 kg default because the local Watch-only person has no remote id.
-    func testNameOnlyPartnerStillGetsTheirOwnSyncedWeightNotTheFlatDefault() throws {
+    @Test func nameOnlyPartnerStillGetsTheirOwnSyncedWeightNotTheFlatDefault() throws {
         addSession(day: 1, [("Bench Press", 100, 5, nil), ("Bench Press", 40, 12, sam)])
         let snap = try syncedSnapshot()
         // No `performers:` payload at all — exactly the bug's reproduction path.
@@ -159,11 +160,11 @@ final class WatchSetDefaultParityTests: XCTestCase {
         m.addPartner(named: "Sam")
         m.selectPerformer(at: 1)
         m.startLogSet(for: m.exerciseList[0].exercise)
-        XCTAssertEqual(m.currentWeight, 40, "name-only partner must inherit their own synced weight, not the flat default")
-        XCTAssertNotEqual(m.currentWeight, 45)
+        #expect(m.currentWeight == 40, "name-only partner must inherit their own synced weight, not the flat default")
+        #expect(m.currentWeight != 45)
     }
 
-    func testChangedSnapshotChangesHandshakeButIdenticalCoalesces() throws {
+    @Test func changedSnapshotChangesHandshakeButIdenticalCoalesces() throws {
         addSession(day: 1, [("Bench Press", 80, 8, nil)])
         try phone.save()
         let a = try WatchSetDefaultSnapshotBuilder.make(context: phone, now: now)
@@ -171,11 +172,11 @@ final class WatchSetDefaultParityTests: XCTestCase {
         func comps(_ s: WatchSetDefaultSnapshot) -> WatchSyncHandshake.Components {
             .init(context: [WatchSync.Key.setDefaultSnapshot: s.propertyList])
         }
-        XCTAssertEqual(comps(a), comps(same))
+        #expect(comps(a) == comps(same))
         addSession(day: 2, [("Bench Press", 85, 6, nil)])
         try phone.save()
         let b = try WatchSetDefaultSnapshotBuilder.make(context: phone, now: now)
-        XCTAssertNotEqual(comps(a), comps(b))
+        #expect(comps(a) != comps(b))
     }
 }
 #endif

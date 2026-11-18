@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-final class WatchSyncCommitCoordinatorTests: XCTestCase {
+struct WatchSyncCommitCoordinatorTests {
     private func envelope(_ revision: Int, version: Int = WatchSyncHandshake.protocolVersion) -> WatchSyncHandshake.Envelope {
         .init(protocolVersion: version, revision: revision, createdAt: Date(),
               components: .init(preferences: "p\(revision)", customExercises: "c\(revision)",
@@ -15,54 +16,69 @@ final class WatchSyncCommitCoordinatorTests: XCTestCase {
         return nil
     }
 
-    func testReorderedDecodeNeverAcksOlderOverNewer() throws {
+    @Test func reorderedDecodeNeverAcksOlderOverNewer() throws {
         var c = WatchSyncCommitCoordinator()
         let a = envelope(1), b = envelope(2)
-        XCTAssertEqual(c.accept(a, applied: nil, needsDurableExercises: true), .awaitDurable)
-        XCTAssertEqual(c.accept(b, applied: nil, needsDurableExercises: true), .awaitDurable)
-        XCTAssertEqual(c.durableStoreFinished(for: a, succeeded: true, applied: nil), .discard)
-        let r = try XCTUnwrap(committed(c.durableStoreFinished(for: b, succeeded: true, applied: nil)))
-        XCTAssertEqual(r.revision, 2)
-        XCTAssertEqual(r.snapshotID, b.snapshotID)
-        XCTAssertEqual(r.components, b.components)
+        let acceptA = c.accept(a, applied: nil, needsDurableExercises: true)
+        #expect(acceptA == .awaitDurable)
+        let acceptB = c.accept(b, applied: nil, needsDurableExercises: true)
+        #expect(acceptB == .awaitDurable)
+        let finishedA = c.durableStoreFinished(for: a, succeeded: true, applied: nil)
+        #expect(finishedA == .discard)
+        let finishedB = c.durableStoreFinished(for: b, succeeded: true, applied: nil)
+        let r = try #require(committed(finishedB))
+        #expect(r.revision == 2)
+        #expect(r.snapshotID == b.snapshotID)
+        #expect(r.components == b.components)
     }
 
-    func testStaleLateCompletionAfterNewerCommitIsDiscarded() throws {
+    @Test func staleLateCompletionAfterNewerCommitIsDiscarded() throws {
         var c = WatchSyncCommitCoordinator()
         let a = envelope(1), b = envelope(2)
         _ = c.accept(a, applied: nil, needsDurableExercises: false)
-        let applied = try XCTUnwrap(committed(c.accept(b, applied: nil, needsDurableExercises: false)))
-        XCTAssertEqual(c.accept(a, applied: applied, needsDurableExercises: false), .discard)
+        let acceptB = c.accept(b, applied: nil, needsDurableExercises: false)
+        let applied = try #require(committed(acceptB))
+        let acceptAAgain = c.accept(a, applied: applied, needsDurableExercises: false)
+        #expect(acceptAAgain == .discard)
     }
 
-    func testDuplicateIsDiscardedAfterApplied() throws {
+    @Test func duplicateIsDiscardedAfterApplied() throws {
         var c = WatchSyncCommitCoordinator()
         let a = envelope(3)
-        let r = try XCTUnwrap(committed(c.accept(a, applied: nil, needsDurableExercises: false)))
-        XCTAssertEqual(c.accept(a, applied: r, needsDurableExercises: false), .discard)
+        let acceptA = c.accept(a, applied: nil, needsDurableExercises: false)
+        let r = try #require(committed(acceptA))
+        let acceptAAgain = c.accept(a, applied: r, needsDurableExercises: false)
+        #expect(acceptAAgain == .discard)
     }
 
-    func testCustomExerciseFailureDoesNotCommitAndRetrySucceeds() {
+    @Test func customExerciseFailureDoesNotCommitAndRetrySucceeds() {
         var c = WatchSyncCommitCoordinator()
         let a = envelope(1)
-        XCTAssertEqual(c.accept(a, applied: nil, needsDurableExercises: true), .awaitDurable)
-        XCTAssertEqual(c.durableStoreFinished(for: a, succeeded: false, applied: nil), .failed)
-        XCTAssertEqual(c.accept(a, applied: nil, needsDurableExercises: true), .awaitDurable)
-        XCTAssertNotNil(committed(c.durableStoreFinished(for: a, succeeded: true, applied: nil)))
+        let accept1 = c.accept(a, applied: nil, needsDurableExercises: true)
+        #expect(accept1 == .awaitDurable)
+        let finished1 = c.durableStoreFinished(for: a, succeeded: false, applied: nil)
+        #expect(finished1 == .failed)
+        let accept2 = c.accept(a, applied: nil, needsDurableExercises: true)
+        #expect(accept2 == .awaitDurable)
+        let finished2 = c.durableStoreFinished(for: a, succeeded: true, applied: nil)
+        #expect(committed(finished2) != nil)
     }
 
-    func testRelaunchMidCommitReappliesBecauseNothingWasRecorded() {
+    @Test func relaunchMidCommitReappliesBecauseNothingWasRecorded() {
         var first = WatchSyncCommitCoordinator()
         let a = envelope(5)
-        XCTAssertEqual(first.accept(a, applied: nil, needsDurableExercises: true), .awaitDurable)
+        let acceptFirst = first.accept(a, applied: nil, needsDurableExercises: true)
+        #expect(acceptFirst == .awaitDurable)
         var relaunched = WatchSyncCommitCoordinator(appliedRevision: 0)
-        XCTAssertEqual(relaunched.accept(a, applied: nil, needsDurableExercises: true), .awaitDurable)
+        let acceptRelaunched = relaunched.accept(a, applied: nil, needsDurableExercises: true)
+        #expect(acceptRelaunched == .awaitDurable)
     }
 
-    func testProtocolMismatchKeepsPriorState() {
+    @Test func protocolMismatchKeepsPriorState() {
         var c = WatchSyncCommitCoordinator()
-        XCTAssertEqual(c.accept(envelope(9, version: 99), applied: nil, needsDurableExercises: false), .discard)
-        XCTAssertEqual(c.highestAccepted, 0)
-        XCTAssertNil(c.awaiting)
+        let accept = c.accept(envelope(9, version: 99), applied: nil, needsDurableExercises: false)
+        #expect(accept == .discard)
+        #expect(c.highestAccepted == 0)
+        #expect(c.awaiting == nil)
     }
 }

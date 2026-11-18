@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class WatchSingleExerciseSuggestionAssemblerTests: XCTestCase {
+struct WatchSingleExerciseSuggestionAssemblerTests {
     private let asOf = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
     private func context() -> WatchSingleExerciseSuggestionContext {
@@ -40,43 +41,43 @@ final class WatchSingleExerciseSuggestionAssemblerTests: XCTestCase {
             + (0..<warmups).map { _ in WatchSuggestionSet(exerciseName: name, isWarmup: true) }
     }
 
-    func testActiveBenchIsExcludedAndAllocated() throws {
-        let input = try XCTUnwrap(WatchSingleExerciseSuggestionAssembler.make(
+    @Test func activeBenchIsExcludedAndAllocated() throws {
+        let input = try #require(WatchSingleExerciseSuggestionAssembler.make(
             context: context(), activeExerciseNames: ["bench press"],
             activeWorkingSets: sets("Bench Press", 3, warmups: 2),
             transientExcludedCandidateIDs: []))
-        XCTAssertFalse(input.candidates.contains { $0.id == "legacy:bench press" })
-        XCTAssertEqual(input.candidates.count, 2)
+        #expect(!input.candidates.contains { $0.id == "legacy:bench press" })
+        #expect(input.candidates.count == 2)
         // Same math as phone plannedTotals: 3 working sets x direct 1.0 / indirect 0.5; warmups ignored.
-        XCTAssertEqual(input.completedSetsByMuscle["chest"], 2 + 3)
-        XCTAssertEqual(input.completedSetsByMuscle["triceps"], 1.5)
-        XCTAssertEqual(input.recentlyCompletedCandidateIDs, ["legacy:squat"])
+        #expect(input.completedSetsByMuscle["chest"] == Double(2 + 3))
+        #expect(input.completedSetsByMuscle["triceps"] == 1.5)
+        #expect(input.recentlyCompletedCandidateIDs == ["legacy:squat"])
     }
 
-    func testTransientExclusionRemovesOnlyThatCandidate() throws {
-        let input = try XCTUnwrap(WatchSingleExerciseSuggestionAssembler.make(
+    @Test func transientExclusionRemovesOnlyThatCandidate() throws {
+        let input = try #require(WatchSingleExerciseSuggestionAssembler.make(
             context: context(), activeExerciseNames: [], activeWorkingSets: [],
             transientExcludedCandidateIDs: ["legacy:row"]))
-        XCTAssertEqual(Set(input.candidates.map(\.id)), ["legacy:bench press", "legacy:squat"])
+        #expect(Set(input.candidates.map(\.id)) == ["legacy:bench press", "legacy:squat"])
     }
 
-    func testMissingMetadataOmitsAllocationButStillExcludes() throws {
-        let input = try XCTUnwrap(WatchSingleExerciseSuggestionAssembler.make(
+    @Test func missingMetadataOmitsAllocationButStillExcludes() throws {
+        let input = try #require(WatchSingleExerciseSuggestionAssembler.make(
             context: context(), activeExerciseNames: ["Mystery Lift"],
             activeWorkingSets: sets("Mystery Lift", 4), transientExcludedCandidateIDs: []))
-        XCTAssertEqual(input.completedSetsByMuscle, ["chest": 2])
-        XCTAssertEqual(input.candidates.count, 3)
+        #expect(input.completedSetsByMuscle == ["chest": 2])
+        #expect(input.candidates.count == 3)
     }
 
-    func testInvalidContextReturnsNil() {
+    @Test func invalidContextReturnsNil() {
         var bad = context()
         bad.baseInput.trainingGoalRawValue = "bogus"
-        XCTAssertNil(WatchSingleExerciseSuggestionAssembler.make(
+        #expect(WatchSingleExerciseSuggestionAssembler.make(
             context: bad, activeExerciseNames: [], activeWorkingSets: [],
-            transientExcludedCandidateIDs: []))
+            transientExcludedCandidateIDs: []) == nil)
     }
 
-    func testRepeatedAssemblyDoesNotChangeContext() {
+    @Test func repeatedAssemblyDoesNotChangeContext() {
         let ctx = context()
         let before = ctx
         for _ in 0..<3 {
@@ -84,6 +85,6 @@ final class WatchSingleExerciseSuggestionAssemblerTests: XCTestCase {
                 context: ctx, activeExerciseNames: ["Bench Press"],
                 activeWorkingSets: sets("Bench Press", 3), transientExcludedCandidateIDs: ["legacy:row"])
         }
-        XCTAssertEqual(ctx, before)
+        #expect(ctx == before)
     }
 }

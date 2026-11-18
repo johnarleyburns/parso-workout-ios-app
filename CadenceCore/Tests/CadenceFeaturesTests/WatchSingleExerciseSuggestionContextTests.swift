@@ -1,9 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class WatchSingleExerciseSuggestionContextTests: XCTestCase {
+struct WatchSingleExerciseSuggestionContextTests {
     private let asOf = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
     private func candidates() -> [SuggestedExerciseCandidate] {
@@ -49,66 +50,66 @@ final class WatchSingleExerciseSuggestionContextTests: XCTestCase {
                              engineContext: .init(engine())))
     }
 
-    func testPropertyListAndJSONRoundTrip() throws {
+    @Test func propertyListAndJSONRoundTrip() throws {
         let ctx = context()
         let plist = try PropertyListEncoder().encode(ctx)
-        XCTAssertEqual(try PropertyListDecoder().decode(WatchSingleExerciseSuggestionContext.self, from: plist), ctx)
+        #expect(try PropertyListDecoder().decode(WatchSingleExerciseSuggestionContext.self, from: plist) == ctx)
         let json = try JSONEncoder().encode(ctx)
-        XCTAssertEqual(try JSONDecoder().decode(WatchSingleExerciseSuggestionContext.self, from: json), ctx)
+        #expect(try JSONDecoder().decode(WatchSingleExerciseSuggestionContext.self, from: json) == ctx)
     }
 
-    func testAdapterMatchesDirectInputAndPreservesCanonicalIDs() throws {
-        let adapted = try XCTUnwrap(context().suggestedWorkoutInput(allocated: [:], excluding: []))
-        XCTAssertEqual(adapted, direct())
-        XCTAssertEqual(adapted.candidates.map(\.id), ["legacy:bench press", "legacy:squat"])
-        let excluded = try XCTUnwrap(context().suggestedWorkoutInput(allocated: ["chest": 1], excluding: ["legacy:squat"]))
-        XCTAssertEqual(excluded.candidates.map(\.id), ["legacy:bench press"])
-        XCTAssertEqual(excluded.completedSetsByMuscle["chest"], 3)
+    @Test func adapterMatchesDirectInputAndPreservesCanonicalIDs() throws {
+        let adapted = try #require(context().suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(adapted == direct())
+        #expect(adapted.candidates.map(\.id) == ["legacy:bench press", "legacy:squat"])
+        let excluded = try #require(context().suggestedWorkoutInput(allocated: ["chest": 1], excluding: ["legacy:squat"]))
+        #expect(excluded.candidates.map(\.id) == ["legacy:bench press"])
+        #expect(excluded.completedSetsByMuscle["chest"] == 3)
     }
 
-    func testEnumConversionRoundTripsEveryCase() {
-        for m in Mechanics.allCases { XCTAssertEqual(Mechanics(rawValue: m.rawValue), m) }
+    @Test func enumConversionRoundTripsEveryCase() {
+        for m in Mechanics.allCases { #expect(Mechanics(rawValue: m.rawValue) == m) }
         var c = context()
         c.baseInput.candidates[0].trainingTypeRawValues = ["bogus", ExerciseTrainingType.strength.rawValue]
         let out = c.suggestedWorkoutInput(allocated: [:], excluding: [])
-        XCTAssertEqual(out?.candidates.first?.trainingTypes, [.strength])
+        #expect(out?.candidates.first?.trainingTypes == [.strength])
     }
 
-    func testInvalidAndFuturePayloadsAreRejected() {
+    @Test func invalidAndFuturePayloadsAreRejected() {
         var future = context(); future.version = WatchSingleExerciseSuggestionContext.currentVersion + 1
-        XCTAssertNil(future.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(future.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var zero = context(); zero.version = 0
-        XCTAssertNil(zero.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(zero.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var goal = context(); goal.baseInput.trainingGoalRawValue = "nope"
-        XCTAssertNil(goal.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(goal.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var style = context(); style.baseInput.preferredStyleRawValue = "nope"
-        XCTAssertNil(style.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(style.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var exp = context(); exp.baseInput.engineContext.experienceRawValue = "nope"
-        XCTAssertNil(exp.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(exp.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var rest = context(); rest.baseInput.engineContext.schedule.restKind = "nope"
-        XCTAssertNil(rest.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(rest.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var sets = context(); sets.baseInput.preferredSetsPerExercise = 0
-        XCTAssertNil(sets.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(sets.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var tracked = context(); tracked.baseInput.trackedGroupIDs = ["unknown"]
-        XCTAssertNil(tracked.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(tracked.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
         var badDate = context(); badDate.baseInput.engineContext.asOf = Date(timeIntervalSinceReferenceDate: .nan)
-        XCTAssertNil(badDate.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(badDate.suggestedWorkoutInput(allocated: [:], excluding: []) == nil)
     }
 
-    func testBadCandidateIsDroppedNotInvented() throws {
+    @Test func badCandidateIsDroppedNotInvented() throws {
         var c = context(); c.baseInput.candidates[0].mechanicsRawValue = "nope"
-        let out = try XCTUnwrap(c.suggestedWorkoutInput(allocated: [:], excluding: []))
-        XCTAssertEqual(out.candidates.map(\.id), ["legacy:squat"])
+        let out = try #require(c.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(out.candidates.map(\.id) == ["legacy:squat"])
     }
 
-    func testNonFiniteNumbersAreSanitized() throws {
+    @Test func nonFiniteNumbersAreSanitized() throws {
         var c = context()
         c.baseInput.completedSetsByMuscle = ["chest": .nan, "back": .infinity, "legs": -4, "arms": 2]
-        let out = try XCTUnwrap(c.suggestedWorkoutInput(allocated: ["arms": .nan, "chest": 1], excluding: []))
-        XCTAssertEqual(out.completedSetsByMuscle, ["legs": 0, "arms": 2, "chest": 1])
+        let out = try #require(c.suggestedWorkoutInput(allocated: ["arms": .nan, "chest": 1], excluding: []))
+        #expect(out.completedSetsByMuscle == ["legs": 0, "arms": 2, "chest": 1])
     }
 
-    func testKeyIsDefined() {
-        XCTAssertEqual(WatchSync.Key.singleExerciseSuggestionContext, "suggestion.singleExerciseContext")
+    @Test func keyIsDefined() {
+        #expect(WatchSync.Key.singleExerciseSuggestionContext == "suggestion.singleExerciseContext")
     }
 }

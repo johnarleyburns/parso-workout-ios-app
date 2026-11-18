@@ -1,22 +1,23 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class WatchStrengthSyncApplierTests: XCTestCase {
+final class WatchStrengthSyncApplierTests {
     private var container: ModelContainer!
     private var context: ModelContext!
 
-    override func setUpWithError() throws {
+    init() throws {
         container = try CadenceStore.makeModelContainer(inMemory: true)
         context = ModelContext(container)
         _ = try WorkoutRepository.seedStarterLibraryIfNeeded(context)
     }
 
-    override func tearDown() {
+    deinit {
         context = nil
         container = nil
     }
@@ -33,78 +34,78 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         (0..<n).map { HRSamplePoint(t: Double($0) * 5, bpm: 100 + Double($0 % 30)) }
     }
 
-    func testPolicyDecisions() {
+    @Test func policyDecisions() {
         let a = series(5), b = series(10)
-        XCTAssertEqual(HRCompletionPolicy.decide(existing: b, incoming: [], incomingFinal: nil, appliedFinal: nil), .keepExisting)
-        XCTAssertEqual(HRCompletionPolicy.decide(existing: b, incoming: a, incomingFinal: 1, appliedFinal: 2), .rejectStale)
-        XCTAssertEqual(HRCompletionPolicy.decide(existing: a, incoming: b, incomingFinal: nil, appliedFinal: nil), .replace(b))
-        XCTAssertEqual(HRCompletionPolicy.decide(existing: b, incoming: a, incomingFinal: nil, appliedFinal: nil), .keepExisting)
+        #expect(HRCompletionPolicy.decide(existing: b, incoming: [], incomingFinal: nil, appliedFinal: nil) == .keepExisting)
+        #expect(HRCompletionPolicy.decide(existing: b, incoming: a, incomingFinal: 1, appliedFinal: 2) == .rejectStale)
+        #expect(HRCompletionPolicy.decide(existing: a, incoming: b, incomingFinal: nil, appliedFinal: nil) == .replace(b))
+        #expect(HRCompletionPolicy.decide(existing: b, incoming: a, incomingFinal: nil, appliedFinal: nil) == .keepExisting)
     }
 
-    func testEmptyCompletionKeepsDenseSeriesAndDuplicateIsIdempotent() throws {
+    @Test func emptyCompletionKeepsDenseSeriesAndDuplicateIsIdempotent() throws {
         let id = UUID()
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(20), final: 20), in: context)
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        let session = try #require(fetchSessions().first { $0.id == id })
         let stored = session.hrSamplePoints
-        XCTAssertEqual(stored.count, 20)
+        #expect(stored.count == 20)
         let summary = session.intensitySummaryData
 
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: nil), in: context)
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: [], final: 25), in: context)
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(20), final: 20), in: context)
-        XCTAssertEqual(session.hrSamplePoints, stored)
-        XCTAssertEqual(session.intensitySummaryData, summary)
-        XCTAssertFalse(session.hrCompletionPending)
+        #expect(session.hrSamplePoints == stored)
+        #expect(session.intensitySummaryData == summary)
+        #expect(!session.hrCompletionPending)
     }
 
-    func testHeartRateFinalizedNotificationPostsOnlyOnReplacement() throws {
+    @Test func heartRateFinalizedNotificationPostsOnlyOnReplacement() throws {
         let id = UUID()
         var posts = 0
         let token = NotificationCenter.default.addObserver(forName: .workoutHeartRateFinalized, object: nil, queue: nil) { if ($0.object as? UUID) == id { posts += 1 } }
         defer { NotificationCenter.default.removeObserver(token) }
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(5)), in: context)
-        XCTAssertEqual(posts, 1)
+        #expect(posts == 1)
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(5)), in: context)  // duplicate
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(3)), in: context)  // keep
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: nil), in: context)
-        XCTAssertEqual(posts, 1)
+        #expect(posts == 1)
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(10), final: 4), in: context)
-        XCTAssertEqual(posts, 2)
+        #expect(posts == 2)
         // Stale by real sequence, though it has more samples than the sequence suggests.
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(12), final: 3), in: context)
-        XCTAssertEqual(posts, 2)
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
-        XCTAssertEqual(session.hrSamplePoints.count, 10)
-        XCTAssertEqual(session.hrAppliedFinalSequence, 4)
+        #expect(posts == 2)
+        let session = try #require(fetchSessions().first { $0.id == id })
+        #expect(session.hrSamplePoints.count == 10)
+        #expect(session.hrAppliedFinalSequence == 4)
     }
 
-    func testStaleFinalSequenceAndLargerSeries() throws {
+    @Test func staleFinalSequenceAndLargerSeries() throws {
         let id = UUID()
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(10), final: 5), in: context)
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        let session = try #require(fetchSessions().first { $0.id == id })
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(30), final: 3), in: context)
-        XCTAssertEqual(session.hrSamplePoints.count, 10)
+        #expect(session.hrSamplePoints.count == 10)
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(30), final: 9), in: context)
-        XCTAssertEqual(session.hrSamplePoints.count, 30)
-        XCTAssertEqual(session.hrAppliedFinalSequence, 9)
+        #expect(session.hrSamplePoints.count == 30)
+        #expect(session.hrAppliedFinalSequence == 9)
     }
 
-    func testMalformedPayloadDoesNotCorruptAndMarksPending() throws {
+    @Test func malformedPayloadDoesNotCorruptAndMarksPending() throws {
         let id = UUID()
         var bad = endPayload(id, samples: nil)
         bad["hr_samples"] = [1.0, 2.0, 3.0]
         try WatchStrengthSyncApplier.apply(userInfo: bad, in: context)
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
-        XCTAssertTrue(session.hrSamplePoints.isEmpty)
-        XCTAssertTrue(session.hrCompletionPending)
+        let session = try #require(fetchSessions().first { $0.id == id })
+        #expect(session.hrSamplePoints.isEmpty)
+        #expect(session.hrCompletionPending)
         try WatchStrengthSyncApplier.apply(userInfo: endPayload(id, samples: series(10), final: 1), in: context)
         bad["hr_samples"] = [Double](repeating: 1, count: WatchStrengthHeartRate.maximumTransportDoubles + 2)
         try WatchStrengthSyncApplier.apply(userInfo: bad, in: context)
-        XCTAssertEqual(session.hrSamplePoints.count, 10)
-        XCTAssertFalse(session.hrCompletionPending)
+        #expect(session.hrSamplePoints.count == 10)
+        #expect(!session.hrCompletionPending)
     }
 
-    func testEndSessionBeforeLogSetCreatesFinalizedNonResumableSession() throws {
+    @Test func endSessionBeforeLogSetCreatesFinalizedNonResumableSession() throws {
         let sessionID = UUID()
         let endedAt = Date(timeIntervalSince1970: 2_000)
 
@@ -130,14 +131,14 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
             "planned_rep_ladder": [12, 10, 8],
         ], in: context)
 
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == sessionID })
-        XCTAssertEqual(session.endedAt, endedAt)
-        XCTAssertFalse(session.isResumable)
-        XCTAssertEqual(session.orderedSets.count, 1)
-        XCTAssertEqual(session.orderedSets.first?.rpe, 8)
+        let session = try #require(fetchSessions().first { $0.id == sessionID })
+        #expect(session.endedAt == endedAt)
+        #expect(!session.isResumable)
+        #expect(session.orderedSets.count == 1)
+        #expect(session.orderedSets.first?.rpe == 8)
     }
 
-    func testLogSetStoresIncomingSetIDSoReplayIsIgnored() throws {
+    @Test func logSetStoresIncomingSetIDSoReplayIsIgnored() throws {
         let sessionID = UUID()
         let setID = UUID()
         let payload: [String: Any] = [
@@ -152,14 +153,14 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         let first = try WatchStrengthSyncApplier.apply(userInfo: payload, in: context)
         let second = try WatchStrengthSyncApplier.apply(userInfo: payload, in: context)
 
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == sessionID })
-        XCTAssertEqual(first, .logSet)
-        XCTAssertEqual(second, .ignored)
-        XCTAssertEqual(session.orderedSets.count, 1)
-        XCTAssertEqual(session.orderedSets.first?.id, setID)
+        let session = try #require(fetchSessions().first { $0.id == sessionID })
+        #expect(first == .logSet)
+        #expect(second == .ignored)
+        #expect(session.orderedSets.count == 1)
+        #expect(session.orderedSets.first?.id == setID)
     }
 
-    func testEndSessionAppliesRichPlanPayloadToMirroredSession() throws {
+    @Test func endSessionAppliesRichPlanPayloadToMirroredSession() throws {
         let sessionID = UUID()
         let sourceItemID = UUID()
         let payload = WatchPlanPayload(
@@ -181,13 +182,13 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
             WatchPlanPayload.transportKey: payload.propertyList,
         ], in: context)
 
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == sessionID })
-        XCTAssertEqual(session.planSessionID, sessionID)
-        XCTAssertEqual(session.plannedPrescriptions.first?.sourceItemID, sourceItemID)
-        XCTAssertEqual(session.plannedPrescriptions.first?.sets.first?.restSeconds, 150)
+        let session = try #require(fetchSessions().first { $0.id == sessionID })
+        #expect(session.planSessionID == sessionID)
+        #expect(session.plannedPrescriptions.first?.sourceItemID == sourceItemID)
+        #expect(session.plannedPrescriptions.first?.sets.first?.restSeconds == 150)
     }
 
-    func testEndSessionTransmitsWatchHeartRateAndSummarizesZones() throws {
+    @Test func endSessionTransmitsWatchHeartRateAndSummarizesZones() throws {
         let sessionID = UUID()
         let samples = (0..<20).map { HRSamplePoint(t: Double($0) * 30, bpm: 150) }
         let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 190, maximumHRSource: .userEntered)
@@ -203,28 +204,28 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         // Redelivery is idempotent.
         try WatchStrengthSyncApplier.apply(userInfo: flowPayload, in: context, intensityProfile: profile)
 
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == sessionID })
-        XCTAssertEqual(session.hrSamplePoints, samples)
-        let summary = try XCTUnwrap(session.intensitySummary)
-        XCTAssertGreaterThan(summary.vigorousDuration, 0)
-        XCTAssertFalse(summary.zoneDurations.isEmpty)
+        let session = try #require(fetchSessions().first { $0.id == sessionID })
+        #expect(session.hrSamplePoints == samples)
+        let summary = try #require(session.intensitySummary)
+        #expect(summary.vigorousDuration > 0)
+        #expect(!summary.zoneDurations.isEmpty)
         let data = WorkoutSummaryData.from(session: session)
-        XCTAssertEqual(data.hr.count, samples.count)
-        XCTAssertEqual(data.cardioIntensity, summary)
+        #expect(data.hr.count == samples.count)
+        #expect(data.cardioIntensity == summary)
     }
 
-    func testStrengthHeartRateCountsTowardWeeklyCardioMinutes() throws {
+    @Test func strengthHeartRateCountsTowardWeeklyCardioMinutes() throws {
         let session = WorkoutSession(title: "Lift", date: Date())
         context.insert(session)
         let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 190, maximumHRSource: .userEntered)
         session.recordHeartRate((0..<10).map { HRSamplePoint(t: Double($0) * 60, bpm: 130) }, profile: profile)
         let weekly = WeeklyCardioAggregator.summarize([], since: Date().addingTimeInterval(-86_400),
                                                       profile: profile, sessions: [session])
-        XCTAssertGreaterThan(weekly.moderateEquivalentMinutes, 0)
-        XCTAssertFalse(weekly.zoneMinutes.isEmpty)
+        #expect(weekly.moderateEquivalentMinutes > 0)
+        #expect(!weekly.zoneMinutes.isEmpty)
         let none = WeeklyCardioAggregator.summarize([], since: Date().addingTimeInterval(-86_400),
                                                     profile: profile, sessions: [WorkoutSession(title: "No HR")])
-        XCTAssertEqual(none.moderateEquivalentMinutes, 0)
+        #expect(none.moderateEquivalentMinutes == 0)
     }
 
     // MARK: - Shared resolved profile (issue #546)
@@ -242,21 +243,22 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         (0..<40).map { HRSamplePoint(t: Double($0) * 30, bpm: $0 < 20 ? 111 : 130) }
     }
 
-    func testWatchEndImportMatchesAccumulatorForResolvedProfile() throws {
+    @Test func watchEndImportMatchesAccumulatorForResolvedProfile() throws {
         let id = UUID()
         let samples = denseSamples()
         let profile = profile6317()
         try WatchStrengthSyncApplier.apply(userInfo: watchEnd(id, samples), in: context, intensityProfile: profile)
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        let session = try #require(fetchSessions().first { $0.id == id })
         let expected = CardioMinuteAccumulator.summarize(
             duration: max(session.duration, samples.map(\.t).max() ?? 0), samples: samples, profile: profile)
-        let got = try XCTUnwrap(session.intensitySummary)
-        XCTAssertEqual(got, expected)
-        XCTAssertGreaterThan(got.moderateDuration, 0)
-        XCTAssertGreaterThan(got.vigorousDuration, 0)
+        let got = try #require(session.intensitySummary)
+        #expect(got == expected)
+        #expect(got.moderateDuration > 0)
+        #expect(got.vigorousDuration > 0)
     }
 
-    @MainActor func testLateObservationFinalizationMatchesNormalWatchImport() throws {
+    @MainActor
+    @Test func lateObservationFinalizationMatchesNormalWatchImport() throws {
         let samples = denseSamples()
         let profile = profile6317()
         let id = UUID()
@@ -267,7 +269,7 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         var payload = watchEnd(id, samples)
         payload["ended_at"] = base.addingTimeInterval(1_200).timeIntervalSince1970
         try WatchStrengthSyncApplier.apply(userInfo: payload, in: context, intensityProfile: profile)
-        let normal = try XCTUnwrap(fetchSessions().first { $0.id == id })
+        let normal = try #require(fetchSessions().first { $0.id == id })
 
         let late = WorkoutSession(title: "Strength", date: base)
         late.endedAt = normal.endedAt
@@ -277,26 +279,27 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
             recorder.record(HeartRateObservation(source: .watchHealthKit,
                                                  observedAt: base.addingTimeInterval(s.t), bpm: s.bpm), now: base)
         }
-        XCTAssertTrue(recorder.finalize(profile: profile))
-        let lateSummary = try XCTUnwrap(late.intensitySummary)
-        let normalSummary = try XCTUnwrap(normal.intensitySummary)
-        XCTAssertGreaterThan(normalSummary.moderateDuration, 0)
-        XCTAssertGreaterThan(normalSummary.vigorousDuration, 0)
-        XCTAssertEqual(lateSummary.moderateDuration, normalSummary.moderateDuration, accuracy: 0.001)
-        XCTAssertEqual(lateSummary.vigorousDuration, normalSummary.vigorousDuration, accuracy: 0.001)
+        #expect(recorder.finalize(profile: profile))
+        let lateSummary = try #require(late.intensitySummary)
+        let normalSummary = try #require(normal.intensitySummary)
+        #expect(normalSummary.moderateDuration > 0)
+        #expect(normalSummary.vigorousDuration > 0)
+        #expect(abs(lateSummary.moderateDuration - normalSummary.moderateDuration) <= 0.001)
+        #expect(abs(lateSummary.vigorousDuration - normalSummary.vigorousDuration) <= 0.001)
     }
 
-    func testWatchImportWithoutCachedProfileUsesPercentMaxFallback() throws {
+    @Test func watchImportWithoutCachedProfileUsesPercentMaxFallback() throws {
         let id = UUID()
         let fallback = CardioIntensityProfile.resolved(userEnteredMaximumHR: nil, age: 35)
         try WatchStrengthSyncApplier.apply(userInfo: watchEnd(id, denseSamples()), in: context,
                                            intensityProfile: fallback)
-        let session = try XCTUnwrap(fetchSessions().first { $0.id == id })
-        XCTAssertNotNil(session.intensitySummary)
-        XCTAssertEqual(session.hrSamplePoints.count, 40)
+        let session = try #require(fetchSessions().first { $0.id == id })
+        #expect(session.intensitySummary != nil)
+        #expect(session.hrSamplePoints.count == 40)
     }
 
-    @MainActor func testLateFinalizationDoesNotOverwriteManualCardioMinutes() throws {
+    @MainActor
+    @Test func lateFinalizationDoesNotOverwriteManualCardioMinutes() throws {
         let base = Date()
         let session = WorkoutSession(title: "Strength", date: base)
         session.endedAt = base.addingTimeInterval(2_000)
@@ -308,12 +311,12 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
             recorder.record(HeartRateObservation(source: .watchHealthKit,
                                                  observedAt: base.addingTimeInterval(s.t), bpm: s.bpm), now: base)
         }
-        XCTAssertTrue(recorder.finalize(profile: profile6317()))
-        XCTAssertTrue(session.hasManualCardioMinutesOverride)
-        XCTAssertEqual(session.intensitySummary, manual)
+        #expect(recorder.finalize(profile: profile6317()))
+        #expect(session.hasManualCardioMinutesOverride)
+        #expect(session.intensitySummary == manual)
     }
 
-    func testDeleteSetPayloadRemovesMirroredSet() throws {
+    @Test func deleteSetPayloadRemovesMirroredSet() throws {
         let session = try WorkoutRepository.createSession(title: "Strength", in: context)
         let exercise = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: context)
         let set = try WorkoutRepository.addSet(to: session, exercise: exercise, weightKg: 80, reps: 8, in: context)
@@ -324,11 +327,11 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
             "set_id": set.id.uuidString,
         ], in: context)
 
-        XCTAssertEqual(action, .deleteSet)
-        XCTAssertTrue(session.orderedSets.isEmpty)
+        #expect(action == .deleteSet)
+        #expect(session.orderedSets.isEmpty)
     }
 
-    func testDeleteExercisePayloadRemovesSetsAndPlannedName() throws {
+    @Test func deleteExercisePayloadRemovesSetsAndPlannedName() throws {
         let session = try WorkoutRepository.createSession(title: "Strength", in: context)
         let exercise = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: context)
         session.plannedExerciseNames = ["Bench Press"]
@@ -340,9 +343,9 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
             "exercise": "Bench Press",
         ], in: context)
 
-        XCTAssertEqual(action, .deleteExercise)
-        XCTAssertTrue(session.orderedSets.isEmpty)
-        XCTAssertTrue(session.plannedExerciseNames.isEmpty)
+        #expect(action == .deleteExercise)
+        #expect(session.orderedSets.isEmpty)
+        #expect(session.plannedExerciseNames.isEmpty)
     }
 
     private func fetchSessions() throws -> [WorkoutSession] {

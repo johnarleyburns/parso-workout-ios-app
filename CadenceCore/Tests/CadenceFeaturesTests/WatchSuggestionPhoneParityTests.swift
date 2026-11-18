@@ -1,5 +1,6 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadencePhoneFeatures
 @testable import CadenceFeatures
@@ -10,7 +11,7 @@ import CadenceCore
 /// .suggestSingleExercise` from the same store inputs the request factory uses; the
 /// Watch resolves it from a JSON round-tripped context through the session.
 @MainActor
-final class WatchSuggestionPhoneParityTests: XCTestCase {
+struct WatchSuggestionPhoneParityTests {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     private func store() throws -> ModelContext {
@@ -76,13 +77,13 @@ final class WatchSuggestionPhoneParityTests: XCTestCase {
     private func watchContext(_ context: ModelContext, _ settings: AppSettings) throws -> WatchSingleExerciseSuggestionContext {
         let built = try WatchSingleExerciseSuggestionContextBuilder.make(
             context: context, settings: settings, now: now, historyIndexStorageURL: nil)
-        let data = try XCTUnwrap(built.propertyListValue)
-        return try XCTUnwrap(WatchSingleExerciseSuggestionContext.decodePayload(data))
+        let data = try #require(built.propertyListValue)
+        return try #require(WatchSingleExerciseSuggestionContext.decodePayload(data))
     }
 
     private func watchInput(_ ctx: WatchSingleExerciseSuggestionContext, active: [String] = [],
                             transient: Set<String> = []) throws -> SuggestedWorkoutInput {
-        try XCTUnwrap(WatchSingleExerciseSuggestionAssembler.make(
+        try #require(WatchSingleExerciseSuggestionAssembler.make(
             context: ctx, activeExerciseNames: active,
             activeWorkingSets: active.map { WatchSuggestionSet(exerciseName: $0) },
             transientExcludedCandidateIDs: transient))
@@ -96,25 +97,28 @@ final class WatchSuggestionPhoneParityTests: XCTestCase {
     }
 
     private func assertSame(_ phone: SuggestedWorkoutExercise?, _ state: WatchSingleExerciseSuggestionSession.State,
-                            file: StaticString = #filePath, line: UInt = #line) {
+                            sourceLocation: SourceLocation = #_sourceLocation) {
         guard let phone else {
-            XCTAssertEqual(state, .empty, file: file, line: line); return
+            #expect(state == .empty, sourceLocation: sourceLocation); return
         }
-        guard case .ready(let w) = state else { return XCTFail("Watch not ready: \(state)", file: file, line: line) }
-        XCTAssertEqual(w.candidateID, phone.candidateID, file: file, line: line)
-        XCTAssertEqual(w.plannedSets, phone.plannedSets, file: file, line: line)
-        XCTAssertEqual(w.repRange, phone.repRange, file: file, line: line)
+        guard case .ready(let w) = state else {
+            Issue.record("Watch not ready: \(state)", sourceLocation: sourceLocation)
+            return
+        }
+        #expect(w.candidateID == phone.candidateID, sourceLocation: sourceLocation)
+        #expect(w.plannedSets == phone.plannedSets, sourceLocation: sourceLocation)
+        #expect(w.repRange == phone.repRange, sourceLocation: sourceLocation)
     }
 
-    func testNoHistoryMatches() async throws {
+    @Test func noHistoryMatches() async throws {
         let context = try store(), s = settings()
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
-        XCTAssertNotNil(phone)
+        #expect(phone != nil)
         assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
     }
 
-    func testEnoughHistoryMatches() async throws {
+    @Test func enoughHistoryMatches() async throws {
         let context = try store(), s = settings()
         for (i, n) in ["Bench Press", "Overhead Press", "Barbell Row", "Squat"].enumerated() {
             try log(n, muscle: ["chest", "shoulders", "lats", "quadriceps"][i], daysAgo: Double(i + 1) * 2, in: context)
@@ -124,30 +128,33 @@ final class WatchSuggestionPhoneParityTests: XCTestCase {
         assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
     }
 
-    func testCurrentWorkoutContainingBestCandidateIsExcludedByBoth() async throws {
+    @Test func currentWorkoutContainingBestCandidateIsExcludedByBoth() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 4, in: context)
         let phoneIn = try phoneInput(context, s)
-        let first = try XCTUnwrap(SuggestedWorkoutGenerator.suggestSingleExercise(
+        let first = try #require(SuggestedWorkoutGenerator.suggestSingleExercise(
             input: phoneIn, style: phoneIn.preferredStyle))
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(
             input: phoneIn, style: phoneIn.preferredStyle, excludingCandidateIDs: [first.candidateID])
         let ctx = try watchContext(context, s)
         let active = [first.name]
         let state = await watchResult(try watchInput(ctx, active: active))
-        XCTAssertNotEqual(phone?.candidateID, first.candidateID)
-        guard case .ready(let w) = state else { return XCTFail("\(state)") }
-        XCTAssertNotEqual(w.candidateID, first.candidateID)
-        XCTAssertEqual(w.candidateID, phone?.candidateID)
-        XCTAssertEqual(w.plannedSets, phone?.plannedSets)
-        XCTAssertEqual(w.repRange, phone?.repRange)
+        #expect(phone?.candidateID != first.candidateID)
+        guard case .ready(let w) = state else {
+            Issue.record("\(state)")
+            return
+        }
+        #expect(w.candidateID != first.candidateID)
+        #expect(w.candidateID == phone?.candidateID)
+        #expect(w.plannedSets == phone?.plannedSets)
+        #expect(w.repRange == phone?.repRange)
     }
 
-    func testSuggestAnotherExcludesOnlyFirstAndMatches() async throws {
+    @Test func suggestAnotherExcludesOnlyFirstAndMatches() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 3, in: context)
         let phoneIn = try phoneInput(context, s)
-        let first = try XCTUnwrap(SuggestedWorkoutGenerator.suggestSingleExercise(
+        let first = try #require(SuggestedWorkoutGenerator.suggestSingleExercise(
             input: phoneIn, style: phoneIn.preferredStyle))
         let phoneNext = SuggestedWorkoutGenerator.suggestSingleExercise(
             input: phoneIn, style: phoneIn.preferredStyle, excludingCandidateIDs: [first.candidateID])
@@ -162,48 +169,48 @@ final class WatchSuggestionPhoneParityTests: XCTestCase {
         assertSame(phoneNext, session.state)
     }
 
-    func testPermanentExclusionHonoredByBoth() async throws {
+    @Test func permanentExclusionHonoredByBoth() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 3, in: context)
         let before = try phoneInput(context, s)
-        let top = try XCTUnwrap(SuggestedWorkoutGenerator.suggestSingleExercise(
+        let top = try #require(SuggestedWorkoutGenerator.suggestSingleExercise(
             input: before, style: before.preferredStyle))
-        let exercise = try XCTUnwrap(WorkoutRepository.allExercises(context).first {
+        let exercise = try #require(WorkoutRepository.allExercises(context).first {
             ExerciseSuggestionExclusionKey.forExercise($0) == top.candidateID })
         try ExerciseSuggestionExclusionStore.setExcluded(exercise: exercise, reason: .personalPreference, in: context)
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
-        XCTAssertNotEqual(phone?.candidateID, top.candidateID)
+        #expect(phone?.candidateID != top.candidateID)
         assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
     }
 
-    func testCompletedWorkoutChangingWeeklyVolumeMatchesNextSync() async throws {
+    @Test func completedWorkoutChangingWeeklyVolumeMatchesNextSync() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 6, in: context)
         let stale = try watchContext(context, s)
         for d in [1.0, 2.0] { try log("Bench Press", muscle: "chest", daysAgo: d, in: context) }
         let fresh = try watchContext(context, s)
-        XCTAssertNotEqual(stale.baseInput.completedSetsByMuscle, fresh.baseInput.completedSetsByMuscle)
+        #expect(stale.baseInput.completedSetsByMuscle != fresh.baseInput.completedSetsByMuscle)
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
-        XCTAssertEqual(try watchInput(fresh).completedSetsByMuscle, phoneIn.completedSetsByMuscle)
+        #expect(try watchInput(fresh).completedSetsByMuscle == phoneIn.completedSetsByMuscle)
         assertSame(phone, await watchResult(try watchInput(fresh)))
     }
 
-    func testCachedContextSurvivesRelaunchWithoutPhone() async throws {
+    @Test func cachedContextSurvivesRelaunchWithoutPhone() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 3, in: context)
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
         let suite = UserDefaults(suiteName: "wspp-store-\(UUID().uuidString)")!
         let first = WatchSingleExerciseSuggestionContextStore(defaults: suite)
-        XCTAssertEqual(first.replace(try watchContext(context, s)), .replaced)
+        #expect(first.replace(try watchContext(context, s)) == .replaced)
         // "Relaunch": a new store instance reads only the persisted defaults.
-        let reopened = try XCTUnwrap(WatchSingleExerciseSuggestionContextStore(defaults: suite).load())
+        let reopened = try #require(WatchSingleExerciseSuggestionContextStore(defaults: suite).load())
         assertSame(phone, await watchResult(try watchInput(reopened)))
     }
 
-    func testBuildIsBoundedDeterministicAndOffMain() async throws {
+    @Test func buildIsBoundedDeterministicAndOffMain() async throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let seed = ModelContext(container)
         for i in 0..<30 { try log("Bench Press", muscle: "chest", daysAgo: Double(i + 1), in: seed) }
@@ -219,10 +226,10 @@ final class WatchSuggestionPhoneParityTests: XCTestCase {
                 context: c, settings: settings, now: now, historyIndexStorageURL: nil)
             return (x, y, pthread_main_np() != 0)
         }.value
-        XCTAssertFalse(onMain)
-        XCTAssertEqual(a, b, "unchanged inputs must produce an identical context (no revision churn)")
-        XCTAssertLessThanOrEqual(a.baseInput.candidates.count, WatchSingleExerciseSuggestionContextBuilder.maxCandidates)
-        XCTAssertLessThan(Date().timeIntervalSince(start), 30)
+        #expect(!onMain)
+        #expect(a == b, "unchanged inputs must produce an identical context (no revision churn)")
+        #expect(a.baseInput.candidates.count <= WatchSingleExerciseSuggestionContextBuilder.maxCandidates)
+        #expect(Date().timeIntervalSince(start) < 30)
     }
 }
 #endif

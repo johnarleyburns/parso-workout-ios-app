@@ -1,12 +1,13 @@
 #if canImport(SwiftData)
-import XCTest
+import Foundation
+import Testing
 import SwiftData
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class WatchSingleExerciseSuggestionContextBuilderTests: XCTestCase {
+struct WatchSingleExerciseSuggestionContextBuilderTests {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
     @MainActor
@@ -75,7 +76,7 @@ final class WatchSingleExerciseSuggestionContextBuilderTests: XCTestCase {
     }
 
     @MainActor
-    func testParityWithRequestFactoryInputsAndPermanentExclusion() throws {
+    @Test func parityWithRequestFactoryInputsAndPermanentExclusion() throws {
         let context = try store(), s = settings()
         try log("Bench Press", at: now.addingTimeInterval(-86_400 * 3), in: context)
         try log("Overhead Press", at: now.addingTimeInterval(-86_400), in: context)
@@ -86,62 +87,62 @@ final class WatchSingleExerciseSuggestionContextBuilderTests: XCTestCase {
         let excluded = try WatchSingleExerciseSuggestionContextBuilder.permanentlyExcludedCandidateIDs(
             in: snapshot, context: context)
         let squatID = ExerciseSuggestionExclusionKey.forExercise(squat)
-        XCTAssertTrue(snapshot.baseInput.candidates.map(\.id).contains(squatID))
-        XCTAssertTrue(excluded.contains(squatID))
+        #expect(snapshot.baseInput.candidates.map(\.id).contains(squatID))
+        #expect(excluded.contains(squatID))
 
         let ref = try reference(context, s)
-        let input = try XCTUnwrap(snapshot.suggestedWorkoutInput(allocated: [:], excluding: excluded))
-        XCTAssertEqual(Set(input.candidates.map(\.id)), Set(ref.candidates.map(\.id)))
-        XCTAssertEqual(input.recentlyCompletedCandidateIDs, ref.recentlyCompletedCandidateIDs)
-        XCTAssertEqual(input.historyWorkoutCount, ref.historyWorkoutCount)
-        XCTAssertEqual(input.historyWorkingSetCount, ref.historyWorkingSetCount)
-        XCTAssertEqual(input.mostRecentExerciseWorkingSets, ref.mostRecentExerciseWorkingSets)
-        XCTAssertEqual(input.completedSetsByMuscle, ref.completedSetsByMuscle)
-        XCTAssertEqual(input.trackedGroups, ref.trackedGroups)
-        XCTAssertEqual(input.historyData != nil, ref.historyData != nil)
+        let input = try #require(snapshot.suggestedWorkoutInput(allocated: [:], excluding: excluded))
+        #expect(Set(input.candidates.map(\.id)) == Set(ref.candidates.map(\.id)))
+        #expect(input.recentlyCompletedCandidateIDs == ref.recentlyCompletedCandidateIDs)
+        #expect(input.historyWorkoutCount == ref.historyWorkoutCount)
+        #expect(input.historyWorkingSetCount == ref.historyWorkingSetCount)
+        #expect(input.mostRecentExerciseWorkingSets == ref.mostRecentExerciseWorkingSets)
+        #expect(input.completedSetsByMuscle == ref.completedSetsByMuscle)
+        #expect(input.trackedGroups == ref.trackedGroups)
+        #expect((input.historyData != nil) == (ref.historyData != nil))
         for style in [SuggestedWorkoutStyle.fitness, .powerlifting] {
             let a = SuggestedWorkoutGenerator.suggestSingleExercise(input: input, style: style)
             let b = SuggestedWorkoutGenerator.suggestSingleExercise(input: ref, style: style)
-            XCTAssertEqual(a, b)
+            #expect(a == b)
         }
     }
 
     @MainActor
-    func testEmptyHistoryIsValidAndHasNoHistoryData() throws {
+    @Test func emptyHistoryIsValidAndHasNoHistoryData() throws {
         let context = try store(), s = settings()
         let snapshot = try build(context, s)
-        XCTAssertNil(snapshot.baseInput.historyData)
-        XCTAssertEqual(snapshot.baseInput.historyWorkingSetCount, 0)
-        XCTAssertFalse(snapshot.baseInput.candidates.isEmpty)
-        XCTAssertNotNil(snapshot.suggestedWorkoutInput(allocated: [:], excluding: []))
+        #expect(snapshot.baseInput.historyData == nil)
+        #expect(snapshot.baseInput.historyWorkingSetCount == 0)
+        #expect(!snapshot.baseInput.candidates.isEmpty)
+        #expect(snapshot.suggestedWorkoutInput(allocated: [:], excluding: []) != nil)
     }
 
     @MainActor
-    func testCustomCandidateIsIncludedByCanonicalKey() throws {
+    @Test func customCandidateIsIncludedByCanonicalKey() throws {
         let context = try store(), s = settings()
         let custom = try WorkoutRepository.findOrCreateExercise(
             named: "Zercher Hold \(UUID().uuidString.prefix(4))", primaryMuscles: ["chest"], in: context)
         let snapshot = try build(context, s)
-        XCTAssertTrue(snapshot.baseInput.candidates.contains {
+        #expect(snapshot.baseInput.candidates.contains {
             $0.id == ExerciseSuggestionExclusionKey.forExercise(custom) })
     }
 
     @MainActor
-    func testBoundsAndDeterminism() throws {
+    @Test func boundsAndDeterminism() throws {
         let context = try store(), s = settings()
         for i in 0..<30 {
             try log("Bench Press", at: now.addingTimeInterval(-86_400 * Double(i + 1)), in: context)
         }
         let a = try build(context, s), b = try build(context, s)
-        XCTAssertEqual(a, b)
-        XCTAssertEqual(a.baseInput.historyWorkoutCount, 30)
-        XCTAssertLessThanOrEqual(a.baseInput.candidates.count, WatchSingleExerciseSuggestionContextBuilder.maxCandidates)
+        #expect(a == b)
+        #expect(a.baseInput.historyWorkoutCount == 30)
+        #expect(a.baseInput.candidates.count <= WatchSingleExerciseSuggestionContextBuilder.maxCandidates)
         let ids = a.baseInput.candidates.map(\.id)
-        XCTAssertEqual(ids.count, Set(ids).count)
+        #expect(ids.count == Set(ids).count)
         let personalized = a.baseInput.candidates.map(\.isPersonalized)
-        XCTAssertEqual(personalized, personalized.sorted { $0 && !$1 })
-        let history = try XCTUnwrap(a.baseInput.historyData)
-        XCTAssertFalse(history.isEmpty)
+        #expect(personalized == personalized.sorted { $0 && !$1 })
+        let history = try #require(a.baseInput.historyData)
+        #expect(!history.isEmpty)
     }
 }
 #endif

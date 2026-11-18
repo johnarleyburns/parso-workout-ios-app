@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
-final class WatchSetDefaultSnapshotPersistenceTests: XCTestCase {
+struct WatchSetDefaultSnapshotPersistenceTests {
     private let pid = "5B2C3E5A-1111-4222-8333-444455556666"
 
     private func defaults() -> UserDefaults {
@@ -20,66 +21,66 @@ final class WatchSetDefaultSnapshotPersistenceTests: XCTestCase {
                   generalRepLadders: [[8]])])
     }
 
-    func testContextDecodesValidSnapshot() {
+    @Test func contextDecodesValidSnapshot() {
         let snap = snapshot(at: 100)
         let ctx = WatchSync.IncomingContext.from(
             context: [WatchSync.Key.setDefaultSnapshot: snap.propertyList], applyingTo: .init())
-        XCTAssertEqual(ctx.setDefaultSnapshot, snap)
+        #expect(ctx.setDefaultSnapshot == snap)
         let store = WatchSetDefaultSnapshotPersistence(defaults: defaults())
-        XCTAssertEqual(store.replaceIfNewer(ctx.setDefaultSnapshot!), .replaced)
-        XCTAssertEqual(store.load(), snap)
+        #expect(store.replaceIfNewer(ctx.setDefaultSnapshot!) == .replaced)
+        #expect(store.load() == snap)
     }
 
-    func testMalformedAndFutureVersionAreNilAndDoNotReplace() {
+    @Test func malformedAndFutureVersionAreNilAndDoNotReplace() {
         let store = WatchSetDefaultSnapshotPersistence(defaults: defaults())
         let valid = snapshot(at: 100)
-        XCTAssertEqual(store.replaceIfNewer(valid), .replaced)
+        #expect(store.replaceIfNewer(valid) == .replaced)
         var future = valid.propertyList
         future["version"] = 99
         future["generatedAt"] = 500.0
         for payload: Any in [future, "junk", ["version": 1]] as [Any] {
             let ctx = WatchSync.IncomingContext.from(
                 context: [WatchSync.Key.setDefaultSnapshot: payload], applyingTo: .init())
-            XCTAssertNil(ctx.setDefaultSnapshot)
+            #expect(ctx.setDefaultSnapshot == nil)
         }
-        XCTAssertEqual(store.load(), valid)
+        #expect(store.load() == valid)
     }
 
-    func testOlderAndEqualNeverReplaceNewer() {
+    @Test func olderAndEqualNeverReplaceNewer() {
         let store = WatchSetDefaultSnapshotPersistence(defaults: defaults())
         let newer = snapshot(at: 200)
-        XCTAssertEqual(store.replaceIfNewer(newer), .replaced)
-        XCTAssertEqual(store.replaceIfNewer(snapshot(at: 100, kg: 10)), .keptExisting)
-        XCTAssertEqual(store.replaceIfNewer(snapshot(at: 200, kg: 10)), .keptExisting)
-        XCTAssertEqual(store.load(), newer)
-        XCTAssertEqual(store.replaceIfNewer(snapshot(at: 300, kg: 70)), .replaced)
-        XCTAssertEqual(store.load()?.generatedAt, Date(timeIntervalSince1970: 300))
+        #expect(store.replaceIfNewer(newer) == .replaced)
+        #expect(store.replaceIfNewer(snapshot(at: 100, kg: 10)) == .keptExisting)
+        #expect(store.replaceIfNewer(snapshot(at: 200, kg: 10)) == .keptExisting)
+        #expect(store.load() == newer)
+        #expect(store.replaceIfNewer(snapshot(at: 300, kg: 70)) == .replaced)
+        #expect(store.load()?.generatedAt == Date(timeIntervalSince1970: 300))
     }
 
-    func testCorruptStoredDataIsDiscarded() {
+    @Test func corruptStoredDataIsDiscarded() {
         let d = defaults()
         d.set(Data("not json".utf8), forKey: WatchSetDefaultSnapshotPersistence.defaultsKey)
         let store = WatchSetDefaultSnapshotPersistence(defaults: d)
-        XCTAssertNil(store.load())
-        XCTAssertNil(d.data(forKey: WatchSetDefaultSnapshotPersistence.defaultsKey))
-        XCTAssertEqual(store.replaceIfNewer(snapshot(at: 1)), .replaced)
+        #expect(store.load() == nil)
+        #expect(d.data(forKey: WatchSetDefaultSnapshotPersistence.defaultsKey) == nil)
+        #expect(store.replaceIfNewer(snapshot(at: 1)) == .replaced)
     }
 
-    func testRoundTripPreservesKgAndPerformerIDs() {
+    @Test func roundTripPreservesKgAndPerformerIDs() {
         let d = defaults()
         let snap = snapshot(at: 100, kg: 61.234)
         _ = WatchSetDefaultSnapshotPersistence(defaults: d).replaceIfNewer(snap)
         let loaded = WatchSetDefaultSnapshotPersistence(defaults: d).load()
-        XCTAssertEqual(loaded?.performers.map(\.id), [pid])
-        XCTAssertEqual(loaded?.performers.first?.exercises.first?.samples.first?.weightKg, 61.234)
-        XCTAssertEqual(loaded?.performers.first?.exercises.first?.firstWorkingWeightKg, 61.234)
+        #expect(loaded?.performers.map(\.id) == [pid])
+        #expect(loaded?.performers.first?.exercises.first?.samples.first?.weightKg == 61.234)
+        #expect(loaded?.performers.first?.exercises.first?.firstWorkingWeightKg == 61.234)
     }
 
-    func testSnapshotOnlyChangeAltersHandshakeFingerprint() {
+    @Test func snapshotOnlyChangeAltersHandshakeFingerprint() {
         let a = WatchSyncHandshake.Components(context: [WatchSync.Key.setDefaultSnapshot: snapshot(at: 100).propertyList])
         let b = WatchSyncHandshake.Components(context: [WatchSync.Key.setDefaultSnapshot: snapshot(at: 200).propertyList])
         let none = WatchSyncHandshake.Components(context: [:])
-        XCTAssertNotEqual(a, b)
-        XCTAssertNotEqual(a, none)
+        #expect(a != b)
+        #expect(a != none)
     }
 }

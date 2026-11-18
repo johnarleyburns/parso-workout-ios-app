@@ -69,63 +69,21 @@ public enum PlanExecutionBoundary: Equatable, Sendable {
     public var userFacingDescription: String {
         switch self {
         case .empty:
-            return {
-                #if os(Linux)
-                "Add an item before starting this session."
-                #else
-                String(localized: "Add an item before starting this session.", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Add an item before starting this session.", bundle: .module)
         case .strengthOnly:
-            return {
-                #if os(Linux)
-                "Starting now opens the strength runner."
-                #else
-                String(localized: "Starting now opens the strength runner.", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Starting now opens the strength runner.", bundle: .module)
         case .cardioOnly:
-            return {
-                #if os(Linux)
-                "Cardio plans sync to Watch for the planned cardio runner."
-                #else
-                String(localized: "Cardio plans sync to Watch for the planned cardio runner.", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Cardio plans sync to Watch for the planned cardio runner.", bundle: .module)
         case .mobilityOnly:
-            return {
-                #if os(Linux)
-                "Starting now opens the cardio and mobility runner."
-                #else
-                String(localized: "Starting now opens the cardio and mobility runner.", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Starting now opens the cardio and mobility runner.", bundle: .module)
         case .instructionOnly:
-            return {
-                #if os(Linux)
-                "Instructions are saved as a plan note and are not executable yet."
-                #else
-                String(localized: "Instructions are saved as a plan note and are not executable yet.", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Instructions are saved as a plan note and are not executable yet.", bundle: .module)
         case let .mixed(modalities):
             let names = modalities.map { $0.rawValue }.joined(separator: ", ")
             if canStartCombinedRunner {
-                return {
-                    #if os(Linux)
-                    "Starting now opens the cardio and mobility runner."
-                    #else
-                    String(localized: "Starting now opens the cardio and mobility runner.", bundle: .module)
-                    #endif
-                }()
+                return String(localized: "Starting now opens the cardio and mobility runner.", bundle: .module)
             }
-            return {
-                #if os(Linux)
-                "Mixed \(names) sessions are saved; a combined runner is coming next."
-                #else
-                String(localized: "Mixed \(names) sessions are saved; a combined runner is coming next.", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Mixed \(names) sessions are saved; a combined runner is coming next.", bundle: .module)
         }
     }
 }

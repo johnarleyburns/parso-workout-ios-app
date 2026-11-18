@@ -1,7 +1,6 @@
 import Testing
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 @Suite struct TodayDisplayRestoreTests {
     @Test func todayWaitsForFinishedRestore() {

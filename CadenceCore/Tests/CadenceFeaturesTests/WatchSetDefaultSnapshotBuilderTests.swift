@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -102,4 +101,3 @@ final class WatchSetDefaultSnapshotBuilderTests: XCTestCase {
         XCTAssertEqual(try build(), try build())
     }
 }
-#endif

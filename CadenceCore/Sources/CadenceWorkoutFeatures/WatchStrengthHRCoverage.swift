@@ -31,13 +31,7 @@ public enum WatchStrengthHRCoverage {
     public static func unclassifiedNote(summary: CardioMinuteSummary?) -> String? {
         guard let summary, summary.unclassifiedDuration >= 60 else { return nil }
         let minutes = Int((summary.unclassifiedDuration / 60).rounded())
-        return {
-            #if os(Linux)
-            "\(minutes) min unclassified — heart-rate measurements were missing."
-            #else
-            String(localized: "\(minutes) min unclassified — heart-rate measurements were missing.",
+        return String(localized: "\(minutes) min unclassified — heart-rate measurements were missing.",
                       bundle: FeatureLocalization.bundle)
-            #endif
-        }()
     }
 }

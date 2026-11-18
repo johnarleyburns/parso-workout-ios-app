@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -54,4 +53,3 @@ final class WeeklyPlanLabelTests: XCTestCase {
                       "Label should mention the strength session, got '\(day.label)'")
     }
 }
-#endif

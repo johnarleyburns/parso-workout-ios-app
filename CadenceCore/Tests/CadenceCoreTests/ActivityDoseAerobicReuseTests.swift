@@ -1,4 +1,3 @@
-#if canImport(os)
 import XCTest
 @testable import CadenceCore
 
@@ -81,4 +80,3 @@ final class ActivityDoseAerobicReuseTests: XCTestCase {
         }
     }
 }
-#endif

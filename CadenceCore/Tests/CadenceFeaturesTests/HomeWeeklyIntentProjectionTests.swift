@@ -1,10 +1,8 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 @MainActor
 final class HomeWeeklyIntentProjectionTests: XCTestCase {
@@ -52,4 +50,3 @@ final class HomeWeeklyIntentProjectionTests: XCTestCase {
         XCTAssertNotEqual(k, HomeWeeklyIntentSnapshot.weekKey(for: a.addingTimeInterval(7 * 86_400), calendar: cal))
     }
 }
-#endif

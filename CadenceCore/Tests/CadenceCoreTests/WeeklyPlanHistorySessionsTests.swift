@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -95,4 +94,3 @@ final class WeeklyPlanHistorySessionsTests: XCTestCase {
                        "Same-day sessions must list in the order they happened")
     }
 }
-#endif

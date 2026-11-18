@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -142,4 +141,3 @@ final class ImportedWorkoutKindTests: XCTestCase {
                        "Coach must never surface 'imported workout' language. Got: \(messages)")
     }
 }
-#endif

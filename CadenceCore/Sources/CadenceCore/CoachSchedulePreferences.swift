@@ -13,55 +13,13 @@ public enum Weekday: Int, Codable, Sendable, CaseIterable, Hashable {
 
     public var displayName: String {
         switch self {
-        case .sunday: return {
-            #if os(Linux)
-            "Sun"
-            #else
-            String(localized: "Sun", bundle: .module)
-            #endif
-        }()
-        case .monday: return {
-            #if os(Linux)
-            "Mon"
-            #else
-            String(localized: "Mon", bundle: .module)
-            #endif
-        }()
-        case .tuesday: return {
-            #if os(Linux)
-            "Tue"
-            #else
-            String(localized: "Tue", bundle: .module)
-            #endif
-        }()
-        case .wednesday: return {
-            #if os(Linux)
-            "Wed"
-            #else
-            String(localized: "Wed", bundle: .module)
-            #endif
-        }()
-        case .thursday: return {
-            #if os(Linux)
-            "Thu"
-            #else
-            String(localized: "Thu", bundle: .module)
-            #endif
-        }()
-        case .friday: return {
-            #if os(Linux)
-            "Fri"
-            #else
-            String(localized: "Fri", bundle: .module)
-            #endif
-        }()
-        case .saturday: return {
-            #if os(Linux)
-            "Sat"
-            #else
-            String(localized: "Sat", bundle: .module)
-            #endif
-        }()
+        case .sunday: return String(localized: "Sun", bundle: .module)
+        case .monday: return String(localized: "Mon", bundle: .module)
+        case .tuesday: return String(localized: "Tue", bundle: .module)
+        case .wednesday: return String(localized: "Wed", bundle: .module)
+        case .thursday: return String(localized: "Thu", bundle: .module)
+        case .friday: return String(localized: "Fri", bundle: .module)
+        case .saturday: return String(localized: "Sat", bundle: .module)
         }
     }
 
@@ -80,22 +38,10 @@ public enum RestPreference: Codable, Sendable, Equatable {
     public var displayName: String {
         switch self {
         case .fixed(let days):
-            if days.isEmpty { return {
-                #if os(Linux)
-                "None"
-                #else
-                String(localized: "None", bundle: .module)
-                #endif
-            }() }
+            if days.isEmpty { return String(localized: "None", bundle: .module) }
             return days.sorted(by: { $0.rawValue < $1.rawValue }).map(\.displayName).joined(separator: ", ")
         case .rolling(let n):
-            return {
-                #if os(Linux)
-                "Every \(n) days"
-                #else
-                String(localized: "Every \(n) days", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Every \(n) days", bundle: .module)
         }
     }
 

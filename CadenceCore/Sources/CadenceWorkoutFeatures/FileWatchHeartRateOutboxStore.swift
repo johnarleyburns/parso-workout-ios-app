@@ -1,8 +1,6 @@
 import CadenceFeatures
 import Foundation
-#if canImport(OSLog)
 import OSLog
-#endif
 
 /// File-system seam so the store is testable without a real container.
 public protocol WatchOutboxFileSystem {
@@ -81,9 +79,7 @@ public final class FileWatchHeartRateOutboxStore: WatchHeartRateOutboxStore {
     public static let heartRateLegacyKey = "watch.hrOutbox.v1"
     public static let strengthCompletionLegacyKey = "watch.strengthCompletionOutbox.v1"
 
-    #if canImport(OSLog)
     private static let log = Logger(subsystem: "guru.parso.cadence", category: "WatchOutboxFile")
-    #endif
 
     private let fileSystem: WatchOutboxFileSystem
     private let legacy: WatchOutboxLegacyReader
@@ -111,23 +107,17 @@ public final class FileWatchHeartRateOutboxStore: WatchHeartRateOutboxStore {
             } catch {
                 lastIssue = .quarantineFailed
             }
-            #if canImport(OSLog)
             Self.log.error("outbox file unreadable; bytes preserved")
-            #endif
             return nil
         }
         guard let legacyBytes = legacy.data(forKey: legacyKey),
               let state = try? JSONDecoder().decode(WatchHeartRateOutboxState.self, from: legacyBytes) else { return nil }
         do {
             try commit(state)
-            #if canImport(OSLog)
             Self.log.info("legacy outbox migrated to file")
-            #endif
         } catch {
             lastIssue = .legacyMigrationWriteFailed
-            #if canImport(OSLog)
             Self.log.error("legacy outbox migration write failed; will retry")
-            #endif
         }
         return state
     }
@@ -139,9 +129,7 @@ public final class FileWatchHeartRateOutboxStore: WatchHeartRateOutboxStore {
     public func clear() {
         do { try commit(nil) } catch {
             lastIssue = .clearFailed
-            #if canImport(OSLog)
             Self.log.error("outbox clear tombstone failed")
-            #endif
         }
     }
 

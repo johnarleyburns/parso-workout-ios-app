@@ -11,62 +11,14 @@ public enum ExerciseEvidence {
     }
 
     private static let sourceLabels: [String: String] = [
-        "systematic_review": {
-            #if os(Linux)
-            "Systematic review"
-            #else
-            String(localized: "Systematic review", bundle: .module)
-            #endif
-        }(),
-        "experimental": {
-            #if os(Linux)
-            "Experimental study"
-            #else
-            String(localized: "Experimental study", bundle: .module)
-            #endif
-        }(),
-        "meta_regression": {
-            #if os(Linux)
-            "Meta-regression"
-            #else
-            String(localized: "Meta-regression", bundle: .module)
-            #endif
-        }(),
-        "review_or_position": {
-            #if os(Linux)
-            "Review / position statement"
-            #else
-            String(localized: "Review / position statement", bundle: .module)
-            #endif
-        }(),
-        "training_intervention": {
-            #if os(Linux)
-            "Training intervention"
-            #else
-            String(localized: "Training intervention", bundle: .module)
-            #endif
-        }(),
-        "randomized_controlled_trial": {
-            #if os(Linux)
-            "Randomized controlled trial"
-            #else
-            String(localized: "Randomized controlled trial", bundle: .module)
-            #endif
-        }(),
-        "clinical_exercise_guide": {
-            #if os(Linux)
-            "Clinical exercise guide"
-            #else
-            String(localized: "Clinical exercise guide", bundle: .module)
-            #endif
-        }(),
-        "manufacturer_exercise_guide": {
-            #if os(Linux)
-            "Equipment demonstration"
-            #else
-            String(localized: "Equipment demonstration", bundle: .module)
-            #endif
-        }(),
+        "systematic_review": String(localized: "Systematic review", bundle: .module),
+        "experimental": String(localized: "Experimental study", bundle: .module),
+        "meta_regression": String(localized: "Meta-regression", bundle: .module),
+        "review_or_position": String(localized: "Review / position statement", bundle: .module),
+        "training_intervention": String(localized: "Training intervention", bundle: .module),
+        "randomized_controlled_trial": String(localized: "Randomized controlled trial", bundle: .module),
+        "clinical_exercise_guide": String(localized: "Clinical exercise guide", bundle: .module),
+        "manufacturer_exercise_guide": String(localized: "Equipment demonstration", bundle: .module),
     ]
 
     public static let usageReasons: [String: String] = Dictionary(uniqueKeysWithValues:
@@ -107,68 +59,14 @@ public enum ExerciseEvidence {
 
     private static func displayName(for id: String) -> String {
         let overrides = [
-            "kettlebell_figure8": {
-                #if os(Linux)
-                "Kettlebell Figure 8"
-                #else
-                String(localized: "Kettlebell Figure 8", bundle: .module)
-                #endif
-            }(),
-            "olympic_clean_and_jerk": {
-                #if os(Linux)
-                "Olympic Clean and Jerk"
-                #else
-                String(localized: "Olympic Clean and Jerk", bundle: .module)
-                #endif
-            }(),
-            "horizontal_press_triceps_bias": {
-                #if os(Linux)
-                "Horizontal Press (Triceps Bias)"
-                #else
-                String(localized: "Horizontal Press (Triceps Bias)", bundle: .module)
-                #endif
-            }(),
-            "elbow_flexion_brachioradialis_bias": {
-                #if os(Linux)
-                "Elbow Flexion (Brachioradialis Bias)"
-                #else
-                String(localized: "Elbow Flexion (Brachioradialis Bias)", bundle: .module)
-                #endif
-            }(),
-            "dip_chest_bias": {
-                #if os(Linux)
-                "Dip (Chest Bias)"
-                #else
-                String(localized: "Dip (Chest Bias)", bundle: .module)
-                #endif
-            }(), "dip_triceps_bias": {
-                #if os(Linux)
-                "Dip (Triceps Bias)"
-                #else
-                String(localized: "Dip (Triceps Bias)", bundle: .module)
-                #endif
-            }(),
-            "squat_quad_bias": {
-                #if os(Linux)
-                "Squat (Quad Bias)"
-                #else
-                String(localized: "Squat (Quad Bias)", bundle: .module)
-                #endif
-            }(),
-            "plantar_flexion_straight_knee": {
-                #if os(Linux)
-                "Plantar Flexion (Straight Knee)"
-                #else
-                String(localized: "Plantar Flexion (Straight Knee)", bundle: .module)
-                #endif
-            }(),
-            "plantar_flexion_bent_knee": {
-                #if os(Linux)
-                "Plantar Flexion (Bent Knee)"
-                #else
-                String(localized: "Plantar Flexion (Bent Knee)", bundle: .module)
-                #endif
-            }(),
+            "kettlebell_figure8": String(localized: "Kettlebell Figure 8", bundle: .module),
+            "olympic_clean_and_jerk": String(localized: "Olympic Clean and Jerk", bundle: .module),
+            "horizontal_press_triceps_bias": String(localized: "Horizontal Press (Triceps Bias)", bundle: .module),
+            "elbow_flexion_brachioradialis_bias": String(localized: "Elbow Flexion (Brachioradialis Bias)", bundle: .module),
+            "dip_chest_bias": String(localized: "Dip (Chest Bias)", bundle: .module), "dip_triceps_bias": String(localized: "Dip (Triceps Bias)", bundle: .module),
+            "squat_quad_bias": String(localized: "Squat (Quad Bias)", bundle: .module),
+            "plantar_flexion_straight_knee": String(localized: "Plantar Flexion (Straight Knee)", bundle: .module),
+            "plantar_flexion_bent_knee": String(localized: "Plantar Flexion (Bent Knee)", bundle: .module),
         ]
         if let override = overrides[id] { return override }
         return id.split(separator: "_").map { $0.capitalized }.joined(separator: " ")

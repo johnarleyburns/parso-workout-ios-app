@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -483,4 +482,3 @@ final class RecommendationEngineTests: XCTestCase {
                        "lauersenInjuryPrevention2014 must never back a flexibility/ROM claim")
     }
 }
-#endif

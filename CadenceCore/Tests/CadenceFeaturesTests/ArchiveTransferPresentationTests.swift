@@ -2,7 +2,6 @@ import XCTest
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 final class ArchiveTransferPresentationTests: XCTestCase {
     func testModesNeverShowBoth() {

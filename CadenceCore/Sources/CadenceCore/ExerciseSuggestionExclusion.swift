@@ -1,14 +1,10 @@
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 
 /// A personal preference that affects only automatically generated suggestions.
 /// This deliberately does not live on `Exercise`: catalog facts are shared and
 /// refreshed, while exclusions belong to one user's private store.
-#if canImport(SwiftData)
 @Model
-#endif
 public final class ExerciseSuggestionExclusion {
     public var id: UUID = UUID()
     /// Namespaced stable key: `dbpp:<source id>`, `custom:<UUID>`, or
@@ -44,13 +40,6 @@ public final class ExerciseSuggestionExclusion {
         set { reasonRaw = newValue.rawValue }
     }
 }
-
-#if !canImport(SwiftData)
-extension ExerciseSuggestionExclusion: Equatable, Hashable {
-    public static func == (lhs: ExerciseSuggestionExclusion, rhs: ExerciseSuggestionExclusion) -> Bool { lhs.id == rhs.id }
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}
-#endif
 
 public enum ExerciseSuggestionExclusionReason: String, CaseIterable, Codable, Identifiable, Sendable {
     case notAtGym
@@ -112,7 +101,6 @@ public enum ExerciseSuggestionExclusionKey {
     }
 }
 
-#if canImport(SwiftData)
 public enum ExerciseSuggestionExclusionStore {
     public static func active(in context: ModelContext) throws -> [ExerciseSuggestionExclusion] {
         try context.fetch(FetchDescriptor<ExerciseSuggestionExclusion>(
@@ -165,7 +153,6 @@ public enum ExerciseSuggestionExclusionStore {
         try context.save()
     }
 }
-#endif
 
 public enum SuggestedExerciseFilter {
     public static func allows(_ template: ExerciseTemplate, keys: Set<String>) -> Bool {

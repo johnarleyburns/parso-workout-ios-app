@@ -64,40 +64,16 @@ public struct HeartRateCoveragePresentation: Equatable, Sendable {
             HeartRateCoveragePresentation(kind: k, text: t, accessibilityLabel: t)
         }
         if pending {
-            return p(.pending, {
-                #if os(Linux)
-                "Receiving the remaining heart-rate measurements. Intensity will update when they arrive."
-                #else
-                String(localized: "Receiving the remaining heart-rate measurements. Intensity will update when they arrive.", bundle: .module)
-                #endif
-            }())
+            return p(.pending, String(localized: "Receiving the remaining heart-rate measurements. Intensity will update when they arrive.", bundle: .module))
         }
         switch state {
         case .none:
-            return p(.noMeasurements, {
-                #if os(Linux)
-                "No heart-rate measurements were captured. Intensity is unknown, not low."
-                #else
-                String(localized: "No heart-rate measurements were captured. Intensity is unknown, not low.", bundle: .module)
-                #endif
-            }())
+            return p(.noMeasurements, String(localized: "No heart-rate measurements were captured. Intensity is unknown, not low.", bundle: .module))
         case .incomplete(let fraction):
             let pct = Int((fraction * 100).rounded())
-            return p(.incomplete, {
-                #if os(Linux)
-                "Heart rate was missing for about \(pct)% of this workout. That time is unclassified, not easy."
-                #else
-                String(localized: "Heart rate was missing for about \(pct)% of this workout. That time is unclassified, not easy.", bundle: .module)
-                #endif
-            }())
+            return p(.incomplete, String(localized: "Heart rate was missing for about \(pct)% of this workout. That time is unclassified, not easy.", bundle: .module))
         case .complete:
-            return p(.complete, {
-                #if os(Linux)
-                "Heart-rate coverage is complete for this workout."
-                #else
-                String(localized: "Heart-rate coverage is complete for this workout.", bundle: .module)
-                #endif
-            }())
+            return p(.complete, String(localized: "Heart-rate coverage is complete for this workout.", bundle: .module))
         }
     }
 }

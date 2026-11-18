@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -223,4 +222,3 @@ final class TrainingEventTests: XCTestCase {
         XCTAssertTrue(event.isHard)
     }
 }
-#endif

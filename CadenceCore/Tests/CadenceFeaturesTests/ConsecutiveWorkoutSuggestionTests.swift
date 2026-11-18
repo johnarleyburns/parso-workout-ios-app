@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -129,4 +128,3 @@ final class ConsecutiveWorkoutSuggestionTests: XCTestCase {
         XCTAssertEqual(result?.candidateID, earlier.id)
     }
 }
-#endif

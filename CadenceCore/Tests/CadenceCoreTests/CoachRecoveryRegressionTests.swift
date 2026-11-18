@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -128,4 +127,3 @@ final class CoachRecoveryRegressionTests: XCTestCase {
         return session
     }
 }
-#endif

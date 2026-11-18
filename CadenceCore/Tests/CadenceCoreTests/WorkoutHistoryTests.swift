@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -62,4 +61,3 @@ final class WorkoutHistoryTests: XCTestCase {
         }
     }
 }
-#endif

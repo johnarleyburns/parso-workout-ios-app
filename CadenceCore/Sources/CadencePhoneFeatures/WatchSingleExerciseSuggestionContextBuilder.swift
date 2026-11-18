@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import CadenceFeatures
 import Foundation
 import SwiftData
@@ -135,4 +134,3 @@ public enum WatchSingleExerciseSuggestionContextBuilder {
         })
     }
 }
-#endif

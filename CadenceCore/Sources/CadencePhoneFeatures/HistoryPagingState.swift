@@ -2,7 +2,6 @@ import CadenceFeatures
 import Foundation
 import Observation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// Which data owner the Progress route instantiates. Only analytics routes may
 /// hold the all-history `@Query`s; My Workouts owns its bounded paged fetch.

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -73,4 +72,3 @@ final class ExerciseDedupMigrationTests: XCTestCase {
         XCTAssertEqual(try WorkoutRepository.allExercises(ctx).count, 2)
     }
 }
-#endif

@@ -1,32 +1,31 @@
-import Testing
-import Foundation
+import XCTest
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
 @MainActor
-@Suite final class ContentKeyedCacheTests {
-    @Test func matchingKeyReturnsStoredValue() {
+final class ContentKeyedCacheTests: XCTestCase {
+    func testMatchingKeyReturnsStoredValue() {
         let cache = ContentKeyedCache<Int, String>()
         cache.store("a", for: 1)
-        #expect(cache.cached(for: 1) == "a")
+        XCTAssertEqual(cache.cached(for: 1), "a")
     }
 
-    @Test func mismatchedKeyReturnsNil() {
+    func testMismatchedKeyReturnsNil() {
         let cache = ContentKeyedCache<Int, String>()
         cache.store("a", for: 1)
-        #expect(cache.cached(for: 2) == nil)
+        XCTAssertNil(cache.cached(for: 2))
     }
 
-    @Test func newerStoreEvictsThePreviousKey() {
+    func testNewerStoreEvictsThePreviousKey() {
         let cache = ContentKeyedCache<Int, String>()
         cache.store("a", for: 1)
         cache.store("b", for: 2)
-        #expect(cache.cached(for: 1) == nil, "a single-entry cache keeps only the latest write")
-        #expect(cache.cached(for: 2) == "b")
+        XCTAssertNil(cache.cached(for: 1), "a single-entry cache keeps only the latest write")
+        XCTAssertEqual(cache.cached(for: 2), "b")
     }
 
-    @Test func emptyCacheReturnsNil() {
-        #expect(ContentKeyedCache<Int, String>().cached(for: 1) == nil)
+    func testEmptyCacheReturnsNil() {
+        XCTAssertNil(ContentKeyedCache<Int, String>().cached(for: 1))
     }
 }

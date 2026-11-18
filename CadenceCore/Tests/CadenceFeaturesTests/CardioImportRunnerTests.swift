@@ -1,9 +1,7 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
 import CadenceFixtures
-import CadencePhoneFeatures
 
 @MainActor
 final class CardioImportRunnerTests: XCTestCase {
@@ -104,4 +102,3 @@ final class CardioImportRunnerTests: XCTestCase {
         XCTAssertEqual(Set(live.compactMap(\.healthKitWorkoutUUID)), [other.id, recorded.healthKitWorkoutUUID!])
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -124,4 +123,3 @@ final class PhoneStrengthHeartRateRecorderTests: XCTestCase {
         XCTAssertTrue(rb.snapshot.isEmpty)
     }
 }
-#endif

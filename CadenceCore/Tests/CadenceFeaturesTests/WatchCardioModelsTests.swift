@@ -2,7 +2,6 @@ import XCTest
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
-import CadencePhoneFeatures
 
 final class WatchCardioModelsTests: XCTestCase {
 

@@ -76,13 +76,7 @@ extension Format {
 
     public static func heartRate(_ bpm: Double?) -> String {
         guard let bpm else { return "—" }
-        return {
-            #if os(Linux)
-            "\(Int(bpm.rounded())) bpm"
-            #else
-            String(localized: "\(Int(bpm.rounded())) bpm", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        return String(localized: "\(Int(bpm.rounded())) bpm", bundle: FeatureLocalization.bundle)
     }
 
     /// A prescription line for a `PlanItem` (round4b §B-1).
@@ -94,13 +88,7 @@ extension Format {
         if let ladder, !ladder.isEmpty {
             parts.append(ladder.map(String.init).joined(separator: "-") + " reps")
         } else if let reps = item.reps {
-            parts.append({
-                #if os(Linux)
-                "\(reps) reps"
-                #else
-                String(localized: "\(reps) reps", bundle: FeatureLocalization.bundle)
-                #endif
-            }())
+            parts.append(String(localized: "\(reps) reps", bundle: FeatureLocalization.bundle))
         }
         if let d = item.distanceM { parts.append(distance(d)) }
         var line = parts.joined(separator: " · ")

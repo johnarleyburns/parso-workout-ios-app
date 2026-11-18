@@ -3,20 +3,8 @@ import Foundation
 import CadenceCore
 
 public enum PlannedDayPreviewPresenter {
-    public static let restFooterText = {
-        #if os(Linux)
-        "This is a rest day, enjoy it, you earned it!"
-        #else
-        String(localized: "This is a rest day, enjoy it, you earned it!", bundle: FeatureLocalization.bundle)
-        #endif
-    }()
-    public static let plannedFooterText = {
-        #if os(Linux)
-        "This is a planned day. Start it from the Workout tab when it's today."
-        #else
-        String(localized: "This is a planned day. Start it from the Workout tab when it's today.", bundle: FeatureLocalization.bundle)
-        #endif
-    }()
+    public static let restFooterText = String(localized: "This is a rest day, enjoy it, you earned it!", bundle: FeatureLocalization.bundle)
+    public static let plannedFooterText = String(localized: "This is a planned day. Start it from the Workout tab when it's today.", bundle: FeatureLocalization.bundle)
 
     public static func footerText(for day: WeeklyPlan.DayOutline) -> String {
         guard !day.sessions.isEmpty,
@@ -31,12 +19,6 @@ public enum PlannedDayPreviewPresenter {
         let setCount = min(4, max(3, sets))
         let ladder = RepLadder.ladder(for: goal, sets: setCount)
         let reps = ladder.map(String.init).joined(separator: "-")
-        return {
-            #if os(Linux)
-            "\(setCount) sets · \(reps) reps · ~\(goal.targetRIR) RIR"
-            #else
-            String(localized: "\(setCount) sets · \(reps) reps · ~\(goal.targetRIR) RIR", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        return String(localized: "\(setCount) sets · \(reps) reps · ~\(goal.targetRIR) RIR", bundle: FeatureLocalization.bundle)
     }
 }

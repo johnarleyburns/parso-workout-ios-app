@@ -9,20 +9,8 @@ public enum SuggestedWorkoutModality: String, CaseIterable, Codable, Hashable, S
 
     public var displayName: String {
         switch self {
-        case .strength: return {
-            #if os(Linux)
-            "Strength"
-            #else
-            String(localized: "Strength", bundle: .module)
-            #endif
-        }()
-        case .cardio: return {
-            #if os(Linux)
-            "Cardio"
-            #else
-            String(localized: "Cardio", bundle: .module)
-            #endif
-        }()
+        case .strength: return String(localized: "Strength", bundle: .module)
+        case .cardio: return String(localized: "Cardio", bundle: .module)
         }
     }
 
@@ -192,13 +180,7 @@ public struct HIITProtocol: Sendable, Identifiable {
         HIITProtocol(id: "gillen", name: "Gillen", plan: .gillen(),
                      citationIDs: ["gillenSIT2016"],
                      subtitle: "3 × 20s all-out / 2 min",
-                     modalityCue: {
-                         #if os(Linux)
-                         "Stationary bicycle"
-                         #else
-                         String(localized: "Stationary bicycle", bundle: .module)
-                         #endif
-                     }(),
+                     modalityCue: String(localized: "Stationary bicycle", bundle: .module),
                      isOptInSprint: true),
         HIITProtocol(id: "tabata", name: "Tabata", plan: .tabata(),
                      citationIDs: ["tabata1996", "hiitVo2max"]),
@@ -254,13 +236,7 @@ public enum CardioSuggestionGenerator {
 
         let remaining = max(0, input.weeklyTargetMinutes - input.weeklyModerateEquivalentMinutes)
         let observation: String? = remaining > 0
-            ? {
-                #if os(Linux)
-                "You are about \(Int(remaining.rounded())) minutes short of this week's cardio goal, roughly \(Int(perDay.rounded(.up))) minutes a day for the rest of the week."
-                #else
-                String(localized: "You are about \(Int(remaining.rounded())) minutes short of this week's cardio goal, roughly \(Int(perDay.rounded(.up))) minutes a day for the rest of the week.", bundle: .module)
-                #endif
-            }()
+            ? String(localized: "You are about \(Int(remaining.rounded())) minutes short of this week's cardio goal, roughly \(Int(perDay.rounded(.up))) minutes a day for the rest of the week.", bundle: .module)
             : nil
         let plan = chosen.plan
         let work = plan.phases.first { $0.kind == .work }
@@ -277,13 +253,7 @@ public enum CardioSuggestionGenerator {
             intervalRounds: plan.workRounds,
             intervalWorkSeconds: work.map { Int($0.duration) },
             intervalRestSeconds: rest.map { Int($0.duration) },
-            rationale: {
-                #if os(Linux)
-                "\(chosen.name) is the shortest documented HIIT protocol in the library that covers about \(Int(perDay.rounded(.up))) minutes of cardio a day (hard intervals count double). It runs \(Int(chosen.totalMinutes.rounded(.up))) minutes with a moderate warm-up, recovery and cool-down."
-                #else
-                String(localized: "\(chosen.name) is the shortest documented HIIT protocol in the library that covers about \(Int(perDay.rounded(.up))) minutes of cardio a day (hard intervals count double). It runs \(Int(chosen.totalMinutes.rounded(.up))) minutes with a moderate warm-up, recovery and cool-down.", bundle: .module)
-                #endif
-            }(),
+            rationale: String(localized: "\(chosen.name) is the shortest documented HIIT protocol in the library that covers about \(Int(perDay.rounded(.up))) minutes of cardio a day (hard intervals count double). It runs \(Int(chosen.totalMinutes.rounded(.up))) minutes with a moderate warm-up, recovery and cool-down.", bundle: .module),
             citationIDs: chosen.citationIDs,
             observation: observation,
             protocolID: chosen.id,

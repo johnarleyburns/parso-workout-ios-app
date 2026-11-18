@@ -23,45 +23,15 @@ public enum SameDayLoadInsight {
         let list = summarize(names)
         let count = counted.count
         let sessionsPhrase = intense.isEmpty
-            ? {
-                #if os(Linux)
-                "\(count) cardio sessions"
-                #else
-                String(localized: "\(count) cardio sessions", bundle: .module)
-                #endif
-            }()
-            : {
-                #if os(Linux)
-                "\(count) intense sessions"
-                #else
-                String(localized: "\(count) intense sessions", bundle: .module)
-                #endif
-            }()
+            ? String(localized: "\(count) cardio sessions", bundle: .module)
+            : String(localized: "\(count) intense sessions", bundle: .module)
 
         return Insight(
             id: "sameDayLoad.intenseCardio",
             kind: .intensity,
-            title: {
-                #if os(Linux)
-                "Hard work already banked today"
-                #else
-                String(localized: "Hard work already banked today", bundle: .module)
-                #endif
-            }(),
-            message: {
-                #if os(Linux)
-                "You've already logged \(list) today — \(sessionsPhrase). No extra cardio needed."
-                #else
-                String(localized: "You've already logged \(list) today — \(sessionsPhrase). No extra cardio needed.", bundle: .module)
-                #endif
-            }(),
-            detail: {
-                #if os(Linux)
-                "Intense sessions like HIIT and boxing count as real training load, so the coach won't push more easy cardio on top of them. Anything you still choose to do is yours to call — just weigh that recovery, not more work, is what turns today's load into fitness."
-                #else
-                String(localized: "Intense sessions like HIIT and boxing count as real training load, so the coach won't push more easy cardio on top of them. Anything you still choose to do is yours to call — just weigh that recovery, not more work, is what turns today's load into fitness.", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Hard work already banked today", bundle: .module),
+            message: String(localized: "You've already logged \(list) today — \(sessionsPhrase). No extra cardio needed.", bundle: .module),
+            detail: String(localized: "Intense sessions like HIIT and boxing count as real training load, so the coach won't push more easy cardio on top of them. Anything you still choose to do is yours to call — just weigh that recovery, not more work, is what turns today's load into fitness.", bundle: .module),
             citation: CitationRegistry.meeusenOvertraining2013,
             severity: .info)
     }

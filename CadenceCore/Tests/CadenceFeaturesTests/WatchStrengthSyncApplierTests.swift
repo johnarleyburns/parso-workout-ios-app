@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -349,4 +348,3 @@ final class WatchStrengthSyncApplierTests: XCTestCase {
         try context.fetch(FetchDescriptor<WorkoutSession>())
     }
 }
-#endif

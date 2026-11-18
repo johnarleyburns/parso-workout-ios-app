@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -102,4 +101,3 @@ final class PlanningDraftPromotionTests: XCTestCase {
         XCTAssertEqual(try visible(context), 0)
     }
 }
-#endif

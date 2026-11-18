@@ -52,18 +52,6 @@ public enum CitationPresenter {
 
     /// Screen title: "Source" for one, "Sources" for several.
     public static func sourcesTitle(count: Int) -> String {
-        count == 1 ? {
-            #if os(Linux)
-            "Source"
-            #else
-            String(localized: "Source", bundle: FeatureLocalization.bundle)
-            #endif
-        }() : {
-            #if os(Linux)
-            "Sources"
-            #else
-            String(localized: "Sources", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        count == 1 ? String(localized: "Source", bundle: FeatureLocalization.bundle) : String(localized: "Sources", bundle: FeatureLocalization.bundle)
     }
 }

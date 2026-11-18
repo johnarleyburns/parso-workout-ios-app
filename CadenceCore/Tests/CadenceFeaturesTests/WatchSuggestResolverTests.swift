@@ -2,7 +2,6 @@ import XCTest
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 final class WatchSuggestResolverTests: XCTestCase {
     private typealias F = CoachSuggestionFixtures

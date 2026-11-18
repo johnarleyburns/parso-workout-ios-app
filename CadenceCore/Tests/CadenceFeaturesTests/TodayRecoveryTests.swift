@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -121,4 +120,3 @@ final class TodayRecoveryTests: XCTestCase {
     }
 
 }
-#endif

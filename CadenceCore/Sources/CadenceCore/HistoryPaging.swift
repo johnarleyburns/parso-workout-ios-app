@@ -1,7 +1,5 @@
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 
 /// Which soft-delete partition of the history a page request reads.
 public enum HistoryVisibility: Equatable, Sendable {
@@ -57,7 +55,6 @@ public protocol HistoryPageFetching {
     func fetchPage(_ request: HistoryPageRequest) throws -> HistoryPage<WorkoutHistoryEntry>
 }
 
-#if canImport(SwiftData)
 /// Persistence-backed fetcher used by the History screen.
 @MainActor
 public struct WorkoutHistoryPageFetcher: HistoryPageFetching {
@@ -156,4 +153,3 @@ extension WorkoutRepository {
         return rows
     }
 }
-#endif

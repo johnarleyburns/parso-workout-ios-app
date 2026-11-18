@@ -90,14 +90,7 @@ let package = Package(
             dependencies: ["CadencePlanning"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
-        .testTarget(name: "CadenceCoreTests", dependencies: [
-            "CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceExerciseImages",
-            // Only WeightSuggestionTests.swift needs this, and that file is
-            // itself `#if canImport(SwiftData)`-gated (Apple platforms only),
-            // so CadenceWorkoutFeatures need not build on Linux for the rest
-            // of this target's 83 SwiftData-free tests to compile and run.
-            .target(name: "CadenceWorkoutFeatures", condition: .when(platforms: [.iOS, .macOS, .watchOS])),
-        ], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadenceCoreTests", dependencies: ["CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceWorkoutFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadenceExerciseImagesTests",
             dependencies: ["CadenceCore", "CadenceExerciseImages"],

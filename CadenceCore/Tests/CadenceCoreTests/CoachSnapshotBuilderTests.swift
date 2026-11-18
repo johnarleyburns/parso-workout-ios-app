@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -196,4 +195,3 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         XCTAssertEqual(snap.coachFacts.readiness, snap.readiness)
     }
 }
-#endif

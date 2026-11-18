@@ -34,37 +34,13 @@ public enum ThisWeekWorkoutsPresenter {
     public static func summary(planned: Int, done: Int) -> String {
         switch (planned > 0, done > 0) {
         case (true, true):
-            return {
-                #if os(Linux)
-                "\(planned) workouts planned, \(done) workouts done"
-                #else
-                String(localized: "\(planned) workouts planned, \(done) workouts done", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "\(planned) workouts planned, \(done) workouts done", bundle: FeatureLocalization.bundle)
         case (true, false):
-            return {
-                #if os(Linux)
-                "\(planned) workouts planned"
-                #else
-                String(localized: "\(planned) workouts planned", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "\(planned) workouts planned", bundle: FeatureLocalization.bundle)
         case (false, true):
-            return {
-                #if os(Linux)
-                "\(done) workouts done"
-                #else
-                String(localized: "\(done) workouts done", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "\(done) workouts done", bundle: FeatureLocalization.bundle)
         case (false, false):
-            return {
-                #if os(Linux)
-                "No workouts planned or done"
-                #else
-                String(localized: "No workouts planned or done", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "No workouts planned or done", bundle: FeatureLocalization.bundle)
         }
     }
 }

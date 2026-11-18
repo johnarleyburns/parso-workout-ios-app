@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -139,4 +138,3 @@ private extension Session {
         items.first?.strengthSets ?? []
     }
 }
-#endif

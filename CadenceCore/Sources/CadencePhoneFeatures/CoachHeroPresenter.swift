@@ -47,61 +47,19 @@ public enum CoachHeroPresenter {
             let title: String
             switch planAdherenceCompletedKind {
             case .strength:
-                title = {
-                    #if os(Linux)
-                    "You put in the work"
-                    #else
-                    String(localized: "You put in the work", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "You put in the work", bundle: FeatureLocalization.bundle)
             case .easyAerobic, .moderateAerobic:
-                title = {
-                    #if os(Linux)
-                    "Cardio banked for today"
-                    #else
-                    String(localized: "Cardio banked for today", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "Cardio banked for today", bundle: FeatureLocalization.bundle)
             case .vo2Intervals:
-                title = {
-                    #if os(Linux)
-                    "Speed work in the books"
-                    #else
-                    String(localized: "Speed work in the books", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "Speed work in the books", bundle: FeatureLocalization.bundle)
             case .recovery:
-                title = {
-                    #if os(Linux)
-                    "Recovery done for today"
-                    #else
-                    String(localized: "Recovery done for today", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "Recovery done for today", bundle: FeatureLocalization.bundle)
             case .rest:
-                title = {
-                    #if os(Linux)
-                    "Rest earned for today"
-                    #else
-                    String(localized: "Rest earned for today", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "Rest earned for today", bundle: FeatureLocalization.bundle)
             case .assessment:
-                title = {
-                    #if os(Linux)
-                    "Baseline in the books"
-                    #else
-                    String(localized: "Baseline in the books", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "Baseline in the books", bundle: FeatureLocalization.bundle)
             case nil:
-                title = {
-                    #if os(Linux)
-                    "Today's workouts are completed"
-                    #else
-                    String(localized: "Today's workouts are completed", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                title = String(localized: "Today's workouts are completed", bundle: FeatureLocalization.bundle)
             }
             return Content(title: title, subtitle: desc)
         }
@@ -128,51 +86,21 @@ public enum CoachHeroPresenter {
                 let names = Array(todayLoggedExerciseNames.prefix(3))
                 switch names.count {
                 case 0: return ""
-                case 1: return {
-                    #if os(Linux)
-                    "\(names[0]) logged."
-                    #else
-                    String(localized: "\(names[0]) logged.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
-                case 2: return {
-                    #if os(Linux)
-                    "\(names[0]) and \(names[1]) logged."
-                    #else
-                    String(localized: "\(names[0]) and \(names[1]) logged.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
-                default: return {
-                    #if os(Linux)
-                    "\(names[0]), \(names[1]), and \(names[2]) logged."
-                    #else
-                    String(localized: "\(names[0]), \(names[1]), and \(names[2]) logged.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                case 1: return String(localized: "\(names[0]) logged.", bundle: FeatureLocalization.bundle)
+                case 2: return String(localized: "\(names[0]) and \(names[1]) logged.", bundle: FeatureLocalization.bundle)
+                default: return String(localized: "\(names[0]), \(names[1]), and \(names[2]) logged.", bundle: FeatureLocalization.bundle)
                 }
             }()
             let subtitle = recentFactText.isEmpty
                 ? loggedText
                 : "\(loggedText) \(recentFactText)"
-            return Content(title: {
-                #if os(Linux)
-                "Strength is done today"
-                #else
-                String(localized: "Strength is done today", bundle: FeatureLocalization.bundle)
-                #endif
-            }(),
+            return Content(title: String(localized: "Strength is done today", bundle: FeatureLocalization.bundle),
                            subtitle: subtitle.trimmingCharacters(in: .whitespaces))
         }
 
         // ── Rest day ────────────────────────────────────────────────────
         if primaryKind == .rest {
-            return Content(title: {
-                #if os(Linux)
-                "Rest is training too"
-                #else
-                String(localized: "Rest is training too", bundle: FeatureLocalization.bundle)
-                #endif
-            }(),
+            return Content(title: String(localized: "Rest is training too", bundle: FeatureLocalization.bundle),
                            subtitle: primarySubtitle.isEmpty ? recentFactText : primarySubtitle)
         }
 

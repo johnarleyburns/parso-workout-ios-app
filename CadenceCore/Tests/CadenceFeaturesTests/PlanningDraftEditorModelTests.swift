@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -109,4 +108,3 @@ final class PlanningDraftEditorModelTests: XCTestCase {
         XCTAssertNil(try store.currentDraft(in: context))
     }
 }
-#endif

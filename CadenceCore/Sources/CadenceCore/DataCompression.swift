@@ -1,4 +1,3 @@
-#if canImport(Compression)
 import Foundation
 import Compression
 
@@ -146,4 +145,3 @@ public enum DataCompression {
         return crc ^ 0xFFFFFFFF
     }
 }
-#endif

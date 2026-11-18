@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 
@@ -221,4 +220,3 @@ public enum ExportRoundTripFixture {
             coachProfile: profile)
     }
 }
-#endif

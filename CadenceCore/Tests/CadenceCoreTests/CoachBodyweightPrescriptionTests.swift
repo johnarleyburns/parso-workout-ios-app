@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -181,4 +180,3 @@ final class CoachBodyweightPrescriptionTests: XCTestCase {
             evidenceCategory: .strengthIntensity)
     }
 }
-#endif

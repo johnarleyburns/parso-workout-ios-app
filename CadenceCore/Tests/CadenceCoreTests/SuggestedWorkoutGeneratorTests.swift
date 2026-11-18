@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -909,4 +908,3 @@ final class SuggestedWorkoutGeneratorTests: XCTestCase {
             + Double(components.attoseconds) / 1_000_000_000_000_000
     }
 }
-#endif

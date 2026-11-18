@@ -9,27 +9,9 @@ public enum TodayRecommendationBadge: Equatable, Sendable {
 
     public var label: String {
         switch self {
-        case .recommended: return {
-            #if os(Linux)
-            "Recommended"
-            #else
-            String(localized: "Recommended")
-            #endif
-        }()
-        case .optionalToday: return {
-            #if os(Linux)
-            "Optional today"
-            #else
-            String(localized: "Optional today")
-            #endif
-        }()
-        case .alsoPlannedToday: return {
-            #if os(Linux)
-            "Also planned today"
-            #else
-            String(localized: "Also planned today")
-            #endif
-        }()
+        case .recommended: return String(localized: "Recommended")
+        case .optionalToday: return String(localized: "Optional today")
+        case .alsoPlannedToday: return String(localized: "Also planned today")
         }
     }
 }
@@ -61,33 +43,15 @@ public enum TodayRecommendationRowsPresenter {
             let badge: TodayRecommendationBadge = !slot.isCompanion
                 ? .recommended
                 : (allowsTwoADays ? .alsoPlannedToday : .optionalToday)
-            let matchedSession = slot.session
+            let session = slot.session
             return TodayRecommendationRow(
-                modality: modality, session: matchedSession, badge: badge,
-                modalityLabel: modality == .strength ? {
-                    #if os(Linux)
-                    "Strength"
-                    #else
-                    String(localized: "Strength")
-                    #endif
-                }() : {
-                    #if os(Linux)
-                    "Cardio"
-                    #else
-                    String(localized: "Cardio")
-                    #endif
-                }(),
+                modality: modality, session: session, badge: badge,
+                modalityLabel: modality == .strength ? String(localized: "Strength") : String(localized: "Cardio"),
                 systemImage: modality == .strength ? "dumbbell.fill" : "heart.fill",
-                title: matchedSession.title,
-                durationText: matchedSession.durationMinutes.map { minutes in
-                    #if os(Linux)
-                    "\(minutes) min"
-                    #else
-                    String(localized: "\(minutes) min")
-                    #endif
-                },
-                rationale: matchedSession.subtitle,
-                citationIds: matchedSession.citationIds)
+                title: session.title,
+                durationText: session.durationMinutes.map { String(localized: "\($0) min") },
+                rationale: session.subtitle,
+                citationIds: session.citationIds)
         }
     }
 

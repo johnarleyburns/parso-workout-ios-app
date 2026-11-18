@@ -45,13 +45,7 @@ public struct TodayExerciseDisclosure: Equatable, Sendable {
     }
 
     public var summaryText: String? {
-        hiddenCount > 0 ? {
-            #if os(Linux)
-            "… +\(hiddenCount) more"
-            #else
-            String(localized: "… +\(hiddenCount) more", bundle: FeatureLocalization.bundle)
-            #endif
-        }() : nil
+        hiddenCount > 0 ? String(localized: "… +\(hiddenCount) more", bundle: FeatureLocalization.bundle) : nil
     }
 
     public let hidden: [TodayHero.Line]
@@ -60,13 +54,7 @@ public struct TodayExerciseDisclosure: Equatable, Sendable {
     public var accessibilityLabel: String? {
         guard hiddenCount > 0 else { return nil }
         let list = hidden.map(\.name).formatted(.list(type: .and))
-        return {
-            #if os(Linux)
-            "\(hiddenCount) more exercises, \(total) in total: \(list). Opens the full plan to review."
-            #else
-            String(localized: "\(hiddenCount) more exercises, \(total) in total: \(list). Opens the full plan to review.", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        return String(localized: "\(hiddenCount) more exercises, \(total) in total: \(list). Opens the full plan to review.", bundle: FeatureLocalization.bundle)
     }
 }
 
@@ -81,22 +69,10 @@ public enum TodayHeroPresenter {
             reasons += decision.deferred.map { $0.reason.message }
             let hardDays = decision.weeklyBalance.consecutiveHardDays
             if hardDays >= 3 {
-                reasons.append({
-                    #if os(Linux)
-                    "You have logged \(hardDays) consecutive hard training days."
-                    #else
-                    String(localized: "You have logged \(hardDays) consecutive hard training days.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }())
+                reasons.append(String(localized: "You have logged \(hardDays) consecutive hard training days.", bundle: FeatureLocalization.bundle))
             }
             if let score = decision.scoreBreakdowns[session.id], score.preference > 0 {
-                reasons.append({
-                    #if os(Linux)
-                    "Your previous workout choices favor this option."
-                    #else
-                    String(localized: "Your previous workout choices favor this option.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }())
+                reasons.append(String(localized: "Your previous workout choices favor this option.", bundle: FeatureLocalization.bundle))
             }
             reasons += decision.observedFacts.filter {
                 $0.kind == .lastStrength || $0.kind == .lastCardio
@@ -139,45 +115,21 @@ public enum TodayHeroPresenter {
         if completedWorkoutCount == 0 {
             if let starter { return starter.with(kind: .starter, computedAt: computedAt) }
             return TodayHero(kind: .loading,
-                             title: {
-                                 #if os(Linux)
-                                 "Preparing a starter workout…"
-                                 #else
-                                 String(localized: "Preparing a starter workout…", bundle: FeatureLocalization.bundle)
-                                 #endif
-                             }(),
+                             title: String(localized: "Preparing a starter workout…", bundle: FeatureLocalization.bundle),
                              computedAt: computedAt)
         }
         if completedWorkoutCount < 2 {
             return TodayHero(kind: .needsHistory,
-                             title: {
-                                 #if os(Linux)
-                                 "Log a workout and your coach will start suggesting."
-                                 #else
-                                 String(localized: "Log a workout and your coach will start suggesting.", bundle: FeatureLocalization.bundle)
-                                 #endif
-                             }(),
+                             title: String(localized: "Log a workout and your coach will start suggesting.", bundle: FeatureLocalization.bundle),
                              computedAt: computedAt)
         }
         if !recommendationReady {
             return TodayHero(kind: .loading,
-                             title: {
-                                 #if os(Linux)
-                                 "Checking today's plan…"
-                                 #else
-                                 String(localized: "Checking today's plan…", bundle: FeatureLocalization.bundle)
-                                 #endif
-                             }(),
+                             title: String(localized: "Checking today's plan…", bundle: FeatureLocalization.bundle),
                              computedAt: computedAt)
         }
         return (suggested ?? fallbackRecommendation
-                ?? TodayHero(kind: .restDay, title: {
-                    #if os(Linux)
-                    "Recovery day"
-                    #else
-                    String(localized: "Recovery day", bundle: FeatureLocalization.bundle)
-                    #endif
-                }(), computedAt: computedAt))
+                ?? TodayHero(kind: .restDay, title: String(localized: "Recovery day", bundle: FeatureLocalization.bundle), computedAt: computedAt))
             .with(computedAt: computedAt)
     }
 }
@@ -246,20 +198,8 @@ public enum InProgressWorkoutPresenter {
         let lines = planned.map { entry -> TodayHero.Line in
             let d = doneCount(entry.name)
             let detail = entry.sets > 0
-                ? {
-                    #if os(Linux)
-                    "\(d) / \(entry.sets) sets"
-                    #else
-                    String(localized: "\(d) / \(entry.sets) sets", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
-                : {
-                    #if os(Linux)
-                    "\(d) sets"
-                    #else
-                    String(localized: "\(d) sets", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                ? String(localized: "\(d) / \(entry.sets) sets", bundle: FeatureLocalization.bundle)
+                : String(localized: "\(d) sets", bundle: FeatureLocalization.bundle)
             return TodayHero.Line(name: entry.name, detail: detail)
         }
         let plannedTotal = planned.reduce(0) { $0 + max($1.sets, doneCount($1.name)) }
@@ -270,19 +210,7 @@ public enum InProgressWorkoutPresenter {
 
     public static func summary(_ p: Progress) -> String {
         p.plannedSets > 0
-            ? {
-                #if os(Linux)
-                "\(p.elapsedMinutes) min elapsed · \(p.doneSets) of \(p.plannedSets) sets done"
-                #else
-                String(localized: "\(p.elapsedMinutes) min elapsed · \(p.doneSets) of \(p.plannedSets) sets done", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
-            : {
-                #if os(Linux)
-                "\(p.elapsedMinutes) min elapsed · \(p.doneSets) sets done"
-                #else
-                String(localized: "\(p.elapsedMinutes) min elapsed · \(p.doneSets) sets done", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            ? String(localized: "\(p.elapsedMinutes) min elapsed · \(p.doneSets) of \(p.plannedSets) sets done", bundle: FeatureLocalization.bundle)
+            : String(localized: "\(p.elapsedMinutes) min elapsed · \(p.doneSets) sets done", bundle: FeatureLocalization.bundle)
     }
 }

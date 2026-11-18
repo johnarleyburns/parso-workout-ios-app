@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -54,4 +53,3 @@ final class ExerciseSuggestionExclusionTests: XCTestCase {
         XCTAssertEqual(try context.fetch(FetchDescriptor<ExerciseSuggestionExclusion>()).count, 1)
     }
 }
-#endif

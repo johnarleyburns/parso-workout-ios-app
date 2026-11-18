@@ -11,11 +11,6 @@ public enum ManualCardioMinutesSaver {
     public struct Minutes: Equatable, Sendable {
         public let moderate: Int
         public let vigorous: Int
-
-        public init(moderate: Int, vigorous: Int) {
-            self.moderate = moderate
-            self.vigorous = vigorous
-        }
     }
 
     /// `nil` when the summary has not loaded yet; callers show a loading state

@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// Decides which exercise-browse filters survive a change of the muscle-group filter.
 public enum ExerciseBrowseFilterPolicy {

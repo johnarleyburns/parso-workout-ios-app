@@ -1,7 +1,5 @@
 import Foundation
 import Testing
-import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 /// Static guard: live workout UI must reflow at accessibility Dynamic Type
 /// sizes rather than shrink text with `minimumScaleFactor < 1` (issue #259).

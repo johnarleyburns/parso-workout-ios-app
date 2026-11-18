@@ -1,15 +1,11 @@
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 
 /// A durable, user-owned, unscheduled workout draft. The model owns only
 /// metadata plus an opaque versioned payload; `PlanningDraftPayload` owns the
 /// full editable plan. Deliberately separate from `ScheduledWorkout`, which is
 /// execution scheduling state.
-#if canImport(SwiftData)
 @Model
-#endif
 public final class PlanningDraft {
     public var id: UUID = UUID()
     public var title: String = "Workout"
@@ -35,22 +31,13 @@ public final class PlanningDraft {
 
     public var isVisible: Bool { deletedAt == nil }
 
-    #if canImport(SwiftData)
     /// The most recently updated visible draft, or nil. Never mutates rows.
     public static func current(in context: ModelContext) throws -> PlanningDraft? {
         try context.fetch(FetchDescriptor<PlanningDraft>(
             predicate: #Predicate { $0.deletedAt == nil },
             sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])).first
     }
-    #endif
 }
-
-#if !canImport(SwiftData)
-extension PlanningDraft: Equatable, Hashable {
-    public static func == (lhs: PlanningDraft, rhs: PlanningDraft) -> Bool { lhs.id == rhs.id }
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}
-#endif
 
 public struct PlanningDraftPayload: Codable, Equatable, Sendable {
     public static let currentVersion = 1

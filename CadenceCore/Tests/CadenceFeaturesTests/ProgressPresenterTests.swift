@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -64,4 +63,3 @@ final class ProgressPresenterTests: XCTestCase {
         XCTAssertTrue(read.contains("further from failure"))
     }
 }
-#endif

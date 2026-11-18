@@ -1,8 +1,6 @@
 import CadenceFeatures
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 import CadenceCore
 import CadenceWorkoutFeatures
 
@@ -210,10 +208,7 @@ public enum ScheduledWorkoutStore {
         }
         return type
     }
-}
 
-#if canImport(SwiftData)
-extension ScheduledWorkoutStore {
     /// Read-only access to legacy saved drafts; creation by date is retired.
     public static func active(in context: ModelContext) throws -> [ScheduledWorkout] {
         try context.fetch(FetchDescriptor<ScheduledWorkout>(
@@ -272,7 +267,6 @@ extension ScheduledWorkoutStore {
             predicate: #Predicate { $0.id == id })).first
     }
 }
-#endif
 
 public enum ScheduledWorkoutStoreError: Error, Equatable, Sendable {
     case unsupportedPayloadVersion(Int)

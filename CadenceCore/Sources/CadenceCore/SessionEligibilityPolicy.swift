@@ -29,13 +29,7 @@ public enum SessionEligibilityPolicy {
         var notes: [DecisionNote] = []
         var reasons: [DecisionReason] = []
 
-        if session.kind == .rest { return .eligible(notes: [DecisionNote({
-            #if os(Linux)
-            "Rest is always eligible."
-            #else
-            String(localized: "Rest is always eligible.", bundle: .module)
-            #endif
-        }())]) }
+        if session.kind == .rest { return .eligible(notes: [DecisionNote(String(localized: "Rest is always eligible.", bundle: .module))]) }
 
         let now = facts.referenceDate
         let recovery = facts.recovery
@@ -49,13 +43,7 @@ public enum SessionEligibilityPolicy {
             return .deferred(until: now.addingTimeInterval(86400), reasons: [
                 DecisionReason(
                     id: "lowReadiness",
-                    message: {
-                        #if os(Linux)
-                        "Your latest check-in flagged poor recovery (soreness, sleep, stress, or energy). Easy movement or recovery is a better fit today."
-                        #else
-                        String(localized: "Your latest check-in flagged poor recovery (soreness, sleep, stress, or energy). Easy movement or recovery is a better fit today.", bundle: .module)
-                        #endif
-                    }(),
+                    message: String(localized: "Your latest check-in flagged poor recovery (soreness, sleep, stress, or energy). Easy movement or recovery is a better fit today.", bundle: .module),
                     citationIds: CitationRegistry.citationPool(for: .recoveryMonitoring).citationIds)
             ])
         }
@@ -100,13 +88,7 @@ public enum SessionEligibilityPolicy {
                     let hrs = Int(window.hardEligibleAt.timeIntervalSince(now) / 3600) + 1
                     reasons.append(DecisionReason(
                         id: "pattern.\(pattern.rawValue)",
-                        message: {
-                            #if os(Linux)
-                            "\(pattern.displayName) pattern is recovering — eligible in about \(hrs)h."
-                            #else
-                            String(localized: "\(pattern.displayName) pattern is recovering — eligible in about \(hrs)h.", bundle: .module)
-                            #endif
-                        }(),
+                        message: String(localized: "\(pattern.displayName) pattern is recovering — eligible in about \(hrs)h.", bundle: .module),
                         citationIds: ["parejaBlancoRecovery2020"]
                     ))
                 }
@@ -117,13 +99,7 @@ public enum SessionEligibilityPolicy {
                     let hrs = Int(window.hardEligibleAt.timeIntervalSince(now) / 3600) + 1
                     reasons.append(DecisionReason(
                         id: "muscleGroup.\(group.rawValue)",
-                        message: {
-                            #if os(Linux)
-                            "\(group.displayName) muscles are recovering — eligible in about \(hrs)h."
-                            #else
-                            String(localized: "\(group.displayName) muscles are recovering — eligible in about \(hrs)h.", bundle: .module)
-                            #endif
-                        }(),
+                        message: String(localized: "\(group.displayName) muscles are recovering — eligible in about \(hrs)h.", bundle: .module),
                         citationIds: ["parejaBlancoRecovery2020"]
                     ))
                 }
@@ -187,13 +163,7 @@ public enum SessionEligibilityPolicy {
             if hoursSince < 24 && (isHard || session.kind == .moderateAerobic) {
                 reasons.append(DecisionReason(
                     id: "lowerBodyCollision",
-                    message: {
-                        #if os(Linux)
-                        "Hard lower-body strength \(formatRelative(event.end, now)) — deferring hard cardio. Easy walking or cycling is still fine."
-                        #else
-                        String(localized: "Hard lower-body strength \(formatRelative(event.end, now)) — deferring hard cardio. Easy walking or cycling is still fine.", bundle: .module)
-                        #endif
-                    }(),
+                    message: String(localized: "Hard lower-body strength \(formatRelative(event.end, now)) — deferring hard cardio. Easy walking or cycling is still fine.", bundle: .module),
                     citationIds: ["schumannConcurrent2022"]
                 ))
             }
@@ -205,13 +175,7 @@ public enum SessionEligibilityPolicy {
         return .blocked(reasons: [
             DecisionReason(
                 id: "painConcern",
-                message: {
-                    #if os(Linux)
-                    "You reported pain or illness concern. Choose rest or easy activity. If symptoms persist, seek qualified medical advice."
-                    #else
-                    String(localized: "You reported pain or illness concern. Choose rest or easy activity. If symptoms persist, seek qualified medical advice.", bundle: .module)
-                    #endif
-                }(),
+                message: String(localized: "You reported pain or illness concern. Choose rest or easy activity. If symptoms persist, seek qualified medical advice.", bundle: .module),
                 citationIds: ["meeusenOvertraining2013"]
             )
         ])

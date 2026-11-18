@@ -1,10 +1,8 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 /// The value catalog behind the Watch Add Exercise screen and the iPhone
 /// picker. It must answer the same questions the pickers used to answer from
@@ -190,4 +188,3 @@ final class WatchStrengthFlowExerciseLookupTests: XCTestCase {
         XCTAssertEqual(model.exerciseList.map(\.exercise.name), ["Bench Press"])
     }
 }
-#endif

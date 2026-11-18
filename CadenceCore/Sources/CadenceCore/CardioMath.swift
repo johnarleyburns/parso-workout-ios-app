@@ -20,41 +20,11 @@ public enum CardioMath {
 
     public static func zoneName(_ zone: Int) -> String {
         switch zone {
-        case 1: return {
-            #if os(Linux)
-            "Recovery"
-            #else
-            String(localized: "Recovery", bundle: .module)
-            #endif
-        }()
-        case 2: return {
-            #if os(Linux)
-            "Easy"
-            #else
-            String(localized: "Easy", bundle: .module)
-            #endif
-        }()
-        case 3: return {
-            #if os(Linux)
-            "Aerobic"
-            #else
-            String(localized: "Aerobic", bundle: .module)
-            #endif
-        }()
-        case 4: return {
-            #if os(Linux)
-            "Threshold"
-            #else
-            String(localized: "Threshold", bundle: .module)
-            #endif
-        }()
-        default: return {
-            #if os(Linux)
-            "Max"
-            #else
-            String(localized: "Max", bundle: .module)
-            #endif
-        }()
+        case 1: return String(localized: "Recovery", bundle: .module)
+        case 2: return String(localized: "Easy", bundle: .module)
+        case 3: return String(localized: "Aerobic", bundle: .module)
+        case 4: return String(localized: "Threshold", bundle: .module)
+        default: return String(localized: "Max", bundle: .module)
         }
     }
 

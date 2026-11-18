@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// The observation list shown on Progress. Built from the same `CoachSnapshot`
 /// and the same `HomeDashboardPresenter` ordering policy Home used, so the

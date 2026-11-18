@@ -2,7 +2,6 @@ import XCTest
 @testable import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 final class SuggestedStrengthPreviewTests: XCTestCase {
     private typealias F = CoachSuggestionFixtures

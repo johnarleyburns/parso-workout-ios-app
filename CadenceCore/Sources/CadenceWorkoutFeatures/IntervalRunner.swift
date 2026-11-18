@@ -69,13 +69,7 @@ public final class IntervalRunner {
         let secs = Int(phaseRemaining.rounded(.up))
         return (1...3).contains(secs) ? secs : nil
     }
-    public var phaseLabel: String { current?.phase.label ?? (isComplete ? {
-        #if os(Linux)
-        "Done"
-        #else
-        String(localized: "Done", bundle: FeatureLocalization.bundle)
-        #endif
-    }() : "") }
+    public var phaseLabel: String { current?.phase.label ?? (isComplete ? String(localized: "Done", bundle: FeatureLocalization.bundle) : "") }
     public var phaseRemaining: TimeInterval { current?.phaseRemaining ?? 0 }
     public var phaseDuration: TimeInterval { current.map { $0.phase.duration + (phaseExtensions[$0.index] ?? 0) } ?? 0 }
     public var overallRemaining: TimeInterval { current?.overallRemaining ?? 0 }

@@ -1,6 +1,5 @@
 import CadenceFeatures
 import Foundation
-import CadenceWorkoutFeatures
 
 /// Identity reserved *before* the Watch preflight starts, so the eventual
 /// phone-started strength `WorkoutSession` reuses it. A reservation is not a

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -97,4 +96,3 @@ final class StrengthInactivityCoordinatorTests: XCTestCase {
         XCTAssertNil(back.endReasonRaw)
     }
 }
-#endif

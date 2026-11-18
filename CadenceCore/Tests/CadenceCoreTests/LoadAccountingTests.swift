@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -438,4 +437,3 @@ final class LoadAccountingTests: XCTestCase {
         XCTAssertTrue(sets.isEmpty)
     }
 }
-#endif

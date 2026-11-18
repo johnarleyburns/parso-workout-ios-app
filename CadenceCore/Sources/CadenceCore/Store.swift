@@ -1,13 +1,10 @@
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 
 /// Builds the shared SwiftData store. The iPhone mirrors the store to the user's
 /// **private** CloudKit database (`iCloud.guru.parso.ios-workout-app`). The watch
 /// uses a local-only store and syncs through WatchConnectivity so the phone is
 /// the sole CloudKit writer.
-#if canImport(SwiftData)
 public enum CadenceStore {
     /// Shared local-store compatibility marker used by iPhone and Watch.
     public static let schemaVersion = 3
@@ -207,7 +204,6 @@ public enum CadenceStore {
     }
 
 }
-#endif
 
 // MARK: - Settings keys & defaults
 //

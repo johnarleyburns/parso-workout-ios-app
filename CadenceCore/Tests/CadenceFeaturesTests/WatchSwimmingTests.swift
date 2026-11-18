@@ -1,7 +1,6 @@
 import XCTest
 import CadenceFeatures
 import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 final class WatchSwimmingTests: XCTestCase {
     func testMutuallyExclusiveSwimConfigurations() {

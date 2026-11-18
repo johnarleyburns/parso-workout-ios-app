@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -177,4 +176,3 @@ final class CoachHeroPresenterTests: XCTestCase {
         XCTAssertEqual(hero.subtitle, "All done for today")
     }
 }
-#endif

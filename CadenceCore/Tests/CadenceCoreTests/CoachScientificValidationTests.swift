@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -744,4 +743,3 @@ final class CoachScientificValidationTests: XCTestCase {
         assertValidCitation(snap.recommendation.citation.id)
     }
 }
-#endif

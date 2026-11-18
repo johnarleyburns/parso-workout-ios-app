@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -196,4 +195,3 @@ final class GarminFITBridgeTests: XCTestCase {
         return crc
     }
 }
-#endif

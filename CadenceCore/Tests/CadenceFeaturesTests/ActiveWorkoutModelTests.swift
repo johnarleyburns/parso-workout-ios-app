@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -155,4 +154,3 @@ final class ActiveWorkoutModelTests: XCTestCase {
         XCTAssertNil(session.endedAt)
     }
 }
-#endif

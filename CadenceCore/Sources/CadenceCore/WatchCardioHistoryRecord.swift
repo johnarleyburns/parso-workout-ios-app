@@ -1,7 +1,5 @@
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 
 /// Watch-only read model of one cardio workout mirrored from the iPhone over
 /// WatchConnectivity. It is deliberately not a `CardioWorkout` or `WorkoutSession`:
@@ -10,9 +8,7 @@ import SwiftData
 ///
 /// It belongs to `CadenceStore.watchSchema` only, never to `schema`, `localSchema`
 /// or the phone's CloudKit `syncSchema`.
-#if canImport(SwiftData)
 @Model
-#endif
 public final class WatchCardioHistoryRecord {
     /// The phone's stable row UUID.
     public var id: UUID = UUID()
@@ -43,10 +39,3 @@ public final class WatchCardioHistoryRecord {
         self.summaryData = summaryData
     }
 }
-
-#if !canImport(SwiftData)
-extension WatchCardioHistoryRecord: Equatable, Hashable {
-    public static func == (lhs: WatchCardioHistoryRecord, rhs: WatchCardioHistoryRecord) -> Bool { lhs.id == rhs.id }
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}
-#endif

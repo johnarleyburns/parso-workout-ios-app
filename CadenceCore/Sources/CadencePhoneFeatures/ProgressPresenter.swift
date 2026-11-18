@@ -30,91 +30,31 @@ public enum ProgressPresenter {
     public static func strengthTrendSummary(series: [E1RMSeries],
                                             unit: MeasurementUnitPreference) -> String {
         let tracked = series.filter { $0.points.count >= 2 }
-        guard !tracked.isEmpty else { return {
-            #if os(Linux)
-            "No lifts tracked yet."
-            #else
-            String(localized: "No lifts tracked yet.", bundle: FeatureLocalization.bundle)
-            #endif
-        }() }
+        guard !tracked.isEmpty else { return String(localized: "No lifts tracked yet.", bundle: FeatureLocalization.bundle) }
         let parts = tracked.map { "\($0.exercise) \(trendLabel($0.trend, delta: $0.delta, unit: unit))" }
-        return {
-            #if os(Linux)
-            "\(tracked.count) lifts tracked. "
-            #else
-            String(localized: "\(tracked.count) lifts tracked. ", bundle: FeatureLocalization.bundle)
-            #endif
-        }() + parts.joined(separator: ", ")
+        return String(localized: "\(tracked.count) lifts tracked. ", bundle: FeatureLocalization.bundle) + parts.joined(separator: ", ")
     }
 
     /// Goal-relative read of the heavy/moderate/light load split.
     public static func intensityRead(_ i: IntensityDistribution, goal: TrainingGoal) -> String {
         switch goal {
         case .strength:
-            return i.heavy >= 0.5 ? {
-                #if os(Linux)
-                "Skewed to heavy loads \u{2014} aligned with a strength goal."
-                #else
-                String(localized: "Skewed to heavy loads \u{2014} aligned with a strength goal.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
-                                  : {
-                                      #if os(Linux)
-                                      "Lighter than a strength goal usually calls for."
-                                      #else
-                                      String(localized: "Lighter than a strength goal usually calls for.", bundle: FeatureLocalization.bundle)
-                                      #endif
-                                  }()
+            return i.heavy >= 0.5 ? String(localized: "Skewed to heavy loads \u{2014} aligned with a strength goal.", bundle: FeatureLocalization.bundle)
+                                  : String(localized: "Lighter than a strength goal usually calls for.", bundle: FeatureLocalization.bundle)
         case .hypertrophy:
-            return i.moderate >= 0.5 ? {
-                #if os(Linux)
-                "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range."
-                #else
-                String(localized: "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
-                                     : {
-                                         #if os(Linux)
-                                         "Spread across loads \u{2014} hypertrophy favors more moderate-rep work."
-                                         #else
-                                         String(localized: "Spread across loads \u{2014} hypertrophy favors more moderate-rep work.", bundle: FeatureLocalization.bundle)
-                                         #endif
-                                     }()
+            return i.moderate >= 0.5 ? String(localized: "Mostly moderate-load work \u{2014} matched to the hypertrophy rep range.", bundle: FeatureLocalization.bundle)
+                                     : String(localized: "Spread across loads \u{2014} hypertrophy favors more moderate-rep work.", bundle: FeatureLocalization.bundle)
         case .endurance:
-            return i.light >= 0.4 ? {
-                #if os(Linux)
-                "Plenty of higher-rep work \u{2014} aligned with an endurance goal."
-                #else
-                String(localized: "Plenty of higher-rep work \u{2014} aligned with an endurance goal.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
-                                  : {
-                                      #if os(Linux)
-                                      "Heavier than an endurance goal usually calls for."
-                                      #else
-                                      String(localized: "Heavier than an endurance goal usually calls for.", bundle: FeatureLocalization.bundle)
-                                      #endif
-                                  }()
+            return i.light >= 0.4 ? String(localized: "Plenty of higher-rep work \u{2014} aligned with an endurance goal.", bundle: FeatureLocalization.bundle)
+                                  : String(localized: "Heavier than an endurance goal usually calls for.", bundle: FeatureLocalization.bundle)
         }
     }
 
     /// Goal-relative read of average reps-in-reserve.
     public static func effortRead(_ rir: Double, goal: TrainingGoal) -> String {
         let target = Double(goal.targetRIR)
-        if rir <= target + 0.5 && rir >= target - 0.5 { return {
-            #if os(Linux)
-            "In the effective range for \(goal.displayName.lowercased())."
-            #else
-            String(localized: "In the effective range for \(goal.displayName.lowercased()).", bundle: FeatureLocalization.bundle)
-            #endif
-        }() }
+        if rir <= target + 0.5 && rir >= target - 0.5 { return String(localized: "In the effective range for \(goal.displayName.lowercased()).", bundle: FeatureLocalization.bundle) }
         return rir > target ? "A little further from failure than \(goal.displayName.lowercased()) calls for."
-                            : {
-                                #if os(Linux)
-                                "Closer to failure than \(goal.displayName.lowercased()) usually needs."
-                                #else
-                                String(localized: "Closer to failure than \(goal.displayName.lowercased()) usually needs.", bundle: FeatureLocalization.bundle)
-                                #endif
-                            }()
+                            : String(localized: "Closer to failure than \(goal.displayName.lowercased()) usually needs.", bundle: FeatureLocalization.bundle)
     }
 }

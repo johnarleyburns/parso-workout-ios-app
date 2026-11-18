@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -198,4 +197,3 @@ final class ExportAnnotationRoundTripTests: XCTestCase {
         XCTAssertEqual(imported.setCredit(for: .quadriceps), 1.0)
     }
 }
-#endif

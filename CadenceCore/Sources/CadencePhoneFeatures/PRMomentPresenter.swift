@@ -33,40 +33,16 @@ public struct PRTakeover: Equatable, Sendable {
 public enum PRMomentPresenter {
     public static func takeover(for event: PREvent, unit: MeasurementUnitPreference,
                                 performerName: String? = nil) -> PRTakeover {
-        let headline = performerName.map { "\($0)'s new personal record" } ?? {
-            #if os(Linux)
-            "New personal record"
-            #else
-            String(localized: "New personal record", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        let headline = performerName.map { "\($0)'s new personal record" } ?? String(localized: "New personal record", bundle: FeatureLocalization.bundle)
         let previous = event.previous.map { valueLabel($0, kind: event.kind, unit: unit) }
         let improvement = event.previous.map {
             deltaLabel(event.value - $0, kind: event.kind, unit: unit)
         }
         let ruleLabel: String
         switch event.kind {
-        case .weight: ruleLabel = {
-            #if os(Linux)
-            "Heaviest weight"
-            #else
-            String(localized: "Heaviest weight", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .e1RM: ruleLabel = {
-            #if os(Linux)
-            "Estimated one-rep max"
-            #else
-            String(localized: "Estimated one-rep max", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .volume: ruleLabel = {
-            #if os(Linux)
-            "Single-set volume"
-            #else
-            String(localized: "Single-set volume", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        case .weight: ruleLabel = String(localized: "Heaviest weight", bundle: FeatureLocalization.bundle)
+        case .e1RM: ruleLabel = String(localized: "Estimated one-rep max", bundle: FeatureLocalization.bundle)
+        case .volume: ruleLabel = String(localized: "Single-set volume", bundle: FeatureLocalization.bundle)
         }
         return PRTakeover(headline: headline, exerciseName: event.exerciseName,
                           newValue: valueLabel(event.value, kind: event.kind, unit: unit),
@@ -78,13 +54,7 @@ public enum PRMomentPresenter {
                               isNewPR: Bool, isWarmup: Bool, isPartnerSet: Bool,
                               performerName: String? = nil) -> PRMoment? {
         guard isNewPR, !isWarmup else { return nil }
-        let headline = isPartnerSet ? "\(performerName ?? "Partner")'s new personal record" : {
-            #if os(Linux)
-            "New personal record"
-            #else
-            String(localized: "New personal record", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        let headline = isPartnerSet ? "\(performerName ?? "Partner")'s new personal record" : String(localized: "New personal record", bundle: FeatureLocalization.bundle)
         return PRMoment(headline: headline, context: "\(exercise) \(loadText) · \(changeText)",
                         performerName: performerName)
     }

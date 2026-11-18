@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -342,4 +341,3 @@ final class StrengthInactivityRegressionSuite: XCTestCase {
         }
     }
 }
-#endif

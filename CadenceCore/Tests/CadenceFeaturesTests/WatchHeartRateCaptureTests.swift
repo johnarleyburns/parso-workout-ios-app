@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -276,4 +275,3 @@ final class HeartRateRepairTests: XCTestCase {
         XCTAssertEqual(s.hrSamplePoints, sparse)
     }
 }
-#endif

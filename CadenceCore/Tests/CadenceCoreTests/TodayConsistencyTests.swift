@@ -1,7 +1,5 @@
 import XCTest
-#if canImport(SwiftData)
 import SwiftData
-#endif
 @testable import CadenceCore
 
 final class TodayConsistencyTests: XCTestCase {

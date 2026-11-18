@@ -22,63 +22,15 @@ public enum TrainingSystem: String, Sendable, Codable, CaseIterable {
 
     public var displayName: String {
         switch self {
-        case .maximalStrength: return {
-            #if os(Linux)
-            "Max strength"
-            #else
-            String(localized: "Max strength", bundle: .module)
-            #endif
-        }()
-        case .hypertrophy: return {
-            #if os(Linux)
-            "Hypertrophy"
-            #else
-            String(localized: "Hypertrophy", bundle: .module)
-            #endif
-        }()
-        case .strengthEndurance: return {
-            #if os(Linux)
-            "Strength endurance"
-            #else
-            String(localized: "Strength endurance", bundle: .module)
-            #endif
-        }()
-        case .aerobicBase: return {
-            #if os(Linux)
-            "Aerobic base"
-            #else
-            String(localized: "Aerobic base", bundle: .module)
-            #endif
-        }()
+        case .maximalStrength: return String(localized: "Max strength", bundle: .module)
+        case .hypertrophy: return String(localized: "Hypertrophy", bundle: .module)
+        case .strengthEndurance: return String(localized: "Strength endurance", bundle: .module)
+        case .aerobicBase: return String(localized: "Aerobic base", bundle: .module)
         case .vo2max: return "VO\u{2082}max"
-        case .threshold: return {
-            #if os(Linux)
-            "Threshold"
-            #else
-            String(localized: "Threshold", bundle: .module)
-            #endif
-        }()
-        case .anaerobicPower: return {
-            #if os(Linux)
-            "Anaerobic power"
-            #else
-            String(localized: "Anaerobic power", bundle: .module)
-            #endif
-        }()
-        case .flexibility: return {
-            #if os(Linux)
-            "Flexibility"
-            #else
-            String(localized: "Flexibility", bundle: .module)
-            #endif
-        }()
-        case .recovery: return {
-            #if os(Linux)
-            "Recovery"
-            #else
-            String(localized: "Recovery", bundle: .module)
-            #endif
-        }()
+        case .threshold: return String(localized: "Threshold", bundle: .module)
+        case .anaerobicPower: return String(localized: "Anaerobic power", bundle: .module)
+        case .flexibility: return String(localized: "Flexibility", bundle: .module)
+        case .recovery: return String(localized: "Recovery", bundle: .module)
         }
     }
 }

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -50,4 +49,3 @@ final class WatchResumableSessionTests: XCTestCase {
         XCTAssertEqual(remaining.map(\.id), [keep.id])
     }
 }
-#endif

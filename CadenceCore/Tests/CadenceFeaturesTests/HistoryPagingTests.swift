@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -192,4 +191,3 @@ final class HistoryPagingTests: XCTestCase {
         XCTAssertTrue(s.entries.isEmpty)
     }
 }
-#endif

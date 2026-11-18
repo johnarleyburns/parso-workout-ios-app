@@ -1,7 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 final class WatchTodayHomePresentationTests: XCTestCase {
     func testSyncedUnplannedIsReadyWithEmbeddedActions() {

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
@@ -63,4 +62,3 @@ final class WatchStrengthPreviewSetupTests: XCTestCase {
         XCTAssertEqual(model.plannedWorkingSets(for: exercise).map(\.targetReps), [10, 8])
     }
 }
-#endif

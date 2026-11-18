@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CadenceCore
@@ -334,4 +333,3 @@ public enum GarminFITBridge {
         return [plan]
     }
 }
-#endif

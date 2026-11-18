@@ -1,13 +1,9 @@
 import Foundation
-#if canImport(SwiftData)
 import SwiftData
-#endif
 
 /// Legacy saved-workout storage retained for existing stores and archives.
 /// New workouts use PlanningDraft; no date-based scheduling API remains.
-#if canImport(SwiftData)
 @Model
-#endif
 public final class ScheduledWorkout {
     public var id: UUID = UUID()
     /// Normalized local date and time in the creator's calendar, retained for
@@ -61,13 +57,6 @@ public final class ScheduledWorkout {
         deletedAt == nil && status != .cancelled && status != .completed
     }
 }
-
-#if !canImport(SwiftData)
-extension ScheduledWorkout: Equatable, Hashable {
-    public static func == (lhs: ScheduledWorkout, rhs: ScheduledWorkout) -> Bool { lhs.id == rhs.id }
-    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
-}
-#endif
 
 public enum ScheduledWorkoutStatus: String, Codable, CaseIterable, Sendable {
     case scheduled

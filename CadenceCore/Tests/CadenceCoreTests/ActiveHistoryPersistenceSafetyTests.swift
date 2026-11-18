@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -45,4 +44,3 @@ final class ActiveHistoryPersistenceSafetyTests: XCTestCase {
         XCTAssertEqual(session.orderedSets.count, 1)
     }
 }
-#endif

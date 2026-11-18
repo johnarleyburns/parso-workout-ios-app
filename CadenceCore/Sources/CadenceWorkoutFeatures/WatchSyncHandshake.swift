@@ -386,62 +386,14 @@ public enum WatchSyncState: Equatable, Sendable {
 
     public var summaryText: String {
         switch self {
-        case .notInstalled: return {
-            #if os(Linux)
-            "Watch app not installed"
-            #else
-            String(localized: "Watch app not installed", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .activating: return {
-            #if os(Linux)
-            "Connecting to Apple Watch…"
-            #else
-            String(localized: "Connecting to Apple Watch…", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .upToDate: return {
-            #if os(Linux)
-            "Up to date"
-            #else
-            String(localized: "Up to date", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .queued: return {
-            #if os(Linux)
-            "Pending"
-            #else
-            String(localized: "Pending", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .awaitingWatch: return {
-            #if os(Linux)
-            "Waiting for Apple Watch"
-            #else
-            String(localized: "Waiting for Apple Watch", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .reconciling: return {
-            #if os(Linux)
-            "Checking with Apple Watch…"
-            #else
-            String(localized: "Checking with Apple Watch…", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .stale: return {
-            #if os(Linux)
-            "Not confirmed"
-            #else
-            String(localized: "Not confirmed", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .failedRecoverably: return {
-            #if os(Linux)
-            "Needs attention"
-            #else
-            String(localized: "Needs attention", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        case .notInstalled: return String(localized: "Watch app not installed", bundle: FeatureLocalization.bundle)
+        case .activating: return String(localized: "Connecting to Apple Watch…", bundle: FeatureLocalization.bundle)
+        case .upToDate: return String(localized: "Up to date", bundle: FeatureLocalization.bundle)
+        case .queued: return String(localized: "Pending", bundle: FeatureLocalization.bundle)
+        case .awaitingWatch: return String(localized: "Waiting for Apple Watch", bundle: FeatureLocalization.bundle)
+        case .reconciling: return String(localized: "Checking with Apple Watch…", bundle: FeatureLocalization.bundle)
+        case .stale: return String(localized: "Not confirmed", bundle: FeatureLocalization.bundle)
+        case .failedRecoverably: return String(localized: "Needs attention", bundle: FeatureLocalization.bundle)
         }
     }
 
@@ -449,79 +401,25 @@ public enum WatchSyncState: Equatable, Sendable {
     public var detailText: String {
         switch self {
         case .notInstalled:
-            return {
-                #if os(Linux)
-                "Install Cladiron on your Apple Watch to sync settings."
-                #else
-                String(localized: "Install Cladiron on your Apple Watch to sync settings.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Install Cladiron on your Apple Watch to sync settings.", bundle: FeatureLocalization.bundle)
         case .activating:
-            return {
-                #if os(Linux)
-                "Waiting for the connection to your Apple Watch to start."
-                #else
-                String(localized: "Waiting for the connection to your Apple Watch to start.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Waiting for the connection to your Apple Watch to start.", bundle: FeatureLocalization.bundle)
         case .upToDate(let date):
-            return {
-                #if os(Linux)
-                "Your Apple Watch confirmed these settings \(Self.relative(date))."
-                #else
-                String(localized: "Your Apple Watch confirmed these settings \(Self.relative(date)).", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Your Apple Watch confirmed these settings \(Self.relative(date)).", bundle: FeatureLocalization.bundle)
         case .queued, .awaitingWatch:
-            return {
-                #if os(Linux)
-                "Settings are queued. Open Cladiron on your Apple Watch to finish; they stay saved on this iPhone meanwhile."
-                #else
-                String(localized: "Settings are queued. Open Cladiron on your Apple Watch to finish; they stay saved on this iPhone meanwhile.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Settings are queued. Open Cladiron on your Apple Watch to finish; they stay saved on this iPhone meanwhile.", bundle: FeatureLocalization.bundle)
         case .reconciling:
-            return {
-                #if os(Linux)
-                "Comparing what your Apple Watch has with this iPhone."
-                #else
-                String(localized: "Comparing what your Apple Watch has with this iPhone.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Comparing what your Apple Watch has with this iPhone.", bundle: FeatureLocalization.bundle)
         case .stale:
-            return {
-                #if os(Linux)
-                "Your Apple Watch hasn't confirmed the latest settings. Cladiron will retry automatically, or tap Sync now."
-                #else
-                String(localized: "Your Apple Watch hasn't confirmed the latest settings. Cladiron will retry automatically, or tap Sync now.", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Your Apple Watch hasn't confirmed the latest settings. Cladiron will retry automatically, or tap Sync now.", bundle: FeatureLocalization.bundle)
         case .failedRecoverably(let reason, _):
             switch reason {
             case .writeFailed:
-                return {
-                    #if os(Linux)
-                    "The iPhone couldn't queue the update. Cladiron will retry, or tap Retry. Settings still work offline."
-                    #else
-                    String(localized: "The iPhone couldn't queue the update. Cladiron will retry, or tap Retry. Settings still work offline.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                return String(localized: "The iPhone couldn't queue the update. Cladiron will retry, or tap Retry. Settings still work offline.", bundle: FeatureLocalization.bundle)
             case .incompatibleVersion:
-                return {
-                    #if os(Linux)
-                    "The Cladiron version on your Apple Watch differs from this iPhone. Update both apps; your current settings are unchanged."
-                    #else
-                    String(localized: "The Cladiron version on your Apple Watch differs from this iPhone. Update both apps; your current settings are unchanged.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                return String(localized: "The Cladiron version on your Apple Watch differs from this iPhone. Update both apps; your current settings are unchanged.", bundle: FeatureLocalization.bundle)
             case .settingsUnavailable:
-                return {
-                    #if os(Linux)
-                    "Settings aren't ready yet. Cladiron will retry shortly."
-                    #else
-                    String(localized: "Settings aren't ready yet. Cladiron will retry shortly.", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()
+                return String(localized: "Settings aren't ready yet. Cladiron will retry shortly.", bundle: FeatureLocalization.bundle)
             }
         }
     }
@@ -530,92 +428,38 @@ public enum WatchSyncState: Equatable, Sendable {
     public func accessibilityText(lastConfirmedAt: Date?) -> String {
         var parts = [summaryText, detailText]
         if let lastConfirmedAt, !{ if case .upToDate = self { return true } else { return false } }() {
-            parts.append({
-                #if os(Linux)
-                "Last confirmed by Apple Watch \(Self.relative(lastConfirmedAt))."
-                #else
-                String(localized: "Last confirmed by Apple Watch \(Self.relative(lastConfirmedAt)).", bundle: FeatureLocalization.bundle)
-                #endif
-            }())
+            parts.append(String(localized: "Last confirmed by Apple Watch \(Self.relative(lastConfirmedAt)).", bundle: FeatureLocalization.bundle))
         }
         return parts.joined(separator: ". ")
     }
 
     public func settingsText(lastSyncAt: Date?) -> String {
         if case .upToDate(let date) = self {
-            return {
-                #if os(Linux)
-                "Up to date, \(Self.relative(date))"
-                #else
-                String(localized: "Up to date, \(Self.relative(date))", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Up to date, \(Self.relative(date))", bundle: FeatureLocalization.bundle)
         }
         return summaryText
     }
 
     public var toastText: String? {
         switch self {
-        case .upToDate: return {
-            #if os(Linux)
-            "Watch confirmed"
-            #else
-            String(localized: "Watch confirmed", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .failedRecoverably: return {
-            #if os(Linux)
-            "Watch sync needs attention"
-            #else
-            String(localized: "Watch sync needs attention", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .stale: return {
-            #if os(Linux)
-            "Watch hasn't confirmed"
-            #else
-            String(localized: "Watch hasn't confirmed", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        case .upToDate: return String(localized: "Watch confirmed", bundle: FeatureLocalization.bundle)
+        case .failedRecoverably: return String(localized: "Watch sync needs attention", bundle: FeatureLocalization.bundle)
+        case .stale: return String(localized: "Watch hasn't confirmed", bundle: FeatureLocalization.bundle)
         default: return nil
         }
     }
 
     /// "Last synced" means the last Watch *confirmation*, never a local write.
     public static func lastConfirmedText(_ date: Date?) -> String {
-        guard let date else { return {
-            #if os(Linux)
-            "Never confirmed"
-            #else
-            String(localized: "Never confirmed", bundle: FeatureLocalization.bundle)
-            #endif
-        }() }
+        guard let date else { return String(localized: "Never confirmed", bundle: FeatureLocalization.bundle) }
         return date.formatted(date: .abbreviated, time: .shortened)
     }
 
     static func relative(_ date: Date, now: Date = Date()) -> String {
         let seconds = max(0, Int(now.timeIntervalSince(date)))
-        if seconds < 5 { return {
-            #if os(Linux)
-            "just now"
-            #else
-            String(localized: "just now", bundle: FeatureLocalization.bundle)
-            #endif
-        }() }
-        if seconds < 60 { return {
-            #if os(Linux)
-            "\(seconds)s ago"
-            #else
-            String(localized: "\(seconds)s ago", bundle: FeatureLocalization.bundle)
-            #endif
-        }() }
-        if seconds < 3600 { return {
-            #if os(Linux)
-            "\(seconds / 60)m ago"
-            #else
-            String(localized: "\(seconds / 60)m ago", bundle: FeatureLocalization.bundle)
-            #endif
-        }() }
+        if seconds < 5 { return String(localized: "just now", bundle: FeatureLocalization.bundle) }
+        if seconds < 60 { return String(localized: "\(seconds)s ago", bundle: FeatureLocalization.bundle) }
+        if seconds < 3600 { return String(localized: "\(seconds / 60)m ago", bundle: FeatureLocalization.bundle) }
         return date.formatted(date: .abbreviated, time: .shortened)
     }
 }

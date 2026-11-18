@@ -9,38 +9,14 @@ public enum ReadinessCheckInPresenter {
 
     public static func summary(for entry: ReadinessEntry) -> String {
         if entry.hasPainOrIllnessConcern {
-            return {
-                #if os(Linux)
-                "Pain or illness noted"
-                #else
-                String(localized: "Pain or illness noted", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
+            return String(localized: "Pain or illness noted", bundle: FeatureLocalization.bundle)
         }
         let average = Double(entry.muscleSoreness + entry.fatigueEnergy
             + entry.sleepQuality + entry.stressMood) / 4
         switch average {
-        case ..<2.5: return {
-            #if os(Linux)
-            "Recovery may be limited"
-            #else
-            String(localized: "Recovery may be limited", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case 2.5..<3.75: return {
-            #if os(Linux)
-            "Recovery looks mixed"
-            #else
-            String(localized: "Recovery looks mixed", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        default: return {
-            #if os(Linux)
-            "Recovery looks good"
-            #else
-            String(localized: "Recovery looks good", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        case ..<2.5: return String(localized: "Recovery may be limited", bundle: FeatureLocalization.bundle)
+        case 2.5..<3.75: return String(localized: "Recovery looks mixed", bundle: FeatureLocalization.bundle)
+        default: return String(localized: "Recovery looks good", bundle: FeatureLocalization.bundle)
         }
     }
 
@@ -49,13 +25,7 @@ public enum ReadinessCheckInPresenter {
                       entry.sleepQuality, entry.stressMood]
         let average = Double(values.reduce(0, +)) / Double(values.count)
         let score = String(format: "%.1f", average)
-        return {
-            #if os(Linux)
-            "Average \(score)/5 · optional coaching context"
-            #else
-            String(localized: "Average \(score)/5 · optional coaching context", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        return String(localized: "Average \(score)/5 · optional coaching context", bundle: FeatureLocalization.bundle)
     }
 
     public static func validate(muscleSoreness: Int, fatigueEnergy: Int,

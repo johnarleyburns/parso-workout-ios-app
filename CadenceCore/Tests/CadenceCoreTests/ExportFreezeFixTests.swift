@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -241,4 +240,3 @@ final class ExportFreezeFixTests: XCTestCase {
         c.sorted { $0.id.uuidString < $1.id.uuidString }
     }
 }
-#endif

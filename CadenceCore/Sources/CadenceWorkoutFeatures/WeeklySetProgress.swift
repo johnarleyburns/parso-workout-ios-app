@@ -26,34 +26,10 @@ public enum WeeklySetZone: Sendable, Equatable {
 
     public var displayText: String {
         switch self {
-        case .belowMinimum: {
-            #if os(Linux)
-            "Below 4-set minimum"
-            #else
-            String(localized: "Below 4-set minimum", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .building: {
-            #if os(Linux)
-            "Building toward productive volume"
-            #else
-            String(localized: "Building toward productive volume", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .productive: {
-            #if os(Linux)
-            "Productive 8–12-set range"
-            #else
-            String(localized: "Productive 8–12-set range", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case .aboveMaximum: {
-            #if os(Linux)
-            "Above 12-set maximum"
-            #else
-            String(localized: "Above 12-set maximum", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        case .belowMinimum: String(localized: "Below 4-set minimum", bundle: FeatureLocalization.bundle)
+        case .building: String(localized: "Building toward productive volume", bundle: FeatureLocalization.bundle)
+        case .productive: String(localized: "Productive 8–12-set range", bundle: FeatureLocalization.bundle)
+        case .aboveMaximum: String(localized: "Above 12-set maximum", bundle: FeatureLocalization.bundle)
         }
     }
 

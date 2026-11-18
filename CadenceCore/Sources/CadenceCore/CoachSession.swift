@@ -119,26 +119,8 @@ extension CoachSession {
             candidates.append(CoachSession(
                 id: "strength.general",
                 kind: .strength,
-                title: strengthNeeded ? {
-                    #if os(Linux)
-                    "Strength session"
-                    #else
-                    String(localized: "Strength session", bundle: .module)
-                    #endif
-                }() : {
-                    #if os(Linux)
-                    "Full-body session"
-                    #else
-                    String(localized: "Full-body session", bundle: .module)
-                    #endif
-                }(),
-                subtitle: {
-                    #if os(Linux)
-                    "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR"
-                    #else
-                    String(localized: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR", bundle: .module)
-                    #endif
-                }(),
+                title: strengthNeeded ? String(localized: "Strength session", bundle: .module) : String(localized: "Full-body session", bundle: .module),
+                subtitle: String(localized: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR", bundle: .module),
                 durationMinutes: 45,
                 exercises: exercises,
                 trainingLoadTags: ["strength"],
@@ -181,13 +163,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.easyWalk",
             kind: .easyAerobic,
-            title: {
-                #if os(Linux)
-                "Easy walk"
-                #else
-                String(localized: "Easy walk", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Easy walk", bundle: .module),
             subtitle: "20–30 min · conversational pace",
             durationMinutes: 25,
             modality: .walk,
@@ -200,13 +176,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.easyCycle",
             kind: .easyAerobic,
-            title: {
-                #if os(Linux)
-                "Easy cycle"
-                #else
-                String(localized: "Easy cycle", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Easy cycle", bundle: .module),
             subtitle: "20–30 min · light effort",
             durationMinutes: 25,
             modality: .cycle,
@@ -219,13 +189,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.easySwim",
             kind: .easyAerobic,
-            title: {
-                #if os(Linux)
-                "Easy swim"
-                #else
-                String(localized: "Easy swim", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Easy swim", bundle: .module),
             subtitle: "20–30 min · steady pace",
             durationMinutes: 25,
             modality: .swim,
@@ -238,13 +202,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.easyRow",
             kind: .easyAerobic,
-            title: {
-                #if os(Linux)
-                "Easy row"
-                #else
-                String(localized: "Easy row", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Easy row", bundle: .module),
             subtitle: "20–30 min · light pull",
             durationMinutes: 25,
             modality: .row,
@@ -258,13 +216,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.moderateWalk",
             kind: .moderateAerobic,
-            title: {
-                #if os(Linux)
-                "Brisk walk"
-                #else
-                String(localized: "Brisk walk", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Brisk walk", bundle: .module),
             subtitle: "30–40 min · steady effort",
             durationMinutes: 35,
             modality: .walk,
@@ -276,13 +228,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.moderateRun",
             kind: .moderateAerobic,
-            title: {
-                #if os(Linux)
-                "Steady run"
-                #else
-                String(localized: "Steady run", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Steady run", bundle: .module),
             subtitle: "20–30 min · comfortable pace",
             durationMinutes: 25,
             modality: .run,
@@ -294,13 +240,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.moderateCycle",
             kind: .moderateAerobic,
-            title: {
-                #if os(Linux)
-                "Steady cycle"
-                #else
-                String(localized: "Steady cycle", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Steady cycle", bundle: .module),
             subtitle: "30–40 min · steady effort",
             durationMinutes: 35,
             modality: .cycle,
@@ -312,13 +252,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.moderateSwim",
             kind: .moderateAerobic,
-            title: {
-                #if os(Linux)
-                "Steady swim"
-                #else
-                String(localized: "Steady swim", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Steady swim", bundle: .module),
             subtitle: "25–35 min · continuous",
             durationMinutes: 30,
             modality: .swim,
@@ -342,13 +276,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "aerobic.moderateBoxing",
             kind: .moderateAerobic,
-            title: {
-                #if os(Linux)
-                "Boxing conditioning"
-                #else
-                String(localized: "Boxing conditioning", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Boxing conditioning", bundle: .module),
             subtitle: "20–30 min · moderate rounds",
             durationMinutes: 25,
             modality: .boxing,
@@ -378,13 +306,7 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "recovery.stretch",
             kind: .recovery,
-            title: {
-                #if os(Linux)
-                "Recovery: stretch or mobility"
-                #else
-                String(localized: "Recovery: stretch or mobility", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Recovery: stretch or mobility", bundle: .module),
             subtitle: "10–15 min · gentle movement",
             durationMinutes: 12,
             trainingLoadTags: ["recovery", "flexibility"],
@@ -395,20 +317,8 @@ extension CoachSession {
         candidates.append(CoachSession(
             id: "rest.full",
             kind: .rest,
-            title: {
-                #if os(Linux)
-                "Rest day"
-                #else
-                String(localized: "Rest day", bundle: .module)
-                #endif
-            }(),
-            subtitle: {
-                #if os(Linux)
-                "Recovery is training too"
-                #else
-                String(localized: "Recovery is training too", bundle: .module)
-                #endif
-            }(),
+            title: String(localized: "Rest day", bundle: .module),
+            subtitle: String(localized: "Recovery is training too", bundle: .module),
             trainingLoadTags: ["rest"],
             citationIds: ["meeusenOvertraining2013"],
             launchPayload: .rest
@@ -444,13 +354,7 @@ extension CoachSession {
             candidates.append(CoachSession(
                 id: "aerobic.thresholdTempo",
                 kind: .moderateAerobic,
-                title: {
-                    #if os(Linux)
-                    "Threshold tempo"
-                    #else
-                    String(localized: "Threshold tempo", bundle: .module)
-                    #endif
-                }(),
+                title: String(localized: "Threshold tempo", bundle: .module),
                 subtitle: "20–30 min · comfortably hard (~85% HRmax)",
                 durationMinutes: 25,
                 modality: .run,
@@ -472,20 +376,8 @@ extension CoachSession {
             candidates.append(CoachSession(
                 id: "aerobic.anaerobicIntervals",
                 kind: .vo2Intervals,
-                title: {
-                    #if os(Linux)
-                    "Sprint intervals"
-                    #else
-                    String(localized: "Sprint intervals", bundle: .module)
-                    #endif
-                }(),
-                subtitle: {
-                    #if os(Linux)
-                    "Short, near-maximal efforts · long recoveries"
-                    #else
-                    String(localized: "Short, near-maximal efforts · long recoveries", bundle: .module)
-                    #endif
-                }(),
+                title: String(localized: "Sprint intervals", bundle: .module),
+                subtitle: String(localized: "Short, near-maximal efforts · long recoveries", bundle: .module),
                 durationMinutes: 20,
                 modality: .run,
                 intensity: .vigorous,
@@ -520,20 +412,8 @@ extension CoachSession {
             candidates.append(CoachSession(
                 id: "strength.reducedLoad",
                 kind: .strength,
-                title: {
-                    #if os(Linux)
-                    "Lighter strength session"
-                    #else
-                    String(localized: "Lighter strength session", bundle: .module)
-                    #endif
-                }(),
-                subtitle: {
-                    #if os(Linux)
-                    "Same lifts · lower load · 2+ extra RIR"
-                    #else
-                    String(localized: "Same lifts · lower load · 2+ extra RIR", bundle: .module)
-                    #endif
-                }(),
+                title: String(localized: "Lighter strength session", bundle: .module),
+                subtitle: String(localized: "Same lifts · lower load · 2+ extra RIR", bundle: .module),
                 durationMinutes: 35,
                 exercises: exercises,
                 trainingLoadTags: ["strength", "reducedLoad"],
@@ -575,90 +455,30 @@ extension CoachSession {
     private static func baselineTitle(for system: TrainingSystem) -> String {
         switch system {
         case .vo2max, .aerobicBase:
-            return {
-                #if os(Linux)
-                "Add a VO₂ test baseline"
-                #else
-                String(localized: "Add a VO₂ test baseline", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Add a VO₂ test baseline", bundle: .module)
         case .maximalStrength:
-            return {
-                #if os(Linux)
-                "Add a strength test baseline"
-                #else
-                String(localized: "Add a strength test baseline", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Add a strength test baseline", bundle: .module)
         case .strengthEndurance:
-            return {
-                #if os(Linux)
-                "Add a strength-endurance test"
-                #else
-                String(localized: "Add a strength-endurance test", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Add a strength-endurance test", bundle: .module)
         case .anaerobicPower:
-            return {
-                #if os(Linux)
-                "Add an anaerobic test baseline"
-                #else
-                String(localized: "Add an anaerobic test baseline", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Add an anaerobic test baseline", bundle: .module)
         default:
-            return {
-                #if os(Linux)
-                "Add an assessment baseline"
-                #else
-                String(localized: "Add an assessment baseline", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Add an assessment baseline", bundle: .module)
         }
     }
 
     private static func baselineSubtitle(for system: TrainingSystem) -> String {
         switch system {
         case .vo2max, .aerobicBase:
-            return {
-                #if os(Linux)
-                "Need 1 VO₂ field test; workouts do not replace this baseline"
-                #else
-                String(localized: "Need 1 VO₂ field test; workouts do not replace this baseline", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Need 1 VO₂ field test; workouts do not replace this baseline", bundle: .module)
         case .maximalStrength:
-            return {
-                #if os(Linux)
-                "Need 1 e1RM or rep-max test for load targets"
-                #else
-                String(localized: "Need 1 e1RM or rep-max test for load targets", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Need 1 e1RM or rep-max test for load targets", bundle: .module)
         case .strengthEndurance:
-            return {
-                #if os(Linux)
-                "Need 1 push-up, pull-up, squat, or core test"
-                #else
-                String(localized: "Need 1 push-up, pull-up, squat, or core test", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Need 1 push-up, pull-up, squat, or core test", bundle: .module)
         case .anaerobicPower:
-            return {
-                #if os(Linux)
-                "Need 1 Wingate-style test to compare sprint power"
-                #else
-                String(localized: "Need 1 Wingate-style test to compare sprint power", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Need 1 Wingate-style test to compare sprint power", bundle: .module)
         default:
-            return {
-                #if os(Linux)
-                "Need 1 standardized test for this system"
-                #else
-                String(localized: "Need 1 standardized test for this system", bundle: .module)
-                #endif
-            }()
+            return String(localized: "Need 1 standardized test for this system", bundle: .module)
         }
     }
 

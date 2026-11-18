@@ -1,10 +1,8 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 import CadenceCore
-import CadencePhoneFeatures
 
 /// Watch redesign (plans/watch-redesign/2026-09-30/DESIGN.md §7): the Set Card, Today hero,
 /// receipts, cardio tile order, Quick Talk planner and the TodayPlan advice round trip.
@@ -220,4 +218,3 @@ final class WatchCardioRedesignTests: XCTestCase {
         XCTAssertNil(WatchCardioPlanTarget.progress(elapsed: 10, durationSeconds: nil))
     }
 }
-#endif

@@ -1,5 +1,4 @@
-import Testing
-import Foundation
+import XCTest
 import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
@@ -16,7 +15,7 @@ private final class FakeActions: PhoneCardioLifecycleActions {
 }
 
 @MainActor
-@Suite final class PhoneCardioInactivityCoordinatorTests {
+final class PhoneCardioInactivityCoordinatorTests: XCTestCase {
     private let t0 = Date(timeIntervalSince1970: 2_000_000)
     private func at(_ s: TimeInterval) -> Date { t0.addingTimeInterval(s) }
 
@@ -30,112 +29,112 @@ private final class FakeActions: PhoneCardioLifecycleActions {
         return (c, actions, store)
     }
 
-    @Test func outdoorAutoPausesThenEndsOnceAtDeadline() async {
+    func testOutdoorAutoPausesThenEndsOnceAtDeadline() async {
         let (c, a, _) = make()
         await c.reconcile(now: at(599))
-        #expect(a.pauses.isEmpty)
+        XCTAssertTrue(a.pauses.isEmpty)
         await c.reconcile(now: at(600))
-        #expect(a.pauses == [at(600)])
-        #expect(c.session?.inactivity.pauseOrigin == .automatic)
+        XCTAssertEqual(a.pauses, [at(600)])
+        XCTAssertEqual(c.session?.inactivity.pauseOrigin, .automatic)
         await c.reconcile(now: at(600 + 1799))
-        #expect(a.finalizes.isEmpty)
+        XCTAssertTrue(a.finalizes.isEmpty)
         await c.reconcile(now: at(600 + 1800))
         await c.reconcile(now: at(99_999))
         await c.reconcile(now: at(199_999))
-        #expect(a.pauses.count == 1)
-        #expect(a.finalizes.count == 1)
-        #expect(a.finalizes.first?.1 == at(2400))
-        #expect(c.autoEndedReceipt != nil)
+        XCTAssertEqual(a.pauses.count, 1)
+        XCTAssertEqual(a.finalizes.count, 1)
+        XCTAssertEqual(a.finalizes.first?.1, at(2400))
+        XCTAssertNotNil(c.autoEndedReceipt)
     }
 
-    @Test func backgroundReconcileUsesOriginalDeadlineNotReturnTime() async {
+    func testBackgroundReconcileUsesOriginalDeadlineNotReturnTime() async {
         let (c, a, store) = make()
         // Relaunch: a new coordinator restored from the durable store.
         let restored = PhoneCardioInactivityCoordinator(store: store, actions: a)
-        #expect(restored.session?.id == c.session?.id)
+        XCTAssertEqual(restored.session?.id, c.session?.id)
         await restored.reconcile(now: at(5 * 3600))
-        #expect(a.finalizes.map(\.1) == [at(2400)])
-        #expect(a.pauses == [at(600)])
+        XCTAssertEqual(a.finalizes.map(\.1), [at(2400)])
+        XCTAssertEqual(a.pauses, [at(600)])
     }
 
-    @Test func distanceProgressExtendsButDuplicatesAndNoiseDoNot() async {
+    func testDistanceProgressExtendsButDuplicatesAndNoiseDoNot() async {
         let (c, a, _) = make()
         c.recordEvidence(.distance(totalMeters: 50), at: at(599))
         c.recordEvidence(.distance(totalMeters: 50), at: at(900))      // duplicate
         c.recordEvidence(.distance(totalMeters: 52), at: at(1000))     // noise
         c.recordEvidence(.passive(.duplicateLocationFix), at: at(1100))
         await c.reconcile(now: at(1198))
-        #expect(a.pauses.isEmpty)
+        XCTAssertTrue(a.pauses.isEmpty)
         await c.reconcile(now: at(1199))
-        #expect(a.pauses == [at(1199)])
+        XCTAssertEqual(a.pauses, [at(1199)])
     }
 
-    @Test func passiveEventsNeverCountAsActivity() async {
+    func testPassiveEventsNeverCountAsActivity() async {
         let (c, a, _) = make()
         for p in CardioEvidenceEvent.PassiveSource.allCases { c.recordEvidence(.passive(p), at: at(500)) }
         await c.reconcile(now: at(600))
-        #expect(a.pauses == [at(600)])
+        XCTAssertEqual(a.pauses, [at(600)])
     }
 
-    @Test func evidenceAfterDeadlineDoesNotRescue() async {
+    func testEvidenceAfterDeadlineDoesNotRescue() async {
         let (c, a, _) = make()
         c.recordEvidence(.userAction, at: at(700)) // foreground wake-up after expiry
         await c.reconcile(now: at(700))
-        #expect(a.pauses == [at(600)])
+        XCTAssertEqual(a.pauses, [at(600)])
     }
 
-    @Test func indoorHeartRateQualification() async {
+    func testIndoorHeartRateQualification() async {
         let (c, a, _) = make(profile: .indoor)
         c.recordEvidence(.heartRate(bpm: 130, sampleAt: at(500), restingHR: 60, maxHR: 185), at: at(500))
         c.recordEvidence(.heartRate(bpm: 130, sampleAt: at(500), restingHR: 60, maxHR: 185), at: at(900)) // replay/stale
         c.recordEvidence(.heartRate(bpm: 70, sampleAt: at(900), restingHR: 60, maxHR: 185), at: at(900))  // low
         c.recordEvidence(.distance(totalMeters: 500), at: at(900))                                         // ignored indoors
         await c.reconcile(now: at(1100))
-        #expect(a.pauses == [at(1100)])
+        XCTAssertEqual(a.pauses, [at(1100)])
     }
 
-    @Test func timerOnlyFallbackAutoPauses() async {
+    func testTimerOnlyFallbackAutoPauses() async {
         let (c, a, _) = make(profile: .timerOnly)
         c.recordEvidence(.heartRate(bpm: 140, sampleAt: at(500), restingHR: nil, maxHR: nil), at: at(500))
         await c.reconcile(now: at(600))
-        #expect(a.pauses == [at(600)])
+        XCTAssertEqual(a.pauses, [at(600)])
     }
 
-    @Test func manualPauseIsPreservedAndDisabledDoesNothing() async {
+    func testManualPauseIsPreservedAndDisabledDoesNothing() async {
         let (c, a, _) = make()
         c.recordManualPause(at: at(100))
         await c.reconcile(now: at(100_000))
-        #expect(a.pauses.isEmpty); #expect(a.finalizes.isEmpty)
+        XCTAssertTrue(a.pauses.isEmpty); XCTAssertTrue(a.finalizes.isEmpty)
         let (d, b, _) = make(enabled: false)
         await d.reconcile(now: at(100_000))
-        #expect(b.pauses.isEmpty); #expect(b.finalizes.isEmpty)
+        XCTAssertTrue(b.pauses.isEmpty); XCTAssertTrue(b.finalizes.isEmpty)
     }
 
-    @Test func resumeFromAutoPauseBeforeDeadlineAccountsPausedTime() async {
+    func testResumeFromAutoPauseBeforeDeadlineAccountsPausedTime() async {
         let (c, a, _) = make()
         await c.reconcile(now: at(700))
-        #expect(c.recordResume(at: at(1000)))
-        #expect(c.session?.pausedAccumulated == 400)
+        XCTAssertTrue(c.recordResume(at: at(1000)))
+        XCTAssertEqual(c.session?.pausedAccumulated, 400)
         await c.reconcile(now: at(1500))
-        #expect(a.pauses.count == 1)
-        #expect(c.session?.activeDuration(endedAt: at(1500)) == 1100)
+        XCTAssertEqual(a.pauses.count, 1)
+        XCTAssertEqual(c.session?.activeDuration(endedAt: at(1500)), 1100)
     }
 
-    @Test func resumeRefusedAfterTerminalDeadline() async {
+    func testResumeRefusedAfterTerminalDeadline() async {
         let (c, _, _) = make()
         await c.reconcile(now: at(700))
-        #expect(!c.recordResume(at: at(600 + 1800)))
+        XCTAssertFalse(c.recordResume(at: at(600 + 1800)))
     }
 
-    @Test func activeDurationExcludesAutomaticPausedWindow() async {
+    func testActiveDurationExcludesAutomaticPausedWindow() async {
         let (c, _, _) = make()
         await c.reconcile(now: at(10_000))
-        #expect(c.session?.activeDuration(endedAt: at(2400)) == 600)
+        XCTAssertEqual(c.session?.activeDuration(endedAt: at(2400)), 600)
     }
 
-    @Test func detachClearsStore() async {
+    func testDetachClearsStore() async {
         let (c, _, store) = make()
         c.detachTerminalSession()
-        #expect(c.session == nil); #expect(store.stored == nil)
+        XCTAssertNil(c.session); XCTAssertNil(store.stored)
     }
 }

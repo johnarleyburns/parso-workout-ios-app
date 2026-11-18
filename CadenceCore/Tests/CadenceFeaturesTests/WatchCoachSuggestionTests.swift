@@ -1,7 +1,6 @@
 import XCTest
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 private final class MemoryCoachStore: WatchCoachSuggestionStoring {
     struct Failure: Error {}

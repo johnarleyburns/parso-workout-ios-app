@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -121,4 +120,3 @@ private extension Weekday {
         .monday, .tuesday, .wednesday, .thursday, .friday, .saturday, .sunday
     ]
 }
-#endif

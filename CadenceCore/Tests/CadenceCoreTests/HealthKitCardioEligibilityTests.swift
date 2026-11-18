@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -98,4 +97,3 @@ final class HealthKitCardioIngestPolicyTests: XCTestCase {
         XCTAssertEqual(try WorkoutRepository.ingest([sparse], in: ctx), 1)
     }
 }
-#endif

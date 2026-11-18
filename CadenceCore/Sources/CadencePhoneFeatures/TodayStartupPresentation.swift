@@ -50,13 +50,7 @@ public enum TodayStartupPresentation {
         }
         let reps = style == .powerlifting ? 5 : 8
         return TodaySuggestedPlanPayload(EditablePlan(
-            title: {
-                #if os(Linux)
-                "Starter strength workout"
-                #else
-                String(localized: "Starter strength workout", bundle: FeatureLocalization.bundle)
-                #endif
-            }(),
+            title: String(localized: "Starter strength workout", bundle: FeatureLocalization.bundle),
             warmupMinutes: warmupMinutes,
             cooldownMinutes: cooldownMinutes,
             exercises: names.map {

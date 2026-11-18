@@ -1,10 +1,8 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
-import CadencePhoneFeatures
 
 /// The Watch replays the phone's custom exercises on every launch. These pin
 /// that an unchanged list is recognised and costs no writes.
@@ -162,4 +160,3 @@ final class WatchHealthAuthorizationGateTests: XCTestCase {
                                        dismissedThisLaunch: false, flowStarted: false))
     }
 }
-#endif

@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceFeatures
@@ -73,4 +72,3 @@ final class WatchPerformerIdentityTests: XCTestCase {
         XCTAssertEqual(m.currentPerformerRemoteID, "owner")
     }
 }
-#endif

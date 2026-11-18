@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import Foundation
 import SwiftData
 
@@ -70,4 +69,3 @@ public enum CatalogWarmup {
         _ = VolumeCredit.direct
     }
 }
-#endif

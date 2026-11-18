@@ -33,41 +33,11 @@ public final class WatchHRProvider {
 
     private func zoneLabel(for zone: Int) -> String {
         switch zone {
-        case 1: return {
-            #if os(Linux)
-            "Recovery"
-            #else
-            String(localized: "Recovery", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case 2: return {
-            #if os(Linux)
-            "Endurance"
-            #else
-            String(localized: "Endurance", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case 3: return {
-            #if os(Linux)
-            "Tempo"
-            #else
-            String(localized: "Tempo", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case 4: return {
-            #if os(Linux)
-            "Threshold"
-            #else
-            String(localized: "Threshold", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
-        case 5: return {
-            #if os(Linux)
-            "Max"
-            #else
-            String(localized: "Max", bundle: FeatureLocalization.bundle)
-            #endif
-        }()
+        case 1: return String(localized: "Recovery", bundle: FeatureLocalization.bundle)
+        case 2: return String(localized: "Endurance", bundle: FeatureLocalization.bundle)
+        case 3: return String(localized: "Tempo", bundle: FeatureLocalization.bundle)
+        case 4: return String(localized: "Threshold", bundle: FeatureLocalization.bundle)
+        case 5: return String(localized: "Max", bundle: FeatureLocalization.bundle)
         default: return "--"
         }
     }

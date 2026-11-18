@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 import CadencePhoneFeatures
@@ -194,4 +193,3 @@ final class WatchCompletionBoundTests: XCTestCase {
         XCTAssertLessThanOrEqual(outbox.state!.seenKeys.count, outbox.unacknowledgedCount)
     }
 }
-#endif

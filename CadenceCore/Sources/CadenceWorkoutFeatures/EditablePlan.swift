@@ -112,19 +112,7 @@ public struct EditablePlan: Hashable, Identifiable, Sendable {
             let id = performer.performerID.flatMap(UUID.init(uuidString:))
             return EditablePerformerPlan(
                 performerID: id,
-                name: id == nil ? {
-                    #if os(Linux)
-                    "Me"
-                    #else
-                    String(localized: "Me", bundle: FeatureLocalization.bundle)
-                    #endif
-                }() : (names[performer.performerID ?? ""] ?? {
-                    #if os(Linux)
-                    "Partner"
-                    #else
-                    String(localized: "Partner", bundle: FeatureLocalization.bundle)
-                    #endif
-                }()),
+                name: id == nil ? String(localized: "Me", bundle: FeatureLocalization.bundle) : (names[performer.performerID ?? ""] ?? String(localized: "Partner", bundle: FeatureLocalization.bundle)),
                 sets: prescription.sets.map { EditableSet(targetReps: $0.targetReps,
                                                           targetWeight: $0.targetWeightKg,
                                                           loadMode: EditableLoadMode(rawValue: $0.targetLoadMode ?? "straight") ?? .straight,
@@ -268,13 +256,7 @@ public struct EditablePlan: Hashable, Identifiable, Sendable {
                             targetWeight: ex.loadKg
                         )
                     },
-                    notes: ex.rir.map { rir in
-                        #if os(Linux)
-                        "Target ≤\(rir) RIR"
-                        #else
-                        String(localized: "Target ≤\(rir) RIR", bundle: FeatureLocalization.bundle)
-                        #endif
-                    } ?? ""
+                    notes: ex.rir.map { String(localized: "Target ≤\($0) RIR", bundle: FeatureLocalization.bundle) } ?? ""
                 )
             },
             partnerIDs: []
@@ -297,20 +279,8 @@ public struct EditablePlan: Hashable, Identifiable, Sendable {
         return from(coach: CoachSession(
             id: "strength.userAnyway",
             kind: .strength,
-            title: {
-                #if os(Linux)
-                "Strength session"
-                #else
-                String(localized: "Strength session", bundle: FeatureLocalization.bundle)
-                #endif
-            }(),
-            subtitle: {
-                #if os(Linux)
-                "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR"
-                #else
-                String(localized: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR", bundle: FeatureLocalization.bundle)
-                #endif
-            }(),
+            title: String(localized: "Strength session", bundle: FeatureLocalization.bundle),
+            subtitle: String(localized: "\(range.lowerBound)–\(range.upperBound) reps · ≤\(rir) RIR", bundle: FeatureLocalization.bundle),
             durationMinutes: 45,
             exercises: exercises,
             trainingLoadTags: ["strength"],

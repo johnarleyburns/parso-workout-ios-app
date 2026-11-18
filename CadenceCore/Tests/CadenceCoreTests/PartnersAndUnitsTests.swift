@@ -1,4 +1,3 @@
-#if canImport(SwiftData)
 import XCTest
 import SwiftData
 @testable import CadenceCore
@@ -293,4 +292,3 @@ final class PartnersAndUnitsTests: XCTestCase {
         XCTAssertNil(session.explicitPlannedSets(forPerformerID: UUID(), exerciseName: "Back Squat"))
     }
 }
-#endif

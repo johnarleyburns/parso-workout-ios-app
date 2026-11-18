@@ -14,9 +14,11 @@ struct WatchHeartRateCaptureTests {
     @Test func repeatedPollsOfSameSampleEndPersistOnce() {
         var r = WatchHeartRateSampleRecorder()
         let end = start.addingTimeInterval(30)
-        #expect(r.record(bpm: 120, sampleEnd: end, now: end, sessionStart: start))
+        let first = r.record(bpm: 120, sampleEnd: end, now: end, sessionStart: start)
+        #expect(first)
         for i in 1...5 {
-            #expect(!r.record(bpm: 120, sampleEnd: end, now: end.addingTimeInterval(Double(i)), sessionStart: start))
+            let repeated = r.record(bpm: 120, sampleEnd: end, now: end.addingTimeInterval(Double(i)), sessionStart: start)
+            #expect(!repeated)
         }
         #expect(r.samples.count == 1)
     }
@@ -24,8 +26,10 @@ struct WatchHeartRateCaptureTests {
     @Test func polledFirstThenCallbackDoesNotDuplicate() {
         var r = WatchHeartRateSampleRecorder()
         let end = start.addingTimeInterval(60)
-        #expect(r.record(bpm: 130, sampleEnd: end, now: end, sessionStart: start))
-        #expect(!r.record(bpm: 130, sampleEnd: end, now: end.addingTimeInterval(2), sessionStart: start))
+        let first = r.record(bpm: 130, sampleEnd: end, now: end, sessionStart: start)
+        #expect(first)
+        let duplicate = r.record(bpm: 130, sampleEnd: end, now: end.addingTimeInterval(2), sessionStart: start)
+        #expect(!duplicate)
         #expect(r.samples == [HRSamplePoint(t: 60, bpm: 130)])
     }
 
@@ -55,7 +59,8 @@ struct WatchHeartRateCaptureTests {
         var r = WatchHeartRateSampleRecorder(maxStored: 100)
         for i in 0..<3 { r.record(bpm: 120, sampleEnd: nil, now: start.addingTimeInterval(Double(i)), sessionStart: start) }
         #expect(r.samples.count == 1)
-        #expect(r.record(bpm: 150, sampleEnd: nil, now: start.addingTimeInterval(3), sessionStart: start))
+        let accepted = r.record(bpm: 150, sampleEnd: nil, now: start.addingTimeInterval(3), sessionStart: start)
+        #expect(accepted)
         for i in 0..<5_000 { r.record(bpm: Double(100 + i % 40), sampleEnd: nil, now: start.addingTimeInterval(10 + Double(i) * 6), sessionStart: start) }
         #expect(r.samples.count <= 100)
     }
@@ -74,7 +79,8 @@ struct WatchHeartRateCaptureTests {
         r.record(bpm: 120, sampleEnd: start, now: start, sessionStart: start)
         r.reset()
         #expect(r.samples.isEmpty)
-        #expect(r.record(bpm: 120, sampleEnd: start, now: start, sessionStart: start))
+        let accepted = r.record(bpm: 120, sampleEnd: start, now: start, sessionStart: start)
+        #expect(accepted)
     }
 
     @Test func malformedTransportRejected() {

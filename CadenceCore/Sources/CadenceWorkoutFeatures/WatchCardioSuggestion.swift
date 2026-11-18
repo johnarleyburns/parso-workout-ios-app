@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// Transport envelope carrying a phone-generated `CardioSuggestion` to the Watch.
 /// Cardio twin of `WatchCoachSuggestionEnvelope`.

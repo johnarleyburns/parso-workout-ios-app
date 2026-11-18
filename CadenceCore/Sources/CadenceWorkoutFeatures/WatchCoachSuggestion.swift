@@ -1,6 +1,5 @@
 import CadenceFeatures
 import Foundation
-import CadenceWorkoutFeatures
 
 /// Phone→Watch transport envelope around the exact shared `CoachSuggestionSnapshot`.
 /// Transport and persistence only: the Watch evaluates it with `CoachSuggestionService`.

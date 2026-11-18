@@ -1,8 +1,9 @@
 import CadenceFeatures
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// Durable idle-deadline record for a Watch-started/resumed **strength** workout. Persisted so a
 /// process relaunch or suspended app cannot forget the deadline. Timeout arithmetic is owned by
@@ -147,6 +148,7 @@ public struct WatchStrengthInactivityTracker: Sendable {
 /// Finalizes the local strength `WorkoutSession` at the stored deadline. Idempotent; never touches
 /// logged sets. A session with no sets is deleted, exactly like the explicit-Finish policy in
 /// `WatchStrengthFlowModel.finish()`.
+#if canImport(SwiftData)
 public enum WatchStrengthInactivityFinalizer {
     public enum Outcome: Equatable, Sendable { case finalized, discardedEmpty, alreadyEnded, missingSession }
 
@@ -171,3 +173,4 @@ public enum WatchStrengthInactivityFinalizer {
         return .finalized
     }
 }
+#endif

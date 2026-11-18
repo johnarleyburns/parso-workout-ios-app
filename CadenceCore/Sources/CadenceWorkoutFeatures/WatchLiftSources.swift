@@ -1,8 +1,9 @@
 import CadenceFeatures
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// Watch Lift → Strength source menu, Suggest review, and Previous templates.
 /// Pure presenters; Suggest evaluates only the shared Coach snapshot (see `WatchSuggestResolver`).
@@ -101,11 +102,6 @@ public struct WatchPreviousWorkout: Equatable, Sendable, Identifiable {
         return eligible.prefix(limit).compactMap(make)
     }
 
-    /// Bounded read: newest sessions by start date, then filtered. Never mutates.
-    public static func load(from context: ModelContext, scan: Int = 60) -> [WatchPreviousWorkout] {
-        list(from: (try? WorkoutRepository.recentSessions(context, limit: scan)) ?? [])
-    }
-
     static func make(_ s: WorkoutSession) -> WatchPreviousWorkout? {
         var names: [String] = []
         var repsByName: [String: [Int]] = [:]
@@ -135,3 +131,12 @@ public struct WatchPreviousWorkout: Equatable, Sendable, Identifiable {
             launch: WatchLiftLaunch(title: title, exerciseNames: names, repLadder: ladder, planPayload: payload))
     }
 }
+
+#if canImport(SwiftData)
+extension WatchLiftSources {
+    /// Bounded read: newest sessions by start date, then filtered. Never mutates.
+    public static func load(from context: ModelContext, scan: Int = 60) -> [WatchPreviousWorkout] {
+        list(from: (try? WorkoutRepository.recentSessions(context, limit: scan)) ?? [])
+    }
+}
+#endif

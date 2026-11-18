@@ -2,6 +2,11 @@ import CadenceFeatures
 import Foundation
 import CadenceCore
 
+/// Why a strength session ended; persisted as `WorkoutSession.endReasonRaw`.
+public enum StrengthEndReason: String, Sendable, Equatable {
+    case user, inactivity
+}
+
 /// Transport keys for the additive, versioned strength completion metadata (v2).
 public enum StrengthCompletionKey {
     public static let reason = "completion_reason"

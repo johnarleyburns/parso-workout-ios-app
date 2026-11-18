@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 /// Identity of one Watch-started strength workout's completion HR transfer.
 /// Independent of any phone-launch identity: the Watch mints it itself.

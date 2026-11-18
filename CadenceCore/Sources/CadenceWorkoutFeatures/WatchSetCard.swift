@@ -1,7 +1,6 @@
 import CadenceFeatures
 import Foundation
 import CadenceCore
-import CadenceWorkoutFeatures
 
 // Watch redesign (plans/watch-redesign/2026-09-30/DESIGN.md §3/§5 S1–S5): the Set Card — two big
 // pre-filled numbers, progress dots, one button. Pure state so the watch view only maps it.
@@ -81,20 +80,44 @@ public enum WatchSetCardBuilder {
             : abs(currentWeightKg - prefillWeightKg) > 0.001 || currentReps != prefillReps
         // The primary action always reads "Log set" (field report: a title that echoed
         // the entered values or flagged the last set made the button feel unstable).
-        let logTitle = String(localized: "Log set", bundle: FeatureLocalization.bundle)
+        let logTitle = {
+            #if os(Linux)
+            "Log set"
+            #else
+            String(localized: "Log set", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         let last = lastTime.map { last -> String in
             let base = isBodyweightOnly ? "BW × \(last.reps)"
                 : Format.previousShort(last.weightKg, reps: last.reps, unit: unit)
             if let rpe = last.rpe {
-                return String(localized: "Last time \(base) · RPE \(Int(rpe.rounded()))", bundle: FeatureLocalization.bundle)
+                return {
+                    #if os(Linux)
+                    "Last time \(base) · RPE \(Int(rpe.rounded()))"
+                    #else
+                    String(localized: "Last time \(base) · RPE \(Int(rpe.rounded()))", bundle: FeatureLocalization.bundle)
+                    #endif
+                }()
             }
-            return String(localized: "Last time \(base)", bundle: FeatureLocalization.bundle)
+            return {
+                #if os(Linux)
+                "Last time \(base)"
+                #else
+                String(localized: "Last time \(base)", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
         }
         let planned = plannedWorkingSets.indices.contains(completedWorkingSets)
             ? plannedWorkingSets[completedWorkingSets] : nil
         let lifterText: String?
         if let lifter {
-            lifterText = nextLifter.map { String(localized: "\(lifter) · then \($0)", bundle: FeatureLocalization.bundle) } ?? lifter
+            lifterText = nextLifter.map { next in
+                #if os(Linux)
+                "\(lifter) · then \(next)"
+                #else
+                String(localized: "\(lifter) · then \(next)", bundle: FeatureLocalization.bundle)
+                #endif
+            } ?? lifter
         } else {
             lifterText = nil
         }
@@ -127,11 +150,23 @@ public enum WatchSetCardBuilder {
         let fromPlan = planned.targetWeightKg.map { abs($0 - prefillWeightKg) < 0.01 } ?? false
         if let percent = planned.oneRepMaxPercent, percent > 0, fromPlan {
             let value = Int((percent * (percent <= 1 ? 100 : 1)).rounded())
-            return WatchCoachLine(text: String(localized: "Coach: \(value)% of your estimated max", bundle: FeatureLocalization.bundle),
+            return WatchCoachLine(text: {
+                #if os(Linux)
+                "Coach: \(value)% of your estimated max"
+                #else
+                String(localized: "Coach: \(value)% of your estimated max", bundle: FeatureLocalization.bundle)
+                #endif
+            }(),
                                   citationIDs: ["oneRMEstimation"])
         }
         if let rpe = planned.targetRPE, rpe > 0 {
-            return WatchCoachLine(text: String(localized: "Coach: aim for RPE \(Int(rpe.rounded()))", bundle: FeatureLocalization.bundle),
+            return WatchCoachLine(text: {
+                #if os(Linux)
+                "Coach: aim for RPE \(Int(rpe.rounded()))"
+                #else
+                String(localized: "Coach: aim for RPE \(Int(rpe.rounded()))", bundle: FeatureLocalization.bundle)
+                #endif
+            }(),
                                   citationIDs: ["rpeAutoregulation"])
         }
         guard fromPlan, let target = planned.targetWeightKg, let last = lastTime, last.weightKg > 0 else { return nil }
@@ -140,7 +175,13 @@ public enum WatchSetCardBuilder {
         let display = WorkoutMath.display(abs(delta), in: unit)
         let amount = Format.weightValue(WorkoutMath.canonical(display, from: unit), unit: unit, decimals: 1)
         let signed = delta > 0 ? "+\(amount)" : "−\(amount)"
-        return WatchCoachLine(text: String(localized: "Planned · \(signed) \(unit.abbreviation) vs last time", bundle: FeatureLocalization.bundle),
+        return WatchCoachLine(text: {
+            #if os(Linux)
+            "Planned · \(signed) \(unit.abbreviation) vs last time"
+            #else
+            String(localized: "Planned · \(signed) \(unit.abbreviation) vs last time", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
                               citationIDs: [])
     }
 }

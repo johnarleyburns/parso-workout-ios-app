@@ -22,9 +22,27 @@ public enum CelebrationStyle: String, Codable, CaseIterable, Sendable, Identifia
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .full: return String(localized: "Full", bundle: FeatureLocalization.bundle)
-        case .quiet: return String(localized: "Quiet (haptics only)", bundle: FeatureLocalization.bundle)
-        case .off: return String(localized: "Off", bundle: FeatureLocalization.bundle)
+        case .full: return {
+            #if os(Linux)
+            "Full"
+            #else
+            String(localized: "Full", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .quiet: return {
+            #if os(Linux)
+            "Quiet (haptics only)"
+            #else
+            String(localized: "Quiet (haptics only)", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+        case .off: return {
+            #if os(Linux)
+            "Off"
+            #else
+            String(localized: "Off", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
         }
     }
 }

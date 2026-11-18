@@ -1,8 +1,9 @@
 import CadenceFeatures
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 import CadenceCore
-import CadenceWorkoutFeatures
 
 extension WatchSync.Key {
     /// Property-list rows of `WatchSync.CardioHistoryItem`.
@@ -208,6 +209,7 @@ public enum WatchCardioHistoryProjection {
     }
 }
 
+#if canImport(SwiftData)
 /// Atomic Watch persistence of the phone-mirrored cardio projection.
 public enum WatchCardioHistoryStore {
     /// Replaces the mirrored rows with `snapshot`. Saves once; on a failed save the context is
@@ -247,3 +249,4 @@ public enum WatchCardioHistoryStore {
             || r.importLabel != i.importLabel || r.updatedAt != i.updatedAt || r.summaryData != i.summaryData
     }
 }
+#endif

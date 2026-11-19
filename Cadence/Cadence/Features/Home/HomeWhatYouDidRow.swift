@@ -17,18 +17,22 @@ struct HomeWeekWorkoutRow: View {
         /// Trailing status badge — `COMPLETED`. Nil in This Week, which needs no
         /// badge because everything in it is completed by construction.
         let badge: String?
+        /// "Mon · 6:14 PM" / "Nov 3 · 6:14 PM" -- Workouts History only, where
+        /// rows aren't already grouped by day the way This Week/Today are.
+        let timestamp: String?
         let identifier: String
     }
 
     let content: Content
     let onOpen: () -> Void
 
-    init(entry: TodayActivityPresenter.Entry, onOpen: @escaping () -> Void) {
+    init(entry: TodayActivityPresenter.Entry, showsTimestamp: Bool = false, onOpen: @escaping () -> Void) {
         self.content = Content(isStrength: entry.kind == .strength,
                                title: entry.title,
                                detail: entry.detail,
                                value: entry.value,
                                badge: nil,
+                               timestamp: showsTimestamp ? HistoryEntryTimestamp.format(entry.occurredAt) : nil,
                                identifier: "home.week.workout.\(entry.id)")
         self.onOpen = onOpen
     }
@@ -39,6 +43,7 @@ struct HomeWeekWorkoutRow: View {
                                detail: row.subtitle,
                                value: row.value,
                                badge: row.status.badgeText,
+                               timestamp: nil,
                                identifier: "home.today.row.\(row.sourceKey)")
         self.onOpen = onOpen
     }
@@ -54,6 +59,12 @@ struct HomeWeekWorkoutRow: View {
                     .font(.subheadline.weight(.medium))
                 if let detail = content.detail {
                     Text(detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+                if let timestamp = content.timestamp {
+                    Text(timestamp)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

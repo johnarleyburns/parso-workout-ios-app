@@ -22,7 +22,7 @@ enum ManualCardioActivity: String, CaseIterable, Identifiable {
     case swim = "Swim"
     case elliptical = "Elliptical"
     case stairs = "Stairs"
-    case other = "Other"
+    case other = "Custom"
 
     var id: String { rawValue }
 
@@ -49,7 +49,7 @@ enum ManualCardioActivity: String, CaseIterable, Identifiable {
         case .elliptical: return .elliptical
         case .stairs: return .stairs
         case .other: return .other(otherName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                                   ? "Other"
+                                   ? "Custom"
                                    : otherName.trimmingCharacters(in: .whitespacesAndNewlines))
         }
     }

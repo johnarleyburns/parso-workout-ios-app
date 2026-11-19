@@ -7,7 +7,7 @@ public enum HomeStrengthStartChoice: String, CaseIterable, Identifiable, Sendabl
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .quickStart: "Quick Start"
+        case .quickStart: "Custom"
         case .suggested: "Personalized"
         case .previous: "Previous"
         }
@@ -59,8 +59,8 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
         switch self {
         case .strength(.suggested): "Personalized Lifts"
         case .strength(.previous): "Repeat Lifts"
-        case .strength(.quickStart): "Quick Start"
-        case .cardio(.other): "Cardio"
+        case .strength(.quickStart): "Custom"
+        case .cardio(.other): "Custom"
         case .cardio(let type): type.displayName
         case .suggestedCardio: "Personalized Cardio"
         }

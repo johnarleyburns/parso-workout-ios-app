@@ -110,6 +110,18 @@ struct HomeDashboardPresenterTests {
         #expect(dashboard.volume.first { $0.group == .abdominals }?.sets == 3)
     }
 
+    @Test func strengthAndCardioDisplayTextUseSlashNotation() throws {
+        let now = Date(timeIntervalSince1970: 1_750_000_000)
+        let dashboard = try dashboard(chestSets: 3, now: now)
+        #expect(!dashboard.strength.displayText.contains(" of "))
+        #expect(dashboard.strength.displayText.hasSuffix("sets"))
+        #expect(dashboard.strength.displayText.contains("/"))
+        #expect(!dashboard.cardio.displayText.contains(" of "))
+        #expect(!dashboard.cardio.displayText.contains("credit"))
+        #expect(dashboard.cardio.displayText.hasSuffix("min"))
+        #expect(dashboard.cardio.displayText.contains("/"))
+    }
+
     @Test func weeklyVolumeUsesTheExplicitCurrentWeekFacts() {
         let volume = HomeDashboardPresenter.weeklyVolume(
             engine: [.chest: 4],

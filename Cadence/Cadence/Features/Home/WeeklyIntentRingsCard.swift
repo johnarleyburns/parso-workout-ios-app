@@ -8,7 +8,7 @@ import CadencePhoneFeatures
 struct WeeklyIntentRingsCard: View {
     let display: WeeklyIntentDisplay
     @Binding var tabSelection: RootTabView.Tab
-    @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 104
+    @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 148
 
     var body: some View {
         VStack(spacing: 16) {

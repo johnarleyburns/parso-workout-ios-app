@@ -90,6 +90,8 @@ struct WorkoutPlanPartnerSection: View {
                 Image(systemName: "xmark.circle.fill")
                     .imageScale(.small)
                     .foregroundStyle(.secondary)
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("editor.removePartner.\(person.name)")

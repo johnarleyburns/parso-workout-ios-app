@@ -7,17 +7,7 @@ import CadenceWorkoutFeatures
 extension HomeWeekDashboardSection {
     var cardioOverview: some View {
         VStack(alignment: .leading, spacing: 20) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(CardioMinutesDisplay.moderateEquivalent(
-                    dashboard.cardioDetail.moderateEquivalentMinutes,
-                    target: dashboard.cardioDetail.targetMinutes))
-                    .font(.title2.weight(.bold)).monospacedDigit()
-                    .foregroundStyle(cardioTint)
-                    .accessibilityIdentifier("home.week.cardio.progressTotal")
-                Text("Moderate-equivalent minutes")
-                    .font(.subheadline).foregroundStyle(.secondary)
-                weeklyCardioProgress
-            }
+            guidelineCreditRow
             if dashboard.cardioDetail.zoneMinutes.values.contains(where: { $0 > 0 }) {
                 trainingZoneSummary
             }
@@ -28,48 +18,39 @@ extension HomeWeekDashboardSection {
                 }
                 .padding(.top, 12)
             } label: {
-                Text("Details").font(.subheadline.weight(.semibold))
+                Text("Details").font(.subheadline)
                     .frame(minHeight: 44)
             }
             .accessibilityIdentifier("home.week.cardio.details")
         }
+        .font(.subheadline)
     }
 
-    private var weeklyCardioProgress: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ProgressView(value: dashboard.cardio.normalized)
-                .tint(cardioTint)
-                .overlay {
-                    GeometryReader { geometry in
-                        Rectangle().fill(.primary)
-                            .frame(width: 2, height: 10)
-                            .position(x: geometry.size.width * minimumProgress,
-                                      y: geometry.size.height / 2)
-                    }
-                    .accessibilityHidden(true)
-                }
-                .accessibilityLabel("Weekly cardio progress")
-                .accessibilityValue(CardioMinutesDisplay.moderateEquivalent(
-                    dashboard.cardioDetail.moderateEquivalentMinutes,
-                    target: dashboard.cardioDetail.targetMinutes))
-            Text("Minimum \(Int(WeeklyCardioProgress.minimum)) · Goal \(Int(dashboard.cardioDetail.targetMinutes)) min")
-                .font(.subheadline).foregroundStyle(.secondary)
+    /// Replaces the old big number + progress bar + "Minimum/Goal" caption
+    /// with one plain two-sided row, matching Muscle coverage's single-size
+    /// text pattern instead of standing out as an oversized stat.
+    private var guidelineCreditRow: some View {
+        HStack {
+            Text("Guideline credit")
+            Spacer()
+            Text(CardioMinutesDisplay.guidelineCreditFraction(
+                dashboard.cardioDetail.moderateEquivalentMinutes,
+                target: dashboard.cardioDetail.targetMinutes))
+                .monospacedDigit()
+                .foregroundStyle(cardioTint)
         }
-    }
-
-    private var minimumProgress: Double {
-        min(1, max(0, WeeklyCardioProgress.minimum / max(1, dashboard.cardioDetail.targetMinutes)))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("home.week.cardio.progressTotal")
     }
 
     private var trainingZoneSummary: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Training zones").font(.subheadline.weight(.semibold))
+            Text("Training zones")
             Chart {
                 ForEach(TrainingZone.allCases, id: \.self) { zone in
                     let minutes = dashboard.cardioDetail.zoneMinutes[zone] ?? 0
                     if minutes > 0 {
-                        SectorMark(angle: .value("Minutes", minutes),
-                                   innerRadius: .ratio(0.68), angularInset: 2)
+                        BarMark(x: .value("Zone", zone.displayName), y: .value("Minutes", minutes))
                             .foregroundStyle(zoneColor(zone))
                             .accessibilityLabel(zone.displayName)
                             .accessibilityValue(CardioMinutesDisplay.zone(minutes))
@@ -88,7 +69,7 @@ extension HomeWeekDashboardSection {
                             Circle().fill(zoneColor(zone)).frame(width: 8, height: 8)
                                 .accessibilityHidden(true)
                             Text("\(zone.displayName) · \(CardioMinutesDisplay.zone(minutes))")
-                                .font(.subheadline).monospacedDigit()
+                                .monospacedDigit()
                         }
                         .accessibilityElement(children: .combine)
                     }
@@ -105,44 +86,43 @@ extension HomeWeekDashboardSection {
     private var cardioMinutes: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Cardio Minutes")
-                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(cardioTint)
                 .accessibilityIdentifier("home.week.cardioHeading")
             HStack {
-                Text("Actual exercise").font(.caption)
+                Text("Actual exercise")
                 Spacer()
                 Text(CardioMinutesDisplay.logged(dashboard.cardioDetail.loggedMinutes))
-                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .monospacedDigit()
                     .foregroundStyle(.secondary)
             }
             ForEach(dashboard.cardioDetail.lines, id: \.label) { line in
                 HStack {
-                    Text(line.label).font(.caption)
+                    Text(line.label)
                     Spacer()
-                    Text(line.minutes).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
-                    Text("→").font(.caption2).foregroundStyle(.tertiary)
-                    Text(line.credit).font(.caption.monospacedDigit().weight(.semibold))
+                    Text(line.minutes).monospacedDigit().foregroundStyle(.secondary)
+                    Text("→").foregroundStyle(.tertiary)
+                    Text(line.credit).monospacedDigit()
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityElement(children: .combine)
                 .accessibilityIdentifier("home.week.cardio.\(line.label.lowercased())")
             }
             HStack {
-                Text("Moderate-equivalent").font(.caption.weight(.semibold))
+                Text("Moderate-equivalent")
                 Spacer()
                 Text(CardioMinutesDisplay.moderateEquivalent(
                     dashboard.cardioDetail.moderateEquivalentMinutes,
                     target: dashboard.cardioDetail.targetMinutes))
-                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .monospacedDigit()
                     .foregroundStyle(cardioTint)
             }
             .accessibilityElement(children: .combine)
             .accessibilityIdentifier("home.week.cardio.total")
             Text("Goal \(Int(WeeklyCardioProgress.target)) min moderate-equivalent; \(Int(WeeklyCardioProgress.minimum)) min is the guideline minimum.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .foregroundStyle(.secondary)
             if dashboard.cardioDetail.unclassifiedMinutes > 0 {
                 Text(CardioMinutesDisplay.unclassified(dashboard.cardioDetail.unclassifiedMinutes))
-                    .font(.caption2).foregroundStyle(.secondary)
+                    .foregroundStyle(.secondary)
             }
             CoachSourcesLink(
                 citationIds: dashboard.cardioDetail.citationIDs,

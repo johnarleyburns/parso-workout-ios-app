@@ -24,6 +24,17 @@ public enum CardioMinutesDisplay {
         }()
     }
 
+    /// "63/300 min" -- the Home card's "Guideline credit" row.
+    public static func guidelineCreditFraction(_ minutes: Double, target: Double) -> String {
+        {
+            #if os(Linux)
+            "\(rounded(minutes))/\(rounded(target)) min"
+            #else
+            String(localized: "\(rounded(minutes))/\(rounded(target)) min", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+    }
+
     public static func unclassified(_ minutes: Double) -> String {
         {
             #if os(Linux)

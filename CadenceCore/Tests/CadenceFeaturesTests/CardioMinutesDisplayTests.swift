@@ -14,6 +14,12 @@ struct CardioMinutesDisplayTests {
         #expect(CardioMinutesDisplay.moderateEquivalent(157.6, target: 150) == "158 of 150 min")
     }
 
+    @Test func guidelineCreditFractionUsesSlashNotation() {
+        #expect(CardioMinutesDisplay.guidelineCreditFraction(0, target: 150) == "0/150 min")
+        #expect(CardioMinutesDisplay.guidelineCreditFraction(157.6, target: 150) == "158/150 min")
+        #expect(!CardioMinutesDisplay.guidelineCreditFraction(63, target: 300).contains(" of "))
+    }
+
     @Test func unclassifiedAndZoneValuesNeverExposeSourceExpressions() {
         let values = [
             CardioMinutesDisplay.unclassified(4.2),

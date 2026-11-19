@@ -98,31 +98,57 @@ struct HistoryView: View {
         } message: { _ in Text("This removes the cardio workout. You can restore it from the Archive button.") }
     }
 
+    /// A real `List` (not a `ScrollView`/`VStack`) so `.swipeActions` works --
+    /// visually restyled to the same glass card look the plain `VStack` had.
     private var workoutTimeline: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: LayoutMetrics.cardHeadingSpacing) {
-                HStack {
-                    Text("My Workouts").font(.headline)
-                    Spacer()
+        List {
+            Text("My Workouts").font(.headline)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+            if timelineEntries.isEmpty {
+                Text("No workouts yet — start one from Today.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            } else {
+                ForEach(timelineEntries) { entry in
+                    HomeWeekWorkoutRow(entry: entry, showsTimestamp: true) { open(entry) }
+                        .contextMenu { timelineActions(for: entry) }
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) { delete(entry) } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                        .listRowSeparator(.hidden)
                 }
-                if timelineEntries.isEmpty {
-                    Text("No workouts yet — start one from Today.")
-                        .font(.subheadline).foregroundStyle(.secondary)
-                } else {
-                    ForEach(timelineEntries) { entry in
-                        HomeWeekWorkoutRow(entry: entry) { open(entry) }
-                            .contextMenu { timelineActions(for: entry) }
-                    }
-                    showMoreButton
-                }
+                showMoreButton
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
-            .padding(LayoutMetrics.cardPadding)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
-            .padding(.horizontal)
-            .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .environment(\.defaultMinListRowHeight, 0)
+        .padding(LayoutMetrics.cardPadding)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceGlassCard(in: CadenceCardShape.rounded, tint: .blue)
+        .padding(.horizontal)
+        .padding(.bottom, CadenceTabBarClearance.scrollContentBottom)
         .accessibilityIdentifier("history.myWorkouts")
+    }
+
+    private func delete(_ entry: TodayActivityPresenter.Entry) {
+        switch entry.kind {
+        case .strength:
+            if let session = sessions.first(where: { $0.id == entry.sourceId }) { sessionToDelete = session }
+        case .cardio:
+            if let workout = cardio.first(where: { $0.id == entry.sourceId }) { cardioToDelete = workout }
+        }
     }
 
     private var legacyDeletedList: some View {

@@ -20,7 +20,7 @@ struct CardioTypePickerView: View {
             }
             NavigationLink {
                 OtherCardioEntryView(onStart: onOther)
-            } label: { Label("Other", systemImage: "figure.mixed.cardio") }
+            } label: { Label(WorkoutType.other.displayName, systemImage: WorkoutType.other.symbol) }
         }
         .navigationTitle("Cardio")
     }

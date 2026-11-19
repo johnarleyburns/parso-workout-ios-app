@@ -4,6 +4,7 @@ import Testing
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
+@Suite(.serialized)
 final class WatchSingleExerciseSuggestionContextStoreTests {
     private var suite = ""
     private nonisolated(unsafe) var defaults: UserDefaults!

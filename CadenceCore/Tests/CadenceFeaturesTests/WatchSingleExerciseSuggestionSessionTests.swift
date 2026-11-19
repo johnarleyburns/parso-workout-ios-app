@@ -136,12 +136,17 @@ import CadencePhoneFeatures
     /// A slow/looping generator (large candidate pools on Watch hardware) must
     /// not leave the session stuck in `.calculating` ("Finding an exercise...")
     /// forever -- it should surface a terminal `.failed` state once the bounded
-    /// timeout elapses.
+    /// timeout elapses. The timeout's wait is injected to resolve instantly
+    /// instead of racing a real `Task.sleep` against the fake generator's real
+    /// `Thread.sleep`: both draw on Swift Testing's shared cooperative thread
+    /// pool, and with hundreds of suites running concurrently in the full CI
+    /// suite, no fixed real-time margin between them is safe from that
+    /// contention (confirmed: widening the margin from 6x to 20x still flaked).
     @Test func timesOutInsteadOfHangingForever() async {
         let session = WatchSingleExerciseSuggestionSession(generator: { _, _ in
-            Thread.sleep(forTimeInterval: 0.3)
+            Thread.sleep(forTimeInterval: 0.2)
             return nil
-        }, timeout: 0.05)
+        }, timeout: 0.05, timeoutSleep: { _ in })
         session.suggest(input: input())
         #expect(session.state == .calculating)
         await session.pendingTask?.value

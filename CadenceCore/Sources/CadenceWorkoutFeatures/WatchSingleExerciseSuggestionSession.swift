@@ -36,13 +36,24 @@ public final class WatchSingleExerciseSuggestionSession {
     /// ("Finding an exercise...") forever -- large candidate pools can be slow
     /// on Watch hardware.
     private let timeout: TimeInterval
+    /// The real timeout wait, injectable only for tests. A test that wants a
+    /// deterministic, CI-contention-proof race can supply an instantly-returning
+    /// closure instead of relying on a real `Task.sleep` winning a real-time race
+    /// against a fake generator's `Thread.sleep` -- both draw on the same shared
+    /// cooperative thread pool, and no fixed margin between them is safe when
+    /// hundreds of other suites are concurrently contending for that pool.
+    private let timeoutSleep: @Sendable (TimeInterval) async -> Void
     /// The in-flight calculation; exposed so tests can await completion.
     private(set) var pendingTask: Task<Void, Never>?
 
     public init(generator: @escaping Generator = WatchSingleExerciseSuggestionSession.defaultGenerator,
-                timeout: TimeInterval = 8) {
+                timeout: TimeInterval = 8,
+                timeoutSleep: @escaping @Sendable (TimeInterval) async -> Void = { seconds in
+                    try? await Task.sleep(for: .seconds(seconds))
+                }) {
         self.generator = generator
         self.timeout = timeout
+        self.timeoutSleep = timeoutSleep
     }
 
     private struct SuggestionTimedOut: Error, LocalizedError {
@@ -53,12 +64,13 @@ public final class WatchSingleExerciseSuggestionSession {
     /// cancelled; a synchronous, non-cooperatively-cancellable `generator` may
     /// keep running in the background briefly, but the caller moves on.
     private static func withTimeout<T: Sendable>(
-        seconds: TimeInterval, operation: @escaping @Sendable () async -> T
+        seconds: TimeInterval, sleep: @escaping @Sendable (TimeInterval) async -> Void,
+        operation: @escaping @Sendable () async -> T
     ) async -> Result<T, Error> {
         await withTaskGroup(of: Result<T, Error>.self) { group in
             group.addTask { .success(await operation()) }
             group.addTask {
-                try? await Task.sleep(for: .seconds(seconds))
+                await sleep(seconds)
                 return .failure(SuggestionTimedOut())
             }
             let result = await group.next() ?? .failure(SuggestionTimedOut())
@@ -101,8 +113,9 @@ public final class WatchSingleExerciseSuggestionSession {
         let excluded = transientExcluded
         let generator = generator
         let timeout = timeout
+        let timeoutSleep = timeoutSleep
         pendingTask = Task { [weak self] in
-            let raced = await Self.withTimeout(seconds: timeout) {
+            let raced = await Self.withTimeout(seconds: timeout, sleep: timeoutSleep) {
                 await Task.detached {
                     Result { try generator(input, excluded) }
                 }.value

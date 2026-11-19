@@ -4,20 +4,7 @@ import Testing
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-@Suite(.serialized)
-final class WatchSingleExerciseSuggestionContextStoreTests {
-    private var suite = ""
-    private nonisolated(unsafe) var defaults: UserDefaults!
-
-    init() {
-        suite = "suggestion-store-\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suite)
-    }
-
-    deinit {
-        defaults.removePersistentDomain(forName: suite)
-    }
-
+struct WatchSingleExerciseSuggestionContextStoreTests {
     private func make(at seconds: TimeInterval, sets: Int = 3, version: Int = 1) -> WatchSingleExerciseSuggestionContext {
         let when = Date(timeIntervalSince1970: seconds)
         let schedule = WatchSingleExerciseSuggestionContext.Schedule(CoachSchedulePreferences(
@@ -37,13 +24,14 @@ final class WatchSingleExerciseSuggestionContextStoreTests {
     }
 
     @Test func roundTripAndPersistsAcrossReload() throws {
-        #expect(WatchSingleExerciseSuggestionContextStore(defaults: defaults).replaceIfNewer(make(at: 100)))
-        let reloaded = WatchSingleExerciseSuggestionContextStore(defaults: UserDefaults(suiteName: suite)!)
+        let backing = InMemoryWatchSingleExerciseSuggestionContextStore()
+        #expect(WatchSingleExerciseSuggestionContextStore(store: backing).replaceIfNewer(make(at: 100)))
+        let reloaded = WatchSingleExerciseSuggestionContextStore(store: backing)
         #expect(reloaded.load() == make(at: 100))
     }
 
     @Test func olderEqualAndFutureCannotReplace() {
-        let store = WatchSingleExerciseSuggestionContextStore(defaults: defaults)
+        let store = WatchSingleExerciseSuggestionContextStore(store: InMemoryWatchSingleExerciseSuggestionContextStore())
         #expect(store.replaceIfNewer(make(at: 200)))
         #expect(!store.replaceIfNewer(make(at: 100, sets: 4)))
         #expect(!store.replaceIfNewer(make(at: 200, sets: 4)))
@@ -53,7 +41,7 @@ final class WatchSingleExerciseSuggestionContextStoreTests {
     }
 
     @Test func corruptPayloadAfterValidKeepsRetainedContext() throws {
-        let store = WatchSingleExerciseSuggestionContextStore(defaults: defaults)
+        let store = WatchSingleExerciseSuggestionContextStore(store: InMemoryWatchSingleExerciseSuggestionContextStore())
         store.replaceIfNewer(make(at: 100))
         let key = WatchSync.Key.singleExerciseSuggestionContext
         let incoming = WatchSync.IncomingContext.from(
@@ -68,8 +56,9 @@ final class WatchSingleExerciseSuggestionContextStoreTests {
     }
 
     @Test func corruptStoredDataIsDiscarded() {
-        defaults.set(Data("junk".utf8), forKey: WatchSingleExerciseSuggestionContextStore.defaultsKey)
-        let store = WatchSingleExerciseSuggestionContextStore(defaults: defaults)
+        let backing = InMemoryWatchSingleExerciseSuggestionContextStore()
+        backing.saveData(Data("junk".utf8))
+        let store = WatchSingleExerciseSuggestionContextStore(store: backing)
         #expect(store.load() == nil)
         #expect(store.replaceIfNewer(make(at: 1)))
     }

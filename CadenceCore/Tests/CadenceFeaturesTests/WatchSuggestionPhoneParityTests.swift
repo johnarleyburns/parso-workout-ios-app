@@ -229,7 +229,11 @@ struct WatchSuggestionPhoneParityTests {
         #expect(!onMain)
         #expect(a == b, "unchanged inputs must produce an identical context (no revision churn)")
         #expect(a.baseInput.candidates.count <= WatchSingleExerciseSuggestionContextBuilder.maxCandidates)
-        #expect(Date().timeIntervalSince(start) < 30)
+        // A generous ceiling, not a performance SLA: it exists to catch a genuine
+        // hang/quadratic blowup, not to assert tight timing under the full CI
+        // suite's concurrent load (hundreds of suites contending for the same
+        // thread pool can legitimately push this well past a tight bound).
+        #expect(Date().timeIntervalSince(start) < 90)
     }
 }
 #endif

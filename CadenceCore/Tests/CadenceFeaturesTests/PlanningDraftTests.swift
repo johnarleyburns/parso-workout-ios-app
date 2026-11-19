@@ -3,7 +3,7 @@ import Foundation
 import Testing
 import SwiftData
 import CadenceCore
-import CadencePhoneFeatures
+@testable import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 

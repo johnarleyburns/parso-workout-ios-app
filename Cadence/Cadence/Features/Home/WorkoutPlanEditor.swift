@@ -142,6 +142,7 @@ struct WorkoutPlanEditor: View {
                             exercise: exercise,
                             unit: settings.unit,
                             exerciseInfo: exerciseIndex[exercise.name.lowercased()],
+                            onSwap: { exercisePickerIntent = .swap(exercise.id) },
                             onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
                             .workoutPlanCard()
                     }
@@ -168,6 +169,9 @@ struct WorkoutPlanEditor: View {
                                            uniquingKeysWith: { first, _ in first })
             }
             if !didResolvePartnerPlans {
+                if suggestedStrength != nil || plan.suggestedWorkoutStyle != nil {
+                    seedSuggestedOwnerDefaults()
+                }
                 resolvePartnerPlans()
                 didResolvePartnerPlans = true
             }

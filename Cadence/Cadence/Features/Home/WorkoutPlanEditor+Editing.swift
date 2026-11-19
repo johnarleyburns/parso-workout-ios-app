@@ -6,6 +6,21 @@ import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
 extension WorkoutPlanEditor {
+    /// A generated Personalized plan carries reps and set count but no loads
+    /// (the generator deliberately has no load model). Seed the missing loads
+    /// from the owner's own last working set so the preview never shows a wall
+    /// of "—" for lifts they have already trained. Explicit plan loads and
+    /// bodyweight movements are preserved.
+    func seedSuggestedOwnerDefaults() {
+        guard let historyIndex else { return }
+        for index in plan.exercises.indices {
+            let history = historyIndex.history(forExerciseNamed: plan.exercises[index].name,
+                                                performerID: nil, people: allPeople)
+            plan.exercises[index].sets = PartnerPlanResolver.suggestedOwnerSets(
+                plan.exercises[index].sets, history: history)
+        }
+    }
+
     /// Fills every partner's plan from *their* history for the owner's
     /// exercises. Runs on appear, roster changes, and after exercise changes.
     func resolvePartnerPlans() {

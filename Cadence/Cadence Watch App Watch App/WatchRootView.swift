@@ -30,7 +30,6 @@ struct WatchRootView: View {
     @State private var resumingSession: WorkoutSession?
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
-    @State private var showingCardio = false
     @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
     /// Bumped on every `returnToHome()` call so nested views with their own
     /// local navigation-gating state (e.g. `WatchSentWorkoutsSection`) can
@@ -159,9 +158,6 @@ struct WatchRootView: View {
             }
             .navigationDestination(item: $resumingSession) { session in WatchStrengthView(resuming: session) }
             .navigationDestination(isPresented: $startingQuickLift) { WatchStrengthView(title: "Strength") }
-            .navigationDestination(isPresented: $showingCardio) {
-                WatchCardioPickerView(types: cardioTypes, destination: { ct in AnyView(cardioSetupView(for: ct)) }, onSuggest: { startSuggestedCardio($0) })
-            }
             .alert("Discard this workout?", isPresented: $confirmDiscardResume) {
                 Button("Discard", role: .destructive) {
                     if let resume = resumableStrengthSession { discardResumable(resume) }
@@ -202,9 +198,12 @@ struct WatchRootView: View {
             }
         }
         .listStyle(.plain)
-        .modifier(WatchHomeStartNavigation(selection: $homeSelection,
-            showsModeButtons: resumableStrengthSession == nil,
-            cardioDestination: { AnyView(cardioSetupView(for: $0)) }))
+        .modifier(WatchHomeStartNavigation(
+            selection: $homeSelection,
+            cardioDestination: { AnyView(cardioSetupView(for: $0)) },
+            suggestedCardioDestination: {
+                AnyView(WatchCardioSuggestReviewView(onStart: { startSuggestedCardio($0) }))
+            }))
     }
 
     private var presentation: WatchTodayHomePresentation { WatchTodayHomePresentation(hero: hero) }

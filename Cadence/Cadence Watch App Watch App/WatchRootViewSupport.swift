@@ -14,13 +14,6 @@ extension WatchRootView {
         return type
     }
 
-    var cardioTypes: [CardioType] {
-        HomeWorkoutStartChoice.cardioChoices.compactMap { choice in
-            guard case .cardio(let type) = choice else { return nil }
-            return type.cardioType
-        }
-    }
-
     var sessionOwnership: WatchSessionOwnership.Verdict {
         watchManager.sessionOwnership(hasResumableStrength: resumableStrengthSession != nil)
     }

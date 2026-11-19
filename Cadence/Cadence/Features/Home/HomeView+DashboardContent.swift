@@ -14,8 +14,9 @@ extension HomeView {
             WeeklyIntentRingsCard(
                 display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
                 tabSelection: rootTabSelection)
+                .frame(maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .cadenceCard()
         if resumeSession != nil {
             todayHeroCard

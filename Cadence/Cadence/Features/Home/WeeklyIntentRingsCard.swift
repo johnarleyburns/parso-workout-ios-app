@@ -11,13 +11,18 @@ struct WeeklyIntentRingsCard: View {
     @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 148
 
     var body: some View {
-        VStack(spacing: 16) {
+        // The card owns the Today page's free vertical space: the gauge is
+        // centred in the area above the legends, and the Strength/Cardio
+        // labels stay pinned to the card's bottom edge.
+        VStack(spacing: 0) {
+            Spacer(minLength: 0)
             ZStack {
                 ring(display.strengthRing, cardio: false, diameter: ringDiameter, lineWidth: max(8, ringDiameter * 0.11))
                 ring(display.cardioRing, cardio: true, diameter: ringDiameter * 0.62, lineWidth: max(8, ringDiameter * 0.11))
             }
             .frame(width: ringDiameter, height: ringDiameter)
             .accessibilityHidden(true)
+            Spacer(minLength: 0)
             HStack(spacing: 16) {
                 legend(display.strengthRing, title: String(localized: "Strength"),
                        identifierPrefix: "strengthRing", cardio: false) { tabSelection = .strength }
@@ -25,6 +30,7 @@ struct WeeklyIntentRingsCard: View {
                        identifierPrefix: "cardioRing", cardio: true) { tabSelection = .cardio }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func ring(_ ring: WeeklyIntentRingDisplay, cardio: Bool, diameter: CGFloat, lineWidth: CGFloat) -> some View {

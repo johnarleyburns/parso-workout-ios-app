@@ -1,9 +1,44 @@
 import CadenceFeatures
 import Foundation
 
-/// Durable UserDefaults-JSON storage for the phone's suggestion context, so the
-/// Watch keeps it after relaunch with the iPhone unreachable. A corrupt or
-/// unsupported stored value is discarded; a failed write leaves the prior value.
+/// Storage backend for `WatchSingleExerciseSuggestionContextStore`, so tests can
+/// substitute an in-memory double instead of real `UserDefaults`/preferences-daemon
+/// IPC (which is slow and, run concurrently across many test instances, has been
+/// observed to exhaust Swift Testing's cooperative thread pool and hang).
+public protocol WatchSingleExerciseSuggestionContextStoring: AnyObject {
+    func loadData() -> Data?
+    func saveData(_ data: Data)
+    func deleteData()
+}
+
+public final class InMemoryWatchSingleExerciseSuggestionContextStore:
+    WatchSingleExerciseSuggestionContextStoring, @unchecked Sendable {
+    private var data: Data?
+    public init() {}
+    public func loadData() -> Data? { data }
+    public func saveData(_ data: Data) { self.data = data }
+    public func deleteData() { data = nil }
+}
+
+public final class UserDefaultsWatchSingleExerciseSuggestionContextStore:
+    WatchSingleExerciseSuggestionContextStoring, @unchecked Sendable {
+    private let defaults: UserDefaults
+    private let key: String
+
+    public init(defaults: UserDefaults = .standard,
+               key: String = WatchSingleExerciseSuggestionContextStore.defaultsKey) {
+        self.defaults = defaults
+        self.key = key
+    }
+
+    public func loadData() -> Data? { defaults.data(forKey: key) }
+    public func saveData(_ data: Data) { defaults.set(data, forKey: key) }
+    public func deleteData() { defaults.removeObject(forKey: key) }
+}
+
+/// Durable JSON storage for the phone's suggestion context, so the Watch keeps it
+/// after relaunch with the iPhone unreachable. A corrupt or unsupported stored
+/// value is discarded; a failed write leaves the prior value.
 public struct WatchSingleExerciseSuggestionContextStore {
     public enum Result: Equatable, Sendable {
         case replaced
@@ -15,18 +50,20 @@ public struct WatchSingleExerciseSuggestionContextStore {
 
     public static let defaultsKey = "watch.singleExerciseSuggestionContext.v1"
 
-    private let defaults: UserDefaults
-    private let key: String
+    private let store: WatchSingleExerciseSuggestionContextStoring
 
     public init(defaults: UserDefaults = .standard, key: String = defaultsKey) {
-        self.defaults = defaults
-        self.key = key
+        self.store = UserDefaultsWatchSingleExerciseSuggestionContextStore(defaults: defaults, key: key)
+    }
+
+    public init(store: WatchSingleExerciseSuggestionContextStoring) {
+        self.store = store
     }
 
     public func load() -> WatchSingleExerciseSuggestionContext? {
-        guard let data = defaults.data(forKey: key) else { return nil }
+        guard let data = store.loadData() else { return nil }
         guard let value = WatchSingleExerciseSuggestionContext.decodePayload(data) else {
-            defaults.removeObject(forKey: key)
+            store.deleteData()
             return nil
         }
         return value
@@ -37,7 +74,7 @@ public struct WatchSingleExerciseSuggestionContextStore {
         if let existing = load(), context.generatedAt <= existing.generatedAt { return .keptExisting }
         guard let data = context.propertyListValue,
               WatchSingleExerciseSuggestionContext.decodePayload(data) != nil else { return .failed }
-        defaults.set(data, forKey: key)
+        store.saveData(data)
         // Confirm the write is readable before the caller may acknowledge the envelope.
         return load()?.generatedAt == context.generatedAt ? .replaced : .failed
     }

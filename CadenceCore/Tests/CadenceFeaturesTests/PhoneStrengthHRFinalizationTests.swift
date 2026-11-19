@@ -51,7 +51,7 @@ struct PhoneStrengthHRFinalizationTests {
         for i in 0..<60 { r.record(obs(Double(i) * 60), now: start.addingTimeInterval(3_600)) }
         #expect(r.finalize(profile: profile))
         #expect(s.hasManualCardioMinutesOverride)
-        #expect(s.intensitySummary?.moderateDuration == 7 * 60)
+        #expect(s.intensitySummary?.moderateDuration == TimeInterval(7 * 60))
         #expect(s.hrSamplePoints.count == 60)
     }
 

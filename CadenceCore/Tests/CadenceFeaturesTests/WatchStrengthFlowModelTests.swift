@@ -1375,8 +1375,10 @@ struct WatchAddConfirmationTests {
         var state = WatchAddConfirmation()
         var calls = 0
         state.request(target)
-        #expect(state.confirm { id, name in calls += 1; #expect(id == self.target.id); return .added(name: name) } ==
+        var confirmedID: UUID?
+        #expect(state.confirm { id, name in calls += 1; confirmedID = id; return .added(name: name) } ==
                        .added(name: "Bench Press"))
+        #expect(confirmedID == self.target.id)
         #expect(calls == 1)
         #expect(state.outcome == nil)
 

@@ -67,12 +67,12 @@ behavioral coverage is the headless `swift test` suite above.
 
 **Build/test turnaround:** PR validation overlaps the host suite and the optimized
 iPhone/Watch build in separate runners; `validate` succeeds only when both pass.
-Host XCTest runs serially by default to avoid per-case scheduling overhead;
-`CADENCE_TEST_MODE=parallel CADENCE_TEST_WORKERS=3 bash scripts/ci-test.sh` enables
-a bounded comparison. The production-flow harness runs once in the normal suite;
-its focused command is optional. The search regression retains all queries with
-one repetition normally; the weekly/manual Host Test Benchmark lane runs the full
-10-repetition workload and compares serial/parallel suite timings on one SHA.
+The host suite is all Swift Testing, which schedules itself concurrently by
+default — there is no serial/parallel mode to choose. The production-flow
+harness runs once in the normal suite; its focused command is optional. The
+search regression retains all queries with one repetition normally; the
+weekly/manual Host Test Benchmark lane runs the full 10-repetition workload and
+times the suite twice on one SHA for run-to-run variance.
 
 Preserve local `.build` and repo-specific DerivedData for incremental builds.
 CI compiled caches are separated by Xcode/Swift version, architecture, role,

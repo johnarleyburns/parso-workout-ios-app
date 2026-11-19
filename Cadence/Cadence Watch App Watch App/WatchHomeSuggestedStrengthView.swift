@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Today's valid phone suggestion wins; otherwise calculate locally without
 /// requiring the phone to be reachable.

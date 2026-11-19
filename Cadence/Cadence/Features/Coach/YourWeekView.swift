@@ -3,6 +3,8 @@ import Combine
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct YourWeekView: View {
     let decision: CoachDecision

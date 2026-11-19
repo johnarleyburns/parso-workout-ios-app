@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 struct WatchHRChunkerTests {

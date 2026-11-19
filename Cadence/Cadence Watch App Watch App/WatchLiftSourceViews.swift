@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Suggest: evaluates only the exact shared Coach snapshot; starting is an explicit action.
 struct WatchSuggestReviewView: View {
@@ -71,7 +72,7 @@ struct WatchPreviousListView: View {
         }
         .navigationTitle("Previous")
         .onAppear {
-            workouts = WatchPreviousWorkout.load(from: context)
+            workouts = WatchLiftSources.load(from: context)
             loaded = true
         }
     }

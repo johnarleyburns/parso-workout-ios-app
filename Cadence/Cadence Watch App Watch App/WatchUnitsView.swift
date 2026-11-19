@@ -2,6 +2,7 @@ import SwiftUI
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchUnitsView: View {
     @Environment(\.dismiss) private var dismiss

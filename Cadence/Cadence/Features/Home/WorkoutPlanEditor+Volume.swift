@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Presentation hooks supplied ONLY by the suggested-strength preview sheet.
 /// When nil (every other editor flow) the editor's actions and dismissal are
@@ -16,7 +18,8 @@ struct SuggestedStrengthEditorHooks {
 
 extension WorkoutPlanEditor {
     var startButton: some View {
-        CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill") {
+        CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill",
+                            tint: CadenceTheme.accent) {
             saveAndStart()
         }
         .accessibilityIdentifier("editor.start")

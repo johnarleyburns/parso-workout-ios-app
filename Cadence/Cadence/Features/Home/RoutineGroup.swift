@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 enum PlanningRoutineGroup {
     static let fiveByFive = StrengthPresets.all.filter { $0.id.hasPrefix("preset-5x5") }

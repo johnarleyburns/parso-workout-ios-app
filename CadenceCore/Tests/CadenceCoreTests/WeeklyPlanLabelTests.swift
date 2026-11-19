@@ -1,16 +1,18 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// P7 (issue 7) — a completed day that had BOTH strength and cardio must describe
 /// the sessions, never collapse to a bare weekday name like "Thu".
-final class WeeklyPlanLabelTests: XCTestCase {
+struct WeeklyPlanLabelTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
-    func testCompletedStrengthPlusCardioDayIsNotAWeekdayName() throws {
+    @Test func completedStrengthPlusCardioDayIsNotAWeekdayName() throws {
         let ctx = try makeContext()
         // Anchor "now" to a fixed Thursday; the strength+cardio day is yesterday
         // (Wednesday) so it lands in the history window as a past, completed day.
@@ -42,14 +44,16 @@ final class WeeklyPlanLabelTests: XCTestCase {
         // Find yesterday's day outline.
         let cal = Calendar.current
         guard let day = plan.days.first(where: { cal.isDate($0.date, inSameDayAs: yesterday) }) else {
-            return XCTFail("yesterday should be in the plan history window")
+            Issue.record("yesterday should be in the plan history window")
+            return
         }
-        XCTAssertFalse(day.sessions.isEmpty, "past strength+cardio day should carry its sessions")
+        #expect(!day.sessions.isEmpty, "past strength+cardio day should carry its sessions")
 
         let weekdayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        XCTAssertFalse(weekdayNames.contains(day.label),
+        #expect(!weekdayNames.contains(day.label),
                        "A completed strength+cardio day must describe the work, not read '\(day.label)'")
-        XCTAssertTrue(day.label.localizedCaseInsensitiveContains("strength"),
+        #expect(day.label.localizedCaseInsensitiveContains("strength"),
                       "Label should mention the strength session, got '\(day.label)'")
     }
 }
+#endif

@@ -1,17 +1,19 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
-final class ClockTests: XCTestCase {
-    func testFixedClockReturnsPinnedInstant() {
+struct ClockTests {
+    @Test func fixedClockReturnsPinnedInstant() {
         let t = Date(timeIntervalSince1970: 1_000_000)
         let clock = Clock.fixed(t)
-        XCTAssertEqual(clock.now(), t)
-        XCTAssertEqual(clock.now(), t)
+        #expect(clock.now() == t)
+        #expect(clock.now() == t)
     }
 
-    func testLiveClockAdvances() {
+    @Test func liveClockAdvances() {
         let clock = Clock.live
         let a = clock.now()
-        XCTAssertGreaterThanOrEqual(clock.now().timeIntervalSince(a), 0)
+        #expect(clock.now().timeIntervalSince(a) >= 0)
     }
 }

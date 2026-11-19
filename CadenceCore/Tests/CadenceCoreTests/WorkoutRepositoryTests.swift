@@ -1,51 +1,53 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 @MainActor
-final class WorkoutRepositoryTests: XCTestCase {
+struct WorkoutRepositoryTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         return ModelContext(container)
     }
 
-    func testSeedStarterLibrary() throws {
+    @Test func seedStarterLibrary() throws {
         let ctx = try makeContext()
         let didSeed = try WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
-        XCTAssertTrue(didSeed)
-        XCTAssertEqual(try WorkoutRepository.allExercises(ctx).count, ExerciseLibrary.starter.count)
+        #expect(didSeed)
+        #expect(try WorkoutRepository.allExercises(ctx).count == ExerciseLibrary.starter.count)
         // idempotent
-        XCTAssertFalse(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
-        XCTAssertEqual(try WorkoutRepository.allExercises(ctx).count, ExerciseLibrary.starter.count)
+        #expect(!(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx)))
+        #expect(try WorkoutRepository.allExercises(ctx).count == ExerciseLibrary.starter.count)
     }
 
-    func testSearchExercises() throws {
+    @Test func searchExercises() throws {
         let ctx = try makeContext()
         try WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
         let bench = try WorkoutRepository.searchExercises("bench", in: ctx)
-        XCTAssertTrue(bench.contains { $0.name == "Bench Press" })
-        XCTAssertFalse(bench.contains { $0.name == "Deadlift" })
+        #expect(bench.contains { $0.name == "Bench Press" })
+        #expect(!bench.contains { $0.name == "Deadlift" })
     }
 
-    func testFindOrCreateExerciseDeduplicates() throws {
+    @Test func findOrCreateExerciseDeduplicates() throws {
         let ctx = try makeContext()
         let a = try WorkoutRepository.findOrCreateExercise(named: "Garage Custom Lift", in: ctx)
         let b = try WorkoutRepository.findOrCreateExercise(named: "garage custom lift", in: ctx)
-        XCTAssertEqual(a.id, b.id)
-        XCTAssertTrue(a.isCustom)
+        #expect(a.id == b.id)
+        #expect(a.isCustom)
     }
 
-    func testAddSetAssignsIncrementingOrder() throws {
+    @Test func addSetAssignsIncrementingOrder() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5, in: ctx)
         _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5, in: ctx)
-        XCTAssertEqual(session.orderedSets.map(\.order), [0, 1])
+        #expect(session.orderedSets.map(\.order) == [0, 1])
     }
 
-    func testAdHocExerciseDoesNotInheritLegacyPlan() throws {
+    @Test func adHocExerciseDoesNotInheritLegacyPlan() throws {
         let ctx = try makeContext()
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -53,18 +55,18 @@ final class WorkoutRepositoryTests: XCTestCase {
         session.plannedExerciseNames = ["Back Squat"]
         session.plannedRepLadder = [6, 6, 6]
         session.prescribedLoadKg = 88.5
-        XCTAssertNotNil(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat"))
+        #expect(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat") != nil)
 
-        XCTAssertTrue(try WorkoutRepository.addAdHocExercise(bench, to: session, in: ctx))
-        XCTAssertNil(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Bench Press"))
-        XCTAssertEqual(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat")?.first?.targetWeightKg, 88.5)
-        XCTAssertTrue(session.plannedExerciseNames.contains("Bench Press"))
-        XCTAssertFalse(try WorkoutRepository.addAdHocExercise(bench, to: session, in: ctx))
-        XCTAssertEqual(session.plannedExerciseNames.count, 2)
+        #expect(try WorkoutRepository.addAdHocExercise(bench, to: session, in: ctx))
+        #expect(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Bench Press") == nil)
+        #expect(session.explicitPlannedSets(forPerformerID: nil, exerciseName: "Back Squat")?.first?.targetWeightKg == 88.5)
+        #expect(session.plannedExerciseNames.contains("Bench Press"))
+        #expect(!(try WorkoutRepository.addAdHocExercise(bench, to: session, in: ctx)))
+        #expect(session.plannedExerciseNames.count == 2)
         _ = squat
     }
 
-    func testLastWorkingSetIsLiteralLastNonWarmupSet() throws {
+    @Test func lastWorkingSetIsLiteralLastNonWarmupSet() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         let old = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 1000), in: ctx)
@@ -72,11 +74,11 @@ final class WorkoutRepositoryTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: old, exercise: ex, weightKg: 20, reps: 10, isWarmup: true, in: ctx)
         let today = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 9000), in: ctx)
         let last = WorkoutRepository.lastWorkingSet(for: ex, performedBy: nil, excluding: today)
-        XCTAssertEqual(last?.reps, 8)
-        XCTAssertEqual(last?.weight ?? 0, 56.699, accuracy: 0.0001)
+        #expect(last?.reps == 8)
+        #expect(abs((last?.weight ?? 0) - 56.699) <= 0.0001)
     }
 
-    func testLastTimeSets() throws {
+    @Test func lastTimeSets() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Squat", in: ctx)
 
@@ -89,56 +91,56 @@ final class WorkoutRepositoryTests: XCTestCase {
 
         let today = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 9000), in: ctx)
         let last = WorkoutRepository.lastTimeSets(for: ex, excluding: today)
-        XCTAssertEqual(last.count, 2)
-        XCTAssertEqual(last.map(\.weight), [110, 110])
-        XCTAssertEqual(last.map(\.reps), [5, 4])
+        #expect(last.count == 2)
+        #expect(last.map(\.weight) == [110, 110])
+        #expect(last.map(\.reps) == [5, 4])
     }
 
-    func testCurrentPRAndWouldBePR() throws {
+    @Test func currentPRAndWouldBePR() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         let s1 = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 1000), in: ctx)
         _ = try WorkoutRepository.addSet(to: s1, exercise: ex, weightKg: 100, reps: 5, in: ctx)
 
-        XCTAssertEqual(WorkoutRepository.currentPR(for: ex, rule: .topWeight, formula: .epley), 100)
+        #expect(WorkoutRepository.currentPR(for: ex, rule: .topWeight, formula: .epley) == 100)
 
         let today = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 9000), in: ctx)
-        XCTAssertTrue(WorkoutRepository.wouldBePR(exercise: ex, weightKg: 105, reps: 5, isWarmup: false,
+        #expect(WorkoutRepository.wouldBePR(exercise: ex, weightKg: 105, reps: 5, isWarmup: false,
                                                   rule: .topWeight, formula: .epley, excluding: today))
-        XCTAssertFalse(WorkoutRepository.wouldBePR(exercise: ex, weightKg: 95, reps: 5, isWarmup: false,
+        #expect(!WorkoutRepository.wouldBePR(exercise: ex, weightKg: 95, reps: 5, isWarmup: false,
                                                    rule: .topWeight, formula: .epley, excluding: today))
     }
 
-    func testUpdateAndDeleteSet() throws {
+    @Test func updateAndDeleteSet() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Row", in: ctx)
         let set = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 60, reps: 8, in: ctx)
 
         try WorkoutRepository.updateSet(set, weightKg: 65, reps: 10, in: ctx)
-        XCTAssertEqual(set.weight, 65)
-        XCTAssertEqual(set.reps, 10)
+        #expect(set.weight == 65)
+        #expect(set.reps == 10)
 
         try WorkoutRepository.deleteSet(set, in: ctx)
-        XCTAssertEqual(session.orderedSets.count, 0)
+        #expect(session.orderedSets.count == 0)
     }
 
-    func testTemplatesAndStartSession() throws {
+    @Test func templatesAndStartSession() throws {
         let ctx = try makeContext()
         let t = try WorkoutRepository.createTemplate(name: "Push Day",
             exercises: [("Bench Press", 3, 5), ("Overhead Press", 3, 8)], in: ctx)
-        XCTAssertEqual(t.orderedExercises.count, 2)
+        #expect(t.orderedExercises.count == 2)
 
         let session = try WorkoutRepository.startSession(from: t, in: ctx)
-        XCTAssertEqual(session.title, "Push Day")
-        XCTAssertEqual(session.templateName, "Push Day")
+        #expect(session.title == "Push Day")
+        #expect(session.templateName == "Push Day")
         // exercises resolved into the library
         let names = try WorkoutRepository.allExercises(ctx).map(\.name)
-        XCTAssertTrue(names.contains("Bench Press"))
-        XCTAssertTrue(names.contains("Overhead Press"))
+        #expect(names.contains("Bench Press"))
+        #expect(names.contains("Overhead Press"))
     }
 
-    func testIngestDeduplicatesByHKUUID() throws {
+    @Test func ingestDeduplicatesByHKUUID() throws {
         let ctx = try makeContext()
         let hkID = UUID()
         let w = IngestedWorkout(id: hkID, type: .run, start: Date(timeIntervalSince1970: 0),
@@ -147,15 +149,15 @@ final class WorkoutRepositoryTests: XCTestCase {
                                 routeSamples: [LocationFix(t: 0, lat: 37, lon: -122),
                                                 LocationFix(t: 60, lat: 37.001, lon: -122.001)],
                                 importedKind: .running)
-        XCTAssertEqual(try WorkoutRepository.ingest([w], in: ctx), 1)
-        XCTAssertEqual(try WorkoutRepository.ingest([w], in: ctx), 0) // dup skipped
+        #expect(try WorkoutRepository.ingest([w], in: ctx) == 1)
+        #expect(try WorkoutRepository.ingest([w], in: ctx) == 0) // dup skipped
         let all = try WorkoutRepository.allCardio(ctx)
-        XCTAssertEqual(all.count, 1)
-        XCTAssertEqual(all[0].orderedHRSamples.count, 2)
-        XCTAssertEqual(all[0].orderedRouteSamples.count, 2)
+        #expect(all.count == 1)
+        #expect(all[0].orderedHRSamples.count == 2)
+        #expect(all[0].orderedRouteSamples.count == 2)
     }
 
-    func testWatchCompletionIsIdempotentAndReconcilesLaterHealthKitImport() throws {
+    @Test func watchCompletionIsIdempotentAndReconcilesLaterHealthKitImport() throws {
         let ctx = try makeContext()
         let start = Date(timeIntervalSince1970: 10_000)
         let completion = WatchCardioCompletion(type: .run, start: start,
@@ -164,37 +166,37 @@ final class WorkoutRepositoryTests: XCTestCase {
                                                hrSamples: [HRSamplePoint(t: 10, bpm: 130)],
                                                avgHeartRate: 130, maxHeartRate: 130,
                                                gpsEnabled: true)
-        XCTAssertTrue(try WorkoutRepository.ingest(completion, in: ctx))
-        XCTAssertFalse(try WorkoutRepository.ingest(completion, in: ctx))
+        #expect(try WorkoutRepository.ingest(completion, in: ctx))
+        #expect(!(try WorkoutRepository.ingest(completion, in: ctx)))
 
         let hkWorkout = IngestedWorkout(id: UUID(), type: .run, start: start,
                                         end: start.addingTimeInterval(600),
                                         importedKind: .running)
-        XCTAssertEqual(try WorkoutRepository.ingest([hkWorkout], in: ctx), 0)
-        let cardio = try XCTUnwrap(try WorkoutRepository.allCardio(ctx).first)
-        XCTAssertEqual(cardio.healthKitWorkoutUUID, hkWorkout.id)
-        XCTAssertEqual(cardio.orderedHRSamples.count, 1)
+        #expect(try WorkoutRepository.ingest([hkWorkout], in: ctx) == 0)
+        let cardio = try #require(try WorkoutRepository.allCardio(ctx).first)
+        #expect(cardio.healthKitWorkoutUUID == hkWorkout.id)
+        #expect(cardio.orderedHRSamples.count == 1)
     }
 
-    func testPoolSwimCompletionStoresLapsDistanceAndDoesNotDuplicateHealthImport() throws {
+    @Test func poolSwimCompletionStoresLapsDistanceAndDoesNotDuplicateHealthImport() throws {
         let context = try makeContext()
         let start = Date(timeIntervalSince1970: 10000)
         let value = WatchCardioCompletion(type: .swim, start: start,
             end: start.addingTimeInterval(600), distanceMeters: 500,
             swimmingLapCount: 10, poolLengthMeters: 50)
-        XCTAssertTrue(try WorkoutRepository.ingest(value, in: context))
-        XCTAssertFalse(try WorkoutRepository.ingest(value, in: context))
+        #expect(try WorkoutRepository.ingest(value, in: context))
+        #expect(!(try WorkoutRepository.ingest(value, in: context)))
         let imported = IngestedWorkout(id: UUID(), type: .swim, start: start,
             end: start.addingTimeInterval(600), distanceMeters: 500, importedKind: .swimming)
-        XCTAssertEqual(try WorkoutRepository.ingest([imported], in: context), 0)
-        let saved = try XCTUnwrap(try WorkoutRepository.allCardio(context).first)
-        XCTAssertEqual(saved.distance, 500)
-        XCTAssertEqual(saved.laps, 10)
-        XCTAssertTrue(saved.notes?.contains("50 m") == true)
-        XCTAssertEqual(saved.healthKitWorkoutUUID, imported.id)
+        #expect(try WorkoutRepository.ingest([imported], in: context) == 0)
+        let saved = try #require(try WorkoutRepository.allCardio(context).first)
+        #expect(saved.distance == 500)
+        #expect(saved.laps == 10)
+        #expect(saved.notes?.contains("50 m") == true)
+        #expect(saved.healthKitWorkoutUUID == imported.id)
     }
 
-    func testSaveRecordedCardioComputesHRAndLinksHK() throws {
+    @Test func saveRecordedCardioComputesHRAndLinksHK() throws {
         let ctx = try makeContext()
         let hkID = UUID()
         let summary = CardioWorkoutSummary(
@@ -204,21 +206,21 @@ final class WorkoutRepositoryTests: XCTestCase {
             route: [LocationFix(t: 0, lat: 1, lon: 1), LocationFix(t: 1, lat: 1.001, lon: 1)])
         let c = try WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                          healthKitWorkoutUUID: hkID, in: ctx)
-        XCTAssertEqual(c.avgHeartRate, 140) // (120+160)/2
-        XCTAssertEqual(c.maxHeartRate, 160)
-        XCTAssertEqual(c.healthKitWorkoutUUID, hkID)
-        XCTAssertEqual(c.orderedHRSamples.count, 2)
-        XCTAssertEqual(c.orderedRouteSamples.count, 2)
+        #expect(c.avgHeartRate == 140) // (120+160)/2
+        #expect(c.maxHeartRate == 160)
+        #expect(c.healthKitWorkoutUUID == hkID)
+        #expect(c.orderedHRSamples.count == 2)
+        #expect(c.orderedRouteSamples.count == 2)
 
         // A later HealthKit ingest of the same workout must not duplicate it.
         let ingestSame = IngestedWorkout(id: hkID, type: .run,
                                          start: summary.start, end: summary.end,
                                          importedKind: .running)
-        XCTAssertEqual(try WorkoutRepository.ingest([ingestSame], in: ctx), 0)
-        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
+        #expect(try WorkoutRepository.ingest([ingestSame], in: ctx) == 0)
+        #expect(try WorkoutRepository.allCardio(ctx).count == 1)
     }
 
-    func testHealthRestoreReplacesOwnerSetsAndPreservesPartnerSets() throws {
+    @Test func healthRestoreReplacesOwnerSetsAndPreservesPartnerSets() throws {
         let ctx = try makeContext()
         let id = UUID()
         let start = Date(timeIntervalSince1970: 20_000)
@@ -247,71 +249,71 @@ final class WorkoutRepositoryTests: XCTestCase {
         let plan = HealthRestorePlan(operations: [HealthRestoreOperation(object: object, action: .replace)])
 
         let report = try WorkoutRepository.applyHealthRestore(plan, in: ctx)
-        XCTAssertEqual(report.replaced, 1)
-        XCTAssertEqual(session.orderedSets.filter(\.isOwnerSet).map(\.weight), [57])
-        XCTAssertEqual(session.orderedSets.filter { !$0.isOwnerSet }.map(\.weight), [30])
-        XCTAssertEqual(session.title, "Restored")
+        #expect(report.replaced == 1)
+        #expect(session.orderedSets.filter { $0.isOwnerSet }.map(\.weight) == [57])
+        #expect(session.orderedSets.filter { !$0.isOwnerSet }.map(\.weight) == [30])
+        #expect(session.title == "Restored")
     }
 
     // Feedback batch 6 item 3 — a manually logged cardio workout lands in history
     // identically to a recorded one, but flagged isLogged with its custom title.
-    func testSaveLoggedCardioFlagsAndTitles() throws {
+    @Test func saveLoggedCardioFlagsAndTitles() throws {
         let ctx = try makeContext()
         let start = Date(timeIntervalSince1970: 1000)
         let c = try WorkoutRepository.saveLoggedCardio(
             type: .other, start: start, durationSeconds: 1500,
             distanceMeters: 2000, customTitle: "  Rowing  ", in: ctx)
-        XCTAssertTrue(c.isLogged)
-        XCTAssertEqual(c.customTitle, "Rowing")          // trimmed
-        XCTAssertEqual(c.displayTitle, "Rowing")
-        XCTAssertEqual(c.duration, 1500)
-        XCTAssertEqual(c.distance, 2000)
-        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
+        #expect(c.isLogged)
+        #expect(c.customTitle == "Rowing")          // trimmed
+        #expect(c.displayTitle == "Rowing")
+        #expect(c.duration == 1500)
+        #expect(c.distance == 2000)
+        #expect(try WorkoutRepository.allCardio(ctx).count == 1)
     }
 
     // A blank custom title falls back to the type's display name.
-    func testSaveLoggedCardioBlankTitleFallsBack() throws {
+    @Test func saveLoggedCardioBlankTitleFallsBack() throws {
         let ctx = try makeContext()
         let c = try WorkoutRepository.saveLoggedCardio(
             type: .run, start: Date(timeIntervalSince1970: 0),
             durationSeconds: 600, customTitle: "   ", in: ctx)
-        XCTAssertNil(c.customTitle)
-        XCTAssertEqual(c.displayTitle, "Run")
-        XCTAssertTrue(c.isLogged)
+        #expect(c.customTitle == nil)
+        #expect(c.displayTitle == "Run")
+        #expect(c.isLogged)
     }
 
     // Manual strength logging (feedback batch 7 follow-up) — a logged strength
     // session flags isLogged, keeps its back-dated date, and surfaces in unified
     // history identically to a live one; logging from a preset pre-loads its
     // movements and flags isLogged too.
-    func testCreateLoggedStrengthSessionFlagsAndSurfaces() throws {
+    @Test func createLoggedStrengthSessionFlagsAndSurfaces() throws {
         let ctx = try makeContext()
         let date = Date(timeIntervalSince1970: 5000)
         let s = try WorkoutRepository.createSession(title: "Workout", date: date,
                                                     isLogged: true, in: ctx)
-        XCTAssertTrue(s.isLogged)
-        XCTAssertEqual(s.date, date)
+        #expect(s.isLogged)
+        #expect(s.date == date)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 100, reps: 5,
                                          completedAt: date, in: ctx)
         let history = try WorkoutRepository.unifiedHistory(ctx)
         let logged = history.compactMap { if case let .strength(ws) = $0 { return ws } else { return nil } }
-        XCTAssertTrue(logged.contains { $0.id == s.id && $0.isLogged })
+        #expect(logged.contains { $0.id == s.id && $0.isLogged })
     }
 
-    func testStartLoggedPlanSessionPreloadsMovements() throws {
+    @Test func startLoggedPlanSessionPreloadsMovements() throws {
         let ctx = try makeContext()
-        let preset = try XCTUnwrap(PlanCatalog.plan(forKey: "preset-5x5-1a"))
+        let preset = try #require(PlanCatalog.plan(forKey: "preset-5x5-1a"))
         let s = try WorkoutRepository.startSession(from: preset,
                                                    date: Date(timeIntervalSince1970: 100),
                                                    isLogged: true, in: ctx)
-        XCTAssertTrue(s.isLogged)
-        XCTAssertEqual(s.planKey, "preset-5x5-1a")
-        XCTAssertTrue(s.plannedExerciseNames.contains("Back Squat"))
-        XCTAssertTrue(s.title.localizedCaseInsensitiveContains("5×5"))
+        #expect(s.isLogged)
+        #expect(s.planKey == "preset-5x5-1a")
+        #expect(s.plannedExerciseNames.contains("Back Squat"))
+        #expect(s.title.localizedCaseInsensitiveContains("5×5"))
     }
 
-    func testStartSessionFromUnifiedPlanMaterializesRuntimePrescription() throws {
+    @Test func startSessionFromUnifiedPlanMaterializesRuntimePrescription() throws {
         let ctx = try makeContext()
         let itemID = UUID()
         let setID = UUID()
@@ -329,17 +331,17 @@ final class WorkoutRepositoryTests: XCTestCase {
             date: Date(timeIntervalSince1970: 500),
             in: ctx)
 
-        XCTAssertEqual(workout.title, "Core day")
-        XCTAssertEqual(workout.date, Date(timeIntervalSince1970: 500))
-        XCTAssertEqual(workout.planSessionID, planSession.id)
-        XCTAssertEqual(workout.plannedExerciseNames, ["Incline Crunch"])
-        XCTAssertEqual(workout.plannedPrescriptions.first?.sourceItemID, itemID)
-        XCTAssertEqual(workout.plannedPrescriptions.first?.sets.first?.sourceSetID, setID)
-        XCTAssertTrue(try WorkoutRepository.allExercises(ctx).contains { $0.name == "Incline Crunch" })
+        #expect(workout.title == "Core day")
+        #expect(workout.date == Date(timeIntervalSince1970: 500))
+        #expect(workout.planSessionID == planSession.id)
+        #expect(workout.plannedExerciseNames == ["Incline Crunch"])
+        #expect(workout.plannedPrescriptions.first?.sourceItemID == itemID)
+        #expect(workout.plannedPrescriptions.first?.sets.first?.sourceSetID == setID)
+        #expect(try WorkoutRepository.allExercises(ctx).contains { $0.name == "Incline Crunch" })
     }
 
     // Batch 8 — rank past workouts by how many missing body parts they cover.
-    func testWorkoutsByMissingCoverageRanksByCoveredCount() throws {
+    @Test func workoutsByMissingCoverageRanksByCoveredCount() throws {
         let ctx = try makeContext()
         let pulldown = try WorkoutRepository.findOrCreateExercise(named: "Lat Pulldown", in: ctx) // back
         let calf = try WorkoutRepository.findOrCreateExercise(named: "Standing Calf Raise", in: ctx) // calves
@@ -354,13 +356,13 @@ final class WorkoutRepositoryTests: XCTestCase {
 
         let ranked = WorkoutRepository.workoutsByMissingCoverage(
             try WorkoutRepository.allSessions(ctx), missing: [.lats, .calves, .chest])
-        XCTAssertEqual(ranked.first?.session.id, a.id, "the session covering the most missing parts ranks first")
-        XCTAssertEqual(Set(ranked.first?.covered ?? []), Set([.lats, .calves]))
-        XCTAssertFalse(ranked.contains { $0.session.id == b.id }, "a session covering no missing part is excluded")
+        #expect(ranked.first?.session.id == a.id, "the session covering the most missing parts ranks first")
+        #expect(Set(ranked.first?.covered ?? []) == Set([.lats, .calves]))
+        #expect(!ranked.contains { $0.session.id == b.id }, "a session covering no missing part is excluded")
     }
 
     // Batch 8 — a distance goal persists through saveRecordedCardio.
-    func testRecordedCardioCarriesDistanceGoal() throws {
+    @Test func recordedCardioCarriesDistanceGoal() throws {
         let ctx = try makeContext()
         let summary = CardioWorkoutSummary(
             id: UUID(), type: .run, start: Date(timeIntervalSince1970: 0),
@@ -368,20 +370,20 @@ final class WorkoutRepositoryTests: XCTestCase {
             targetDistanceMeters: 5000)
         let c = try WorkoutRepository.saveRecordedCardio(summary, source: .iphone,
                                                          healthKitWorkoutUUID: nil, in: ctx)
-        XCTAssertEqual(c.targetDistance, 5000)
+        #expect(c.targetDistance == 5000)
         let progress = CardioMath.goalProgress(distanceMeters: c.distance ?? 0, goalMeters: c.targetDistance)
-        XCTAssertEqual(progress?.fraction, 1, "5.2 km of a 5 km goal is complete (clamped)")
-        XCTAssertEqual(progress?.remainingMeters, 0)
+        #expect(progress?.fraction == 1, "5.2 km of a 5 km goal is complete (clamped)")
+        #expect(progress?.remainingMeters == 0)
     }
 
-    func testGoalProgressNilWhenNoGoal() {
-        XCTAssertNil(CardioMath.goalProgress(distanceMeters: 1000, goalMeters: nil))
+    @Test func goalProgressNilWhenNoGoal() {
+        #expect(CardioMath.goalProgress(distanceMeters: 1000, goalMeters: nil) == nil)
         let p = CardioMath.goalProgress(distanceMeters: 2500, goalMeters: 5000)
-        XCTAssertEqual(p?.fraction ?? 0, 0.5, accuracy: 0.001)
-        XCTAssertEqual(p?.remainingMeters ?? 0, 2500, accuracy: 0.001)
+        #expect(abs((p?.fraction ?? 0) - 0.5) <= 0.001)
+        #expect(abs((p?.remainingMeters ?? 0) - 2500) <= 0.001)
     }
 
-    func testRecentPRs() throws {
+    @Test func recentPRs() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Squat", in: ctx)
@@ -391,11 +393,11 @@ final class WorkoutRepositoryTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: squat, weightKg: 140, reps: 5,
                                          completedAt: Date(timeIntervalSince1970: 2000), in: ctx)
         let prs = try WorkoutRepository.recentPRs(ctx, rule: .topWeight, formula: .epley)
-        XCTAssertEqual(prs.count, 2)
-        XCTAssertEqual(prs.first?.exerciseName, "Squat") // most recent first
+        #expect(prs.count == 2)
+        #expect(prs.first?.exerciseName == "Squat") // most recent first
     }
 
-    func testTrendSeriesBestPerDay() throws {
+    @Test func trendSeriesBestPerDay() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
         let d1 = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 0), in: ctx)
@@ -407,12 +409,12 @@ final class WorkoutRepositoryTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: d2, exercise: ex, weightKg: 105, reps: 5,
                                          completedAt: Date(timeIntervalSince1970: 200_000), in: ctx)
         let series = WorkoutRepository.trendSeries(for: ex, rule: .topWeight, formula: .epley)
-        XCTAssertEqual(series.count, 2)        // two days
-        XCTAssertEqual(series[0].value, 110)   // best of day 1
-        XCTAssertEqual(series[1].value, 105)
+        #expect(series.count == 2)        // two days
+        #expect(series[0].value == 110)   // best of day 1
+        #expect(series[1].value == 105)
     }
 
-    func testPRTimelineProgressiveOnly() throws {
+    @Test func pRTimelineProgressiveOnly() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Squat", in: ctx)
         let s = try WorkoutRepository.createSession(in: ctx)
@@ -423,10 +425,10 @@ final class WorkoutRepositoryTests: XCTestCase {
                                              completedAt: Date(timeIntervalSince1970: TimeInterval(i)), in: ctx)
         }
         let timeline = WorkoutRepository.prTimeline(for: ex, rule: .topWeight, formula: .epley)
-        XCTAssertEqual(timeline.map(\.value), [100, 110])
+        #expect(timeline.map(\.value) == [100, 110])
     }
 
-    func testTrainingDays() throws {
+    @Test func trainingDays() throws {
         let ctx = try makeContext()
         _ = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 0), in: ctx)
         _ = try WorkoutRepository.createSession(date: Date(timeIntervalSince1970: 3600), in: ctx) // same day
@@ -434,42 +436,42 @@ final class WorkoutRepositoryTests: XCTestCase {
         let days = try WorkoutRepository.trainingDays(ctx, calendar: {
             var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!; return c
         }())
-        XCTAssertEqual(days.count, 2)
+        #expect(days.count == 2)
     }
 
-    func testExportImportRoundTrip() throws {
+    @Test func exportImportRoundTrip() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(title: "Push", in: ctx)
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
         _ = try WorkoutRepository.addSet(to: session, exercise: ex, weightKg: 100, reps: 5, rpe: 8, in: ctx)
 
         let export = try WorkoutRepository.buildExport(ctx)
-        XCTAssertEqual(export.sessions.count, 1)
-        XCTAssertEqual(export.sessions[0].sets.count, 1)
+        #expect(export.sessions.count == 1)
+        #expect(export.sessions[0].sets.count == 1)
 
         // merge into a fresh store
         let ctx2 = try makeContext()
         let added = try WorkoutRepository.merge(export, in: ctx2)
-        XCTAssertEqual(added, 1)
+        #expect(added == 1)
         let sessions = try WorkoutRepository.allSessions(ctx2)
-        XCTAssertEqual(sessions.count, 1)
-        XCTAssertEqual(sessions[0].orderedSets.first?.weight, 100)
+        #expect(sessions.count == 1)
+        #expect(sessions[0].orderedSets.first?.weight == 100)
         // merging again is a no-op (dedup by id)
-        XCTAssertEqual(try WorkoutRepository.merge(export, in: ctx2), 0)
+        #expect(try WorkoutRepository.merge(export, in: ctx2) == 0)
     }
 
-    func testApplyParsedSessions() throws {
+    @Test func applyParsedSessions() throws {
         let ctx = try makeContext()
         let parsed = GmailImporter.parse("# Push 2024-01-15\nBench Press 100 3x5").sessions
         let count = try WorkoutRepository.apply(parsed, in: ctx)
-        XCTAssertEqual(count, 1)
+        #expect(count == 1)
         let sessions = try WorkoutRepository.allSessions(ctx)
-        XCTAssertEqual(sessions.count, 1)
-        XCTAssertEqual(sessions[0].orderedSets.count, 3)
-        XCTAssertEqual(sessions[0].title, "Push")
+        #expect(sessions.count == 1)
+        #expect(sessions[0].orderedSets.count == 3)
+        #expect(sessions[0].title == "Push")
     }
 
-    func testReassignAndDeleteExercise() throws {
+    @Test func reassignAndDeleteExercise() throws {
         let ctx = try makeContext()
         let custom = Exercise(name: "rotary torso", category: .core, isCustom: true)
         let builtIn = Exercise(name: "Torso Rotation", isCustom: false, primaryMuscles: ["abs"])
@@ -483,19 +485,19 @@ final class WorkoutRepositoryTests: XCTestCase {
         try ctx.save()
 
         let moved = try WorkoutRepository.reassignAndDeleteExercise(from: custom, into: builtIn, in: ctx)
-        XCTAssertEqual(moved, 2)
+        #expect(moved == 2)
         let sessions = try WorkoutRepository.allSessions(ctx)
-        XCTAssertEqual(sessions.count, 1)
+        #expect(sessions.count == 1)
         for set in sessions[0].orderedSets {
-            XCTAssertEqual(set.exercise?.name, "Torso Rotation")
+            #expect(set.exercise?.name == "Torso Rotation")
         }
         let remaining = try WorkoutRepository.allExercises(ctx)
-        XCTAssertNil(remaining.first { $0.name == "rotary torso" })
+        #expect(remaining.first { $0.name == "rotary torso" } == nil)
     }
 
     // MARK: - Per-performer prescriptions (field test 2026-08-18 #4, decision D11)
 
-    func testPlannedPerformerPrescriptionsEncodeAndDecode() throws {
+    @Test func plannedPerformerPrescriptionsEncodeAndDecode() throws {
         let ctx = try makeContext()
         let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
         let partnerID = UUID()
@@ -510,12 +512,12 @@ final class WorkoutRepositoryTests: XCTestCase {
         try ctx.save()
 
         let stored = session.plannedPerformerPrescriptions
-        XCTAssertEqual(stored.count, 2)
-        XCTAssertEqual(stored[1].exercises.first?.sets.first?.targetWeightKg, 60)
-        XCTAssertEqual(session.plannedPrescriptions(forPerformerID: partnerID).first?.sets.first?.targetReps, 12)
+        #expect(stored.count == 2)
+        #expect(stored[1].exercises.first?.sets.first?.targetWeightKg == 60)
+        #expect(session.plannedPrescriptions(forPerformerID: partnerID).first?.sets.first?.targetReps == 12)
     }
 
-    func testPlannedPrescriptionsForPerformerFallsBackToTheOwnerPlan() throws {
+    @Test func plannedPrescriptionsForPerformerFallsBackToTheOwnerPlan() throws {
         let ctx = try makeContext()
         let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
         session.plannedPrescriptions = [PlannedExercisePrescription(
@@ -525,21 +527,21 @@ final class WorkoutRepositoryTests: XCTestCase {
             PlannedPerformerPrescription(performerID: nil, exercises: session.plannedPrescriptions)]
 
         let unknown = UUID()
-        XCTAssertEqual(session.plannedPrescriptions(forPerformerID: unknown).first?.sets.first?.targetReps, 5,
+        #expect(session.plannedPrescriptions(forPerformerID: unknown).first?.sets.first?.targetReps == 5,
                        "A performer with no stored plan trains on the owner's prescription")
     }
 
-    func testEmptyPerformerDataDecodesToEmptyArray() throws {
+    @Test func emptyPerformerDataDecodesToEmptyArray() throws {
         let ctx = try makeContext()
         let session = WorkoutSession(title: "Push", date: Date()); ctx.insert(session)
 
-        XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty)
+        #expect(session.plannedPerformerPrescriptions.isEmpty)
         session.plannedPerformerPrescriptions = []
-        XCTAssertTrue(session.plannedPerformerPrescriptions.isEmpty,
+        #expect(session.plannedPerformerPrescriptions.isEmpty,
                       "Storing an empty roster must not leave undecodable data behind")
     }
 
-    func testSessionsAndCardioSinceAreDateBoundedAndExcludeDeleted() throws {
+    @Test func sessionsAndCardioSinceAreDateBoundedAndExcludeDeleted() throws {
         let ctx = try makeContext()
         let weekStart = Date(timeIntervalSinceReferenceDate: 1_000_000)
         let before = try WorkoutRepository.createSession(title: "old", date: weekStart.addingTimeInterval(-86_400), in: ctx)
@@ -548,15 +550,16 @@ final class WorkoutRepositoryTests: XCTestCase {
         let deleted = try WorkoutRepository.createSession(title: "d", date: weekStart.addingTimeInterval(1), in: ctx)
         try WorkoutRepository.softDeleteSession(deleted, in: ctx)
         let ids = Set(try WorkoutRepository.sessions(since: weekStart, in: ctx).map(\.id))
-        XCTAssertEqual(ids, Set([boundary.id, after.id]))
-        XCTAssertFalse(ids.contains(before.id))
+        #expect(ids == Set([boundary.id, after.id]))
+        #expect(!ids.contains(before.id))
 
         let cOld = try WorkoutRepository.saveLoggedCardio(type: .run, start: weekStart.addingTimeInterval(-60), durationSeconds: 600, in: ctx)
         let cNew = try WorkoutRepository.saveLoggedCardio(type: .run, start: weekStart, durationSeconds: 600, in: ctx)
         let cDel = try WorkoutRepository.saveLoggedCardio(type: .run, start: weekStart.addingTimeInterval(10), durationSeconds: 600, in: ctx)
         try WorkoutRepository.softDeleteCardio(cDel, in: ctx)
         let cids = Set(try WorkoutRepository.cardio(since: weekStart, in: ctx).map(\.id))
-        XCTAssertEqual(cids, Set([cNew.id]))
-        XCTAssertFalse(cids.contains(cOld.id))
+        #expect(cids == Set([cNew.id]))
+        #expect(!cids.contains(cOld.id))
     }
 }
+#endif

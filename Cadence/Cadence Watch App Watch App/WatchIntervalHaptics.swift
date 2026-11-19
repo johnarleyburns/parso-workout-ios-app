@@ -2,6 +2,7 @@ import SwiftUI
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Plays haptic cues on watchOS driven by the pure `IntervalCueDecider` logic.
 /// Boxing uses a stronger pattern; HIIT uses soft taps.

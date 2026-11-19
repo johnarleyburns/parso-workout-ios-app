@@ -25,9 +25,21 @@ public struct TestRecommendation: Equatable, Sendable, Identifiable {
     public var whyNow: String {
         switch reason {
         case .neverTested:
-            return String(localized: "You haven't run this test yet — a baseline lets Coach track progress and tailor prescriptions.", bundle: .module)
+            return {
+                #if os(Linux)
+                "You haven't run this test yet — a baseline lets Coach track progress and tailor prescriptions."
+                #else
+                String(localized: "You haven't run this test yet — a baseline lets Coach track progress and tailor prescriptions.", bundle: .module)
+                #endif
+            }()
         case .stale(let days):
-            return String(localized: "Your last result is \(days) days old. Re-testing keeps Coach's baseline current.", bundle: .module)
+            return {
+                #if os(Linux)
+                "Your last result is \(days) days old. Re-testing keeps Coach's baseline current."
+                #else
+                String(localized: "Your last result is \(days) days old. Re-testing keeps Coach's baseline current.", bundle: .module)
+                #endif
+            }()
         }
     }
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import CadenceCore
+import CadencePortability
 import UniformTypeIdentifiers
 
 /// `.fit` content type shared by the exporter and importer.

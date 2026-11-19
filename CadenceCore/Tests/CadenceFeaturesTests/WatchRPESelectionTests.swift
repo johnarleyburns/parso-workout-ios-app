@@ -2,6 +2,7 @@ import Foundation
 import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @Suite struct WatchRPESelectionTests {
     @Test(arguments: [1, 10])

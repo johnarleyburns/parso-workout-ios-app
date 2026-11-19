@@ -38,6 +38,10 @@ sync "Cadence Watch App Watch App" "Cadence/Cadence Watch App Watch App/Localiza
 sync CadenceWidgets CadenceWidgets/Localizable.xcstrings
 sync CadenceWatchWidgets CadenceWatchWidgets/Localizable.xcstrings
 sync CadenceCore CadenceCore/Sources/CadenceCore/Resources/Localizable.xcstrings
-sync CadenceFeatures CadenceCore/Sources/CadenceFeatures/Resources/Localizable.xcstrings
+# Runtime modules use the original CadenceFeatures localization bundle.
+feature_files=()
+while IFS= read -r file; do feature_files+=("$file"); done < <(stringsdata CadenceFeatures; stringsdata CadenceWorkoutFeatures; stringsdata CadencePhoneFeatures)
+[ "${#feature_files[@]}" -gt 0 ] || { echo "no feature stringsdata" >&2; exit 1; }
+xcrun xcstringstool sync CadenceCore/Sources/CadenceFeatures/Resources/Localizable.xcstrings --stringsdata "${feature_files[@]}"
 
 echo "Catalogs synced. Stale keys are marked extractionState=stale; remove them once confirmed unused."

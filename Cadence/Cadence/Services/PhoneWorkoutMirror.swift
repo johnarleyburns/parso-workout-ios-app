@@ -1,5 +1,7 @@
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import HealthKit
+import CadencePhoneFeatures
 
 /// Retains the iPhone's mirrored `HKWorkoutSession` for a Watch-primary workout.
 /// Lifecycle only; HR packet transport is a separate follow-up.

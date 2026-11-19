@@ -3,6 +3,8 @@ import SwiftUI
 import os
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Independent, fingerprint-free disk cache of the weekly rings snapshot.
 @MainActor

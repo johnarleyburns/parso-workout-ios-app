@@ -1,20 +1,22 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 @MainActor
-final class PersonalizedSuggestionTests: XCTestCase {
-    func testNamedOlympicMovementsStayOlympicWhenImportedCategoryIsBroad() throws {
-        XCTAssertTrue(ExerciseTrainingType.isOlympicOnlyMovement(named: "Clean and Press"))
-        XCTAssertTrue(ExerciseTrainingType.isOlympicOnlyMovement(named: "Clean & Jerk"))
-        XCTAssertTrue(ExerciseTrainingType.isOlympicOnlyMovement(named: "Power Snatch"))
+struct PersonalizedSuggestionTests {
+    @Test func namedOlympicMovementsStayOlympicWhenImportedCategoryIsBroad() throws {
+        #expect(ExerciseTrainingType.isOlympicOnlyMovement(named: "Clean and Press"))
+        #expect(ExerciseTrainingType.isOlympicOnlyMovement(named: "Clean & Jerk"))
+        #expect(ExerciseTrainingType.isOlympicOnlyMovement(named: "Power Snatch"))
 
-        let cleanAndPress = try XCTUnwrap(
+        let cleanAndPress = try #require(
             ImportedExerciseLibrary.templates.first { $0.name == "Clean and Press" })
-        XCTAssertTrue(cleanAndPress.trainingTypes.contains(.olympicWeightlifting))
+        #expect(cleanAndPress.trainingTypes.contains(.olympicWeightlifting))
     }
 
-    func testOlympicMovementsAreNotFitnessFallbacks() {
+    @Test func olympicMovementsAreNotFitnessFallbacks() {
         let cleanAndJerk = SuggestedExerciseCandidate(
             id: "clean-jerk", name: "Clean and Jerk", mechanics: .compound,
             primaryMuscles: ["quads", "glutes", "delts"],
@@ -39,15 +41,15 @@ final class PersonalizedSuggestionTests: XCTestCase {
             trainingGoal: .hypertrophy))
 
         let fitnessNames = Set(bundle.option(SuggestedWorkoutStyle.fitness).exercises.map { $0.name })
-        XCTAssertFalse(fitnessNames.contains("Clean and Jerk"))
-        XCTAssertFalse(fitnessNames.contains("Clean and Press"))
-        XCTAssertFalse(fitnessNames.contains("Snatch"))
-        XCTAssertTrue(bundle.option(SuggestedWorkoutStyle.olympic).exercises.contains {
+        #expect(!fitnessNames.contains("Clean and Jerk"))
+        #expect(!fitnessNames.contains("Clean and Press"))
+        #expect(!fitnessNames.contains("Snatch"))
+        #expect(bundle.option(SuggestedWorkoutStyle.olympic).exercises.contains {
             ["Clean and Jerk", "Clean and Press", "Snatch"].contains($0.name)
         })
     }
 
-    func testPersonalizedIsDisabledBelowFiveWorkouts() {
+    @Test func personalizedIsDisabledBelowFiveWorkouts() {
         let input = SuggestedWorkoutInput(
             completedSetsByMuscle: [:],
             candidates: [SuggestedExerciseCandidate(
@@ -60,10 +62,10 @@ final class PersonalizedSuggestionTests: XCTestCase {
             trainingGoal: .hypertrophy)
 
         let option = SuggestedWorkoutGenerator.generate(input: input).option(.personalized)
-        XCTAssertFalse(option.isLaunchable)
+        #expect(!option.isLaunchable)
     }
 
-    func testPersonalizedUsesOnlyExercisesMarkedFromHistory() {
+    @Test func personalizedUsesOnlyExercisesMarkedFromHistory() {
         let historyExercise = SuggestedExerciseCandidate(
             id: "history", name: "Bench Press", mechanics: .compound,
             primaryMuscles: ["chest"], isPersonalized: true)
@@ -80,11 +82,11 @@ final class PersonalizedSuggestionTests: XCTestCase {
             trainingGoal: .hypertrophy)
 
         let option = SuggestedWorkoutGenerator.generate(input: input).option(.personalized)
-        XCTAssertTrue(option.isLaunchable)
-        XCTAssertEqual(Set(option.exercises.map(\.candidateID)), ["history"])
+        #expect(option.isLaunchable)
+        #expect(Set(option.exercises.map(\.candidateID)) == ["history"])
     }
 
-    func testPersonalizedAvoidsTheMostRecentCompletedMovementPool() {
+    @Test func personalizedAvoidsTheMostRecentCompletedMovementPool() {
         let completedMovement = SuggestedExerciseCandidate(
             id: "completed-bench", name: "Bench Press", mechanics: .compound,
             primaryMuscles: ["chest"], isPersonalized: true)
@@ -104,13 +106,13 @@ final class PersonalizedSuggestionTests: XCTestCase {
 
         let option = SuggestedWorkoutGenerator.generatePersonalized(input: input)
 
-        XCTAssertTrue(option.isLaunchable)
-        XCTAssertFalse(option.exercises.contains { $0.candidateID == completedMovement.id },
+        #expect(option.isLaunchable)
+        #expect(!option.exercises.contains { $0.candidateID == completedMovement.id },
                        "Completing a Today recommendation must not immediately recreate its movement pool")
-        XCTAssertTrue(option.exercises.contains { $0.candidateID == freshMovement.id })
+        #expect(option.exercises.contains { $0.candidateID == freshMovement.id })
     }
 
-    func testPersonalizedFillsGapsOutsideANarrowPreferredStyle() {
+    @Test func personalizedFillsGapsOutsideANarrowPreferredStyle() {
         let circusBell = SuggestedExerciseCandidate(
             id: "circus-bell", name: "Circus Bell Press", mechanics: .compound,
             primaryMuscles: ["shoulders"], trainingTypes: [.strength, .strongman])
@@ -129,11 +131,11 @@ final class PersonalizedSuggestionTests: XCTestCase {
 
         let option = SuggestedWorkoutGenerator.generatePersonalized(input: input)
 
-        XCTAssertEqual(Set(option.exercises.map(\.candidateID)),
+        #expect(Set(option.exercises.map(\.candidateID)) ==
                        [circusBell.id, squat.id, row.id])
     }
 
-    func testSingleSuggestionReturnsOneMovementAndExcludesExistingAllocation() {
+    @Test func singleSuggestionReturnsOneMovementAndExcludesExistingAllocation() {
         let press = SuggestedExerciseCandidate(
             id: "press", name: "Bench Press", mechanics: .compound,
             primaryMuscles: ["chest"])
@@ -150,11 +152,11 @@ final class PersonalizedSuggestionTests: XCTestCase {
             alreadyAllocatedByMuscle: ["chest": 4],
             excludingCandidateIDs: ["press"])
 
-        XCTAssertEqual(suggestion?.candidateID, "row")
-        XCTAssertEqual(suggestion?.plannedSets, 3)
+        #expect(suggestion?.candidateID == "row")
+        #expect(suggestion?.plannedSets == 3)
     }
 
-    func testSingleSuggestionKeepsFitnessFreeOfOlympicMovements() {
+    @Test func singleSuggestionKeepsFitnessFreeOfOlympicMovements() {
         let clean = SuggestedExerciseCandidate(
             id: "clean", name: "Clean and Press", mechanics: .compound,
             primaryMuscles: ["quads"], trainingTypes: [.olympicWeightlifting])
@@ -169,10 +171,10 @@ final class PersonalizedSuggestionTests: XCTestCase {
         let suggestion = SuggestedWorkoutGenerator.suggestSingleExercise(
             input: input, style: .fitness)
 
-        XCTAssertEqual(suggestion?.candidateID, "squat")
+        #expect(suggestion?.candidateID == "squat")
     }
 
-    func testHistoryIndexBackfillsAllExistingWorkoutsAndStableAliases() throws {
+    @Test func historyIndexBackfillsAllExistingWorkoutsAndStableAliases() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let exercise = try WorkoutRepository.findOrCreateExercise(
             named: "Old History Movement", in: context)
@@ -188,14 +190,14 @@ final class PersonalizedSuggestionTests: XCTestCase {
         let snapshot = ExerciseHistoryIndexStore.build(sessions: sessions)
         let stableKey = ExerciseSuggestionExclusionKey.forExercise(exercise)
         let legacyKey = "legacy:\(ExerciseLibrary.dedupKey(exercise.name))"
-        XCTAssertEqual(Set(snapshot.entries.keys), [stableKey, legacyKey])
-        XCTAssertEqual(snapshot.entries[stableKey]?.completedWorkoutCount, 3)
-        XCTAssertEqual(snapshot.entries[stableKey]?.completedWorkingSetCount, 3)
-        XCTAssertEqual(try ExerciseHistoryIndexStore.personalizedExerciseKeys(
-            sessions: sessions, storageURL: nil), [stableKey, legacyKey])
+        #expect(Set(snapshot.entries.keys) == [stableKey, legacyKey])
+        #expect(snapshot.entries[stableKey]?.completedWorkoutCount == 3)
+        #expect(snapshot.entries[stableKey]?.completedWorkingSetCount == 3)
+        #expect(try ExerciseHistoryIndexStore.personalizedExerciseKeys(
+            sessions: sessions, storageURL: nil) == [stableKey, legacyKey])
     }
 
-    func testHistoryIndexRebuildsAfterAHistoryChange() throws {
+    @Test func historyIndexRebuildsAfterAHistoryChange() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let first = try WorkoutRepository.findOrCreateExercise(named: "First Movement", in: context)
         let second = try WorkoutRepository.findOrCreateExercise(named: "Second Movement", in: context)
@@ -205,12 +207,13 @@ final class PersonalizedSuggestionTests: XCTestCase {
             .appendingPathComponent("history-index-\(UUID().uuidString).json")
         defer { try? FileManager.default.removeItem(at: url) }
 
-        XCTAssertTrue(try ExerciseHistoryIndexStore.rebuildIfNeeded(sessions: [session], storageURL: url))
-        XCTAssertFalse(try ExerciseHistoryIndexStore.rebuildIfNeeded(sessions: [session], storageURL: url))
+        #expect(try ExerciseHistoryIndexStore.rebuildIfNeeded(sessions: [session], storageURL: url))
+        #expect(!(try ExerciseHistoryIndexStore.rebuildIfNeeded(sessions: [session], storageURL: url)))
 
         _ = try WorkoutRepository.addSet(to: session, exercise: second, weightKg: 20, reps: 8, in: context)
         let keys = try ExerciseHistoryIndexStore.personalizedExerciseKeys(
             sessions: [session], storageURL: url)
-        XCTAssertTrue(keys.contains(ExerciseSuggestionExclusionKey.forExercise(second)))
+        #expect(keys.contains(ExerciseSuggestionExclusionKey.forExercise(second)))
     }
 }
+#endif

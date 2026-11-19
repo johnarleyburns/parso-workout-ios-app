@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 C2 — partners as an ordered rotation: who's lifting, who's next; tap to make
 /// someone current. Rotation advances automatically after each logged set (D-W3).

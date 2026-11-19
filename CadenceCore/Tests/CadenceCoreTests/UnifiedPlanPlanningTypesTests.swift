@@ -1,9 +1,9 @@
 import Foundation
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class UnifiedPlanPlanningTypesTests: XCTestCase {
-    func testPlanningRequestRoundTripsFutureAuthoringInputs() throws {
+struct UnifiedPlanPlanningTypesTests {
+    @Test func planningRequestRoundTripsFutureAuthoringInputs() throws {
         let request = PlanningRequest(
             goal: .hypertrophy,
             experience: .intermediate,
@@ -23,10 +23,10 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
 
         try request.validate()
         let data = try JSONEncoder().encode(request)
-        XCTAssertEqual(try JSONDecoder().decode(PlanningRequest.self, from: data), request)
+        #expect(try JSONDecoder().decode(PlanningRequest.self, from: data) == request)
     }
 
-    func testSchemeValidationCoversStructuredGeneration() throws {
+    @Test func schemeValidationCoversStructuredGeneration() throws {
         let scheme = SetScheme(
             id: SetSchemeID(raw: "double-progression"),
             displayName: "Double progression",
@@ -42,7 +42,7 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
         try scheme.validate()
     }
 
-    func testReadinessRejectsEachInvalidRangeIndependently() {
+    @Test func readinessRejectsEachInvalidRangeIndependently() {
         let invalidSignals = [
             ReadinessSignal(restingHR: 0),
             ReadinessSignal(sleepHours: 25),
@@ -51,11 +51,13 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
         ]
 
         for signal in invalidSignals {
-            XCTAssertThrowsError(try signal.validate())
+            #expect(throws: (any Error).self) {
+                try signal.validate()
+            }
         }
     }
 
-    func testRepeatRequestRequiresSourceAndNonnegativeTargets() throws {
+    @Test func repeatRequestRequiresSourceAndNonnegativeTargets() throws {
         let request = PlanRepeatRequest(
             scope: .mesocycle,
             sourceWeekIndex: 0,
@@ -65,12 +67,12 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
         try request.validate()
 
         let invalid = PlanRepeatRequest(scope: .week, targetWeekIndices: [1])
-        XCTAssertThrowsError(try invalid.validate()) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError, .invalidRepeatRequest)
+        #expect(throws: UnifiedPlanValidationError.invalidRepeatRequest) {
+            try invalid.validate()
         }
     }
 
-    func testPlanValidatesPhaseMetadataAndPreservesAssistance() throws {
+    @Test func planValidatesPhaseMetadataAndPreservesAssistance() throws {
         let days = Weekday.mondayThroughSunday.map { PlanDay(weekday: $0) }
         let plan = Plan(
             title: "Assisted plan",
@@ -83,14 +85,14 @@ final class UnifiedPlanPlanningTypesTests: XCTestCase {
             assistance: [.generated, .critiqued])
 
         try plan.validate()
-        XCTAssertEqual(plan.assistance, [.generated, .critiqued])
+        #expect(plan.assistance == [.generated, .critiqued])
 
         let invalid = Plan(
             title: "Invalid phase",
             weeks: [PlanWeek(index: 0, days: days)],
             phases: [PlanPhase(id: "", title: "", durationCycles: 0)])
-        XCTAssertThrowsError(try invalid.validate()) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError, .invalidPlanMetadata)
+        #expect(throws: UnifiedPlanValidationError.invalidPlanMetadata) {
+            try invalid.validate()
         }
     }
 }

@@ -1,8 +1,10 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class CoachDecisionEngineTests: XCTestCase {
+struct CoachDecisionEngineTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -54,7 +56,7 @@ final class CoachDecisionEngineTests: XCTestCase {
 
     // MARK: - Balance decisions
 
-    func testTwoStrengthDaysZeroAerobicPrefersAerobic() throws {
+    @Test func twoStrengthDaysZeroAerobicPrefersAerobic() throws {
         let ctx = try makeContext()
         let now = testNow
         let s1 = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -64,11 +66,11 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [s1, s2], goal: .strength, experience: .intermediate, now: now)
 
         let decision = CoachDecisionEngine.run(facts)
-        XCTAssertTrue(decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic,
+        #expect(decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic,
                       "With 2 strength days and 0 aerobic, primary should be aerobic. Got: \(decision.primary.kind)")
     }
 
-    func testZeroStrengthDaysOneFiftyAerobicPrefersStrength() throws {
+    @Test func zeroStrengthDaysOneFiftyAerobicPrefersStrength() throws {
         let ctx = try makeContext()
         let now = testNow
         let runs: [TrainingEvent] = [
@@ -79,26 +81,26 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: runs, goal: .strength, experience: .intermediate, now: now)
 
         let decision = CoachDecisionEngine.run(facts)
-        XCTAssertEqual(decision.primary.kind, .strength,
+        #expect(decision.primary.kind == .strength,
                        "With 0 strength and aerobic met, primary should be strength. Got: \(decision.primary.kind)")
     }
 
     // MARK: - Daily recommendation slots
 
-    func testDailySlotsBothModalitiesWithoutTwoADays() throws {
+    @Test func dailySlotsBothModalitiesWithoutTwoADays() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let prefs = CoachSchedulePreferences(allowsTwoADays: false)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
-        XCTAssertEqual(decision.dailyRecommendationSlots.map(\.modality), [.strength, .cardio])
-        XCTAssertEqual(decision.dailyRecommendationSlots.filter { !$0.isCompanion }.count <= 1, true)
+        #expect(decision.dailyRecommendationSlots.map(\.modality) == [.strength, .cardio])
+        #expect((decision.dailyRecommendationSlots.filter { !$0.isCompanion }.count <= 1) == true)
         for slot in decision.dailyRecommendationSlots {
-            XCTAssertNotNil(decision.scoreBreakdowns[slot.session.id],
+            #expect(decision.scoreBreakdowns[slot.session.id] != nil,
                             "Slot sessions must come from the scored candidates")
         }
     }
 
-    func testDailySlotsFilterCompletedModality() throws {
+    @Test func dailySlotsFilterCompletedModality() throws {
         let ctx = try makeContext()
         let now = testNow
         let strength = try makeStrengthEvent(context: ctx, name: "Bench Press",
@@ -108,48 +110,48 @@ final class CoachDecisionEngineTests: XCTestCase {
                                      duration: 1800, avgHR: 140)
         let onlyStrength = CoachDecisionEngine.run(
             CoachFacts.make(from: [strength], goal: .strength, experience: .intermediate, now: now))
-        XCTAssertFalse(onlyStrength.dailyRecommendationSlots.contains { $0.modality == .strength })
+        #expect(!onlyStrength.dailyRecommendationSlots.contains { $0.modality == .strength })
         let onlyCardio = CoachDecisionEngine.run(
             CoachFacts.make(from: [cardio], goal: .strength, experience: .intermediate, now: now))
-        XCTAssertFalse(onlyCardio.dailyRecommendationSlots.contains { $0.modality == .cardio })
+        #expect(!onlyCardio.dailyRecommendationSlots.contains { $0.modality == .cardio })
         let both = CoachDecisionEngine.run(
             CoachFacts.make(from: [strength, cardio], goal: .strength, experience: .intermediate, now: now))
-        XCTAssertTrue(both.dailyRecommendationSlots.isEmpty)
+        #expect(both.dailyRecommendationSlots.isEmpty)
     }
 
-    func testDailySlotsEmptyOnPainConcern() throws {
+    @Test func dailySlotsEmptyOnPainConcern() throws {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: testNow)
         let decision = CoachDecisionEngine.run(facts, hasPainConcern: true)
-        XCTAssertTrue(decision.dailyRecommendationSlots.isEmpty)
+        #expect(decision.dailyRecommendationSlots.isEmpty)
     }
 
     // MARK: - Pain concern
 
-    func testPainConcernBlocksHardTraining() throws {
+    @Test func painConcernBlocksHardTraining() throws {
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
 
         let decision = CoachDecisionEngine.run(facts, hasPainConcern: true)
-        XCTAssertEqual(decision.primary.kind, .rest)
-        XCTAssertFalse(decision.warnings.isEmpty)
+        #expect(decision.primary.kind == .rest)
+        #expect(!decision.warnings.isEmpty)
     }
 
     // MARK: - Beginner
 
-    func testBeginnerGetsBeginnerSessions() throws {
+    @Test func beginnerGetsBeginnerSessions() throws {
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .beginner, now: now)
 
         let candidates = CoachSession.candidates(for: facts)
-        XCTAssertTrue(candidates.contains { $0.id == "strength.beginnerA" })
-        XCTAssertTrue(candidates.contains { $0.id == "strength.beginnerB" })
+        #expect(candidates.contains { $0.id == "strength.beginnerA" })
+        #expect(candidates.contains { $0.id == "strength.beginnerB" })
     }
 
     // MARK: - Determinism
 
-    func testDecisionIsDeterministic() throws {
+    @Test func decisionIsDeterministic() throws {
         let ctx = try makeContext()
         let now = testNow
         let s1 = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -158,22 +160,22 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         let d1 = CoachDecisionEngine.run(facts)
         let d2 = CoachDecisionEngine.run(facts)
-        XCTAssertEqual(d1.primary.id, d2.primary.id)
+        #expect(d1.primary.id == d2.primary.id)
     }
 
     // MARK: - WeeklyPlan generation
 
-    func testWeeklyPlanIncludesSevenDays() throws {
+    @Test func weeklyPlanIncludesSevenDays() throws {
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
 
         let plan = WeeklyPlan.generate(from: facts)
-        XCTAssertGreaterThanOrEqual(plan.days.count, 7, "Plan should have at least 7 days (history + future)")
-        XCTAssertTrue(plan.days.contains { $0.isToday })
+        #expect(plan.days.count >= 7, "Plan should have at least 7 days (history + future)")
+        #expect(plan.days.contains { $0.isToday })
     }
 
-    func testWeeklyPlanShowsCompletedDays() throws {
+    @Test func weeklyPlanShowsCompletedDays() throws {
         let ctx = try makeContext()
         let now = testNow
         let s1 = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -182,22 +184,22 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         let plan = WeeklyPlan.generate(from: facts)
         let completed = plan.days.filter(\.isCompleted)
-        XCTAssertFalse(completed.isEmpty)
+        #expect(!completed.isEmpty)
     }
 
-    func testWeeklyPlanDoesNotBackfillEmptyHistoryAsPlannedSessions() throws {
+    @Test func weeklyPlanDoesNotBackfillEmptyHistoryAsPlannedSessions() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
 
         let plan = WeeklyPlan.generate(from: facts)
 
-        XCTAssertEqual(plan.historyDays.count, 7)
-        XCTAssertTrue(plan.historyDays.allSatisfy { !$0.isFuture })
-        XCTAssertTrue(plan.historyDays.filter { !$0.isCompleted && $0.isPast }.allSatisfy { $0.sessions.isEmpty },
+        #expect(plan.historyDays.count == 7)
+        #expect(plan.historyDays.allSatisfy { !$0.isFuture })
+        #expect(plan.historyDays.filter { !$0.isCompleted && $0.isPast }.allSatisfy { $0.sessions.isEmpty },
                       "Blank past history days must not become planned sessions")
     }
 
-    func testWeeklyPlanRemainingCalendarWeekIsFutureOnlyAndChronological() throws {
+    @Test func weeklyPlanRemainingCalendarWeekIsFutureOnlyAndChronological() throws {
         let now = testNow
         let cal = Calendar.current
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
@@ -207,14 +209,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let weekStart = WeeklyStats.weekStart(now: now)
         let nextWeekStart = cal.date(byAdding: .day, value: 7, to: weekStart)!
 
-        XCTAssertEqual(remaining.count, 3, "Thursday should have Fri/Sat/Sun remaining in the Monday-bounded week")
-        XCTAssertEqual(remaining.map(\.date), remaining.map(\.date).sorted())
-        XCTAssertTrue(remaining.allSatisfy { $0.isFuture })
-        XCTAssertTrue(remaining.allSatisfy { $0.date >= cal.startOfDay(for: now) && $0.date < nextWeekStart })
-        XCTAssertTrue(remaining.allSatisfy { $0.sessionKind != nil })
+        #expect(remaining.count == 3, "Thursday should have Fri/Sat/Sun remaining in the Monday-bounded week")
+        #expect(remaining.map(\.date) == remaining.map(\.date).sorted())
+        #expect(remaining.allSatisfy { $0.isFuture })
+        #expect(remaining.allSatisfy { $0.date >= cal.startOfDay(for: now) && $0.date < nextWeekStart })
+        #expect(remaining.allSatisfy { $0.sessionKind != nil })
     }
 
-    func testWeeklyPlanRestOfWeekPrioritizesStrengthDeficitWithoutArbitraryRestAlternation() throws {
+    @Test func weeklyPlanRestOfWeekPrioritizesStrengthDeficitWithoutArbitraryRestAlternation() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
 
@@ -224,15 +226,15 @@ final class CoachDecisionEngineTests: XCTestCase {
         // With empty history and default preferences (strength=2, cardio=3),
         // remaining days should push toward strength targets first, then cardio.
         let activeRemaining = remaining.filter { !$0.sessions.isEmpty }
-        XCTAssertFalse(activeRemaining.isEmpty, "Should have planned sessions in remaining week")
+        #expect(!activeRemaining.isEmpty, "Should have planned sessions in remaining week")
         // First active session should be strength (strength deficit)
         if let first = activeRemaining.first {
-            XCTAssertTrue(first.sessions.contains { $0.kind == .strength },
+            #expect(first.sessions.contains { $0.kind == .strength },
                           "First remaining session should include strength")
         }
     }
 
-    func testWeeklyPlanModerateCardioIsNotMarkedHard() throws {
+    @Test func weeklyPlanModerateCardioIsNotMarkedHard() throws {
         let ctx = try makeContext()
         let now = testNow
         let s1 = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -246,12 +248,12 @@ final class CoachDecisionEngineTests: XCTestCase {
         let moderateCardioSessions = futureSessions.filter { $0.kind == .moderateAerobic }
 
         if !moderateCardioSessions.isEmpty {
-            XCTAssertTrue(moderateCardioSessions.allSatisfy { !$0.isHard },
+            #expect(moderateCardioSessions.allSatisfy { !$0.isHard },
                           "Moderate cardio sessions should NOT be marked hard")
         }
     }
 
-    func testWeeklyPlanPoorReadinessOnlyDefersTomorrow() throws {
+    @Test func weeklyPlanPoorReadinessOnlyDefersTomorrow() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate,
                                     readinessEntry: poorReadiness(now), now: now)
@@ -261,21 +263,21 @@ final class CoachDecisionEngineTests: XCTestCase {
         // Coach suggests, it does not proscribe: poor readiness attaches a
         // lighter-day recommendation to tomorrow but never converts a scheduled
         // training day into a forced Recovery day.
-        let tomorrow = try XCTUnwrap(plan.futureDays.first)
-        XCTAssertNotEqual(tomorrow.sessionKind, .recovery,
+        let tomorrow = try #require(plan.futureDays.first)
+        #expect(tomorrow.sessionKind != .recovery,
                           "Poor readiness must not force a Recovery day")
-        XCTAssertTrue(tomorrow.sessions.contains(where: \.recommendsLighter),
+        #expect(tomorrow.sessions.contains { $0.recommendsLighter },
                       "Poor readiness should attach a non-blocking lighter-day recommendation")
-        XCTAssertTrue(plan.futureDays.contains { day in
+        #expect(plan.futureDays.contains { day in
             day.sessions.contains { $0.kind == .strength }
         }, "A one-day readiness dip should not drop the plan's strength days")
-        XCTAssertFalse(plan.futureDays.dropFirst().flatMap(\.sessions).contains(where: \.recommendsLighter),
+        #expect(!plan.futureDays.dropFirst().flatMap(\.sessions).contains { $0.recommendsLighter },
                        "The readiness recommendation applies to tomorrow only")
     }
 
     // MARK: - Observed facts (v2 rich model)
 
-    func testObservedFactsIncludeLastCardio() throws {
+    @Test func observedFactsIncludeLastCardio() throws {
         let ctx = try makeContext()
         let now = testNow
         let run = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-3600),
@@ -283,14 +285,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [run], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertNotNil(cardioFact, "Should have last cardio fact when cardio exists")
-        XCTAssertEqual(cardioFact?.title, "Last cardio")
+        #expect(cardioFact != nil, "Should have last cardio fact when cardio exists")
+        #expect(cardioFact?.title == "Last cardio")
     }
 
     /// Fix 1: "What you did" must read from the workout's date (start), not the
     /// finalize/entry time (endedAt). A session started 12h ago but finalized 2h ago
     /// must surface "12h ago".
-    func testLastStrengthValueUsesWorkoutDateNotEndedAt() throws {
+    @Test func lastStrengthValueUsesWorkoutDateNotEndedAt() throws {
         let ctx = try makeContext()
         let now = testNow
         let started = now.addingTimeInterval(-12 * 3600)
@@ -307,15 +309,15 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [event], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
-        XCTAssertEqual(strengthFact?.value, "12h ago",
+        #expect(strengthFact?.value == "12h ago",
                        "Should format from session.date (12h ago), not endedAt (2h ago). Got: \(strengthFact?.value ?? "nil")")
-        XCTAssertEqual(strengthFact?.occurredAt, event.start,
+        #expect(strengthFact?.occurredAt == event.start,
                        "occurredAt sort key should match the displayed start time")
     }
 
     /// Fix 3: the "What you did" facts must carry the source workout id so the Home
     /// card can navigate to that workout. Aggregate facts must not.
-    func testObservedFactsCarrySourceWorkoutId() throws {
+    @Test func observedFactsCarrySourceWorkoutId() throws {
         let ctx = try makeContext()
         let now = testNow
         let strength = try makeStrengthEvent(context: ctx, name: "Back Squat",
@@ -327,26 +329,26 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
         let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertEqual(strengthFact?.sourceId, strength.id,
+        #expect(strengthFact?.sourceId == strength.id,
                        "last strength fact should carry its source session id")
-        XCTAssertEqual(cardioFact?.sourceId, run.id,
+        #expect(cardioFact?.sourceId == run.id,
                        "last cardio fact should carry its source cardio id")
         let strengthDaysFact = decision.observedFacts.first { $0.kind == .weeklyStrengthDays }
-        XCTAssertNil(strengthDaysFact?.sourceId, "aggregate facts should not carry a source id")
+        #expect(strengthDaysFact?.sourceId == nil, "aggregate facts should not carry a source id")
     }
 
-    func testObservedFactsUseStaticSummaryValues() throws {
+    @Test func observedFactsUseStaticSummaryValues() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         for fact in decision.observedFacts {
             if fact.kind == .weeklyStrengthDays || fact.kind == .weeklyModerateEquivalentMinutes {
-                XCTAssertNil(fact.occurredAt, "Summary facts should have nil occurredAt, got \(fact.occurredAt?.description ?? "nil")")
+                #expect(fact.occurredAt == nil, "Summary facts should have nil occurredAt, got \(fact.occurredAt?.description ?? "nil")")
             }
         }
     }
 
-    func testObservedFactsPickNewestCardioWhenEventsUnsorted() throws {
+    @Test func observedFactsPickNewestCardioWhenEventsUnsorted() throws {
         let ctx = try makeContext()
         let now = testNow
         let c1 = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-7200),
@@ -356,14 +358,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [c1, c2], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertNotNil(cardioFact)
-        XCTAssertTrue(cardioFact!.detail?.contains("Walk") ?? false,
+        #expect(cardioFact != nil)
+        #expect(cardioFact!.detail?.contains("Walk") ?? false,
                       "Should pick the most recent (walk), got: \(cardioFact?.detail ?? "nil")")
     }
 
     /// Home supplies events newest-first (cardio block descending). The engine must
     /// pick the most recent cardio by end date, not the first in the array.
-    func testObservedFactsPickNewestCardioWhenEventsAreNewestFirst() throws {
+    @Test func observedFactsPickNewestCardioWhenEventsAreNewestFirst() throws {
         let ctx = try makeContext()
         let now = testNow
         let newWalk = makeCardioEvent(context: ctx, type: .walk, date: now.addingTimeInterval(-3600),
@@ -373,13 +375,13 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [newWalk, oldRun], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertNotNil(cardioFact)
-        XCTAssertTrue(cardioFact!.detail?.contains("Walk") ?? false,
+        #expect(cardioFact != nil)
+        #expect(cardioFact!.detail?.contains("Walk") ?? false,
                       "Should pick the most recent cardio (walk), got: \(cardioFact?.detail ?? "nil")")
     }
 
     /// Home supplies strength events newest-first. Pick newest strength by end date.
-    func testObservedFactsPickNewestStrengthWhenHomeSuppliesNewestFirst() throws {
+    @Test func observedFactsPickNewestStrengthWhenHomeSuppliesNewestFirst() throws {
         let ctx = try makeContext()
         let now = testNow
         let newBench = try makeStrengthEvent(context: ctx, name: "Bench Press", primaryMuscles: ["chest"],
@@ -389,14 +391,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [newBench, oldSquat], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
-        XCTAssertNotNil(strengthFact)
-        XCTAssertTrue(strengthFact!.detail?.contains("Bench") ?? false,
+        #expect(strengthFact != nil)
+        #expect(strengthFact!.detail?.contains("Bench") ?? false,
                       "Should pick the most recent strength (bench), got: \(strengthFact?.detail ?? "nil")")
     }
 
     /// Home-like ordering: all strength newest-to-oldest, then all cardio
     /// newest-to-oldest. The engine must pick the newest of each by end date.
-    func testObservedFactsPickNewestForHomeMixedOrdering() throws {
+    @Test func observedFactsPickNewestForHomeMixedOrdering() throws {
         let ctx = try makeContext()
         let now = testNow
         let newBench = try makeStrengthEvent(context: ctx, name: "Bench Press", primaryMuscles: ["chest"],
@@ -413,15 +415,15 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
         let strengthFact = decision.observedFacts.first { $0.kind == .lastStrength }
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertTrue(strengthFact?.detail?.contains("Bench") ?? false,
+        #expect(strengthFact?.detail?.contains("Bench") ?? false,
                       "newest strength should be bench, got: \(strengthFact?.detail ?? "nil")")
-        XCTAssertTrue(cardioFact?.detail?.contains("Walk") ?? false,
+        #expect(cardioFact?.detail?.contains("Walk") ?? false,
                       "newest cardio should be walk, got: \(cardioFact?.detail ?? "nil")")
     }
 
     /// A future-dated event (e.g. clock skew / scheduled import) must never be
     /// treated as the last event or counted in the weekly balance.
-    func testFutureEventsDoNotCountAsLastOrWeeklyBalance() throws {
+    @Test func futureEventsDoNotCountAsLastOrWeeklyBalance() throws {
         let ctx = try makeContext()
         let now = testNow
         let pastWalk = makeCardioEvent(context: ctx, type: .walk, date: now.addingTimeInterval(-3600),
@@ -431,40 +433,40 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [futureRun, pastWalk], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertTrue(cardioFact?.detail?.contains("Walk") ?? false,
+        #expect(cardioFact?.detail?.contains("Walk") ?? false,
                       "last cardio should be the past walk, not the future run; got: \(cardioFact?.detail ?? "nil")")
         let modEquiv = facts.weeklyBalance.moderateEquivalentMinutes
-        XCTAssertGreaterThan(modEquiv, 0, "past walk should count")
-        XCTAssertLessThanOrEqual(modEquiv, 35,
+        #expect(modEquiv > 0, "past walk should count")
+        #expect(modEquiv <= 35,
                                  "future run must be excluded from weekly balance; got \(modEquiv) min")
     }
 
-    func testNoEvidenceDuplicationDataNeededForInlineSources() throws {
+    @Test func noEvidenceDuplicationDataNeededForInlineSources() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         // The engine always produces inline citations (on claim, warnings, rule-out).
         // We just check the decision is well-formed.
-        XCTAssertFalse(decision.primary.id.isEmpty)
+        #expect(!decision.primary.id.isEmpty)
     }
 
     // MARK: - Expanded alternatives
 
-    func testModerateAerobicAlternativesIncludeRunWalkCycleSwimOrRow() throws {
+    @Test func moderateAerobicAlternativesIncludeRunWalkCycleSwimOrRow() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let candidates = CoachSession.candidates(for: facts)
         let moderateIDs = candidates.filter { $0.kind == .moderateAerobic }.map(\.id)
-        XCTAssertTrue(moderateIDs.contains("aerobic.moderateRun"))
-        XCTAssertTrue(moderateIDs.contains("aerobic.moderateWalk"))
-        XCTAssertTrue(moderateIDs.contains("aerobic.moderateCycle"))
-        XCTAssertTrue(moderateIDs.contains("aerobic.moderateSwim"))
-        XCTAssertTrue(moderateIDs.contains("aerobic.moderateRow"))
+        #expect(moderateIDs.contains("aerobic.moderateRun"))
+        #expect(moderateIDs.contains("aerobic.moderateWalk"))
+        #expect(moderateIDs.contains("aerobic.moderateCycle"))
+        #expect(moderateIDs.contains("aerobic.moderateSwim"))
+        #expect(moderateIDs.contains("aerobic.moderateRow"))
     }
 
     // MARK: - Preference-aware scoring
 
-    func testPreferenceForCyclingReordersEligibleModerateAerobicCandidates() throws {
+    @Test func preferenceForCyclingReordersEligibleModerateAerobicCandidates() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
 
@@ -475,8 +477,8 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         let decision = CoachDecisionEngine.run(facts, profile: profile)
         // With strong cycle preference, cycle should be primary for moderate aerobic
-        XCTAssertEqual(decision.primary.kind, .moderateAerobic)
-        XCTAssertEqual(decision.primary.modality, .cycle,
+        #expect(decision.primary.kind == .moderateAerobic)
+        #expect(decision.primary.modality == .cycle,
                        "With cycle preference, primary should be cycle. Got: \(decision.primary.modality?.rawValue ?? "nil")")
     }
 
@@ -494,27 +496,27 @@ final class CoachDecisionEngineTests: XCTestCase {
 
     /// Boxing must carry its OWN modality (not `.other`), so selecting it records a
     /// boxing preference and Coach recommends boxing next.
-    func testSelectingBoxingRemembersBoxingModalityNotOther() throws {
+    @Test func selectingBoxingRemembersBoxingModalityNotOther() throws {
         let ctx = try makeContext()
         let now = testNow
         let facts = try aerobicGapFacts(ctx, now)
         let candidates = CoachSession.candidates(for: facts)
         let boxing = candidates.first { $0.id == "aerobic.moderateBoxing" }
-        XCTAssertEqual(boxing?.modality, .boxing, "boxing candidate must carry its true modality")
+        #expect(boxing?.modality == .boxing, "boxing candidate must carry its true modality")
 
         var profile = CoachPreferenceProfile.empty
         profile.recordSelection(boxing!, from: candidates)
-        XCTAssertEqual(profile.aerobicPreferences.first?.modality, .boxing,
+        #expect(profile.aerobicPreferences.first?.modality == .boxing,
                        "selecting boxing must store a boxing preference, never .other")
 
         let decision = CoachDecisionEngine.run(facts, profile: profile)
-        XCTAssertEqual(decision.primary.modality, .boxing,
+        #expect(decision.primary.modality == .boxing,
                        "with a remembered boxing preference, Coach should recommend boxing")
     }
 
     /// Picking a modality that isn't the default winner (swim) must be remembered
     /// and recommended next — proving cardio-type fidelity for any modality.
-    func testSelectingSwimRemembersAndRecommendsSwim() throws {
+    @Test func selectingSwimRemembersAndRecommendsSwim() throws {
         let ctx = try makeContext()
         let now = testNow
         let facts = try aerobicGapFacts(ctx, now)
@@ -522,29 +524,29 @@ final class CoachDecisionEngineTests: XCTestCase {
         let swim = candidates.first { $0.id == "aerobic.moderateSwim" }!
 
         // Default (no preference) Coach does not pick swim.
-        XCTAssertNotEqual(CoachDecisionEngine.run(facts).primary.modality, .swim)
+        #expect(CoachDecisionEngine.run(facts).primary.modality != .swim)
 
         var profile = CoachPreferenceProfile.empty
         profile.recordSelection(swim, from: candidates)
-        XCTAssertEqual(profile.aerobicPreferences.first?.modality, .swim)
+        #expect(profile.aerobicPreferences.first?.modality == .swim)
 
-        XCTAssertEqual(CoachDecisionEngine.run(facts, profile: profile).primary.modality, .swim,
+        #expect(CoachDecisionEngine.run(facts, profile: profile).primary.modality == .swim,
                        "Coach must remember the swim preference and recommend it next")
     }
 
     /// The stored preference survives a Codable round-trip (UserDefaults storage),
     /// so boxing fidelity isn't lost on relaunch.
-    func testBoxingPreferenceSurvivesCodableRoundTrip() throws {
+    @Test func boxingPreferenceSurvivesCodableRoundTrip() throws {
         var profile = CoachPreferenceProfile.empty
         profile.aerobicPreferences = [
             AerobicPreference(intent: .moderateAerobic, modality: .boxing, score: 2, updatedAt: Date())
         ]
         let data = try JSONEncoder().encode(profile)
         let decoded = try JSONDecoder().decode(CoachPreferenceProfile.self, from: data)
-        XCTAssertEqual(decoded.aerobicPreferences.first?.modality, .boxing)
+        #expect(decoded.aerobicPreferences.first?.modality == .boxing)
     }
 
-    func testPreferenceDoesNotOverrideRecoveryEligibility() throws {
+    @Test func preferenceDoesNotOverrideRecoveryEligibility() throws {
         let ctx = try makeContext()
         let now = testNow
         // Recent hard lower-body squat (within recovery window)
@@ -562,7 +564,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, profile: profile)
         // Run should be deferred (not primary) due to lower-body collision
         let deferredRun = decision.deferred.first { $0.session.id == "aerobic.moderateRun" }
-        XCTAssertNotNil(deferredRun, "Run should be deferred due to recovery, despite preference")
+        #expect(deferredRun != nil, "Run should be deferred due to recovery, despite preference")
     }
 
     // MARK: - Plan adherence: Wednesday scenario
@@ -571,7 +573,7 @@ final class CoachDecisionEngineTests: XCTestCase {
     /// morning Coach recommends aerobic (both strength and aerobic floors unmet).
     /// After a 44-min boxing workout, strength is still needed — the plan stays
     /// planAhead so the remaining recommendation stays visible.
-    func testWednesdayScenarioShowsPlanCompleteAfterBoxing() throws {
+    @Test func wednesdayScenarioShowsPlanCompleteAfterBoxing() throws {
         let ctx = try makeContext()
         let now = testNow
         let cal = Calendar.current
@@ -594,7 +596,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let beforeFacts = CoachFacts.make(from: [s1, monRun], goal: .strength,
                                            experience: .intermediate, now: now)
         let beforeDecision = CoachDecisionEngine.run(beforeFacts)
-        XCTAssertEqual(beforeDecision.planAdherence, .planAhead,
+        #expect(beforeDecision.planAdherence == .planAhead,
                        "Before boxing, plan should be planAhead")
 
         // Wednesday afternoon: complete 44-min boxing
@@ -609,7 +611,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         // After boxing: both strength (1/2) and cardio (62/150 min) are still
         // needed weekly, so the plan stays planAhead — completing one type when
         // both are needed does not mark the day complete.
-        XCTAssertEqual(afterDecision.planAdherence, .planAhead,
+        #expect(afterDecision.planAdherence == .planAhead,
                        "After boxing, with both targets unmet, plan should stay planAhead. Got: \(afterDecision.planAdherence)")
     }
 
@@ -618,7 +620,7 @@ final class CoachDecisionEngineTests: XCTestCase {
     /// NOT be recommended, even with the two-a-day preference enabled. (Pre-fix this
     /// failed two ways: `weekStart` returned next-Monday on Sundays so "this week"
     /// counted 0 strength, and the two-a-day path had no weekly cap.)
-    func testThreeStrengthThisWeekMeetsTargetNoMoreStrengthOnSundayEvenWithTwoADay() throws {
+    @Test func threeStrengthThisWeekMeetsTargetNoMoreStrengthOnSundayEvenWithTwoADay() throws {
         let ctx = try makeContext()
         let cal = Calendar.current
         // Sunday 2026-06-28; its Monday-week is 2026-06-22 .. 06-28.
@@ -643,22 +645,22 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [s1, s2, s3], goal: .strength,
                                      experience: .intermediate, now: sunday)
 
-        XCTAssertEqual(facts.weeklyBalance.strengthDays, 3,
+        #expect(facts.weeklyBalance.strengthDays == 3,
                        "Three distinct strength days should count this week, even on Sunday")
 
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
-        XCTAssertNotEqual(decision.primary.kind, .strength,
+        #expect(decision.primary.kind != .strength,
                           "Weekly minimum volume met on Sunday → no more strength, even with two-a-day. Got: \(decision.primary.kind)")
-        XCTAssertFalse(decision.todayPlannedRecommendations.contains { $0.kind == .strength },
+        #expect(!decision.todayPlannedRecommendations.contains { $0.kind == .strength },
                        "Two-a-day must not override the weekly strength cap once the target is met")
-        XCTAssertFalse(decision.alternatives.contains { $0.kind == .strength },
+        #expect(!decision.alternatives.contains { $0.kind == .strength },
                        "No strength should be offered as an alternative once the weekly target is met")
     }
 
     /// Completing a strength session today should suppress same-day strength
     /// recommendations.
-    func testCompletedStrengthTodaySuppressesStrengthRecommendation() throws {
+    @Test func completedStrengthTodaySuppressesStrengthRecommendation() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -672,13 +674,13 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         // With strength already done today, primary should not be strength
-        XCTAssertNotEqual(decision.primary.kind, .strength,
+        #expect(decision.primary.kind != .strength,
                           "Strength already done today should not be primary. Got: \(decision.primary.kind)")
     }
 
     /// Same-day repetition: completing boxing should suppress boxing re-recommendation
     /// even if boxing preference exists.
-    func testCompletedBoxingSuppressesSameDayBoxingEvenWithPreference() throws {
+    @Test func completedBoxingSuppressesSameDayBoxingEvenWithPreference() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -707,13 +709,13 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         // Boxing already done today — should NOT be primary despite preference
         if decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic {
-            XCTAssertNotEqual(decision.primary.modality, .boxing,
+            #expect(decision.primary.modality != .boxing,
                               "Boxing already done today should not be primary. Got: \(decision.primary.modality?.rawValue ?? "nil")")
         }
     }
 
     /// Boxing preference still works on future eligible days without same-day completion.
-    func testBoxingPreferenceWorksOnFutureEligibleDays() throws {
+    @Test func boxingPreferenceWorksOnFutureEligibleDays() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -735,34 +737,34 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, profile: profile)
 
         // Boxing should be primary on a day with no completed boxing
-        XCTAssertEqual(decision.primary.modality, .boxing,
+        #expect(decision.primary.modality == .boxing,
                        "Boxing preference should win on fresh day. Got: \(decision.primary.modality?.rawValue ?? "nil")")
     }
 
     // MARK: - WeeklyPlan future days
 
-    func testWeeklyPlanIncludesFutureDays() throws {
+    @Test func weeklyPlanIncludesFutureDays() throws {
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
 
         let plan = WeeklyPlan.generate(from: facts)
         let futureDays = plan.days.filter(\.isFuture)
-        XCTAssertFalse(futureDays.isEmpty, "WeeklyPlan should include future days")
-        XCTAssertGreaterThanOrEqual(futureDays.count, 6, "Should have at least 6 future days")
+        #expect(!futureDays.isEmpty, "WeeklyPlan should include future days")
+        #expect(futureDays.count >= 6, "Should have at least 6 future days")
     }
 
-    func testWeeklyPlanHasTomorrow() throws {
+    @Test func weeklyPlanHasTomorrow() throws {
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
 
         let plan = WeeklyPlan.generate(from: facts)
-        XCTAssertNotNil(plan.tomorrow, "WeeklyPlan should have a tomorrow entry")
-        XCTAssertTrue(plan.tomorrow!.isFuture)
+        #expect(plan.tomorrow != nil, "WeeklyPlan should have a tomorrow entry")
+        #expect(plan.tomorrow!.isFuture)
     }
 
-    func testWeeklyPlanTomorrowAfterBoxingSuggestsStrength() throws {
+    @Test func weeklyPlanTomorrowAfterBoxingSuggestsStrength() throws {
         let ctx = try makeContext()
         let now = testNow
         let cal = Calendar.current
@@ -786,10 +788,10 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         if case .planComplete(_, _, let tomorrow) = decision.planAdherence {
-            XCTAssertNotNil(tomorrow)
+            #expect(tomorrow != nil)
             // With only 1/2+ strength days and no recovery block, tomorrow should be strength
             if let t = tomorrow {
-                XCTAssertTrue(t.contains("Strength") || t.contains("Rest") || t.contains("Recovery") || t.contains("Cardio"),
+                #expect(t.contains("Strength") || t.contains("Rest") || t.contains("Recovery") || t.contains("Cardio"),
                               "Tomorrow preview should suggest a session type. Got: \(t)")
             }
         }
@@ -799,13 +801,13 @@ final class CoachDecisionEngineTests: XCTestCase {
     // plan.days offset. WeeklyPlan.generate returns 13 days (7 history + 6 future),
     // so offset-based indexing crashes at offset >= 7. The fix computes the weekday
     // label from the day's actual date (safe for any array size).
-    func testWeeklyPlanDaysExceedSevenSafeWeekdayLookup() throws {
+    @Test func weeklyPlanDaysExceedSevenSafeWeekdayLookup() throws {
         let now = testNow
         let events: [TrainingEvent] = []
         let facts = CoachFacts.make(from: events, goal: .strength, experience: .intermediate, now: now)
 
         let plan = WeeklyPlan.generate(from: facts)
-        XCTAssertGreaterThan(plan.days.count, 7, "Plan must have >7 days to trigger the crash scenario")
+        #expect(plan.days.count > 7, "Plan must have >7 days to trigger the crash scenario")
 
         let weekdays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         for (i, day) in plan.days.enumerated() {
@@ -815,15 +817,15 @@ final class CoachDecisionEngineTests: XCTestCase {
             let label = idx >= 0 && idx < 7 ? weekdays[idx] : ""
             // Verify the label is either a valid day abbreviation or empty.
             if idx >= 0 && idx < 7 {
-                XCTAssertEqual(label, weekdays[idx],
+                #expect(label == weekdays[idx],
                                "Day \(i) (\(day.date)) weekday label should match")
             } else {
-                XCTAssertEqual(label, "", "Invalid weekday index should yield empty string")
+                #expect(label == "", "Invalid weekday index should yield empty string")
             }
         }
     }
 
-    func testHighImpactAvoidanceKeepsRunOutOfPrimaryWhenLowImpactCanFulfillIntent() throws {
+    @Test func highImpactAvoidanceKeepsRunOutOfPrimaryWhenLowImpactCanFulfillIntent() throws {
         let now = testNow
 
         var profile = CoachPreferenceProfile.empty
@@ -833,7 +835,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, profile: profile)
         // With highImpact avoided, primary should not be run
         if decision.primary.kind == .moderateAerobic {
-            XCTAssertNotEqual(decision.primary.modality, .run,
+            #expect(decision.primary.modality != .run,
                               "Run should not be primary when highImpact is avoided")
         }
     }
@@ -849,7 +851,7 @@ final class CoachDecisionEngineTests: XCTestCase {
 
     /// Every non-rest candidate is tagged with the systems it loads and an evidence
     /// category whose curated pool exactly backs its citations.
-    func testEveryCandidateCarriesSystemsAndCategoryBackedCitations() throws {
+    @Test func everyCandidateCarriesSystemsAndCategoryBackedCitations() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -857,43 +859,44 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate, now: now)
 
         for c in CoachSession.candidates(for: facts, anaerobicOptIn: true) {
-            XCTAssertFalse(c.systemsTrained.isEmpty, "\(c.id) has no systemsTrained")
+            #expect(!c.systemsTrained.isEmpty, "\(c.id) has no systemsTrained")
             if c.kind == .rest {
-                XCTAssertNil(c.evidenceCategory)
+                #expect(c.evidenceCategory == nil)
                 continue
             }
             guard let category = c.evidenceCategory else {
-                return XCTFail("\(c.id) has no evidenceCategory")
+                Issue.record("\(c.id) has no evidenceCategory")
+                continue
             }
             let pool = CitationRegistry.citationPool(for: category).citationIds
-            XCTAssertEqual(c.citationIds, pool, "\(c.id) must cite exactly its category pool")
-            XCTAssertFalse(c.citationIds.isEmpty)
+            #expect(c.citationIds == pool, "\(c.id) must cite exactly its category pool")
+            #expect(!c.citationIds.isEmpty)
         }
     }
 
     /// The strength candidate no longer cites a mortality/public-health study (P1/P4
     /// no-mortality-for-prescriptions rule).
-    func testStrengthCandidateDoesNotCiteMortalityStudy() throws {
+    @Test func strengthCandidateDoesNotCiteMortalityStudy() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let strength = CoachSession.candidates(for: facts).first { $0.id == "strength.general" }
         let mortality: Set<String> = ["ekelundActivityMortality2016", "mooreLeisureActivity2012",
                                       "aremDoseResponse2015"]
-        XCTAssertNotNil(strength)
-        XCTAssertTrue(Set(strength!.citationIds).isDisjoint(with: mortality))
-        XCTAssertEqual(strength?.evidenceCategory, .strengthIntensity)
+        #expect(strength != nil)
+        #expect(Set(strength!.citationIds).isDisjoint(with: mortality))
+        #expect(strength?.evidenceCategory == .strengthIntensity)
     }
 
     /// Threshold tempo only appears once an aerobic base is established and cites the
     /// threshold pool — never the VO₂ or aerobic-base pool.
-    func testThresholdTempoGatedByAerobicBase() throws {
+    @Test func thresholdTempoGatedByAerobicBase() throws {
         let ctx = try makeContext()
         let now = testNow
         let tiny = CoachFacts.make(
             from: [makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-86400),
                                    duration: 20 * 60, avgHR: 140)],
             goal: .strength, experience: .intermediate, now: now)
-        XCTAssertNil(CoachSession.candidates(for: tiny).first { $0.id == "aerobic.thresholdTempo" },
+        #expect(CoachSession.candidates(for: tiny).first { $0.id == "aerobic.thresholdTempo" } == nil,
                      "No threshold work before a base is built")
 
         let based = CoachFacts.make(from: [
@@ -901,13 +904,13 @@ final class CoachDecisionEngineTests: XCTestCase {
             makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400), duration: 60 * 60, avgHR: 140),
         ], goal: .strength, experience: .intermediate, now: now)
         let threshold = CoachSession.candidates(for: based).first { $0.id == "aerobic.thresholdTempo" }
-        XCTAssertNotNil(threshold)
-        XCTAssertEqual(threshold?.systemsTrained, [.threshold])
-        XCTAssertEqual(threshold?.citationIds, CitationRegistry.citationPool(for: .thresholdTraining).citationIds)
+        #expect(threshold != nil)
+        #expect(threshold?.systemsTrained == [.threshold])
+        #expect(threshold?.citationIds == CitationRegistry.citationPool(for: .thresholdTraining).citationIds)
     }
 
     /// Anaerobic intervals are present by default once the user has an aerobic base.
-    func testAnaerobicIntervalsAreDefaultWhenEligible() throws {
+    @Test func anaerobicIntervalsAreDefaultWhenEligible() throws {
         let ctx = try makeContext()
         let now = testNow
         let base = makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400),
@@ -916,15 +919,15 @@ final class CoachDecisionEngineTests: XCTestCase {
 
         let optIn = CoachSession.candidates(for: facts)
             .first { $0.id == "aerobic.anaerobicIntervals" }
-        XCTAssertNotNil(optIn)
-        XCTAssertEqual(optIn?.systemsTrained, [.anaerobicPower])
-        XCTAssertEqual(optIn?.evidenceCategory, .anaerobicTraining)
-        XCTAssertFalse(optIn!.citationIds.isEmpty)
-        XCTAssertNotNil(CoachDecisionEngine.run(facts).scoreBreakdowns["aerobic.anaerobicIntervals"])
+        #expect(optIn != nil)
+        #expect(optIn?.systemsTrained == [.anaerobicPower])
+        #expect(optIn?.evidenceCategory == .anaerobicTraining)
+        #expect(!optIn!.citationIds.isEmpty)
+        #expect(CoachDecisionEngine.run(facts).scoreBreakdowns["aerobic.anaerobicIntervals"] != nil)
     }
 
     /// A lighter strength option surfaces when readiness is poor.
-    func testReducedLoadStrengthSurfacesOnPoorReadiness() throws {
+    @Test func reducedLoadStrengthSurfacesOnPoorReadiness() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -932,14 +935,14 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate,
                                     readinessEntry: poorReadiness(now), now: now)
         let reduced = CoachSession.candidates(for: facts).first { $0.id == "strength.reducedLoad" }
-        XCTAssertNotNil(reduced)
-        XCTAssertTrue(reduced!.trainingLoadTags.contains("reducedLoad"))
-        XCTAssertEqual(reduced?.evidenceCategory, .recoveryMonitoring)
+        #expect(reduced != nil)
+        #expect(reduced!.trainingLoadTags.contains("reducedLoad"))
+        #expect(reduced?.evidenceCategory == .recoveryMonitoring)
     }
 
     /// Poor readiness defers all hard work for a day; the primary is never hard and a
     /// hard candidate is deferred with a recovery-monitoring–cited reason.
-    func testPoorReadinessDefersHardWork() throws {
+    @Test func poorReadinessDefersHardWork() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
@@ -948,31 +951,31 @@ final class CoachDecisionEngineTests: XCTestCase {
                                     readinessEntry: poorReadiness(now), now: now)
         let decision = CoachDecisionEngine.run(facts)
 
-        XCTAssertFalse(decision.primary.isHard,
+        #expect(!decision.primary.isHard,
                        "Poor readiness must not yield a hard primary. Got: \(decision.primary.id)")
         let lowReadiness = decision.deferred.first { $0.reason.id == "lowReadiness" }
-        XCTAssertNotNil(lowReadiness, "A hard session should be deferred for low readiness")
-        XCTAssertFalse(lowReadiness!.reason.citationIds.isEmpty)
+        #expect(lowReadiness != nil, "A hard session should be deferred for low readiness")
+        #expect(!lowReadiness!.reason.citationIds.isEmpty)
     }
 
     /// An assessment prompt surfaces for an actively-trained system with no baseline.
-    func testAssessmentBaselineSurfacesForUncoveredTrainedSystem() throws {
+    @Test func assessmentBaselineSurfacesForUncoveredTrainedSystem() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try makeStrengthEvent(context: ctx, name: "Squat", primaryMuscles: ["quadriceps"],
                                       date: now.addingTimeInterval(-2 * 86400))
         let facts = CoachFacts.make(from: [s], goal: .strength, experience: .intermediate, now: now)
         let assess = CoachSession.candidates(for: facts).first { $0.id == "assessment.baseline" }
-        XCTAssertNotNil(assess)
-        XCTAssertEqual(assess?.evidenceCategory, .fieldTestValidity)
-        XCTAssertFalse(assess!.systemsTrained.isEmpty)
-        XCTAssertFalse(assess!.citationIds.isEmpty)
+        #expect(assess != nil)
+        #expect(assess?.evidenceCategory == .fieldTestValidity)
+        #expect(!assess!.systemsTrained.isEmpty)
+        #expect(!assess!.citationIds.isEmpty)
     }
 
     /// The system-need nudge is capped (≤12) and cannot override a hard floor: with
     /// zero strength days the primary is still strength even though aerobic/VO₂
     /// systems are stale.
-    func testSystemNeedIsCappedAndCannotOverrideStrengthFloor() throws {
+    @Test func systemNeedIsCappedAndCannotOverrideStrengthFloor() throws {
         let ctx = try makeContext()
         let now = testNow
         let runs = (1...3).map {
@@ -982,57 +985,57 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: runs, goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
 
-        XCTAssertEqual(decision.primary.kind, .strength,
+        #expect(decision.primary.kind == .strength,
                        "System need must not override the strength floor. Got: \(decision.primary.id)")
         for (_, b) in decision.scoreBreakdowns {
-            XCTAssertLessThanOrEqual(b.systemNeed, 12, "systemNeed must be capped at 12")
-            XCTAssertGreaterThanOrEqual(b.systemNeed, 0)
+            #expect(b.systemNeed <= 12, "systemNeed must be capped at 12")
+            #expect(b.systemNeed >= 0)
         }
     }
 
     /// Eligible candidates expose a transparent score breakdown whose total matches its
     /// components, and HR-dependent work is penalized when max-HR is only age-estimated.
-    func testScoreBreakdownsAndConfidencePenalty() throws {
+    @Test func scoreBreakdownsAndConfidencePenalty() throws {
         let ctx = try makeContext()
         let now = testNow
         let based = CoachFacts.make(from: [
             makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-86400), duration: 60 * 60, avgHR: 140),
             makeCardioEvent(context: ctx, type: .run, date: now.addingTimeInterval(-2 * 86400), duration: 60 * 60, avgHR: 140),
         ], goal: .strength, experience: .intermediate, now: now)
-        XCTAssertEqual(based.zoneSource, .ageEstimated, "HR present → age-estimated max-HR")
+        #expect(based.zoneSource == .ageEstimated, "HR present → age-estimated max-HR")
 
         let decision = CoachDecisionEngine.run(based)
-        XCTAssertFalse(decision.scoreBreakdowns.isEmpty)
+        #expect(!decision.scoreBreakdowns.isEmpty)
         let primaryBreakdown = decision.scoreBreakdowns[decision.primary.id]
-        XCTAssertNotNil(primaryBreakdown)
+        #expect(primaryBreakdown != nil)
         if let b = primaryBreakdown {
-            XCTAssertEqual(b.total, b.base + b.systemNeed + b.preference - b.sameDayPenalty - b.confidencePenalty)
+            #expect(b.total == b.base + b.systemNeed + b.preference - b.sameDayPenalty - b.confidencePenalty)
         }
 
         if let threshold = decision.scoreBreakdowns["aerobic.thresholdTempo"] {
-            XCTAssertEqual(threshold.confidencePenalty, 3,
+            #expect(threshold.confidencePenalty == 3,
                            "Threshold work should carry a confidence penalty under age-estimated HRmax")
         }
     }
 
     // MARK: - Two-a-day tests (allowsTwoADays = true)
 
-    func testTwoADayShowsBothRecommendationsWhenBothNeeded() throws {
+    @Test func twoADayShowsBothRecommendationsWhenBothNeeded() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
         // Cold start: both strength and cardio are needed.
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 2,
+        #expect(decision.todayPlannedRecommendations.count == 2,
                        "Should have two planned recommendations for two-a-day")
-        XCTAssertTrue(decision.todayPlannedRecommendations.contains { $0.kind == .strength },
+        #expect(decision.todayPlannedRecommendations.contains { $0.kind == .strength },
                       "Should include a strength recommendation")
-        XCTAssertTrue(decision.todayPlannedRecommendations.contains { $0.isAerobic },
+        #expect(decision.todayPlannedRecommendations.contains { $0.isAerobic },
                       "Should include a cardio recommendation")
     }
 
-    func testTwoADayAfterCardioCompleteDoesNotShowPartialDualList() throws {
+    @Test func twoADayAfterCardioCompleteDoesNotShowPartialDualList() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1045,13 +1048,13 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
         // Partial completion is not a dual-list state.
-        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty,
+        #expect(decision.todayPlannedRecommendations.isEmpty,
                       "After cardio, the dual list should not show a strength-only remainder")
-        XCTAssertEqual(decision.planAdherence, .planAhead,
+        #expect(decision.planAdherence == .planAhead,
                        "Plan should not be complete — strength still needed")
     }
 
-    func testTwoADayAfterStrengthCompleteDoesNotShowPartialDualList() throws {
+    @Test func twoADayAfterStrengthCompleteDoesNotShowPartialDualList() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1064,13 +1067,13 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
         // Partial completion is not a dual-list state.
-        XCTAssertTrue(decision.todayPlannedRecommendations.isEmpty,
+        #expect(decision.todayPlannedRecommendations.isEmpty,
                       "After strength, the dual list should not show a cardio-only remainder")
-        XCTAssertEqual(decision.planAdherence, .planAhead,
+        #expect(decision.planAdherence == .planAhead,
                        "Plan should not be complete — cardio still needed")
     }
 
-    func testTwoADayAfterStrengthCompletesWeeklyTargetStillShowsCardio() throws {
+    @Test func twoADayAfterStrengthCompletesWeeklyTargetStillShowsCardio() throws {
         let ctx = try makeContext()
         let now = testSaturday
 
@@ -1083,7 +1086,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let beforeFacts = CoachFacts.make(from: [earlierStrength], goal: .strength,
                                           experience: .intermediate, now: now)
         let beforeDecision = CoachDecisionEngine.run(beforeFacts, schedulePreferences: prefs)
-        XCTAssertEqual(beforeDecision.todayPlannedRecommendations.count, 2,
+        #expect(beforeDecision.todayPlannedRecommendations.count == 2,
                        "Before either workout, Saturday should show both planned workouts")
 
         let todayStrength = try makeStrengthEvent(context: ctx, name: "Bench Press",
@@ -1094,13 +1097,13 @@ final class CoachDecisionEngineTests: XCTestCase {
                                          goal: .strength, experience: .intermediate, now: now)
         let afterDecision = CoachDecisionEngine.run(afterFacts, schedulePreferences: prefs)
 
-        XCTAssertEqual(afterFacts.weeklyBalance.strengthDays, 2,
+        #expect(afterFacts.weeklyBalance.strengthDays == 2,
                        "The morning strength workout is the second logged strength day")
-        XCTAssertTrue(afterDecision.todayPlannedRecommendations.isEmpty,
+        #expect(afterDecision.todayPlannedRecommendations.isEmpty,
                       "A partially completed two-a-day must not retain a one-item dual list")
-        XCTAssertTrue(afterDecision.primary.isAerobic,
+        #expect(afterDecision.primary.isAerobic,
                       "The card's single Start action should launch the remaining cardio workout")
-        XCTAssertEqual(afterDecision.planAdherence, .planAhead,
+        #expect(afterDecision.planAdherence == .planAhead,
                        "Plan should not be complete until the planned cardio is also done")
 
         let todayCardio = makeCardioEvent(context: ctx, type: .cycle,
@@ -1110,18 +1113,18 @@ final class CoachDecisionEngineTests: XCTestCase {
                                             goal: .strength, experience: .intermediate, now: now)
         let completeDecision = CoachDecisionEngine.run(completeFacts, schedulePreferences: prefs)
 
-        XCTAssertEqual(completeDecision.todayPlannedRecommendations.count, 0,
+        #expect(completeDecision.todayPlannedRecommendations.count == 0,
                        "No planned workouts should remain after both two-a-day sessions are complete")
         if case .planComplete(let completedKind, let description, _) = completeDecision.planAdherence {
-            XCTAssertNil(completedKind,
+            #expect(completedKind == nil,
                          "Two-a-day completion should render the generic Plan followed state")
-            XCTAssertEqual(description, "Strength and cardio — both in the books")
+            #expect(description == "Strength and cardio — both in the books")
         } else {
-            XCTFail("Plan should be complete after both planned workouts. Got: \(completeDecision.planAdherence)")
+            Issue.record("Plan should be complete after both planned workouts. Got: \(completeDecision.planAdherence)")
         }
     }
 
-    func testTwoADayAfterBothComplete() throws {
+    @Test func twoADayAfterBothComplete() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1136,29 +1139,29 @@ final class CoachDecisionEngineTests: XCTestCase {
         let prefs = CoachSchedulePreferences.default.withTwoADays(true)
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: prefs)
 
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
+        #expect(decision.todayPlannedRecommendations.count == 0,
                        "Both done — no remaining recommendations")
         if case .planComplete(let completedKind, _, _) = decision.planAdherence {
-            XCTAssertNil(completedKind,
+            #expect(completedKind == nil,
                          "Two-a-day completion should render the generic Plan followed state")
         } else {
-            XCTFail("Plan should be complete after both strength and cardio. Got: \(decision.planAdherence)")
+            Issue.record("Plan should be complete after both strength and cardio. Got: \(decision.planAdherence)")
         }
     }
 
-    func testTwoADayAlwaysOn() throws {
+    @Test func twoADayAlwaysOn() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         // Default prefs (allowsTwoADays = false)
         let decision = CoachDecisionEngine.run(facts)
 
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 2,
+        #expect(decision.todayPlannedRecommendations.count == 2,
                        "Strength and cardio are always both suggested")
     }
 
     // MARK: - Step health nudge
 
-    func testLowStepNudgeWhenBelowFloor() {
+    @Test func lowStepNudgeWhenBelowFloor() {
         let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 3000)
         }
@@ -1167,16 +1170,16 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         let stepFact = decision.observedFacts.first { $0.kind == .weeklySteps }
-        XCTAssertNotNil(stepFact, "Should have weeklySteps observed fact")
-        XCTAssertTrue(stepFact!.detail?.contains("Low") ?? false)
+        #expect(stepFact != nil, "Should have weeklySteps observed fact")
+        #expect(stepFact!.detail?.contains("Low") ?? false)
 
         let lowWarning = decision.warnings.first { $0.id == "lowSteps" }
-        XCTAssertNotNil(lowWarning, "Should have lowSteps warning when below floor")
-        XCTAssertTrue(lowWarning!.citationIds.contains("saintMauriceSteps2020"))
-        XCTAssertTrue(lowWarning!.citationIds.contains("leeAccelerometer2019"))
+        #expect(lowWarning != nil, "Should have lowSteps warning when below floor")
+        #expect(lowWarning!.citationIds.contains("saintMauriceSteps2020"))
+        #expect(lowWarning!.citationIds.contains("leeAccelerometer2019"))
     }
 
-    func testNoStepNudgeWhenOnTrack() {
+    @Test func noStepNudgeWhenOnTrack() {
         let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 9000)
         }
@@ -1185,22 +1188,22 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         let stepFact = decision.observedFacts.first { $0.kind == .weeklySteps }
-        XCTAssertNotNil(stepFact, "Should have weeklySteps observed fact")
-        XCTAssertTrue(stepFact!.detail?.contains("On track") ?? false)
+        #expect(stepFact != nil, "Should have weeklySteps observed fact")
+        #expect(stepFact!.detail?.contains("On track") ?? false)
 
         let lowWarning = decision.warnings.first { $0.id == "lowSteps" }
-        XCTAssertNil(lowWarning, "Should not have lowSteps warning when on track")
+        #expect(lowWarning == nil, "Should not have lowSteps warning when on track")
     }
 
-    func testNoStepFactWithoutActivityTrend() {
+    @Test func noStepFactWithoutActivityTrend() {
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate)
         let decision = CoachDecisionEngine.run(facts)
 
         let stepFact = decision.observedFacts.first { $0.kind == .weeklySteps }
-        XCTAssertNil(stepFact, "Should not have weeklySteps fact without activity data")
+        #expect(stepFact == nil, "Should not have weeklySteps fact without activity data")
     }
 
-    func testStepNudgeDoesNotOverridePrimarySession() {
+    @Test func stepNudgeDoesNotOverridePrimarySession() {
         let activity: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 2000)
         }
@@ -1208,19 +1211,19 @@ final class CoachDecisionEngineTests: XCTestCase {
                                     activityTrend: activity)
         let decision = CoachDecisionEngine.run(facts)
 
-        XCTAssertNotEqual(decision.primary.kind, .rest, "Primary should not be rest despite low steps")
+        #expect(decision.primary.kind != .rest, "Primary should not be rest despite low steps")
         let lowWarning = decision.warnings.first { $0.id == "lowSteps" }
-        XCTAssertNotNil(lowWarning, "Should have lowSteps nudge")
+        #expect(lowWarning != nil, "Should have lowSteps nudge")
         // Warning should not cite anything outside stepsHealth pool
         let allStepCitations = Set(lowWarning!.citationIds)
         let stepPoolIds = Set(CitationRegistry.stepsHealthPool.citationIds)
-        XCTAssertTrue(allStepCitations.isSubset(of: stepPoolIds),
+        #expect(allStepCitations.isSubset(of: stepPoolIds),
                       "Low-step warning should only cite stepsHealth pool citations")
     }
 
     // MARK: - CNS lift warning suppression
 
-    func testCNSLiftSkipsExcessiveSetsPerSessionWarning() throws {
+    @Test func cNSLiftSkipsExcessiveSetsPerSessionWarning() throws {
         let ctx = try makeContext()
         let now = testNow
         // Snatch with 12 sets — typical Olympic CNS training volume
@@ -1230,11 +1233,11 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [snatch], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let snatchWarnings = decision.warnings.filter { $0.id.contains("excessiveSetsPerSession") }
-        XCTAssertTrue(snatchWarnings.isEmpty,
+        #expect(snatchWarnings.isEmpty,
                       "CNS lift Snatch should NOT trigger excessiveSetsPerSession warning. Got: \(snatchWarnings.map(\.message))")
     }
 
-    func testNonCNSLiftStillTriggersExcessiveSetsPerSessionWarning() throws {
+    @Test func nonCNSLiftStillTriggersExcessiveSetsPerSessionWarning() throws {
         let ctx = try makeContext()
         let now = testNow
         // Back Squat with 12 sets — exceeds the threshold for a non-CNS lift
@@ -1244,11 +1247,11 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [squat], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let squatWarnings = decision.warnings.filter { $0.id.contains("excessiveSetsPerSession.Back Squat") }
-        XCTAssertFalse(squatWarnings.isEmpty,
+        #expect(!squatWarnings.isEmpty,
                        "Non-CNS lift Back Squat should still trigger excessiveSetsPerSession warning")
     }
 
-    func testCNSLiftBelowThresholdDoesNotTriggerWarning() throws {
+    @Test func cNSLiftBelowThresholdDoesNotTriggerWarning() throws {
         let ctx = try makeContext()
         let now = testNow
         // Clean and Jerk with 8 sets — below warning threshold
@@ -1258,19 +1261,19 @@ final class CoachDecisionEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [cj], goal: .strength, experience: .intermediate, now: now)
         let decision = CoachDecisionEngine.run(facts)
         let cjWarnings = decision.warnings.filter { $0.id.contains("excessiveSetsPerSession") }
-        XCTAssertTrue(cjWarnings.isEmpty,
+        #expect(cjWarnings.isEmpty,
                       "Clean and Jerk with 8 sets should not trigger warning (below 10 threshold)")
     }
 
-    func testAllCNSLiftNamesAreRecognized() {
+    @Test func allCNSLiftNamesAreRecognized() {
         for name in Exercise.cnsLiftNames {
-            XCTAssertTrue(Exercise.cnsLiftNames.contains(name),
+            #expect(Exercise.cnsLiftNames.contains(name),
                           "CNS lift '\(name)' should be in the cnsLiftNames set")
         }
         // Verify known non-CNS lifts are NOT in the set
-        XCTAssertFalse(Exercise.cnsLiftNames.contains("Back Squat"))
-        XCTAssertFalse(Exercise.cnsLiftNames.contains("Bench Press"))
-        XCTAssertFalse(Exercise.cnsLiftNames.contains("Deadlift"))
+        #expect(!Exercise.cnsLiftNames.contains("Back Squat"))
+        #expect(!Exercise.cnsLiftNames.contains("Bench Press"))
+        #expect(!Exercise.cnsLiftNames.contains("Deadlift"))
     }
 
     // MARK: - Both-modality completion (field-test issue #2)
@@ -1279,7 +1282,7 @@ final class CoachDecisionEngineTests: XCTestCase {
     /// coach's plan for today would otherwise be recovery (both weekly targets
     /// already met). Previously this fell to offPlan and the card ignored cardio,
     /// showing a strength-only message.
-    func testBothStrengthAndCardioTodayCompletesEvenOnRecoveryDay() throws {
+    @Test func bothStrengthAndCardioTodayCompletesEvenOnRecoveryDay() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1316,16 +1319,16 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         if case .planComplete(let completedKind, let description, _) = decision.planAdherence {
-            XCTAssertNil(completedKind,
+            #expect(completedKind == nil,
                          "Both-modality completion should use the generic (nil) completed kind")
-            XCTAssertEqual(description, "Strength and cardio — both in the books")
+            #expect(description == "Strength and cardio — both in the books")
         } else {
-            XCTFail("Both strength and cardio done today should complete the plan. Got: \(decision.planAdherence)")
+            Issue.record("Both strength and cardio done today should complete the plan. Got: \(decision.planAdherence)")
         }
     }
 
     /// A short (any-duration) cardio still counts toward both-modality completion.
-    func testShortCardioStillCompletesWithStrength() throws {
+    @Test func shortCardioStillCompletesWithStrength() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1342,15 +1345,15 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         if case .planComplete(let completedKind, let description, _) = decision.planAdherence {
-            XCTAssertNil(completedKind)
-            XCTAssertEqual(description, "Strength and cardio — both in the books")
+            #expect(completedKind == nil)
+            #expect(description == "Strength and cardio — both in the books")
         } else {
-            XCTFail("Any-duration cardio + strength today should complete. Got: \(decision.planAdherence)")
+            Issue.record("Any-duration cardio + strength today should complete. Got: \(decision.planAdherence)")
         }
     }
 
     /// Strength alone today (no cardio) must NOT report both-modality completion.
-    func testStrengthOnlyTodayIsNotBothComplete() throws {
+    @Test func strengthOnlyTodayIsNotBothComplete() throws {
         let ctx = try makeContext()
         let now = testNow
         let todayStrength = try makeStrengthEvent(context: ctx, name: "Hack Squat",
@@ -1362,7 +1365,7 @@ final class CoachDecisionEngineTests: XCTestCase {
         let decision = CoachDecisionEngine.run(facts)
 
         if case .planComplete(_, let description, _) = decision.planAdherence {
-            XCTAssertNotEqual(description, "Strength and cardio — both in the books",
+            #expect(description != "Strength and cardio — both in the books",
                               "Strength alone must not claim both modalities are done")
         }
     }
@@ -1372,7 +1375,7 @@ final class CoachDecisionEngineTests: XCTestCase {
     /// Reproduces the "Take a Rest Day" on two-a-day Saturday bug: all non-rest
     /// candidates deferred, cardio target unmet, and the fallback MUST rescue
     /// a cardio session instead of recommending rest.
-    func testCardioRescueBeforeRestFallback() throws {
+    @Test func cardioRescueBeforeRestFallback() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1401,13 +1404,13 @@ final class CoachDecisionEngineTests: XCTestCase {
         // recommend SOMETHING trainable — not pure rest.
         // After the fix, the fallback rescues a deferred cardio candidate
         // before ever falling back to rest.
-        XCTAssertNotEqual(decision.primary.id, "rest.fallback",
+        #expect(decision.primary.id != "rest.fallback",
                           "Must rescue cardio before rest.fallback when cardio target is unmet")
     }
 
     /// After the fix, when all candidates are deferred but cardio is needed, the
     /// primary must be a cardio session (e.g. easy walk), not rest.
-    func testDeferredAllButCardioNeededStillGetsTrainable() throws {
+    @Test func deferredAllButCardioNeededStillGetsTrainable() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -1430,7 +1433,8 @@ final class CoachDecisionEngineTests: XCTestCase {
         // The primary must not be rest when cardio is still needed.
         if decision.primary.kind == CoachSessionKind.rest
             || decision.primary.id == "rest.fallback" {
-            XCTFail("Got rest when cardio target (6/week) is unmet and 0 cardio done. Primary: \(decision.primary.id)")
+            Issue.record("Got rest when cardio target (6/week) is unmet and 0 cardio done. Primary: \(decision.primary.id)")
         }
     }
 }
+#endif

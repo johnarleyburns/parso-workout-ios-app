@@ -1,20 +1,22 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class ManualPlanBuilderTests: XCTestCase {
-    func testBlankPlanIsMondayFirstAndSelfAuthored() throws {
+struct ManualPlanBuilderTests {
+    @Test func blankPlanIsMondayFirstAndSelfAuthored() throws {
         let plan = ManualPlanBuilder.blankPlan(
             title: "Athlete week", now: Date(timeIntervalSince1970: 10))
 
-        XCTAssertEqual(plan.provenance, .selfAuthored)
-        XCTAssertEqual(plan.status, .active)
-        XCTAssertEqual(plan.weeks.count, 1)
-        XCTAssertEqual(plan.weeks[0].days.map(\.weekday), ManualPlanBuilder.mondayFirst)
+        #expect(plan.provenance == .selfAuthored)
+        #expect(plan.status == .active)
+        #expect(plan.weeks.count == 1)
+        #expect(plan.weeks[0].days.map(\.weekday) == ManualPlanBuilder.mondayFirst)
         try plan.validate()
     }
 
-    func testAddAndReplaceSessionPreservesStableSessionAndSetIDs() throws {
+    @Test func addAndReplaceSessionPreservesStableSessionAndSetIDs() throws {
         var plan = ManualPlanBuilder.blankPlan(now: Date(timeIntervalSince1970: 10))
         var session = ManualPlanBuilder.strengthSession(title: "Upper body")
         let item = ManualPlanBuilder.strengthItem(exerciseKey: "bench_press", setCount: 3, reps: 8)
@@ -22,8 +24,8 @@ final class ManualPlanBuilderTests: XCTestCase {
 
         try ManualPlanBuilder.addSession(session, to: .monday, in: &plan,
                                          now: Date(timeIntervalSince1970: 20))
-        let saved = try XCTUnwrap(plan.weeks[0].days[0].sessions.first)
-        let setIDs = try XCTUnwrap(saved.items.first?.strengthSets.map(\.id))
+        let saved = try #require(plan.weeks[0].days[0].sessions.first)
+        let setIDs = try #require(saved.items.first?.strengthSets.map(\.id))
 
         var edited = saved
         edited.title = "Upper body — revised"
@@ -38,25 +40,24 @@ final class ManualPlanBuilderTests: XCTestCase {
         try ManualPlanBuilder.replaceSession(edited, in: &plan,
                                              now: Date(timeIntervalSince1970: 30))
 
-        let replaced = try XCTUnwrap(plan.weeks[0].days[0].sessions.first)
-        XCTAssertEqual(replaced.id, saved.id)
-        XCTAssertEqual(replaced.title, "Upper body — revised")
-        XCTAssertEqual(replaced.items.first?.strengthSets.map(\.id), setIDs)
-        XCTAssertEqual(plan.updatedAt, Date(timeIntervalSince1970: 30))
+        let replaced = try #require(plan.weeks[0].days[0].sessions.first)
+        #expect(replaced.id == saved.id)
+        #expect(replaced.title == "Upper body — revised")
+        #expect(replaced.items.first?.strengthSets.map(\.id) == setIDs)
+        #expect(plan.updatedAt == Date(timeIntervalSince1970: 30))
     }
 
-    func testDayCannotContainMoreThanTwoSessions() throws {
+    @Test func dayCannotContainMoreThanTwoSessions() throws {
         var plan = ManualPlanBuilder.blankPlan()
         try ManualPlanBuilder.addSession(.init(title: "A"), to: .monday, in: &plan)
         try ManualPlanBuilder.addSession(.init(title: "B"), to: .monday, in: &plan)
 
-        XCTAssertThrowsError(try ManualPlanBuilder.addSession(.init(title: "C"),
-                                                               to: .monday, in: &plan)) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError, .dayHasTooManySessions(.monday))
+        #expect(throws: UnifiedPlanValidationError.dayHasTooManySessions(.monday)) {
+            try ManualPlanBuilder.addSession(.init(title: "C"), to: .monday, in: &plan)
         }
     }
 
-    func testAuthoredPlanPersistsThroughEnvelopeAndNormalizedTree() throws {
+    @Test func authoredPlanPersistsThroughEnvelopeAndNormalizedTree() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         var plan = ManualPlanBuilder.blankPlan(now: Date(timeIntervalSince1970: 10))
         var session = ManualPlanBuilder.strengthSession(title: "Monday strength")
@@ -66,11 +67,11 @@ final class ManualPlanBuilderTests: XCTestCase {
         _ = try UnifiedPlanStore.upsert(plan, originDevice: "iphone", in: context)
         _ = try NormalizedPlanStore.upsert(plan, originDevice: "iphone", in: context)
 
-        XCTAssertEqual(try UnifiedPlanStore.fetch(id: plan.id, in: context), plan)
-        XCTAssertEqual(try NormalizedPlanStore.fetch(id: plan.id, in: context), plan)
+        #expect(try UnifiedPlanStore.fetch(id: plan.id, in: context) == plan)
+        #expect(try NormalizedPlanStore.fetch(id: plan.id, in: context) == plan)
     }
 
-    func testAllAuthoredItemFamiliesRoundTripWithStableIDs() throws {
+    @Test func allAuthoredItemFamiliesRoundTripWithStableIDs() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let strengthID = UUID()
         let cardioID = UUID()
@@ -110,15 +111,15 @@ final class ManualPlanBuilderTests: XCTestCase {
         _ = try UnifiedPlanStore.upsert(plan, originDevice: "iphone", in: context)
         _ = try NormalizedPlanStore.upsert(plan, originDevice: "iphone", in: context)
 
-        let envelope = try XCTUnwrap(try UnifiedPlanStore.fetch(id: plan.id, in: context))
-        let normalized = try XCTUnwrap(try NormalizedPlanStore.fetch(id: plan.id, in: context))
-        let envelopeItems = try XCTUnwrap(envelope.weeks[0].days[0].sessions.first?.orderedItems)
-        let normalizedItems = try XCTUnwrap(normalized.weeks[0].days[0].sessions.first?.orderedItems)
+        let envelope = try #require(try UnifiedPlanStore.fetch(id: plan.id, in: context))
+        let normalized = try #require(try NormalizedPlanStore.fetch(id: plan.id, in: context))
+        let envelopeItems = try #require(envelope.weeks[0].days[0].sessions.first?.orderedItems)
+        let normalizedItems = try #require(normalized.weeks[0].days[0].sessions.first?.orderedItems)
 
-        XCTAssertEqual(envelopeItems.map(\.id), [strengthID, cardioID, mobilityID, instructionID])
-        XCTAssertEqual(normalizedItems, envelopeItems)
-        XCTAssertEqual(envelopeItems.first?.strengthSets.map(\.id), [setID])
-        XCTAssertTrue(envelopeItems.contains { item in
+        #expect(envelopeItems.map(\.id) == [strengthID, cardioID, mobilityID, instructionID])
+        #expect(normalizedItems == envelopeItems)
+        #expect(envelopeItems.first?.strengthSets.map(\.id) == [setID])
+        #expect(envelopeItems.contains { item in
             guard case let .cardio(value) = item else { return false }
             guard case let .intervals(intervals) = value.prescription else { return false }
             return intervals.rounds == 4
@@ -138,3 +139,4 @@ private extension Session {
         items.first?.strengthSets ?? []
     }
 }
+#endif

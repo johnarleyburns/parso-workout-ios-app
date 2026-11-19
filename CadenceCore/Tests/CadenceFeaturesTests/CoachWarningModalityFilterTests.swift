@@ -1,26 +1,28 @@
-import XCTest
+import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class CoachWarningModalityFilterTests: XCTestCase {
+struct CoachWarningModalityFilterTests {
     private func warning(_ id: String, _ modality: CoachWarning.Modality) -> CoachWarning {
         CoachWarning(id: id, message: id, modality: modality)
     }
 
-    func testStrengthRequestSurfacesStrengthAndGeneralOnly() {
+    @Test func strengthRequestSurfacesStrengthAndGeneralOnly() {
         let all = [warning("a", .strength), warning("b", .cardio), warning("c", .general)]
         let filtered = CoachWarningModalityFilter.filter(all, for: .strength)
-        XCTAssertEqual(Set(filtered.map(\.id)), ["a", "c"])
+        #expect(Set(filtered.map(\.id)) == ["a", "c"])
     }
 
-    func testCardioRequestSurfacesCardioAndGeneralOnly() {
+    @Test func cardioRequestSurfacesCardioAndGeneralOnly() {
         let all = [warning("a", .strength), warning("b", .cardio), warning("c", .general)]
         let filtered = CoachWarningModalityFilter.filter(all, for: .cardio)
-        XCTAssertEqual(Set(filtered.map(\.id)), ["b", "c"])
+        #expect(Set(filtered.map(\.id)) == ["b", "c"])
     }
 
-    func testOrderIsPreserved() {
+    @Test func orderIsPreserved() {
         let all = [warning("a", .general), warning("b", .strength), warning("c", .general)]
-        XCTAssertEqual(CoachWarningModalityFilter.filter(all, for: .strength).map(\.id), ["a", "b", "c"])
+        #expect(CoachWarningModalityFilter.filter(all, for: .strength).map(\.id) == ["a", "b", "c"])
     }
 }

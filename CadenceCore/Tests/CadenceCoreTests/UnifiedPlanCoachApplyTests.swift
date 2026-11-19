@@ -1,14 +1,15 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class UnifiedPlanCoachApplyTests: XCTestCase {
-    func testApplyingProgressionBumpsRevisionAndRecordsAssistance() throws {
+struct UnifiedPlanCoachApplyTests {
+    @Test func applyingProgressionBumpsRevisionAndRecordsAssistance() throws {
         let current = PrescribedSet(id: UUID(), setIndex: 0, repTarget: .exact(8),
                                     load: .absoluteWeight(value: 80, unit: .kg))
         let proposed = PrescribedSet(id: current.id, setIndex: 0, repTarget: .exact(8),
                                      load: .absoluteWeight(value: 82, unit: .kg))
         let plan = plan(with: [current])
-        let item = try XCTUnwrap(plan.weeks[0].days[0].sessions[0].items.first)
+        let item = try #require(plan.weeks[0].days[0].sessions[0].items.first)
         let itemID = item.id
         let sessionID = plan.weeks[0].days[0].sessions[0].id
         let proposal = UnifiedPlanProgressionProposal(
@@ -20,17 +21,17 @@ final class UnifiedPlanCoachApplyTests: XCTestCase {
         let updated = try UnifiedPlanCoachEngine.apply(proposal, to: plan,
                                                         at: Date(timeIntervalSince1970: 20))
 
-        XCTAssertEqual(updated.revisionID, "r2")
-        XCTAssertTrue(updated.assistance?.contains(.progressed) == true)
-        XCTAssertEqual(updated.updatedAt, Date(timeIntervalSince1970: 20))
-        XCTAssertEqual(updated.weeks[0].days[0].sessions[0].strengthSets.first, proposed)
+        #expect(updated.revisionID == "r2")
+        #expect(updated.assistance?.contains(.progressed) == true)
+        #expect(updated.updatedAt == Date(timeIntervalSince1970: 20))
+        #expect(updated.weeks[0].days[0].sessions[0].strengthSets.first == proposed)
     }
 
-    func testStaleProgressionCannotOverwriteAnEditedSet() throws {
+    @Test func staleProgressionCannotOverwriteAnEditedSet() throws {
         let current = PrescribedSet(id: UUID(), setIndex: 0, repTarget: .exact(8))
         let plan = plan(with: [current])
         let session = plan.weeks[0].days[0].sessions[0]
-        let item = try XCTUnwrap(session.items.first)
+        let item = try #require(session.items.first)
         let proposal = UnifiedPlanProgressionProposal(
             id: "progress|stale", sessionID: session.id, itemID: item.id,
             setID: current.id, exerciseKey: ExerciseKey(raw: "bench_press"),
@@ -38,18 +39,18 @@ final class UnifiedPlanCoachApplyTests: XCTestCase {
             proposed: PrescribedSet(id: current.id, setIndex: 0, repTarget: .exact(9)),
             reason: "test", citationIDs: ["rpeAutoregulation"], confidence: .moderate)
 
-        XCTAssertThrowsError(try UnifiedPlanCoachEngine.apply(proposal, to: plan)) { error in
-            XCTAssertEqual(error as? UnifiedPlanCoachError, .proposalNoLongerApplies)
+        #expect(throws: UnifiedPlanCoachError.proposalNoLongerApplies) {
+            try UnifiedPlanCoachEngine.apply(proposal, to: plan)
         }
     }
 
-    func testApplyingAutoregulationRemovesOnlyOneWorkingSet() throws {
+    @Test func applyingAutoregulationRemovesOnlyOneWorkingSet() throws {
         let sets = (0..<3).map { index in
             PrescribedSet(id: UUID(), setIndex: index, repTarget: .exact(8))
         }
         let plan = plan(with: sets)
         let session = plan.weeks[0].days[0].sessions[0]
-        let item = try XCTUnwrap(session.items.first)
+        let item = try #require(session.items.first)
         let proposal = UnifiedPlanAutoregulationProposal(
             id: "autoregulate|test", sessionID: session.id, itemID: item.id,
             direction: .reduceVolume, workingSetAdjustment: -1,
@@ -57,9 +58,9 @@ final class UnifiedPlanCoachApplyTests: XCTestCase {
 
         let updated = try UnifiedPlanCoachEngine.apply(proposal, to: plan)
 
-        XCTAssertEqual(updated.weeks[0].days[0].sessions[0].strengthSets.count, 2)
-        XCTAssertTrue(updated.assistance?.contains(.autoregulated) == true)
-        XCTAssertEqual(updated.revisionID, "r2")
+        #expect(updated.weeks[0].days[0].sessions[0].strengthSets.count == 2)
+        #expect(updated.assistance?.contains(.autoregulated) == true)
+        #expect(updated.revisionID == "r2")
     }
 
     private func plan(with sets: [PrescribedSet]) -> Plan {

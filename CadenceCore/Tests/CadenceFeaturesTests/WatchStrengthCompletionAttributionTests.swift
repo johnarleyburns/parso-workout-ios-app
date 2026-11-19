@@ -1,8 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class WatchStrengthCompletionAttributionTests: XCTestCase {
+struct WatchStrengthCompletionAttributionTests {
     let fixedID = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
     let fixedDate = Date(timeIntervalSince1970: 1_800_000_000)
     let profile = CardioIntensityProfile(restingHR: 60, maximumHR: 180, maximumHRSource: .userEntered)
@@ -14,29 +16,29 @@ final class WatchStrengthCompletionAttributionTests: XCTestCase {
             completionID: fixedID, completedAt: fixedDate, weekKey: { _ in "2026-11-09" })
     }
 
-    func testMeasuredStrengthSummaryUsesThePhoneAccumulatorExactly() {
+    @Test func measuredStrengthSummaryUsesThePhoneAccumulatorExactly() {
         let p = make(samples)
         let phone = CardioMinuteAccumulator.summarize(duration: 1_800, samples: samples, profile: profile)
-        XCTAssertTrue(p.showsHeartRate)
-        XCTAssertEqual(p.hrSamples, samples)
-        XCTAssertEqual(p.cardioSummary, phone)
-        XCTAssertEqual(p.overlay.sets, 8)
-        XCTAssertGreaterThan(phone.moderateEquivalentMinutes, 0)
-        XCTAssertEqual(p.overlay.moderateEquivalentMinutes, phone.moderateEquivalentMinutes, accuracy: 0.001)
+        #expect(p.showsHeartRate)
+        #expect(p.hrSamples == samples)
+        #expect(p.cardioSummary == phone)
+        #expect(p.overlay.sets == 8)
+        #expect(phone.moderateEquivalentMinutes > 0)
+        #expect(abs(p.overlay.moderateEquivalentMinutes - phone.moderateEquivalentMinutes) <= 0.001)
     }
 
-    func testNoSamplesShowsNoChartAndCreditsZeroCardioRatherThanDuration() {
+    @Test func noSamplesShowsNoChartAndCreditsZeroCardioRatherThanDuration() {
         let p = make([], sets: 3)
-        XCTAssertFalse(p.showsHeartRate)
-        XCTAssertNil(p.cardioSummary)
-        XCTAssertEqual(p.overlay.sets, 3)
-        XCTAssertEqual(p.overlay.moderateEquivalentMinutes, 0)
+        #expect(!p.showsHeartRate)
+        #expect(p.cardioSummary == nil)
+        #expect(p.overlay.sets == 3)
+        #expect(p.overlay.moderateEquivalentMinutes == 0)
     }
 
-    func testContributionUsesStableCompletionIdentityAndCurrentCompletionWeek() {
+    @Test func contributionUsesStableCompletionIdentityAndCurrentCompletionWeek() {
         let p = make(samples)
-        XCTAssertEqual(p.overlay.id, fixedID)
-        XCTAssertEqual(p.overlay.kind, .strength)
-        XCTAssertEqual(p.overlay.weekKey, "2026-11-09")
+        #expect(p.overlay.id == fixedID)
+        #expect(p.overlay.kind == .strength)
+        #expect(p.overlay.weekKey == "2026-11-09")
     }
 }

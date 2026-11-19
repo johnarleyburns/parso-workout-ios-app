@@ -1,20 +1,23 @@
-import XCTest
+import Foundation
+import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class SessionExerciseExpansionModelTests: XCTestCase {
-    func testInitialAndToggle() {
+struct SessionExerciseExpansionModelTests {
+    @Test func initialAndToggle() {
         let a = UUID(), b = UUID()
-        XCTAssertEqual(SessionExerciseExpansionModel.initial(exerciseIDs: [a, b], unfinishedIDs: [b], mode: .active), b)
-        XCTAssertNil(SessionExerciseExpansionModel.initial(exerciseIDs: [a], unfinishedIDs: [], mode: .active))
-        XCTAssertNil(SessionExerciseExpansionModel.initial(exerciseIDs: [a], unfinishedIDs: [a], mode: .review))
-        XCTAssertNil(SessionExerciseExpansionModel.headerTapped(current: a, tapped: a))
-        XCTAssertEqual(SessionExerciseExpansionModel.headerTapped(current: a, tapped: b), b)
+        #expect(SessionExerciseExpansionModel.initial(exerciseIDs: [a, b], unfinishedIDs: [b], mode: .active) == b)
+        #expect(SessionExerciseExpansionModel.initial(exerciseIDs: [a], unfinishedIDs: [], mode: .active) == nil)
+        #expect(SessionExerciseExpansionModel.initial(exerciseIDs: [a], unfinishedIDs: [a], mode: .review) == nil)
+        #expect(SessionExerciseExpansionModel.headerTapped(current: a, tapped: a) == nil)
+        #expect(SessionExerciseExpansionModel.headerTapped(current: a, tapped: b) == b)
     }
 
-    func testSaveTransitions() {
+    @Test func saveTransitions() {
         let a = UUID(), b = UUID()
-        XCTAssertEqual(SessionExerciseExpansionModel.afterSave(current: a, savedExerciseID: a, nextUnfinishedID: b, kind: .pending), a)
-        XCTAssertEqual(SessionExerciseExpansionModel.afterSave(current: a, savedExerciseID: a, nextUnfinishedID: b, kind: .unplanned), a)
-        XCTAssertEqual(SessionExerciseExpansionModel.afterSave(current: a, savedExerciseID: a, nextUnfinishedID: b, kind: .finalPlanned), b)
+        #expect(SessionExerciseExpansionModel.afterSave(current: a, savedExerciseID: a, nextUnfinishedID: b, kind: .pending) == a)
+        #expect(SessionExerciseExpansionModel.afterSave(current: a, savedExerciseID: a, nextUnfinishedID: b, kind: .unplanned) == a)
+        #expect(SessionExerciseExpansionModel.afterSave(current: a, savedExerciseID: a, nextUnfinishedID: b, kind: .finalPlanned) == b)
     }
 }

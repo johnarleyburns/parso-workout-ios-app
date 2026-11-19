@@ -1,9 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
+import CadencePhoneFeatures
 @testable import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class TodaySuggestionLaunchBuilderTests: XCTestCase {
+struct TodaySuggestionLaunchBuilderTests {
     private static let asOfDate = Date(timeIntervalSince1970: 1_800_000_000)
     private var asOf: Date { Self.asOfDate }
 
@@ -38,7 +42,7 @@ final class TodaySuggestionLaunchBuilderTests: XCTestCase {
             activeSessionID: active, settings: settings, asOf: asOfDate)
     }
 
-    func testBackgroundContextBuildsValueOnlyDeterministicSnapshot() async throws {
+    @Test func backgroundContextBuildsValueOnlyDeterministicSnapshot() async throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         try seed(ModelContext(container), workouts: 120)
         let snap = settings()
@@ -48,39 +52,45 @@ final class TodaySuggestionLaunchBuilderTests: XCTestCase {
         let second: TodaySuggestionLaunchSnapshot = try await Task.detached {
             try Self.build(ModelContext(container), settings: snap)
         }.value
-        XCTAssertTrue(first.hasMinimumHistory)
-        XCTAssertEqual(first.request?.input.historyWorkoutCount, 120)
-        XCTAssertEqual(first.request?.input.historyWorkingSetCount, 720)
-        XCTAssertEqual(first, second)
+        #expect(first.hasMinimumHistory)
+        #expect(first.request?.input.historyWorkoutCount == 120)
+        #expect(first.request?.input.historyWorkingSetCount == 720)
+        #expect(first == second)
     }
 
-    func testKeySensitivityAndActiveSessionExclusion() throws {
+    @Test func keySensitivityAndActiveSessionExclusion() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         try seed(context, workouts: 4)
         let base = try Self.build(context, settings: settings())
-        XCTAssertEqual(base.earlyKey, try Self.build(context, settings: settings()).earlyKey)
-        XCTAssertNotEqual(base.earlyKey, try Self.build(context, settings: settings(unit: .pounds)).earlyKey)
-        XCTAssertNotEqual(base.earlyKey, try Self.build(context, settings: settings(warmup: 9)).earlyKey)
+        let sameSettingsKey = try Self.build(context, settings: settings()).earlyKey
+        #expect(base.earlyKey == sameSettingsKey)
+        let poundsKey = try Self.build(context, settings: settings(unit: .pounds)).earlyKey
+        #expect(base.earlyKey != poundsKey)
+        let warmupKey = try Self.build(context, settings: settings(warmup: 9)).earlyKey
+        #expect(base.earlyKey != warmupKey)
         let active = try WorkoutRepository.allSessions(context)[0].id
-        XCTAssertNotEqual(base.earlyKey, try Self.build(context, active: active, settings: settings()).earlyKey)
+        let activeKey = try Self.build(context, active: active, settings: settings()).earlyKey
+        #expect(base.earlyKey != activeKey)
         context.insert(Exercise(name: "Custom Curl"))
         try context.save()
-        XCTAssertNotEqual(base.earlyKey, try Self.build(context, settings: settings()).earlyKey)
+        let afterInsertKey = try Self.build(context, settings: settings()).earlyKey
+        #expect(base.earlyKey != afterInsertKey)
     }
 
-    func testZeroHistoryBuildsStarterRequest() throws {
+    @Test func zeroHistoryBuildsStarterRequest() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let snap = try Self.build(context, settings: settings())
-        XCTAssertTrue(snap.hasMinimumHistory)
-        XCTAssertNotNil(snap.request)
+        #expect(snap.hasMinimumHistory)
+        #expect(snap.request != nil)
     }
 
-    func testTooLittleHistoryHasNoRequest() throws {
+    @Test func tooLittleHistoryHasNoRequest() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         try seed(context, workouts: 1)
         let snap = try Self.build(context, settings: settings())
-        XCTAssertFalse(snap.hasMinimumHistory)
-        XCTAssertNil(snap.request)
+        #expect(!snap.hasMinimumHistory)
+        #expect(snap.request == nil)
     }
 }
+#endif

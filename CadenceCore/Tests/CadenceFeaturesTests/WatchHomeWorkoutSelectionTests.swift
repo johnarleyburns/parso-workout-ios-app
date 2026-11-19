@@ -1,50 +1,56 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchHomeWorkoutSelectionTests: XCTestCase {
-    func testStrengthIsDefaultWithWatchSpecificNamesAndIcons() {
+struct WatchHomeWorkoutSelectionTests {
+    @Test func strengthIsDefaultWithWatchSpecificNamesAndIcons() {
         let state = WatchHomeWorkoutSelection()
-        XCTAssertEqual(state.mode, .strength)
-        XCTAssertEqual(state.choices.map { state.title(for: $0) }, ["Personalized", "Previous", "Custom"])
-        XCTAssertEqual(Set(state.choices.map(\.symbol)), ["dumbbell.fill"])
-        XCTAssertNil(state.launchChoice)
+        #expect(state.mode == .strength)
+        #expect(state.choices.map { state.title(for: $0) } == ["Personalized", "Previous", "Custom"])
+        #expect(Set(state.choices.map(\.symbol)) == ["dumbbell.fill"])
+        #expect(state.launchChoice == nil)
     }
 
-    func testSelectingAndSwitchingModesNeverLaunches() {
+    @Test func selectingAndSwitchingModesNeverLaunches() {
         var state = WatchHomeWorkoutSelection()
         for choice in state.choices {
             state.select(choice)
-            XCTAssertNil(state.launchChoice)
+            #expect(state.launchChoice == nil)
         }
         state.show(.cardio)
-        XCTAssertEqual(Set(state.choices), Set(HomeWorkoutStartChoice.cardioChoices))
+        // "Personalized Cardio" is phone-only: no Watch destination exists for
+        // it yet, so it's deliberately excluded here rather than shown as a
+        // dead wheel entry.
+        #expect(Set(state.choices) == Set(HomeWorkoutStartChoice.cardioChoices.filter { $0 != .suggestedCardio }))
+        #expect(!state.choices.contains(.suggestedCardio))
         for choice in state.choices {
             state.select(choice)
-            XCTAssertNil(state.launchChoice)
+            #expect(state.launchChoice == nil)
         }
         state.show(.strength)
-        XCTAssertEqual(state.selection, .strength(.quickStart))
-        XCTAssertNil(state.launchChoice)
+        #expect(state.selection == .strength(.quickStart))
+        #expect(state.launchChoice == nil)
     }
 
-    func testStartSnapshotsSelectionUntilDismissed() {
+    @Test func startSnapshotsSelectionUntilDismissed() {
         var state = WatchHomeWorkoutSelection()
         state.select(.strength(.previous))
         state.start()
-        XCTAssertEqual(state.launchChoice, .strength(.previous))
+        #expect(state.launchChoice == .strength(.previous))
         state.show(.cardio)
         state.select(.cardio(.swim))
-        XCTAssertEqual(state.launchChoice, .strength(.previous))
+        #expect(state.launchChoice == .strength(.previous))
         state.dismissStart()
-        XCTAssertNil(state.launchChoice)
+        #expect(state.launchChoice == nil)
         state.start()
-        XCTAssertEqual(state.launchChoice, .cardio(.swim))
+        #expect(state.launchChoice == .cardio(.swim))
     }
 
-    func testEachModeRestoresItsOwnChoiceAndAlwaysOpensOnStrength() throws {
+    @Test func eachModeRestoresItsOwnChoiceAndAlwaysOpensOnStrength() throws {
         let suite = "WatchHomeWorkoutSelectionTests.\(UUID().uuidString)"
-        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        let defaults = try #require(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         var state = WatchHomeWorkoutSelection.persisted(defaults: defaults)
         state.select(.strength(.previous))
@@ -52,22 +58,33 @@ final class WatchHomeWorkoutSelectionTests: XCTestCase {
         state.select(.cardio(.rowing))
         state.persist(defaults: defaults)
         var restored = WatchHomeWorkoutSelection.persisted(defaults: defaults)
-        XCTAssertEqual(restored.mode, .strength)
-        XCTAssertEqual(restored.selection, .strength(.previous))
+        #expect(restored.mode == .strength)
+        #expect(restored.selection == .strength(.previous))
         restored.show(.cardio)
-        XCTAssertEqual(restored.selection, .cardio(.rowing))
-        XCTAssertNil(restored.launchChoice)
-        XCTAssertNil(defaults.string(forKey: HomeWorkoutStartChoice.selectionStorageKey))
+        #expect(restored.selection == .cardio(.rowing))
+        #expect(restored.launchChoice == nil)
+        #expect(defaults.string(forKey: HomeWorkoutStartChoice.selectionStorageKey) == nil)
     }
 
-    func testInvalidCrossModeChoicesAndLegacyPreferencesRestoreSafely() {
+    /// D7 (field testing): tapping a row in the instantly-displayed choice
+    /// list must pick AND launch it in a single step, not require a separate
+    /// Start tap afterward.
+    @Test func selectAndStartPicksAndLaunchesInOneStep() {
+        var state = WatchHomeWorkoutSelection()
+        state.show(.cardio)
+        state.selectAndStart(.cardio(.swim))
+        #expect(state.selection == .cardio(.swim))
+        #expect(state.launchChoice == .cardio(.swim))
+    }
+
+    @Test func invalidCrossModeChoicesAndLegacyPreferencesRestoreSafely() {
         var invalid = WatchHomeWorkoutSelection(savedStrengthID: "cardio.swim", savedCardioID: "strength.previous")
-        XCTAssertEqual(invalid.selection, .strength(.suggested))
+        #expect(invalid.selection == .strength(.suggested))
         invalid.select(.cardio(.run))
-        XCTAssertEqual(invalid.selection, .strength(.suggested))
+        #expect(invalid.selection == .strength(.suggested))
         invalid.show(.cardio)
-        XCTAssertEqual(invalid.selection, .cardio(.hiit))
+        #expect(invalid.selection == .cardio(.hiit))
         let legacy = WatchHomeWorkoutSelection(legacyChoiceID: "strength.previous")
-        XCTAssertEqual(legacy.selection, .strength(.previous))
+        #expect(legacy.selection == .strength(.previous))
     }
 }

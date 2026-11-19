@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch "Suggest exercise". The workout changes only when the user confirms
 /// Add in the native dialog; Details, Suggest another and Cancel never add.

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct ProgressQuestionSummaryView<DetailContent: View>: View {
     @Binding var selection: ProgressQuestionSelection

@@ -1,58 +1,59 @@
-import XCTest
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchCustomExerciseDefinitionTests: XCTestCase {
-    func testMuscleGroupPillsMapToStableCategories() {
+struct WatchCustomExerciseDefinitionTests {
+    @Test func muscleGroupPillsMapToStableCategories() {
         let muscles = WatchCustomExerciseDefinition.primaryMuscles(for: [.chest, .biceps])
-        XCTAssertEqual(muscles, ["chest", "biceps"])
+        #expect(muscles == ["chest", "biceps"])
     }
 
-    func testOneMovementFamilyGetsUsefulCategory() {
-        XCTAssertEqual(WatchCustomExerciseDefinition.category(for: [.lats, .biceps]), .pull)
-        XCTAssertEqual(WatchCustomExerciseDefinition.category(for: [.quadriceps, .calves]), .legs)
+    @Test func oneMovementFamilyGetsUsefulCategory() {
+        #expect(WatchCustomExerciseDefinition.category(for: [.lats, .biceps]) == .pull)
+        #expect(WatchCustomExerciseDefinition.category(for: [.quadriceps, .calves]) == .legs)
     }
 
-    func testMixedMovementFamiliesRemainOther() {
-        XCTAssertEqual(WatchCustomExerciseDefinition.category(for: [.chest, .quadriceps]), .other)
-        XCTAssertEqual(WatchCustomExerciseDefinition.category(for: []), .other)
+    @Test func mixedMovementFamiliesRemainOther() {
+        #expect(WatchCustomExerciseDefinition.category(for: [.chest, .quadriceps]) == .other)
+        #expect(WatchCustomExerciseDefinition.category(for: []) == .other)
     }
 
-    func testCatalogIsTheExactSharedCanonicalMuscleCatalog() {
-        XCTAssertEqual(WatchCustomExerciseMuscleAttribution.availableGroups, MuscleGroup.canonicalOrder)
-        XCTAssertEqual(Set(WatchCustomExerciseMuscleAttribution.availableGroups), Set(MuscleGroup.allCases))
-        XCTAssertEqual(WatchCustomExerciseMuscleAttribution.availableGroups.count, MuscleGroup.allCases.count)
+    @Test func catalogIsTheExactSharedCanonicalMuscleCatalog() {
+        #expect(WatchCustomExerciseMuscleAttribution.availableGroups == MuscleGroup.canonicalOrder)
+        #expect(Set(WatchCustomExerciseMuscleAttribution.availableGroups) == Set(MuscleGroup.allCases))
+        #expect(WatchCustomExerciseMuscleAttribution.availableGroups.count == MuscleGroup.allCases.count)
         for group in MuscleGroup.allCases {
-            XCTAssertTrue(WatchCustomExerciseMuscleAttribution.availableGroups.contains(group))
+            #expect(WatchCustomExerciseMuscleAttribution.availableGroups.contains(group))
         }
     }
 
-    func testRoleSelectionMakesNewlyChosenRoleWinAndNeverOverlaps() {
+    @Test func roleSelectionMakesNewlyChosenRoleWinAndNeverOverlaps() {
         var attribution = WatchCustomExerciseMuscleAttribution(primary: [.chest], secondary: [.triceps])
         attribution.select(.chest, as: .secondary)
-        XCTAssertFalse(attribution.primary.contains(.chest))
-        XCTAssertTrue(attribution.secondary.contains(.chest))
-        XCTAssertTrue(attribution.primary.isDisjoint(with: attribution.secondary))
+        #expect(!attribution.primary.contains(.chest))
+        #expect(attribution.secondary.contains(.chest))
+        #expect(attribution.primary.isDisjoint(with: attribution.secondary))
 
         attribution.select(.chest, as: .primary)
-        XCTAssertTrue(attribution.primary.contains(.chest))
-        XCTAssertFalse(attribution.secondary.contains(.chest))
+        #expect(attribution.primary.contains(.chest))
+        #expect(!attribution.secondary.contains(.chest))
     }
 
-    func testPersistedArraysAreCanonicalAndKeepPrimaryAndSecondarySeparate() {
+    @Test func persistedArraysAreCanonicalAndKeepPrimaryAndSecondarySeparate() {
         let attribution = WatchCustomExerciseMuscleAttribution(
             primary: [.triceps, .chest], secondary: [.shoulders, .triceps])
-        XCTAssertEqual(attribution.primaryIDs, ["chest", "triceps"])
-        XCTAssertEqual(attribution.secondaryIDs, ["shoulders"])
+        #expect(attribution.primaryIDs == ["chest", "triceps"])
+        #expect(attribution.secondaryIDs == ["shoulders"])
     }
 
-    func testCategoryUsesPrimaryGroupsOnly() {
+    @Test func categoryUsesPrimaryGroupsOnly() {
         let attribution = WatchCustomExerciseMuscleAttribution(primary: [.chest], secondary: [.quadriceps])
-        XCTAssertEqual(WatchCustomExerciseDefinition.category(for: attribution.primary), .push)
+        #expect(WatchCustomExerciseDefinition.category(for: attribution.primary) == .push)
     }
 
-    func testPrimaryIsRequired() {
-        XCTAssertFalse(WatchCustomExerciseMuscleAttribution(secondary: [.chest]).hasPrimaryMuscle)
-        XCTAssertTrue(WatchCustomExerciseMuscleAttribution(primary: [.chest]).hasPrimaryMuscle)
+    @Test func primaryIsRequired() {
+        #expect(!WatchCustomExerciseMuscleAttribution(secondary: [.chest]).hasPrimaryMuscle)
+        #expect(WatchCustomExerciseMuscleAttribution(primary: [.chest]).hasPrimaryMuscle)
     }
 }

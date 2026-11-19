@@ -1,4 +1,6 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -11,7 +13,7 @@ import SwiftData
 ///
 /// Deminimus methodology: start with a known-good baseline, make ONE small change,
 /// predict the delta, verify.
-final class CoachScientificValidationTests: XCTestCase {
+struct CoachScientificValidationTests {
 
     // MARK: - Test infrastructure (ported from existing test patterns)
 
@@ -50,19 +52,19 @@ final class CoachScientificValidationTests: XCTestCase {
     }
 
     /// Helper: assert a citation ID is valid in the registry.
-    private func assertValidCitation(_ id: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertNotNil(CitationRegistry.citation(forId: id),
-                        "Citation '\(id)' must exist in CitationRegistry", file: file, line: line)
+    private func assertValidCitation(_ id: String, sourceLocation: SourceLocation = #_sourceLocation) {
+        #expect(CitationRegistry.citation(forId: id) != nil,
+                        "Citation '\(id)' must exist in CitationRegistry", sourceLocation: sourceLocation)
     }
 
     /// Helper: assert all observed citation IDs on a decision resolve.
-    private func assertAllCitationsResolve(_ decision: CoachDecision, file: StaticString = #filePath, line: UInt = #line) {
+    private func assertAllCitationsResolve(_ decision: CoachDecision, sourceLocation: SourceLocation = #_sourceLocation) {
         for id in decision.citationIds {
-            assertValidCitation(id, file: file, line: line)
+            assertValidCitation(id, sourceLocation: sourceLocation)
         }
         for w in decision.warnings {
             for id in w.citationIds {
-                assertValidCitation(id, file: file, line: line)
+                assertValidCitation(id, sourceLocation: sourceLocation)
             }
         }
     }
@@ -81,7 +83,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// A1: Pain concern should gate ALL hard training and recommend rest.
     /// Science: ECSS/ACSM consensus (meeusenOvertraining2013) states that
     /// pain/illness requires rest or modified training to prevent overtraining.
-    func testA1_painConcernBlocksHardTraining() throws {
+    @Test func a1_painConcernBlocksHardTraining() throws {
         let now = testNow
 
         // Even with no prior training (cold start), pain should override.
@@ -90,12 +92,9 @@ final class CoachScientificValidationTests: XCTestCase {
 
         // PREDICT: Primary = rest (not strength, not hard cardio).
         // CITATION: meeusenOvertraining2013
-        XCTAssertEqual(decision.primary.kind, .rest,
-                       "A1 FAIL: Pain must yield rest primary. Got: \(decision.primary.kind)")
-        XCTAssertFalse(decision.warnings.isEmpty,
-                       "A1 FAIL: Pain should generate a warning")
-        XCTAssertTrue(decision.warnings.contains { $0.id == "painConcern" },
-                      "A1 FAIL: Should have painConcern warning")
+        #expect(decision.primary.kind == .rest, "A1 FAIL: Pain must yield rest primary. Got: \(decision.primary.kind)")
+        #expect(!decision.warnings.isEmpty, "A1 FAIL: Pain should generate a warning")
+        #expect(decision.warnings.contains { $0.id == "painConcern" }, "A1 FAIL: Should have painConcern warning")
         assertAllCitationsResolve(decision)
         assertValidCitation("meeusenOvertraining2013")
     }
@@ -104,7 +103,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// lift from the next day's primary exercises.
     /// Science: parejaBlancoRecovery2020 — neuromuscular performance after
     /// training to failure takes ~48h to recover.
-    func testA2_48hSameLiftRecoveryBlocksSquat() throws {
+    @Test func a2_48hSameLiftRecoveryBlocksSquat() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -124,14 +123,12 @@ final class CoachScientificValidationTests: XCTestCase {
             let hasSquat = exercises.contains { ex in
                 ex.name == "Back Squat"
             }
-            XCTAssertFalse(hasSquat,
-                           "A2 FAIL: Back Squat within 48h recovery window should not be in primary. Exercises: \(exercises.map(\.name))")
+            #expect(!hasSquat, "A2 FAIL: Back Squat within 48h recovery window should not be in primary. Exercises: \(exercises.map(\.name))")
         }
         // At minimum, verify that the squat session (or strength candidates) are
         // deferred due to 48h recovery window. Reason IDs may vary (exactLift,
         // bodyPart, pattern, etc.) but there should be deferred candidates.
-        XCTAssertFalse(decision.deferred.isEmpty,
-                       "A2 FAIL: Some candidates should be deferred for recovery. Got 0 deferred")
+        #expect(!decision.deferred.isEmpty, "A2 FAIL: Some candidates should be deferred for recovery. Got 0 deferred")
 
         assertAllCitationsResolve(decision)
         assertValidCitation("parejaBlancoRecovery2020")
@@ -140,7 +137,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// A3: 6+ consecutive hard days triggers an overtraining warning.
     /// Science: meeusenOvertraining2013 + drewFinchInjury2016 — consecutive
     /// hard training days without recovery increase injury risk.
-    func testA3_sixConsecutiveHardDaysTriggersWarning() throws {
+    @Test func a3_sixConsecutiveHardDaysTriggersWarning() throws {
         let ctx = try makeContext()
         // Use Sunday so all 6 preceding days (Mon–Sat) are in the same week
         var comps = DateComponents()
@@ -162,13 +159,11 @@ final class CoachScientificValidationTests: XCTestCase {
 
         // PREDICT: Warning about consecutive hard days.
         // CITATION: meeusenOvertraining2013, drewFinchInjury2016
-        XCTAssertTrue(decision.warnings.contains { $0.id == "consecutiveHardDays" },
-                      "A3 FAIL: 6 consecutive hard days should trigger warning. Warnings: \(decision.warnings.map(\.id))")
+        #expect(decision.warnings.contains { $0.id == "consecutiveHardDays" }, "A3 FAIL: 6 consecutive hard days should trigger warning. Warnings: \(decision.warnings.map(\.id))")
 
         if let warning = decision.warnings.first(where: { $0.id == "consecutiveHardDays" }) {
-            XCTAssertTrue(warning.citationIds.contains("meeusenOvertraining2013") ||
-                          warning.citationIds.contains("drewFinchInjury2016"),
-                          "A3 FAIL: Warning should cite recovery science")
+            #expect(warning.citationIds.contains("meeusenOvertraining2013") ||
+                          warning.citationIds.contains("drewFinchInjury2016"), "A3 FAIL: Warning should cite recovery science")
         }
         assertAllCitationsResolve(decision)
         assertValidCitation("meeusenOvertraining2013")
@@ -178,7 +173,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// A4: Volume more than 20% above the high end triggers a warning.
     /// Science: pellandDoseResponse2026 — diminishing returns above certain
     /// weekly volume thresholds.
-    func testA4_excessiveWeeklyVolumeTriggersWarning() throws {
+    @Test func a4_excessiveWeeklyVolumeTriggersWarning() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -198,11 +193,9 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: Warning about excessive chest volume.
         // CITATION: pellandDoseResponse2026
         let chestWarning = decision.warnings.first { $0.id.contains("chest") || $0.id.contains("excessiveWeeklyVolume") }
-        XCTAssertNotNil(chestWarning,
-                        "A4 FAIL: 24 sets of chest should trigger volume warning. Warnings: \(decision.warnings.map { "\($0.id): \($0.message)" })")
+        #expect(chestWarning != nil, "A4 FAIL: 24 sets of chest should trigger volume warning. Warnings: \(decision.warnings.map { "\($0.id): \($0.message)" })")
         if let w = chestWarning {
-            XCTAssertTrue(w.citationIds.contains("pellandDoseResponse2026"),
-                          "A4 FAIL: Volume warning should cite pellandDoseResponse2026")
+            #expect(w.citationIds.contains("pellandDoseResponse2026"), "A4 FAIL: Volume warning should cite pellandDoseResponse2026")
         }
         assertAllCitationsResolve(decision)
         assertValidCitation("pellandDoseResponse2026")
@@ -225,7 +218,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// drive the coach to recommend aerobic work.
     /// Science: ekelundActivityMortality2016 — meeting the aerobic floor
     /// (150 min moderate-equivalent) attenuates mortality risk.
-    func testB1_aerobicDeficitRecommendsAerobic() throws {
+    @Test func b1_aerobicDeficitRecommendsAerobic() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -243,8 +236,7 @@ final class CoachScientificValidationTests: XCTestCase {
 
         // PREDICT: Primary is aerobic (easy or moderate), not strength.
         // CITATION: ekelundActivityMortality2016
-        XCTAssertTrue(decision.primary.kind == .easyAerobic || decision.primary.kind == .moderateAerobic,
-                      "B1 FAIL: With strength met and no cardio, primary should be aerobic. Got: \(decision.primary.kind)")
+        #expect(decision.primary.kind == .easyAerobic || decision.primary.kind == .moderateAerobic, "B1 FAIL: With strength met and no cardio, primary should be aerobic. Got: \(decision.primary.kind)")
         assertAllCitationsResolve(decision)
         assertValidCitation("ekelundActivityMortality2016")
     }
@@ -253,7 +245,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// a strength session.
     /// Science: schoenfeld2021 — loading recommendations for strength
     /// development; strength training should be prioritized when unmet.
-    func testB2_strengthDeficitRecommendsStrength() throws {
+    @Test func b2_strengthDeficitRecommendsStrength() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -270,8 +262,7 @@ final class CoachScientificValidationTests: XCTestCase {
 
         // PREDICT: Primary is strength.
         // CITATION: schoenfeld2021
-        XCTAssertEqual(decision.primary.kind, .strength,
-                       "B2 FAIL: With aerobic met and no strength, primary should be strength. Got: \(decision.primary.kind)")
+        #expect(decision.primary.kind == .strength, "B2 FAIL: With aerobic met and no strength, primary should be strength. Got: \(decision.primary.kind)")
         assertAllCitationsResolve(decision)
         assertValidCitation("schoenfeld2021")
     }
@@ -280,7 +271,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// candidates — not just easy/moderate.
     /// Science: crowleyVO2Intensity2022 + poonHIIT2024 — HIIT and VO2 intervals
     /// improve cardiorespiratory fitness beyond steady-state when base is solid.
-    func testB3_bothFloorsMetSurfacesHarderOptions() throws {
+    @Test func b3_bothFloorsMetSurfacesHarderOptions() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -303,11 +294,9 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: VO2 intervals candidate is present (requires ≥75 min base).
         // CITATION: crowleyVO2Intensity2022, poonHIIT2024
         let vo2Candidate = candidates.first { $0.id == "aerobic.vo2Intervals" }
-        XCTAssertNotNil(vo2Candidate,
-                        "B3 FAIL: With both floors met, VO2 intervals should be a candidate. Candidates: \(candidates.map(\.id))")
+        #expect(vo2Candidate != nil, "B3 FAIL: With both floors met, VO2 intervals should be a candidate. Candidates: \(candidates.map(\.id))")
         if let vo2 = vo2Candidate {
-            XCTAssertFalse(vo2.citationIds.isEmpty,
-                           "B3 FAIL: VO2 candidate should carry citations")
+            #expect(!vo2.citationIds.isEmpty, "B3 FAIL: VO2 candidate should carry citations")
         }
         assertValidCitation("crowleyVO2Intensity2022")
         assertValidCitation("poonHIIT2024")
@@ -316,7 +305,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// B4: With 3 strength days/week target, the weekly plan distributes
     /// remaining sessions across different days (not all on one day).
     /// Science: frequencyMeta — ≥2 sessions/muscle/week improves quality.
-    func testB4_weeklyPlanDistributesStrengthAcrossDays() throws {
+    @Test func b4_weeklyPlanDistributesStrengthAcrossDays() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let prefs = CoachSchedulePreferences()
@@ -328,12 +317,10 @@ final class CoachScientificValidationTests: XCTestCase {
         let futureStrength = plan.futureDays.filter { day in
             day.sessions.contains { $0.kind == .strength }
         }
-        XCTAssertGreaterThanOrEqual(futureStrength.count, 1,
-                                    "B4 FAIL: Should plan at least 1 future strength session")
+        #expect(futureStrength.count >= 1, "B4 FAIL: Should plan at least 1 future strength session")
         // If there are multiple strength days, they should be on different days
         let strengthDates = Set(futureStrength.map { Calendar.current.startOfDay(for: $0.date) })
-        XCTAssertEqual(strengthDates.count, futureStrength.count,
-                       "B4 FAIL: Future strength sessions should be on distinct days")
+        #expect(strengthDates.count == futureStrength.count, "B4 FAIL: Future strength sessions should be on distinct days")
         assertValidCitation("frequencyMeta")
     }
 
@@ -341,7 +328,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// marks the plan as complete.
     /// Science: schumannConcurrent2022 — concurrent training compatibility;
     /// completing both modalities in one day is a valid training stimulus.
-    func testB5_twoADayCompletionDetected() throws {
+    @Test func b5_twoADayCompletionDetected() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -362,10 +349,9 @@ final class CoachScientificValidationTests: XCTestCase {
         if case .planComplete = decision.planAdherence {
             // Expected
         } else {
-            XCTFail("B5 FAIL: Both strength and cardio today should complete plan. Got: \(decision.planAdherence)")
+            Issue.record("B5 FAIL: Both strength and cardio today should complete plan. Got: \(decision.planAdherence)")
         }
-        XCTAssertEqual(decision.todayPlannedRecommendations.count, 0,
-                       "B5 FAIL: No remaining recommendations when both done")
+        #expect(decision.todayPlannedRecommendations.count == 0, "B5 FAIL: No remaining recommendations when both done")
         assertAllCitationsResolve(decision)
         assertValidCitation("schumannConcurrent2022")
     }
@@ -374,7 +360,7 @@ final class CoachScientificValidationTests: XCTestCase {
 
     /// C1: A recorded cycling preference causes the coach to recommend cycling
     /// for aerobic work.
-    func testC1_cyclingPreferenceRememberedAndRecommended() throws {
+    @Test func c1_cyclingPreferenceRememberedAndRecommended() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -397,15 +383,14 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: With cycle preference and aerobic deficit, primary = moderate cycle.
         // This tests that user preferences are respected by the scoring system.
         if decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic {
-            XCTAssertEqual(decision.primary.modality, .cycle,
-                           "C1 FAIL: Cycle preference should make cycle primary. Got: \(decision.primary.modality?.rawValue ?? "nil")")
+            #expect(decision.primary.modality == .cycle, "C1 FAIL: Cycle preference should make cycle primary. Got: \(decision.primary.modality?.rawValue ?? "nil")")
         }
         assertAllCitationsResolve(decision)
     }
 
     /// C2: HighImpact avoidance tag should keep running out of primary when
     /// low-impact alternatives exist.
-    func testC2_highImpactAvoidanceKeepsRunOut() throws {
+    @Test func c2_highImpactAvoidanceKeepsRunOut() throws {
         let now = testNow
 
         var profile = CoachPreferenceProfile.empty
@@ -417,15 +402,14 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: With highImpact avoided, primary should NOT be a run session.
         // Low-impact alternatives (walk, cycle, swim) should be preferred.
         if decision.primary.kind == .moderateAerobic || decision.primary.kind == .easyAerobic {
-            XCTAssertNotEqual(decision.primary.modality, .run,
-                              "C2 FAIL: Run should not be primary when highImpact is avoided. Got: \(decision.primary.modality?.rawValue ?? "nil")")
+            #expect(decision.primary.modality != .run, "C2 FAIL: Run should not be primary when highImpact is avoided. Got: \(decision.primary.modality?.rawValue ?? "nil")")
         }
         assertAllCitationsResolve(decision)
     }
 
     /// C3: Strength exercise preference — the coach's most_trained_exercises
     /// should surface the user's historically most-used lifts.
-    func testC3_mostTrainedExercisesSurfaceInStrengthSession() throws {
+    @Test func c3_mostTrainedExercisesSurfaceInStrengthSession() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -449,8 +433,7 @@ final class CoachScientificValidationTests: XCTestCase {
         if decision.primary.kind == .strength, let exercises = decision.primary.exercises {
             let exerciseNames = exercises.map(\.name)
             // Should have some exercises (not empty)
-            XCTAssertFalse(exerciseNames.isEmpty,
-                           "C3 FAIL: Strength session should include exercises. Got empty list")
+            #expect(!exerciseNames.isEmpty, "C3 FAIL: Strength session should include exercises. Got empty list")
         }
         assertAllCitationsResolve(decision)
     }
@@ -461,7 +444,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// an assessment prompt candidate.
     /// Science: oneRMEstimation — e1RM prediction equations require a baseline
     /// to anchor load targets accurately.
-    func testD1_noBaselineSurfacesAssessmentPrompt() throws {
+    @Test func d1_noBaselineSurfacesAssessmentPrompt() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -476,11 +459,9 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: Assessment candidate present (system trained, no baseline).
         // CITATION: oneRMEstimation
         let assessCandidate = candidates.first { $0.kind == .assessment }
-        XCTAssertNotNil(assessCandidate,
-                        "D1 FAIL: Trained system without baseline should surface assessment candidate. Candidates: \(candidates.map(\.id))")
+        #expect(assessCandidate != nil, "D1 FAIL: Trained system without baseline should surface assessment candidate. Candidates: \(candidates.map(\.id))")
         if let assess = assessCandidate {
-            XCTAssertFalse(assess.citationIds.isEmpty,
-                           "D1 FAIL: Assessment candidate should carry citations")
+            #expect(!assess.citationIds.isEmpty, "D1 FAIL: Assessment candidate should carry citations")
         }
         assertValidCitation("oneRMEstimation")
     }
@@ -489,7 +470,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// surfaces.
     /// Science: kaufmannThreshold2023 — HRV-derived thresholds for exercise
     /// intensity prescription; threshold work builds on an established base.
-    func testD2_aerobicBaseEnablesThresholdTempo() throws {
+    @Test func d2_aerobicBaseEnablesThresholdTempo() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -509,13 +490,10 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: Threshold tempo candidate present.
         // CITATION: kaufmannThreshold2023
         let threshold = candidates.first { $0.id == "aerobic.thresholdTempo" }
-        XCTAssertNotNil(threshold,
-                        "D2 FAIL: Adequate aerobic base should enable threshold tempo candidate. Candidates: \(candidates.map(\.id))")
+        #expect(threshold != nil, "D2 FAIL: Adequate aerobic base should enable threshold tempo candidate. Candidates: \(candidates.map(\.id))")
         if let t = threshold {
-            XCTAssertEqual(t.systemsTrained, [.threshold],
-                           "D2 FAIL: Threshold tempo should train threshold system")
-            XCTAssertEqual(t.evidenceCategory, .thresholdTraining,
-                           "D2 FAIL: Threshold tempo should use thresholdTraining category")
+            #expect(t.systemsTrained == [.threshold], "D2 FAIL: Threshold tempo should train threshold system")
+            #expect(t.evidenceCategory == .thresholdTraining, "D2 FAIL: Threshold tempo should use thresholdTraining category")
         }
         assertValidCitation("kaufmannThreshold2023")
     }
@@ -524,7 +502,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// for a new assessment.
     /// Science: fieldFitnessReliability2022 — field tests are reliable;
     /// a recent baseline means no prompt needed.
-    func testD3_freshAssessmentSuppressesPrompt() throws {
+    @Test func d3_freshAssessmentSuppressesPrompt() throws {
         let now = testNow
 
         // No events at all (brand new user)
@@ -532,8 +510,7 @@ final class CoachScientificValidationTests: XCTestCase {
         let noEventCandidates = CoachSession.candidates(for: noEventFacts)
         let noEventAssess = noEventCandidates.first { $0.kind == .assessment }
         // Cold start with no events → should NOT get assessment prompt (no system was trained)
-        XCTAssertNil(noEventAssess,
-                     "D3: No events → no assessment prompt needed (nothing was trained yet)")
+        #expect(noEventAssess == nil, "D3: No events → no assessment prompt needed (nothing was trained yet)")
 
         // With events but still no baseline, assessment should appear (confirmed by D1)
         assertValidCitation("fieldFitnessReliability2022")
@@ -542,7 +519,7 @@ final class CoachScientificValidationTests: XCTestCase {
     // MARK: - Domain E: Deminimus Edge Cases
 
     /// E1: Soft-deleted sessions are excluded from weekly volume and recovery.
-    func testE1_deletedSessionsExcluded() throws {
+    @Test func e1_deletedSessionsExcluded() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -562,12 +539,11 @@ final class CoachScientificValidationTests: XCTestCase {
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
 
         // PREDICT: Weekly chest sets = 0 (deleted session excluded).
-        XCTAssertEqual(snap.facts.weeklySetsByGroup[.chest] ?? 0, 0,
-                       "E1 FAIL: Deleted session should not count toward weekly volume")
+        #expect(snap.facts.weeklySetsByGroup[.chest] ?? 0 == 0, "E1 FAIL: Deleted session should not count toward weekly volume")
     }
 
     /// E2: Future-dated events are excluded from weekly balance.
-    func testE2_futureDatedEventsExcluded() throws {
+    @Test func e2_futureDatedEventsExcluded() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -582,18 +558,16 @@ final class CoachScientificValidationTests: XCTestCase {
                                      experience: .intermediate, now: now)
 
         // PREDICT: Only past walk counts. Future run excluded.
-        XCTAssertGreaterThan(facts.weeklyBalance.moderateEquivalentMinutes, 0,
-                             "E2 FAIL: Past walk should count")
+        #expect(facts.weeklyBalance.moderateEquivalentMinutes > 0, "E2 FAIL: Past walk should count")
         let decision = CoachDecisionEngine.run(facts)
         let cardioFact = decision.observedFacts.first { $0.kind == .lastCardio }
-        XCTAssertTrue(cardioFact?.detail?.contains("Walk") ?? false,
-                      "E2 FAIL: Last cardio should be past walk, not future run. Got: \(cardioFact?.detail ?? "nil")")
+        #expect(cardioFact?.detail?.contains("Walk") ?? false, "E2 FAIL: Last cardio should be past walk, not future run. Got: \(cardioFact?.detail ?? "nil")")
     }
 
     /// E3: Beginner with <5 sessions gets Full-body A/B candidates.
     /// Science: schoenfeld2021 — loading recommendations; beginners benefit
     /// from structured full-body programs.
-    func testE3_beginnerGetsStructuredSessions() throws {
+    @Test func e3_beginnerGetsStructuredSessions() throws {
         let now = testNow
 
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .beginner, now: now)
@@ -601,10 +575,8 @@ final class CoachScientificValidationTests: XCTestCase {
 
         // PREDICT: Beginner A and B sessions present.
         // CITATION: schoenfeld2021
-        XCTAssertTrue(candidates.contains { $0.id == "strength.beginnerA" },
-                      "E3 FAIL: Beginner should get Full-body A candidate")
-        XCTAssertTrue(candidates.contains { $0.id == "strength.beginnerB" },
-                      "E3 FAIL: Beginner should get Full-body B candidate")
+        #expect(candidates.contains { $0.id == "strength.beginnerA" }, "E3 FAIL: Beginner should get Full-body A candidate")
+        #expect(candidates.contains { $0.id == "strength.beginnerB" }, "E3 FAIL: Beginner should get Full-body B candidate")
         assertValidCitation("schoenfeld2021")
     }
 
@@ -612,7 +584,7 @@ final class CoachScientificValidationTests: XCTestCase {
     /// primary (unlike 6+ days in A3).
     /// Science: meeusenOvertraining2013 — overtraining risk escalates with
     /// consecutive days; 2 days is normal training rhythm.
-    func testE4_twoConsecutiveHardDaysDoesNotForceRecovery() throws {
+    @Test func e4_twoConsecutiveHardDaysDoesNotForceRecovery() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -632,14 +604,13 @@ final class CoachScientificValidationTests: XCTestCase {
         // PREDICT: NO consecutive hard days warning (only 2 days).
         // CITATION: meeusenOvertraining2013
         let consecutiveWarning = decision.warnings.first { $0.id == "consecutiveHardDays" }
-        XCTAssertNil(consecutiveWarning,
-                     "E4 FAIL: 2 consecutive hard days should NOT trigger overtraining warning")
+        #expect(consecutiveWarning == nil, "E4 FAIL: 2 consecutive hard days should NOT trigger overtraining warning")
         assertValidCitation("meeusenOvertraining2013")
     }
 
     /// E5: Coach output is deterministic — identical inputs twice produce
     /// identical primary session ID, insights, and recommendation.
-    func testE5_deterministicOutput() throws {
+    @Test func e5_deterministicOutput() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -654,21 +625,17 @@ final class CoachScientificValidationTests: XCTestCase {
         let d2 = CoachDecisionEngine.run(facts2)
 
         // PREDICT: Identical inputs → identical outputs.
-        XCTAssertEqual(d1.primary.id, d2.primary.id,
-                       "E5 FAIL: Same inputs should yield same primary")
-        XCTAssertEqual(d1.primary.kind, d2.primary.kind,
-                       "E5 FAIL: Same inputs should yield same primary kind")
-        XCTAssertEqual(d1.warnings.map(\.id), d2.warnings.map(\.id),
-                       "E5 FAIL: Same inputs should yield same warnings")
-        XCTAssertEqual(d1.planAdherence, d2.planAdherence,
-                       "E5 FAIL: Same inputs should yield same plan adherence")
+        #expect(d1.primary.id == d2.primary.id, "E5 FAIL: Same inputs should yield same primary")
+        #expect(d1.primary.kind == d2.primary.kind, "E5 FAIL: Same inputs should yield same primary kind")
+        #expect(d1.warnings.map(\.id) == d2.warnings.map(\.id), "E5 FAIL: Same inputs should yield same warnings")
+        #expect(d1.planAdherence == d2.planAdherence, "E5 FAIL: Same inputs should yield same plan adherence")
     }
 
     // MARK: - Snapshot Integration Tests
 
     /// Verify the full snapshot builder runs end-to-end without error
     /// on a realistic multi-week training history.
-    func test_fullSnapshotEndToEnd() throws {
+    @Test func _fullSnapshotEndToEnd() throws {
         let ctx = try makeContext()
         let now = testNow
 
@@ -719,18 +686,14 @@ final class CoachScientificValidationTests: XCTestCase {
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
 
         // Basic sanity: snapshot is non-empty and well-formed
-        XCTAssertFalse(snap.decision.primary.id.isEmpty,
-                       "Snapshot should have a primary decision")
-        XCTAssertFalse(snap.plan.days.isEmpty,
-                       "Snapshot should have a weekly plan")
-        XCTAssertFalse(snap.recommendation.title.isEmpty,
-                       "Snapshot should have a recommendation")
+        #expect(!snap.decision.primary.id.isEmpty, "Snapshot should have a primary decision")
+        #expect(!snap.plan.days.isEmpty, "Snapshot should have a weekly plan")
+        #expect(!snap.recommendation.title.isEmpty, "Snapshot should have a recommendation")
 
         // All citations must resolve
         let known = Set(CitationRegistry.all.map(\.id))
         for insight in snap.insights {
-            XCTAssertTrue(known.contains(insight.citation.id),
-                          "Insight citation '\(insight.citation.id)' must exist in registry")
+            #expect(known.contains(insight.citation.id), "Insight citation '\(insight.citation.id)' must exist in registry")
         }
         for id in snap.decision.citationIds {
             assertValidCitation(id)
@@ -743,3 +706,4 @@ final class CoachScientificValidationTests: XCTestCase {
         assertValidCitation(snap.recommendation.citation.id)
     }
 }
+#endif

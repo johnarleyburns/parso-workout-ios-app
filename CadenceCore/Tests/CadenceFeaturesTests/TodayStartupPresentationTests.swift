@@ -1,8 +1,10 @@
-import XCTest
+import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class TodayStartupPresentationTests: XCTestCase {
+struct TodayStartupPresentationTests {
     private func plan(_ names: [String]) -> TodaySuggestedPlanPayload {
         TodaySuggestedPlanPayload(EditablePlan(
             title: "Fill the gaps",
@@ -15,7 +17,7 @@ final class TodayStartupPresentationTests: XCTestCase {
             }))
     }
 
-    func testDurableFullPlanWinsOverSingleExerciseCoachFallbackImmediately() {
+    @Test func durableFullPlanWinsOverSingleExerciseCoachFallbackImmediately() {
         let durablePlan = plan(["Squat", "Bench Press", "Row", "Lunge"])
         let singleExerciseFallback = TodayHero(kind: .suggested, title: "Strength today",
                                                 exercises: [.init(name: "Kettlebell Swing", detail: "3 × 10")])
@@ -24,39 +26,39 @@ final class TodayStartupPresentationTests: XCTestCase {
                                                   coachFallback: singleExerciseFallback,
                                                   reason: "Fill weekly gaps")
 
-        XCTAssertEqual(hero?.title, "Fill the gaps")
-        XCTAssertEqual(hero?.exercises.map(\.name), ["Squat", "Bench Press", "Row", "Lunge"])
+        #expect(hero?.title == "Fill the gaps")
+        #expect(hero?.exercises.map(\.name) == ["Squat", "Bench Press", "Row", "Lunge"])
     }
 
-    func testCoachFallbackIsOnlyUsedWhenNoFullPlanIsAvailable() {
+    @Test func coachFallbackIsOnlyUsedWhenNoFullPlanIsAvailable() {
         let fallback = TodayHero(kind: .suggested, title: "Strength today",
                                  exercises: [.init(name: "Kettlebell Swing", detail: "3 × 10")])
 
-        XCTAssertEqual(TodayStartupPresentation.hero(plan: nil, coachFallback: fallback, reason: nil), fallback)
+        #expect(TodayStartupPresentation.hero(plan: nil, coachFallback: fallback, reason: nil) == fallback)
     }
 
-    func testStartupPlanIsLaunchableWithoutCoachOrHistory() {
+    @Test func startupPlanIsLaunchableWithoutCoachOrHistory() {
         let fallback = TodayStartupPresentation.immediateFallback(
             style: .fitness,
             warmupMinutes: 5,
             cooldownMinutes: 3)
 
-        XCTAssertFalse(fallback.exercises.isEmpty)
-        XCTAssertGreaterThan(fallback.exercises.count, 1)
-        XCTAssertEqual(fallback.warmupMinutes, 5)
-        XCTAssertEqual(fallback.cooldownMinutes, 3)
+        #expect(!fallback.exercises.isEmpty)
+        #expect(fallback.exercises.count > 1)
+        #expect(fallback.warmupMinutes == 5)
+        #expect(fallback.cooldownMinutes == 3)
     }
 
-    func testStartupFallbackIsCompleteForEverySupportedStyle() {
+    @Test func startupFallbackIsCompleteForEverySupportedStyle() {
         for style in SuggestedWorkoutStyle.allCases {
             let fallback = TodayStartupPresentation.immediateFallback(
                 style: style, warmupMinutes: 0, cooldownMinutes: 0)
-            XCTAssertGreaterThanOrEqual(fallback.exercises.count, 5, "\(style) must not regress to one exercise")
-            XCTAssertTrue(fallback.exercises.allSatisfy { $0.sets.count == 3 })
+            #expect(fallback.exercises.count >= 5, "\(style) must not regress to one exercise")
+            #expect(fallback.exercises.allSatisfy { $0.sets.count == 3 })
         }
     }
 
-    func testHeroUsesFullPlanSetAndRepDetails() {
+    @Test func heroUsesFullPlanSetAndRepDetails() {
         let payload = TodaySuggestedPlanPayload(EditablePlan(
             title: "Fill the gaps", warmupMinutes: 0, cooldownMinutes: 0,
             exercises: [EditableExercise(name: "Squat", sets: [
@@ -65,20 +67,20 @@ final class TodayStartupPresentationTests: XCTestCase {
                 EditableSet(targetReps: 8, targetWeight: 80, loadMode: .straight)], notes: "")]))
 
         let hero = TodayStartupPresentation.hero(plan: payload, coachFallback: nil, reason: nil)
-        XCTAssertEqual(hero?.exercises, [.init(name: "Squat", detail: "3 × 6–8")])
+        #expect(hero?.exercises == [.init(name: "Squat", detail: "3 × 6–8")])
     }
 
-    func testPersonalizedResultCannotSilentlyReplaceVisibleStartupPlan() {
+    @Test func personalizedResultCannotSilentlyReplaceVisibleStartupPlan() {
         let displayed = TodayStartupPresentation.immediateFallback(
             style: .fitness, warmupMinutes: 5, cooldownMinutes: 3)
         let personalized = plan(["Leg Press", "Incline Press", "Lat Pulldown", "Hamstring Curl"])
 
-        XCTAssertEqual(
-            TodaySuggestionReplacementGate.decide(displayed: displayed, freshlyComputed: personalized),
+        #expect(
+            TodaySuggestionReplacementGate.decide(displayed: displayed, freshlyComputed: personalized) ==
             .holdPending)
     }
 
-    func testCacheMissStartupProducesLaunchableHeroInsteadOfLoading() {
+    @Test func cacheMissStartupProducesLaunchableHeroInsteadOfLoading() {
         let fallback = TodayStartupPresentation.immediateFallback(
             style: .fitness, warmupMinutes: 5, cooldownMinutes: 3)
         let startupHero = TodayStartupPresentation.hero(plan: fallback, coachFallback: nil,
@@ -89,8 +91,8 @@ final class TodayStartupPresentationTests: XCTestCase {
             fallbackRecommendation: nil, completedWorkoutCount: 2,
             recommendationReady: true)
 
-        XCTAssertEqual(rendered.kind, .suggested)
-        XCTAssertEqual(rendered.title, fallback.title)
-        XCTAssertGreaterThan(rendered.exercises.count, 1)
+        #expect(rendered.kind == .suggested)
+        #expect(rendered.title == fallback.title)
+        #expect(rendered.exercises.count > 1)
     }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// App-wide keep-awake coordinator (launch-blockers Phase 1c). All surfaces
 /// route through one reference-counted `IdleTimerArbiter`, whose holder union

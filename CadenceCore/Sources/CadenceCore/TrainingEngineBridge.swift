@@ -1150,7 +1150,7 @@ extension TrainingEngineBridge {
             substitutionAdjustedCompletion: substitutionCompletion)
     }
 
-    static func workout(
+    package static func workout(
         from session: WorkoutSession,
         plans: [FreeExerciseDBPlusPlus.WorkoutPlan]
     ) -> FreeExerciseDBPlusPlus.Workout {
@@ -1383,7 +1383,7 @@ extension TrainingEngineBridge {
         }
     }
 
-    static func timestampString(_ date: Date) -> String {
+    package static func timestampString(_ date: Date) -> String {
         let formatter = ISO8601DateFormatter()
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

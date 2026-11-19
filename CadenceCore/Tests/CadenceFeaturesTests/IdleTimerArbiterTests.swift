@@ -1,23 +1,25 @@
-import XCTest
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Launch-blockers Phase 1c: reference-counted keep-awake holders.
-final class IdleTimerArbiterTests: XCTestCase {
+struct IdleTimerArbiterTests {
 
-    func testUnionOfHolders() {
+    @Test func unionOfHolders() {
         let arbiter = IdleTimerArbiter()
         var applied: [Bool] = []
         arbiter.apply = { applied.append($0) }
 
         arbiter.acquire("session")
         arbiter.acquire("hrGate")
-        XCTAssertTrue(arbiter.keepAwake)
+        #expect(arbiter.keepAwake)
         arbiter.release("session")
-        XCTAssertTrue(arbiter.keepAwake, "one holder remains → still awake")
-        XCTAssertEqual(applied, [true, true, true])
+        #expect(arbiter.keepAwake, "one holder remains → still awake")
+        #expect(applied == [true, true, true])
     }
 
-    func testLastReleaseRestores() {
+    @Test func lastReleaseRestores() {
         let arbiter = IdleTimerArbiter()
         var last: Bool?
         arbiter.apply = { last = $0 }
@@ -25,11 +27,11 @@ final class IdleTimerArbiterTests: XCTestCase {
         arbiter.acquire("b")
         arbiter.release("a")
         arbiter.release("b")
-        XCTAssertFalse(arbiter.keepAwake)
-        XCTAssertEqual(last, false)
+        #expect(!arbiter.keepAwake)
+        #expect(last == false)
     }
 
-    func testReassertMatchesHolders() {
+    @Test func reassertMatchesHolders() {
         let arbiter = IdleTimerArbiter()
         arbiter.acquire("session")
         // The OS may have reset the idle timer while backgrounded; reassert
@@ -37,19 +39,19 @@ final class IdleTimerArbiterTests: XCTestCase {
         var last: Bool?
         arbiter.apply = { last = $0 }
         arbiter.reassert()
-        XCTAssertEqual(last, true)
+        #expect(last == true)
 
         arbiter.release("session")
         last = nil
         arbiter.reassert()
-        XCTAssertEqual(last, false)
+        #expect(last == false)
     }
 
-    func testDuplicateAcquireIsIdempotentPerToken() {
+    @Test func duplicateAcquireIsIdempotentPerToken() {
         let arbiter = IdleTimerArbiter()
         arbiter.acquire("x")
         arbiter.acquire("x")
         arbiter.release("x")
-        XCTAssertFalse(arbiter.keepAwake)
+        #expect(!arbiter.keepAwake)
     }
 }

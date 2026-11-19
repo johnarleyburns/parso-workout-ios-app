@@ -1,9 +1,11 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// strength-pivot P5.1 — the prescriptive inference engine over `TrainingFacts`.
-final class RecommendationEngineTests: XCTestCase {
+struct RecommendationEngineTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -36,115 +38,115 @@ final class RecommendationEngineTests: XCTestCase {
 
     // MARK: cold-start
 
-    func testColdStartReturnsStarter() {
+    @Test func coldStartReturnsStarter() {
         let recs = RecommendationEngine.run(facts())
-        XCTAssertEqual(recs.count, 1)
-        XCTAssertEqual(recs.first?.kind, .starter)
-        XCTAssertNotNil(recs.first?.target)
-        XCTAssertEqual(RecommendationEngine.top(facts()).kind, .starter)
+        #expect(recs.count == 1)
+        #expect(recs.first?.kind == .starter)
+        #expect(recs.first?.target != nil)
+        #expect(RecommendationEngine.top(facts()).kind == .starter)
     }
 
-    func testStarterUsesGoalRepRangeAndRIR() {
+    @Test func starterUsesGoalRepRangeAndRIR() {
         let starter = KnowledgeBase.starter(goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(starter.target?.repsLow, 6)
-        XCTAssertEqual(starter.target?.repsHigh, 12)
-        XCTAssertEqual(starter.target?.rir, 1)
-        XCTAssertEqual(starter.target?.sets, 3)
+        #expect(starter.target?.repsLow == 6)
+        #expect(starter.target?.repsHigh == 12)
+        #expect(starter.target?.rir == 1)
+        #expect(starter.target?.sets == 3)
     }
 
     // MARK: progression (double progression)
 
-    func testAddsRepWhenBelowTopOfRange() {
+    @Test func addsRepWhenBelowTopOfRange() {
         // strength range 3–5; 4 reps → aim for 5 at the same load.
         let f = facts(snapshots: [snapshot("Squat", weight: 100, reps: 4, trend: .flat)], goal: .strength)
         let rec = RecommendationEngine.run(f).first { $0.id == "progression.Squat" }
-        XCTAssertEqual(rec?.target?.repsLow, 5)
-        XCTAssertEqual(rec?.target?.repsHigh, 5)
-        XCTAssertEqual(rec?.target?.loadKg, 100)        // same load
-        XCTAssertEqual(rec?.target?.rir, 2)
-        XCTAssertEqual(rec?.confidence, .high)          // flat = clear plateau cue
+        #expect(rec?.target?.repsLow == 5)
+        #expect(rec?.target?.repsHigh == 5)
+        #expect(rec?.target?.loadKg == 100)        // same load
+        #expect(rec?.target?.rir == 2)
+        #expect(rec?.confidence == .high)          // flat = clear plateau cue
     }
 
-    func testAddsLoadAtTopOfRange() {
+    @Test func addsLoadAtTopOfRange() {
         // strength range 3–5; already at 5 reps → add 2.5 kg, reset to 3 reps.
         let f = facts(snapshots: [snapshot("Squat", weight: 100, reps: 5, trend: .rising)], goal: .strength)
         let rec = RecommendationEngine.run(f).first { $0.id == "progression.Squat" }
-        XCTAssertEqual(rec?.target?.loadKg, 102.5)
-        XCTAssertEqual(rec?.target?.repsLow, 3)         // reset to bottom
-        XCTAssertEqual(rec?.confidence, .moderate)      // rising = keep going
+        #expect(rec?.target?.loadKg == 102.5)
+        #expect(rec?.target?.repsLow == 3)         // reset to bottom
+        #expect(rec?.confidence == .moderate)      // rising = keep going
     }
 
     // MARK: deload
 
-    func testDecliningLiftGetsDeloadNotProgression() {
+    @Test func decliningLiftGetsDeloadNotProgression() {
         let f = facts(snapshots: [snapshot("Squat", weight: 100, reps: 5, trend: .declining)], goal: .strength)
         let recs = RecommendationEngine.run(f)
-        XCTAssertNil(recs.first { $0.id == "progression.Squat" })
+        #expect(recs.first { $0.id == "progression.Squat" } == nil)
         let deload = recs.first { $0.id == "deload.Squat" }
-        XCTAssertEqual(deload?.kind, .deload)
-        XCTAssertEqual(deload?.target?.loadKg, 90)      // ~10% off, rounded to 2.5
-        XCTAssertEqual(deload?.target?.rir, 3)          // more in reserve
-        XCTAssertEqual(deload?.citation.id, CitationRegistry.rpeAutoregulation.id)
+        #expect(deload?.kind == .deload)
+        #expect(deload?.target?.loadKg == 90)      // ~10% off, rounded to 2.5
+        #expect(deload?.target?.rir == 3)          // more in reserve
+        #expect(deload?.citation.id == CitationRegistry.rpeAutoregulation.id)
     }
 
-    func testDeloadDoesNotOutrankProgression() {
+    @Test func deloadDoesNotOutrankProgression() {
         let f = facts(snapshots: [
             snapshot("Bench", weight: 80, reps: 4, trend: .flat),       // → progression (pri 100)
             snapshot("Squat", weight: 100, reps: 5, trend: .declining), // → deload (pri 95, now below progression)
         ], goal: .strength)
         // Progression now outranks deload — single-week decline is monitored, not blocked.
-        XCTAssertEqual(RecommendationEngine.run(f).first?.id, "progression.Bench")
+        #expect(RecommendationEngine.run(f).first?.id == "progression.Bench")
     }
 
     // MARK: add volume
 
-    func testAddVolumeBelowMEV() {
+    @Test func addVolumeBelowMEV() {
         // 2 sets/week is below the minimum effective volume for any part.
         let f = facts(weeklySets: [.chest: 2], goal: .hypertrophy)
         let rec = RecommendationEngine.run(f).first { $0.id == "addVolume.chest" }
-        XCTAssertEqual(rec?.kind, .addVolume)
-        XCTAssertEqual(rec?.group, .chest)
-        XCTAssertNil(rec?.target?.loadKg)               // volume, not a specific load
-        XCTAssertGreaterThanOrEqual(rec?.target?.sets ?? 0, 1)
-        XCTAssertEqual(rec?.citation.id, CitationRegistry.volumeDoseResponse.id)
+        #expect(rec?.kind == .addVolume)
+        #expect(rec?.group == .chest)
+        #expect(rec?.target?.loadKg == nil)               // volume, not a specific load
+        #expect((rec?.target?.sets ?? 0) >= 1)
+        #expect(rec?.citation.id == CitationRegistry.volumeDoseResponse.id)
     }
 
-    func testProductiveVolumeProducesNoAddVolume() {
+    @Test func productiveVolumeProducesNoAddVolume() {
         // A large weekly volume is well above MEV → no add-volume recommendation.
         let f = facts(weeklySets: [.chest: 40], goal: .hypertrophy)
-        XCTAssertNil(RecommendationEngine.run(f).first { $0.id == "addVolume.chest" })
+        #expect(RecommendationEngine.run(f).first { $0.id == "addVolume.chest" } == nil)
     }
 
     // MARK: invariants
 
-    func testEveryRecommendationIsCited() {
+    @Test func everyRecommendationIsCited() {
         let known = Set(CitationRegistry.all.map(\.id))
         let f = facts(snapshots: [
             snapshot("Bench", weight: 80, reps: 4, trend: .flat),
             snapshot("Squat", weight: 100, reps: 5, trend: .declining),
         ], weeklySets: [.chest: 2], goal: .strength)
         let recs = RecommendationEngine.run(f)
-        XCTAssertFalse(recs.isEmpty)
+        #expect(!recs.isEmpty)
         for rec in recs {
-            XCTAssertTrue(known.contains(rec.citation.id), "\(rec.id) cites unknown \(rec.citation.id)")
+            #expect(known.contains(rec.citation.id), "\(rec.id) cites unknown \(rec.citation.id)")
         }
     }
 
-    func testIdempotentForIdenticalFacts() {
+    @Test func idempotentForIdenticalFacts() {
         let f = facts(snapshots: [snapshot("Squat", weight: 100, reps: 4, trend: .flat)],
                       weeklySets: [.chest: 2], goal: .strength)
-        XCTAssertEqual(RecommendationEngine.run(f).map(\.id), RecommendationEngine.run(f).map(\.id))
+        #expect(RecommendationEngine.run(f).map(\.id) == RecommendationEngine.run(f).map(\.id))
     }
 
-    func testRoundLoadSnapsToIncrement() {
-        XCTAssertEqual(PrescriptionMath.roundLoad(101.2), 100)
-        XCTAssertEqual(PrescriptionMath.roundLoad(101.3), 102.5)
-        XCTAssertEqual(PrescriptionMath.roundLoad(100), 100)
+    @Test func roundLoadSnapsToIncrement() {
+        #expect(PrescriptionMath.roundLoad(101.2) == 100)
+        #expect(PrescriptionMath.roundLoad(101.3) == 102.5)
+        #expect(PrescriptionMath.roundLoad(100) == 100)
     }
 
     // MARK: integration through TrainingFacts.make
 
-    func testMakeWiresLiftSnapshotIntoProgression() throws {
+    @Test func makeWiresLiftSnapshotIntoProgression() throws {
         let ctx = try makeContext()
         let cal = Calendar.current
         var comps = cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: Date())
@@ -156,9 +158,9 @@ final class RecommendationEngineTests: XCTestCase {
         // 5 reps at 60 kg, strength goal (range 3–5) → at the top → add load to 62.5.
         _ = try WorkoutRepository.addSet(to: s, exercise: squat, weightKg: 60, reps: 5, rpe: 8, in: ctx)
         let f = TrainingFacts.make(sessions: [s], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertNotNil(f.liftSnapshots["BackSquat"])
+        #expect(f.liftSnapshots["BackSquat"] != nil)
         let rec = RecommendationEngine.run(f).first { $0.id == "progression.BackSquat" }
-        XCTAssertEqual(rec?.target?.loadKg, 62.5)
+        #expect(rec?.target?.loadKg == 62.5)
     }
 
     // MARK: P6 — cardio HIIT/SIT recommendations
@@ -171,7 +173,7 @@ final class RecommendationEngineTests: XCTestCase {
                    kind: kind, value: value)
     }
 
-    func testVo2maxDeclineTriggersHIITRecommendation() {
+    @Test func vo2maxDeclineTriggersHIITRecommendation() {
         let now = Date()
         let assessments = [
             cardioA(.vo2maxField, 45, daysAgo: 60, now: now),
@@ -180,12 +182,12 @@ final class RecommendationEngineTests: XCTestCase {
         let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
                                     goal: .hypertrophy, experience: .intermediate)
         let rec = RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" }
-        XCTAssertEqual(rec?.kind, .cardioHIIT)
+        #expect(rec?.kind == .cardioHIIT)
         // New citation: crowleyVO2Intensity2022 (was hiitVo2max)
-        XCTAssertEqual(rec?.citation.id, CitationRegistry.crowleyVO2Intensity2022.id)
+        #expect(rec?.citation.id == CitationRegistry.crowleyVO2Intensity2022.id)
     }
 
-    func testWingateDeclineNoLongerTriggersSIT() {
+    @Test func wingateDeclineNoLongerTriggersSIT() {
         let now = Date()
         let assessments = [
             cardioA(.wingate, 600, daysAgo: 60, now: now),
@@ -195,10 +197,10 @@ final class RecommendationEngineTests: XCTestCase {
                                     goal: .hypertrophy, experience: .intermediate)
         // SIT is now opt-in only — the rule always returns empty.
         let rec = RecommendationEngine.run(f).first { $0.id == "cardio.sit.wingate" }
-        XCTAssertNil(rec, "SIT should not be auto-prescribed")
+        #expect(rec == nil, "SIT should not be auto-prescribed")
     }
 
-    func testCardioRecHasNoSetTarget() {
+    @Test func cardioRecHasNoSetTarget() {
         let now = Date()
         let assessments = [
             cardioA(.vo2maxField, 45, daysAgo: 60, now: now),
@@ -207,11 +209,11 @@ final class RecommendationEngineTests: XCTestCase {
         let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
                                    goal: .hypertrophy, experience: .intermediate)
         let rec = RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" }
-        XCTAssertNil(rec?.target, "cardioHIIT recs should not have a SetTarget")
-        XCTAssertNotNil(rec?.cardioPrescription)
+        #expect(rec?.target == nil, "cardioHIIT recs should not have a SetTarget")
+        #expect(rec?.cardioPrescription != nil)
     }
 
-    func testVo2maxImprovementDoesNotTriggerHIIT() {
+    @Test func vo2maxImprovementDoesNotTriggerHIIT() {
         let now = Date()
         let assessments = [
             cardioA(.vo2maxField, 38, daysAgo: 60, now: now),
@@ -219,10 +221,10 @@ final class RecommendationEngineTests: XCTestCase {
         ]
         let f = TrainingFacts.make(sessions: [], assessments: assessments, now: now,
                                    goal: .hypertrophy, experience: .intermediate)
-        XCTAssertNil(RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" })
+        #expect(RecommendationEngine.run(f).first { $0.id == "cardio.hiit.vo2max" } == nil)
     }
 
-    func testCardioRecommendationsAreCited() {
+    @Test func cardioRecommendationsAreCited() {
         let now = Date()
         let assessments = [
             cardioA(.vo2maxField, 45, daysAgo: 60, now: now),
@@ -234,21 +236,21 @@ final class RecommendationEngineTests: XCTestCase {
                                    goal: .hypertrophy, experience: .intermediate)
         let known = Set(CitationRegistry.all.map(\.id))
         let recs = RecommendationEngine.run(f).filter { $0.kind == .cardioHIIT }
-        XCTAssertFalse(recs.isEmpty)
+        #expect(!recs.isEmpty)
         for rec in recs {
-            XCTAssertTrue(known.contains(rec.citation.id), "\(rec.id) cites unknown \(rec.citation.id)")
+            #expect(known.contains(rec.citation.id), "\(rec.id) cites unknown \(rec.citation.id)")
         }
     }
 
-    func testAddVolumeCappedAtFourSets() {
+    @Test func addVolumeCappedAtFourSets() {
         let f = facts(weeklySets: [.chest: 3], goal: .strength)
         let recs = RecommendationEngine.run(f)
         let chestRecs = recs.filter { $0.id.hasPrefix("addVolume.") && $0.group == .chest }
-        XCTAssertFalse(chestRecs.isEmpty, "Should recommend volume for chest below MEV")
+        #expect(!chestRecs.isEmpty, "Should recommend volume for chest below MEV")
         for rec in chestRecs {
             if let target = rec.target, let sets = target.sets {
-                XCTAssertLessThanOrEqual(sets, 4, "addVolume should cap at 4 sets max, got \(sets)")
-                XCTAssertGreaterThanOrEqual(sets, 1, "addVolume should recommend at least 1 set")
+                #expect(sets <= 4, "addVolume should cap at 4 sets max, got \(sets)")
+                #expect(sets >= 1, "addVolume should recommend at least 1 set")
             }
         }
     }
@@ -291,7 +293,7 @@ final class RecommendationEngineTests: XCTestCase {
                           best: max(latest, baseline), count: 2)
     }
 
-    func testStrengthBlockUsesGoalSpecificRepTargetsAndCitesPeriodization() throws {
+    @Test func strengthBlockUsesGoalSpecificRepTargetsAndCitesPeriodization() throws {
         let c = try makeContext()
         let now = coachNow
         let e1 = try strengthEvent(c, name: "Squat", muscles: ["quadriceps"], reps: 4, sets: 3, daysAgo: 1, now: now)
@@ -299,28 +301,28 @@ final class RecommendationEngineTests: XCTestCase {
         let facts = CoachFacts.make(from: [e1, e2], goal: .strength, experience: .intermediate, now: now)
         let recs = CoachRecommendationEngine.run(facts)
         let block = recs.first { $0.id == "strengthBlock" }
-        XCTAssertNotNil(block)
-        XCTAssertEqual(block?.target?.repsLow, TrainingGoal.strength.repRange.lowerBound)
-        XCTAssertEqual(block?.target?.repsHigh, TrainingGoal.strength.repRange.upperBound)
-        XCTAssertEqual(block?.citation.id, "williamsLinearPeriodization")
-        XCTAssertTrue(block?.citationIds.contains("schoenfeld2021") ?? false)
-        XCTAssertEqual(block?.evidenceCategory, .periodization)
+        #expect(block != nil)
+        #expect(block?.target?.repsLow == TrainingGoal.strength.repRange.lowerBound)
+        #expect(block?.target?.repsHigh == TrainingGoal.strength.repRange.upperBound)
+        #expect(block?.citation.id == "williamsLinearPeriodization")
+        #expect(block?.citationIds.contains("schoenfeld2021") ?? false)
+        #expect(block?.evidenceCategory == .periodization)
     }
 
-    func testVolumeIncreaseFiresBelowMEVAndUsesFrequencyCitationForFrequencyClaim() throws {
+    @Test func volumeIncreaseFiresBelowMEVAndUsesFrequencyCitationForFrequencyClaim() throws {
         let c = try makeContext()
         let now = coachNow
         // 2 chest sets this week → below intermediate MEV (8).
         let e = try strengthEvent(c, name: "Bench", muscles: ["chest"], reps: 8, sets: 2, daysAgo: 1, now: now)
         let facts = CoachFacts.make(from: [e], goal: .hypertrophy, experience: .intermediate, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "volumeAdjust.add.chest" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(rec?.citation.id, "volumeDoseResponse")           // volume claim → volume citation
-        XCTAssertTrue(rec?.citationIds.contains("frequencyMeta") ?? false) // frequency sub-claim → frequency citation
-        XCTAssertNotEqual(rec?.citation.id, "frequencyMeta")
+        #expect(rec != nil)
+        #expect(rec?.citation.id == "volumeDoseResponse")           // volume claim → volume citation
+        #expect(rec?.citationIds.contains("frequencyMeta") ?? false) // frequency sub-claim → frequency citation
+        #expect(rec?.citation.id != "frequencyMeta")
     }
 
-    func testHighVolumePlusPoorReadinessSuggestsHoldOrReduce() throws {
+    @Test func highVolumePlusPoorReadinessSuggestsHoldOrReduce() throws {
         let c = try makeContext()
         let now = coachNow
         // 24 chest sets → over intermediate MRV (22).
@@ -329,28 +331,28 @@ final class RecommendationEngineTests: XCTestCase {
                                        sleepQuality: 2, stressMood: 3)
         let facts = CoachFacts.make(from: [e], goal: .hypertrophy, experience: .intermediate,
                                     readinessEntry: readiness, now: now)
-        XCTAssertNotNil(CoachRecommendationEngine.run(facts).first { $0.id == "volumeAdjust.reduce.chest" })
+        #expect(CoachRecommendationEngine.run(facts).first { $0.id == "volumeAdjust.reduce.chest" } != nil)
     }
 
-    func testAerobicBaseUsesActivityCitationsAndNeverCalls150Optimal() throws {
+    @Test func aerobicBaseUsesActivityCitationsAndNeverCalls150Optimal() throws {
         let now = coachNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "aerobicBase" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(rec?.evidenceCategory, .aerobicBase)
-        XCTAssertTrue(CitationRegistry.aerobicBasePool.citationIds.contains(rec!.citation.id))
-        XCTAssertFalse(rec!.detail.localizedCaseInsensitiveContains("optimal"))
-        XCTAssertFalse(rec!.action.localizedCaseInsensitiveContains("optimal"))
+        #expect(rec != nil)
+        #expect(rec?.evidenceCategory == .aerobicBase)
+        #expect(CitationRegistry.aerobicBasePool.citationIds.contains(rec!.citation.id))
+        #expect(!rec!.detail.localizedCaseInsensitiveContains("optimal"))
+        #expect(!rec!.action.localizedCaseInsensitiveContains("optimal"))
     }
 
-    func testBeginnerAerobicBaseSaysDurationBeforeIntensity() throws {
+    @Test func beginnerAerobicBaseSaysDurationBeforeIntensity() throws {
         let now = coachNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .beginner, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "aerobicBase" }
-        XCTAssertTrue(rec?.action.localizedCaseInsensitiveContains("duration before intensity") ?? false)
+        #expect(rec?.action.localizedCaseInsensitiveContains("duration before intensity") ?? false)
     }
 
-    func testVO2RuleExcludesBeginnersAndCitesVO2Pool() throws {
+    @Test func vO2RuleExcludesBeginnersAndCitesVO2Pool() throws {
         let c = try makeContext()
         let now = coachNow
         let base = cardioEvent(c, type: .run, daysAgo: 2, now: now, avgHR: 130)  // moderate base
@@ -358,34 +360,34 @@ final class RecommendationEngineTests: XCTestCase {
 
         let beginner = CoachFacts.make(from: [base], goal: .strength, experience: .beginner,
                                        assessments: [vo2], now: now)
-        XCTAssertNil(CoachRecommendationEngine.run(beginner).first { $0.id == "vo2Intervals" })
+        #expect(CoachRecommendationEngine.run(beginner).first { $0.id == "vo2Intervals" } == nil)
 
         let inter = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate,
                                     assessments: [vo2], now: now)
         let rec = CoachRecommendationEngine.run(inter).first { $0.id == "vo2Intervals" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(rec?.citation.id, "crowleyVO2Intensity2022")
+        #expect(rec != nil)
+        #expect(rec?.citation.id == "crowleyVO2Intensity2022")
         let vo2Pool = Set(CitationRegistry.vo2TrainingPool.citationIds)
-        XCTAssertTrue(([rec!.citation.id] + rec!.citationIds).allSatisfy { vo2Pool.contains($0) })
+        #expect(([rec!.citation.id] + rec!.citationIds).allSatisfy { vo2Pool.contains($0) })
     }
 
-    func testThresholdRuleLowConfidenceWithEstimatedHRAndNoMortalityCitation() throws {
+    @Test func thresholdRuleLowConfidenceWithEstimatedHRAndNoMortalityCitation() throws {
         let c = try makeContext()
         let now = coachNow
         // Moderate base with HR → aerobic base not stale, zoneSource = ageEstimated.
         let base = cardioEvent(c, type: .cycle, daysAgo: 2, now: now, avgHR: 130)
         let facts = CoachFacts.make(from: [base], goal: .endurance, experience: .intermediate, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "thresholdTempo" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(rec?.citation.id, "kaufmannThreshold2023")
-        XCTAssertEqual(rec?.confidence, .low)
-        XCTAssertTrue(rec?.citationIds.contains("tanakaMaxHR2001") ?? false)
+        #expect(rec != nil)
+        #expect(rec?.citation.id == "kaufmannThreshold2023")
+        #expect(rec?.confidence == .low)
+        #expect(rec?.citationIds.contains("tanakaMaxHR2001") ?? false)
         let mortality: Set<String> = ["ekelundActivityMortality2016", "mooreLeisureActivity2012",
                                       "aremDoseResponse2015", "saintMauriceSteps2020", "leeAccelerometer2019"]
-        XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).isDisjoint(with: mortality))
+        #expect(Set([rec!.citation.id] + rec!.citationIds).isDisjoint(with: mortality))
     }
 
-    func testAnaerobicIsDefaultWhenEligibleAndPreferenceRanked() throws {
+    @Test func anaerobicIsDefaultWhenEligibleAndPreferenceRanked() throws {
         let c = try makeContext()
         let now = coachNow
         let base = cardioEvent(c, type: .run, daysAgo: 3, now: now, avgHR: 130)
@@ -393,10 +395,10 @@ final class RecommendationEngineTests: XCTestCase {
         let inter = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate, now: now)
         let interRecs = CoachRecommendationEngine.run(inter)
         let rec = interRecs.first { $0.id == "anaerobicOptIn" }
-        XCTAssertNotNil(rec)
-        XCTAssertFalse(rec!.riskNotes.isEmpty)
+        #expect(rec != nil)
+        #expect(!rec!.riskNotes.isEmpty)
         let pool = Set(CitationRegistry.anaerobicTrainingPool.citationIds)
-        XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { pool.contains($0) })
+        #expect(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { pool.contains($0) })
 
         let easyChoice = CoachSession(
             id: "aerobic.easyWalk", kind: .easyAerobic, title: "Easy walk",
@@ -415,25 +417,25 @@ final class RecommendationEngineTests: XCTestCase {
         profile.recordSelection(easyChoice, from: [sprintAlternative], at: now.addingTimeInterval(60))
         let rankedDown = CoachRecommendationEngine.run(inter, profile: profile)
             .first { $0.id == "anaerobicOptIn" }
-        XCTAssertNotNil(rankedDown)
-        XCTAssertLessThan(rankedDown!.priority, rec!.priority)
+        #expect(rankedDown != nil)
+        #expect(rankedDown!.priority < rec!.priority)
 
         let advanced = CoachFacts.make(from: [base], goal: .strength, experience: .advanced, now: now)
-        XCTAssertNotNil(CoachRecommendationEngine.run(advanced).first { $0.id == "anaerobicOptIn" })
+        #expect(CoachRecommendationEngine.run(advanced).first { $0.id == "anaerobicOptIn" } != nil)
     }
 
-    func testFlexibilityRuleUsesROMCitationAndNoInjuryPreventionOverclaim() throws {
+    @Test func flexibilityRuleUsesROMCitationAndNoInjuryPreventionOverclaim() throws {
         let now = coachNow
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "flexibility" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(rec?.citation.id, "konradStretchROM2024")
-        XCTAssertEqual(rec?.evidenceCategory, .flexibilityROM)
-        XCTAssertFalse(rec!.citationIds.contains("lauersenInjuryPrevention2014"))
-        XCTAssertFalse(rec!.detail.localizedCaseInsensitiveContains("prevents all injuries"))
+        #expect(rec != nil)
+        #expect(rec?.citation.id == "konradStretchROM2024")
+        #expect(rec?.evidenceCategory == .flexibilityROM)
+        #expect(!rec!.citationIds.contains("lauersenInjuryPrevention2014"))
+        #expect(!rec!.detail.localizedCaseInsensitiveContains("prevents all injuries"))
     }
 
-    func testPoorReadinessEmitsRecoveryAndDoesNotDiagnoseOvertraining() throws {
+    @Test func poorReadinessEmitsRecoveryAndDoesNotDiagnoseOvertraining() throws {
         let now = coachNow
         let readiness = ReadinessEntry(date: now, muscleSoreness: 1, fatigueEnergy: 2,
                                        sleepQuality: 2, stressMood: 2)
@@ -441,44 +443,45 @@ final class RecommendationEngineTests: XCTestCase {
                                     readinessEntry: readiness, now: now)
         let recs = CoachRecommendationEngine.run(facts)
         let rec = recs.first { $0.id == "recoveryReadiness" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(recs.first?.kind, .recoveryReadiness)   // highest priority when readiness poor
-        XCTAssertEqual(rec?.citation.id, "sawMonitoring2016")
+        #expect(rec != nil)
+        #expect(recs.first?.kind == .recoveryReadiness)   // highest priority when readiness poor
+        #expect(rec?.citation.id == "sawMonitoring2016")
         let monitoring = Set(CitationRegistry.recoveryMonitoringPool.citationIds)
-        XCTAssertTrue(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { monitoring.contains($0) })
+        #expect(Set([rec!.citation.id] + rec!.citationIds).allSatisfy { monitoring.contains($0) })
         for s in [rec!.title, rec!.action, rec!.detail] {
-            XCTAssertFalse(s.localizedCaseInsensitiveContains("overtrain"))
+            #expect(!s.localizedCaseInsensitiveContains("overtrain"))
         }
     }
 
-    func testMissingVO2BaselinePromptsCardioAssessmentWithSource() throws {
+    @Test func missingVO2BaselinePromptsCardioAssessmentWithSource() throws {
         let c = try makeContext()
         let now = coachNow
         let base = cardioEvent(c, type: .run, daysAgo: 2, now: now, avgHR: 130)  // base, no vo2 baseline
         let facts = CoachFacts.make(from: [base], goal: .strength, experience: .intermediate, now: now)
         let rec = CoachRecommendationEngine.run(facts).first { $0.id == "assessmentPrompt.vo2max" }
-        XCTAssertNotNil(rec)
-        XCTAssertEqual(rec?.citation.id, "cooperVo2max")
-        XCTAssertEqual(rec?.evidenceCategory, .fieldTestValidity)
-        XCTAssertTrue(CitationRegistry.fieldTestValidityPool.citationIds.contains(rec!.citation.id))
+        #expect(rec != nil)
+        #expect(rec?.citation.id == "cooperVo2max")
+        #expect(rec?.evidenceCategory == .fieldTestValidity)
+        #expect(CitationRegistry.fieldTestValidityPool.citationIds.contains(rec!.citation.id))
     }
 
     // MARK: - Unused-citation integration (2026-07-07)
 
-    func testHIITVo2maxInVo2Pool() {
-        XCTAssertTrue(CitationRegistry.vo2TrainingPool.citationIds.contains("hiitVo2max"),
+    @Test func hIITVo2maxInVo2Pool() {
+        #expect(CitationRegistry.vo2TrainingPool.citationIds.contains("hiitVo2max"),
                       "hiitVo2max should broaden the VO₂-training evidence base")
     }
 
-    func testDrewFinchInRecoveryPool() {
-        XCTAssertTrue(CitationRegistry.recoveryMonitoringPool.citationIds.contains("drewFinchInjury2016"),
+    @Test func drewFinchInRecoveryPool() {
+        #expect(CitationRegistry.recoveryMonitoringPool.citationIds.contains("drewFinchInjury2016"),
                       "drewFinchInjury2016 should back recovery/load warnings")
     }
 
-    func testLauersenInInjuryPreventionPoolNotFlexibility() {
-        XCTAssertTrue(CitationRegistry.injuryPreventionPool.citationIds.contains("lauersenInjuryPrevention2014"),
+    @Test func lauersenInInjuryPreventionPoolNotFlexibility() {
+        #expect(CitationRegistry.injuryPreventionPool.citationIds.contains("lauersenInjuryPrevention2014"),
                       "lauersenInjuryPrevention2014 belongs in the injury-prevention pool")
-        XCTAssertFalse(CitationRegistry.flexibilityROMPool.citationIds.contains("lauersenInjuryPrevention2014"),
+        #expect(!CitationRegistry.flexibilityROMPool.citationIds.contains("lauersenInjuryPrevention2014"),
                        "lauersenInjuryPrevention2014 must never back a flexibility/ROM claim")
     }
 }
+#endif

@@ -1,0 +1,296 @@
+import CadenceFeatures
+import Foundation
+import CadenceCore
+
+/// Prepared, SwiftUI-free state for the on-demand suggested-workout chooser.
+public enum SuggestedWorkoutState: Equatable, Sendable {
+    case idle
+    case calculating
+    case ready(SuggestedWorkoutBundle)
+    case failed(message: String)
+}
+
+public struct SuggestedWorkoutChoice: Equatable, Sendable, Identifiable {
+    public let option: SuggestedWorkoutOption
+    public let title: String
+    /// What kind of training this style is.
+    public let styleDescription: String
+    public let subtitle: String
+    public let isDisabled: Bool
+
+    public var id: SuggestedWorkoutStyle { option.style }
+}
+
+public enum SuggestedWorkoutPresenter {
+    public static let navigationTitle = {
+        #if os(Linux)
+        "View Personalized Workout"
+        #else
+        String(localized: "View Personalized Workout", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let calculatingTitle = {
+        #if os(Linux)
+        "Calculating personalized workouts…"
+        #else
+        String(localized: "Calculating personalized workouts…", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let aboutAccessibilityLabel = {
+        #if os(Linux)
+        "About personalized workouts"
+        #else
+        String(localized: "About personalized workouts", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let chooserIntro = {
+        #if os(Linux)
+        "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting."
+        #else
+        String(localized: "Every plan closes the same weekly gaps — pick the kind of training you want to do it with. You can review and edit any plan before starting.", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+    public static let choosingAPlan = {
+        #if os(Linux)
+        "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself."
+        #else
+        String(localized: "Every style aims at the same \(suggestedWorkoutTargetSetsPerGroup) weekly sets for each muscle group you track. Each plan includes at least one movement for every group below its weekly dose, with no set cap; total sets are an editable estimate, and any group that cannot be covered is listed with the reason. What changes between them is the movements. A style that cannot reach a muscle borrows a general strength movement rather than leaving the gap open, and the chooser says how many movements came from the style itself.", bundle: FeatureLocalization.bundle)
+        #endif
+    }()
+
+    public static func historyNotice(for quality: SuggestedWorkoutHistoryQuality) -> String? {
+        switch quality {
+        case .sufficient:
+            return nil
+        case .unavailable:
+            return {
+                #if os(Linux)
+                "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout."
+                #else
+                String(localized: "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout.", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
+        case .limited(let workoutCount, let workingSetCount):
+            return {
+                #if os(Linux)
+                "Limited history: \(workoutCount) workouts"
+                #else
+                String(localized: "Limited history: \(workoutCount) workouts", bundle: FeatureLocalization.bundle)
+                #endif
+            }() + ", "
+                + {
+                    #if os(Linux)
+                    "\(workingSetCount) working sets"
+                    #else
+                    String(localized: "\(workingSetCount) working sets", bundle: FeatureLocalization.bundle)
+                    #endif
+                }() + ". "
+                + {
+                    #if os(Linux)
+                    "This personalized workout also uses your onboarding preferences, so review it before starting."
+                    #else
+                    String(localized: "This personalized workout also uses your onboarding preferences, so review it before starting.", bundle: FeatureLocalization.bundle)
+                    #endif
+                }()
+        }
+    }
+
+    public static func choices(for bundle: SuggestedWorkoutBundle) -> [SuggestedWorkoutChoice] {
+        bundle.options.map {
+            choice(for: $0, personalizedHistoryWorkoutCount: bundle.personalizedHistoryWorkoutCount)
+        }
+    }
+
+    public static func choice(for option: SuggestedWorkoutOption) -> SuggestedWorkoutChoice {
+        choice(for: option, personalizedHistoryWorkoutCount: .max)
+    }
+
+    public static func choice(for option: SuggestedWorkoutOption,
+                              personalizedHistoryWorkoutCount: Int) -> SuggestedWorkoutChoice {
+        let style = option.style
+        let gaps = remainingGapText(option)
+        let trim = option.unsupportedCoverage.isEmpty ? ""
+            : " Not covered: " + option.unsupportedCoverage.map(\.explanation).joined(separator: " ")
+        if style == .personalized,
+           personalizedHistoryWorkoutCount < SuggestedWorkoutGenerator.minimumPersonalizedWorkouts {
+            return SuggestedWorkoutChoice(
+                option: option,
+                title: style.displayName,
+                styleDescription: style.subtitle,
+                subtitle: {
+                    #if os(Linux)
+                    "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount)."
+                    #else
+                    String(localized: "Need at least \(SuggestedWorkoutGenerator.minimumPersonalizedWorkouts) completed workouts; you have \(personalizedHistoryWorkoutCount).", bundle: FeatureLocalization.bundle)
+                    #endif
+                }(),
+                isDisabled: true)
+        }
+        if !option.isLaunchable {
+            return SuggestedWorkoutChoice(
+                option: option,
+                title: style.displayName,
+                styleDescription: style.subtitle,
+                subtitle: style == .personalized
+                    ? {
+                        #if os(Linux)
+                        "No exercises from your history cover this week's gaps."
+                        #else
+                        String(localized: "No exercises from your history cover this week's gaps.", bundle: FeatureLocalization.bundle)
+                        #endif
+                    }()
+                    : {
+                        #if os(Linux)
+                        "No available \(style.displayName.lowercased()) exercises cover this week's gaps."
+                        #else
+                        String(localized: "No available \(style.displayName.lowercased()) exercises cover this week's gaps.", bundle: FeatureLocalization.bundle)
+                        #endif
+                    }(),
+                isDisabled: true)
+        }
+        return SuggestedWorkoutChoice(
+            option: option,
+            title: style.displayName,
+            styleDescription: style.subtitle,
+            subtitle: "\(option.plannedSetTotal) planned sets · \(styleShareText(option)) · \(gaps)\(trim)",
+            isDisabled: false)
+    }
+
+    /// How much of the plan came from the chosen style rather than the general
+    /// strength fallback. Disclosed, never hidden: a style narrows the movements
+    /// but is not allowed to leave a gap unaddressed on purpose (NFR-8).
+    public static func styleShareText(_ option: SuggestedWorkoutOption) -> String {
+        let name = option.style.displayName.lowercased()
+        let inStyle = option.inStyleExerciseCount
+        let total = option.exercises.count
+        guard total > 0 else { return "no movements" }
+        return inStyle == total
+            ? "all \(name) movements"
+            : {
+                #if os(Linux)
+                "\(inStyle) of \(total) \(name) movements"
+                #else
+                String(localized: "\(inStyle) of \(total) \(name) movements", bundle: FeatureLocalization.bundle)
+                #endif
+            }()
+    }
+
+    public static func remainingGapText(_ option: SuggestedWorkoutOption) -> String {
+        let gaps = option.unresolvedDeficits
+        guard !gaps.isEmpty else { return {
+            #if os(Linux)
+            "All current gaps covered"
+            #else
+            String(localized: "All current gaps covered", bundle: FeatureLocalization.bundle)
+            #endif
+        }() }
+        let names = gaps.keys.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+            .map(displayName)
+        return {
+            #if os(Linux)
+            "Remaining gaps: \(names.formatted(.list(type: .and)))"
+            #else
+            String(localized: "Remaining gaps: \(names.formatted(.list(type: .and)))", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+    }
+
+    public static func editablePlan(for option: SuggestedWorkoutOption,
+                                    ladder: [Int]? = nil,
+                                    unit: MeasurementUnitPreference,
+                                    warmupMinutes: Int,
+                                    cooldownMinutes: Int) -> EditablePlan {
+        var editable = EditablePlan.from(plan: option.plan, ladder: ladder, unit: unit,
+                                         warmupMinutes: warmupMinutes, cooldownMinutes: cooldownMinutes)
+        editable.enginePlanId = option.enginePlanID
+        editable.engineRevisionId = option.engineRevisionID
+        editable.enginePlanJSON = option.enginePlanJSON
+        editable.suggestedWorkoutStyle = option.style
+        editable.recommendationRationale = option.rationale
+        return editable
+    }
+
+    /// Plain-language algorithm steps for the About sheet. Kept here so tests
+    /// prevent the explanation and engine contract from drifting apart.
+    public static let aboutSteps = [
+        {
+            #if os(Linux)
+            "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises."
+            #else
+            String(localized: "Starts with this week's completed sets, credited from published movement analyses: a set counts once for a muscle the movement trains directly, half for one it trains indirectly, and not at all for one that only stabilises.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track."
+            #else
+            String(localized: "Calculates a \(suggestedWorkoutTargetSetsPerGroup)-set weekly gap for every muscle group you track.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order."
+            #else
+            String(localized: "Considers the largest remaining gap first; equal gaps use a fixed largest-to-smallest muscle order.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles."
+            #else
+            String(localized: "Fills the plan from your chosen training style first — Olympic lifts for Olympic, carries and loads for Strongman, and so on — scoring each unused movement only for muscles still in deficit, with credit capped at the remaining gap. Equal scores for one muscle prefer compound movements, then movements involving more muscles.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement."
+            #else
+            String(localized: "Falls back to general strength movements only where a non-Bodyweight style has nothing left that closes a gap. Bodyweight remains bodyweight-only, so choosing it never introduces an external-load movement.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason."
+            #else
+            String(localized: "Adds each winning movement once it covers a group that has no planned work yet, using your most recent exercise's working-set count (3 with no history) and, with no history, flat reps by goal (strength 3, hypertrophy 8, endurance 20). Nothing is trimmed; groups that no eligible movement can reach are listed with the reason.", bundle: FeatureLocalization.bundle)
+            #endif
+        }(),
+        {
+            #if os(Linux)
+            "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum."
+            #else
+            String(localized: "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: FeatureLocalization.bundle)
+            #endif
+        }()
+    ]
+
+    public static let pseudocode = [
+        "deficits = max(0, \(suggestedWorkoutTargetSetsPerGroup) - completedSets) for each tracked muscle group",
+        "while a deficit remains: muscle = largest deficit; ties use descending muscle mass",
+        "score each unused movement = sum(min(remaining gap, planned sets × direct/indirect credit))",
+        "on equal score for that muscle: in-style > out-of-style; compound > isolation; then more muscles involved",
+        "pass 1 considers only movements of the chosen style; pass 2 considers every movement for non-Bodyweight styles, while Bodyweight remains bodyweight-only",
+        "recompute remaining weekly dose; list any group no eligible movement covers (no set cap, nothing removed)"
+    ]
+
+    public static var citationIDs: [String] { suggestedWorkoutCitationIDs }
+
+    public static var citationsResolve: Bool {
+        citationIDs.allSatisfy { CitationRegistry.citation(forId: $0) != nil }
+    }
+
+    /// UI-facing source content is deliberately citation-neutral. Views resolve
+    /// the IDs through `CitationRegistry` and render the resulting `CitationLink`.
+    public static var aboutContentContainsRawCitationID: Bool {
+        let content = (aboutSteps + pseudocode).joined(separator: " ")
+        return citationIDs.contains(where: content.contains)
+    }
+
+    private static func displayName(_ identifier: String) -> String {
+        identifier
+            .replacingOccurrences(of: "-", with: " ")
+            .split(separator: " ")
+            .map { $0.prefix(1).uppercased() + $0.dropFirst().lowercased() }
+            .joined(separator: " ")
+    }
+}

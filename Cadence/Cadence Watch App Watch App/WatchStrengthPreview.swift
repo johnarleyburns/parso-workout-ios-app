@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Shared setup for Personalized, Previous and Custom. This view owns only a
 /// draft; WatchStrengthView is created after the explicit primary Start action.
@@ -143,12 +144,13 @@ private struct WatchPreviewPartnerPicker: View {
     @Binding var setup: WatchStrengthPreviewSetup
     let recentNames: [String]
     @State private var newPartner = ""
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         List {
-            Button("No partner") { setup.partnerNames = [] }
+            Button("No partner") { setup.partnerNames = []; dismiss() }
                 .accessibilityIdentifier("watchStrength.partner.none")
             ForEach(setup.partnerOptions(recentNames: recentNames), id: \.self) { name in
-                Button { setup.togglePartner(name) } label: {
+                Button { setup.togglePartner(name); dismiss() } label: {
                     HStack {
                         Text(name)
                         Spacer()
@@ -163,6 +165,7 @@ private struct WatchPreviewPartnerPicker: View {
                 .onSubmit {
                     setup.partnerNames = WatchCustomStrengthDefaults.unique(setup.partnerNames + [newPartner])
                     newPartner = ""
+                    dismiss()
                 }
                 .accessibilityIdentifier("watchStrength.preview.addPartner")
         }

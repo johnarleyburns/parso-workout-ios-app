@@ -1,8 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class HomeWeeklyIntentCacheTests: XCTestCase {
+struct HomeWeeklyIntentCacheTests {
     private func url() -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("weekly-intent-\(UUID().uuidString).json")
     }
@@ -14,30 +17,30 @@ final class HomeWeeklyIntentCacheTests: XCTestCase {
                                                zoneMinutes: [:], algorithmVersion: .hrrGuidelineV1))
     }
 
-    func testPeekNilThenRoundTripAndOverwrite() async {
+    @Test func peekNilThenRoundTripAndOverwrite() async {
         let u = url(); defer { try? FileManager.default.removeItem(at: u) }
         let store = HomeWeeklyIntentCacheStore(fileURL: u)
         let empty = await store.peek()
-        XCTAssertNil(empty)
+        #expect(empty == nil)
         await store.save(snapshot())
         let first = await store.peek()
-        XCTAssertEqual(first, snapshot())
+        #expect(first == snapshot())
         await store.save(snapshot("2026-11-16"))
         let second = await store.peek()
-        XCTAssertEqual(second?.weekKey, "2026-11-16")
+        #expect(second?.weekKey == "2026-11-16")
     }
 
-    func testFreshInstanceReadsPriorWrite() async {
+    @Test func freshInstanceReadsPriorWrite() async {
         let u = url(); defer { try? FileManager.default.removeItem(at: u) }
         await HomeWeeklyIntentCacheStore(fileURL: u).save(snapshot())
         let back = await HomeWeeklyIntentCacheStore(fileURL: u).peek()
-        XCTAssertEqual(back, snapshot())
+        #expect(back == snapshot())
     }
 
-    func testNilFileURLStaysMemoryOnly() async {
+    @Test func nilFileURLStaysMemoryOnly() async {
         let store = HomeWeeklyIntentCacheStore(fileURL: nil)
         await store.save(snapshot())
         let back = await store.peek()
-        XCTAssertEqual(back, snapshot())
+        #expect(back == snapshot())
     }
 }

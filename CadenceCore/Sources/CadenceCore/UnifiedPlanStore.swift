@@ -1,11 +1,15 @@
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 
 /// Additive SwiftData envelope for the unified value model. The domain model
 /// remains a Codable value graph; this record is deliberately boring so it can
 /// be mirrored by SwiftData/CloudKit without making every associated-value enum
 /// a separate persistence entity before the planner migration is complete.
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlan {
     public var id: UUID = UUID()
     public var payloadVersion: Int = UnifiedPlanStore.currentPayloadVersion
@@ -38,6 +42,13 @@ public final class PersistedPlan {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedPlan: Equatable, Hashable {
+    public static func == (lhs: PersistedPlan, rhs: PersistedPlan) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 public enum UnifiedPlanStoreError: Error, Equatable, Sendable {
     case unsupportedPayloadVersion(Int)
     case invalidPayload
@@ -61,6 +72,7 @@ public enum UnifiedPlanStore {
     /// Inserts a new plan or applies the newer value by `updatedAt`. Equal-date
     /// writes use the origin-device ID as a deterministic tie-breaker, matching
     /// the value-level sharing contract.
+    #if canImport(SwiftData)
     @discardableResult
     public static func upsert(_ plan: Plan, originDevice: String = "",
                               in context: ModelContext) throws -> PersistedPlan {
@@ -107,6 +119,7 @@ public enum UnifiedPlanStore {
             sortBy: [SortDescriptor(\PersistedPlan.updatedAt, order: .reverse)]
         )).map { try $0.decodedPlan() }
     }
+    #endif
 
     public static func encode(_ plan: Plan) throws -> Data {
         try JSONEncoder().encode(plan)

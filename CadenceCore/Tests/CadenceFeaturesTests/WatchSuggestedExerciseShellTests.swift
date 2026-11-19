@@ -1,9 +1,11 @@
-import XCTest
+import Testing
+import Foundation
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
 @MainActor
-final class WatchSuggestedExerciseShellTests: XCTestCase {
+@Suite final class WatchSuggestedExerciseShellTests {
     private let asOf = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
     /// A realistic, phone-shaped context — same shape
@@ -39,7 +41,7 @@ final class WatchSuggestedExerciseShellTests: XCTestCase {
                              engineContext: .init(engine)))
     }
 
-    func testRealisticContextResolvesPastCalculatingInsteadOfHangingForever() async throws {
+    @Test func realisticContextResolvesPastCalculatingInsteadOfHangingForever() async throws {
         let shell = WatchSuggestedExerciseShell(loadContext: { self.realisticContext() })
         shell.start(activeNames: [], activeWorkingSets: [])
         await shell.session.pendingTask?.value
@@ -47,34 +49,34 @@ final class WatchSuggestedExerciseShellTests: XCTestCase {
         case .ready, .noEligibleResult:
             break // resolved — the stuck-forever symptom did not reproduce.
         case .calculating:
-            XCTFail("shell is still \"Finding an exercise…\" after the task finished")
+            Issue.record("shell is still \"Finding an exercise…\" after the task finished")
         case .unavailable:
-            XCTFail("a present, valid context was treated as missing")
+            Issue.record("a present, valid context was treated as missing")
         }
     }
 
-    func testMissingContextIsUnavailableNotARandomFallback() {
+    @Test func missingContextIsUnavailableNotARandomFallback() {
         let shell = WatchSuggestedExerciseShell(loadContext: { nil })
-        XCTAssertEqual(shell.phase, .calculating)
+        #expect(shell.phase == .calculating)
         shell.start(activeNames: ["Bench Press"], activeWorkingSets: [])
-        XCTAssertEqual(shell.phase, .unavailable)
-        XCTAssertEqual(shell.session.state, .idle)
+        #expect(shell.phase == .unavailable)
+        #expect(shell.session.state == .idle)
     }
 
-    func testRetryReloadsContextAndStaysUnavailableWhileAbsent() {
+    @Test func retryReloadsContextAndStaysUnavailableWhileAbsent() {
         var loads = 0
         let shell = WatchSuggestedExerciseShell(loadContext: { loads += 1; return nil })
         shell.start(activeNames: [], activeWorkingSets: [])
         shell.start(activeNames: [], activeWorkingSets: [])
-        XCTAssertEqual(loads, 1)
+        #expect(loads == 1)
         shell.retry(activeNames: [], activeWorkingSets: [])
-        XCTAssertEqual(loads, 2)
-        XCTAssertEqual(shell.phase, .unavailable)
+        #expect(loads == 2)
+        #expect(shell.phase == .unavailable)
     }
 
-    func testCopyIsStable() {
-        XCTAssertEqual(WatchSuggestedExerciseShell.unavailableMessage,
+    @Test func copyIsStable() {
+        #expect(WatchSuggestedExerciseShell.unavailableMessage ==
                        "Suggestions are updating—sync with iPhone and try again")
-        XCTAssertEqual(WatchSuggestedExerciseShell.calculatingTitle, "Finding an exercise…")
+        #expect(WatchSuggestedExerciseShell.calculatingTitle == "Finding an exercise…")
     }
 }

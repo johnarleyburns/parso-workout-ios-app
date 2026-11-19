@@ -3,6 +3,7 @@ import SwiftData
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     func requestSettingsSync() {

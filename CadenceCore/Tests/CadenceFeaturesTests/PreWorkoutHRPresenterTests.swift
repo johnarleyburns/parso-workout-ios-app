@@ -1,13 +1,15 @@
-import XCTest
+import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-20 issue 6: the HR gate's Continue button must stay
 /// tappable even when the Apple Watch fails to deliver a sample, and "Check for
 /// Live HR" must never block on transient relay states. The view renders exactly
 /// what this presenter returns, so the fix is asserted here rather than in the
 /// simulator.
-final class PreWorkoutHRPresenterTests: XCTestCase {
+struct PreWorkoutHRPresenterTests {
 
     private func state(watchBPM: Int? = nil,
                        strapConnected: Bool = false,
@@ -23,21 +25,21 @@ final class PreWorkoutHRPresenterTests: XCTestCase {
 
     /// The exact field report: "Check for Live HR" was tapped, no sample ever
     /// arrived, no strap is connected — the screen used to be inoperable.
-    func testContinueIsEnabledWithNoHRAndWatchRequested() {
+    @Test func continueIsEnabledWithNoHRAndWatchRequested() {
         let s = state(watchRequested: true)
-        XCTAssertTrue(PreWorkoutHRPresenter.continueEnabled(s),
+        #expect(PreWorkoutHRPresenter.continueEnabled(s),
                       "Continue must stay enabled after a failed watch connection")
     }
 
     /// A relay mid-connection must not freeze the primary action either.
-    func testContinueIsEnabledWhileRelayBusy() {
+    @Test func continueIsEnabledWhileRelayBusy() {
         for busy in [false, true] {
-            XCTAssertTrue(PreWorkoutHRPresenter.continueEnabled(state(relayBusy: busy)),
+            #expect(PreWorkoutHRPresenter.continueEnabled(state(relayBusy: busy)),
                           "Continue must be enabled while the relay is busy")
         }
     }
 
-    func testContinueIsEnabledInEveryState() {
+    @Test func continueIsEnabledInEveryState() {
         let states = [
             state(),
             state(watchRequested: true),
@@ -46,58 +48,58 @@ final class PreWorkoutHRPresenterTests: XCTestCase {
             state(watchBPM: 72, strapConnected: true, watchRequested: true, relayBusy: true),
         ]
         for s in states {
-            XCTAssertTrue(PreWorkoutHRPresenter.continueEnabled(s),
+            #expect(PreWorkoutHRPresenter.continueEnabled(s),
                           "Continue must never be disabled")
         }
     }
 
     // MARK: continueAction — source resolution
 
-    func testContinueActionWatchWhenLive() {
-        XCTAssertEqual(PreWorkoutHRPresenter.continueAction(state(watchBPM: 121)),
-                       .watch)
+    @Test func continueActionWatchWhenLive() {
+        #expect(PreWorkoutHRPresenter.continueAction(state(watchBPM: 121))
+                       == .watch)
     }
 
-    func testContinueActionBluetoothWhenStrapConnected() {
-        XCTAssertEqual(PreWorkoutHRPresenter.continueAction(state(strapConnected: true)),
-                       .bluetooth)
+    @Test func continueActionBluetoothWhenStrapConnected() {
+        #expect(PreWorkoutHRPresenter.continueAction(state(strapConnected: true))
+                       == .bluetooth)
     }
 
-    func testContinueActionNoneWhenNothingConnected() {
-        XCTAssertEqual(PreWorkoutHRPresenter.continueAction(state()),
-                       .none)
+    @Test func continueActionNoneWhenNothingConnected() {
+        #expect(PreWorkoutHRPresenter.continueAction(state())
+                       == .none)
     }
 
     /// A live watch beats a connected strap: the watch session is the fresher,
     /// already-running source.
-    func testContinueActionWatchOutranksStrap() {
-        XCTAssertEqual(PreWorkoutHRPresenter.continueAction(state(watchBPM: 90, strapConnected: true)),
-                       .watch)
+    @Test func continueActionWatchOutranksStrap() {
+        #expect(PreWorkoutHRPresenter.continueAction(state(watchBPM: 90, strapConnected: true))
+                       == .watch)
     }
 
     // MARK: continueLabel — matches the action
 
-    func testContinueLabelMatchesAction() {
-        XCTAssertEqual(PreWorkoutHRPresenter.continueLabel(state(watchBPM: 121)),
-                       "Continue with Apple Watch")
-        XCTAssertEqual(PreWorkoutHRPresenter.continueLabel(state(strapConnected: true)),
-                       "Continue with Bluetooth")
-        XCTAssertEqual(PreWorkoutHRPresenter.continueLabel(state(watchRequested: true)),
-                       "Continue without heart rate")
-        XCTAssertEqual(PreWorkoutHRPresenter.continueLabel(state()),
-                       "Continue without heart rate")
+    @Test func continueLabelMatchesAction() {
+        #expect(PreWorkoutHRPresenter.continueLabel(state(watchBPM: 121))
+                       == "Continue with Apple Watch")
+        #expect(PreWorkoutHRPresenter.continueLabel(state(strapConnected: true))
+                       == "Continue with Bluetooth")
+        #expect(PreWorkoutHRPresenter.continueLabel(state(watchRequested: true))
+                       == "Continue without heart rate")
+        #expect(PreWorkoutHRPresenter.continueLabel(state())
+                       == "Continue without heart rate")
     }
 
     // MARK: checkEnabled — never blocks on transient relay states
 
-    func testCheckHRAalwaysEnabled() {
+    @Test func checkHRAalwaysEnabled() {
         for s in [
             state(),
             state(watchRequested: true),
             state(relayBusy: true),
             state(watchBPM: 72, strapConnected: true, watchRequested: true, relayBusy: true),
         ] {
-            XCTAssertTrue(PreWorkoutHRPresenter.checkEnabled(s),
+            #expect(PreWorkoutHRPresenter.checkEnabled(s),
                           "Check for Live HR must never be disabled by a transient relay state")
         }
     }

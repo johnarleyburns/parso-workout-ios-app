@@ -1,4 +1,5 @@
-import XCTest
+#if canImport(SwiftData)
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -6,8 +7,8 @@ import SwiftData
 /// CloudKit record schema. Every @Model must be listed here or its data cannot
 /// be persisted and mirrored consistently.
 @MainActor
-final class CloudKitSchemaCoverageTests: XCTestCase {
-    func testEveryPersistedModelIsIncludedInTheStoreSchema() {
+struct CloudKitSchemaCoverageTests {
+    @Test func everyPersistedModelIsIncludedInTheStoreSchema() {
         let expectedModels: [any PersistentModel.Type] = [
             WorkoutSession.self,
             Exercise.self,
@@ -37,10 +38,10 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
         // `Schema.entity(for:)` is unavailable on the package's macOS 14
         // deployment target, so the count check keeps this guard runnable in
         // the same host test matrix as the rest of CadenceCore.
-        XCTAssertEqual(CadenceStore.schema.entities.count, expectedModels.count)
+        #expect(CadenceStore.schema.entities.count == expectedModels.count)
     }
 
-    func testReadinessEntryCanBePersistedThroughTheSharedSchema() throws {
+    @Test func readinessEntryCanBePersistedThroughTheSharedSchema() throws {
         let context = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         let entry = ReadinessEntry(muscleSoreness: 4, fatigueEnergy: 5,
                                    sleepQuality: 3, stressMood: 4)
@@ -48,12 +49,12 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
         try context.save()
 
         let fetched = try context.fetch(FetchDescriptor<ReadinessEntry>())
-        XCTAssertEqual(fetched.count, 1)
-        XCTAssertEqual(fetched.first?.muscleSoreness, 4)
-        XCTAssertEqual(fetched.first?.fatigueEnergy, 5)
+        #expect(fetched.count == 1)
+        #expect(fetched.first?.muscleSoreness == 4)
+        #expect(fetched.first?.fatigueEnergy == 5)
     }
 
-    func testEveryPersistedModelHasTheExpectedCloudKitAttributes() {
+    @Test func everyPersistedModelHasTheExpectedCloudKitAttributes() {
         let expected: [String: Set<String>] = [
             "Assessment": ["date", "exerciseName", "id", "inputAge",
                             "inputDistance", "inputEndingHR", "inputReps", "inputSex",
@@ -124,9 +125,10 @@ final class CloudKitSchemaCoverageTests: XCTestCase {
         let actual = Dictionary(uniqueKeysWithValues: CadenceStore.schema.entities.map {
             ($0.name, Set($0.attributes.map(\.name)))
         })
-        XCTAssertEqual(Set(actual.keys), Set(expected.keys))
+        #expect(Set(actual.keys) == Set(expected.keys))
         for (model, attributes) in expected {
-            XCTAssertEqual(actual[model], attributes, "CloudKit attribute contract drifted for \(model)")
+            #expect(actual[model] == attributes, "CloudKit attribute contract drifted for \(model)")
         }
     }
 }
+#endif

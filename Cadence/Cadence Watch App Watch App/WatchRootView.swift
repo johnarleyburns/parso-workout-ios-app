@@ -3,6 +3,7 @@ import SwiftData
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchRootView: View {
     @Environment(WatchWorkoutManager.self) var watchManager
@@ -24,24 +25,29 @@ struct WatchRootView: View {
     @State private var cardioStartError: String?
     @State private var activeCardioKind: WorkoutConfigurationSpec.CardioKind?
     @State private var activeCardioSpec: WorkoutConfigurationSpec?
-    @State private var activeIntervalSession: ActiveIntervalSession?
+    @State private var activeIntervalSession: ActiveIntervalSession? = nil
     @State private var plannedStrengthSession: WatchSync.TodayPlan.Session?
     @State private var resumingSession: WorkoutSession?
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
     @State private var showingCardio = false
     @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
+    /// Bumped on every `returnToHome()` call so nested views with their own
+    /// local navigation-gating state (e.g. `WatchSentWorkoutsSection`) can
+    /// reset it too, regardless of how deep they are.
+    @State private var homeResetToken = 0
     private let launchRequests = WatchLaunchRequests.shared
 
-    init(arguments: [String] = ProcessInfo.processInfo.arguments) {
-        let intervalSession: ActiveIntervalSession?
-        if arguments.contains("-uiTestBoxingInterval") {
-            let model = IntervalSetupModel(kind: "Boxing")
-            intervalSession = ActiveIntervalSession(plan: model.intervalPlan(), kind: "Boxing")
-        } else {
-            intervalSession = nil
-        }
-        _activeIntervalSession = State(initialValue: intervalSession)
+    /// Every strength-launch path that ends in a full return to Home calls
+    /// this instead of `@Environment(\.dismiss)`, whose destination otherwise
+    /// depends on launch depth (direct from Home vs. via a setup/preview
+    /// screen vs. via a previous-workout detail screen).
+    private func returnToHome() {
+        resumingSession = nil
+        startingQuickLift = false
+        plannedStrengthSession = nil
+        homeSelection.dismissStart()
+        homeResetToken += 1
     }
 
     var body: some View {
@@ -166,6 +172,8 @@ struct WatchRootView: View {
                 Text("The sets logged on this watch are removed.")
             }
         }
+        .environment(\.watchReturnToHome, returnToHome)
+        .environment(\.watchHomeResetToken, homeResetToken)
     }
 
     private var launcherList: some View {

@@ -1,6 +1,7 @@
 import Foundation
 import HealthKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     enum BLEConnectionState { case scanning, connected, disconnected }
@@ -31,7 +32,7 @@ extension WatchWorkoutManager {
     /// `recoveryInFlight` makes the second request a no-op until the first
     /// answers.
     func recoverActiveWorkoutIfNeeded() {
-        guard !uiTestMode, !isActive, !isMonitoring, !recoveryInFlight else { return }
+        guard !simulatesHealthKit, !isActive, !isMonitoring, !recoveryInFlight else { return }
         // Always ask HealthKit, even without our saved metadata: a session whose metadata was
         // cleared while it kept running is exactly the one that recorded for 27 hours.
         recoveryInFlight = true
@@ -75,7 +76,7 @@ extension WatchWorkoutManager {
             }
         }
         sessionStart = Date(); manualLapCount = 0; autoLapCount = 0
-        guard !uiTestMode else { return }
+        guard !simulatesHealthKit else { return }
         do {
             let s = try HKWorkoutSession(healthStore: store, configuration: config)
             session = s

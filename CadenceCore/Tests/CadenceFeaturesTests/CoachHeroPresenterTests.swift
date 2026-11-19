@@ -1,10 +1,14 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Phase B (field-test-fixes): hero copy from logged work, not planned candidates.
-final class CoachHeroPresenterTests: XCTestCase {
+struct CoachHeroPresenterTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -33,7 +37,7 @@ final class CoachHeroPresenterTests: XCTestCase {
 
     // MARK: - Bug reproduction: deferred-candidate exercise names are NOT "logged"
 
-    func testDeferredCandidatesDoNotProduceLoggedExercises() throws {
+    @Test func deferredCandidatesDoNotProduceLoggedExercises() throws {
         // Bug: the old code took exercise names from deferred planned candidates,
         // producing "Air Squat and Air Squat logged" when two deferred candidates
         // both started with Air Squat and nothing was actually completed.
@@ -53,12 +57,12 @@ final class CoachHeroPresenterTests: XCTestCase {
         )
 
         // Nothing was completed today → should NOT say "Strength is done today"
-        XCTAssertNotEqual(hero.title, "Strength is done today")
+        #expect(hero.title != "Strength is done today")
         // Should NOT contain exercise names
-        XCTAssertFalse(hero.subtitle.contains("Air Squat"))
+        #expect(!hero.subtitle.contains("Air Squat"))
     }
 
-    func testCompletedTodayStrengthShowsExerciseNames() throws {
+    @Test func completedTodayStrengthShowsExerciseNames() throws {
         let ctx = try makeContext()
         let now = today
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3600), in: ctx)
@@ -88,13 +92,13 @@ final class CoachHeroPresenterTests: XCTestCase {
         )
 
         // Strength done today → title reflects that
-        XCTAssertEqual(hero.title, "Strength is done today")
+        #expect(hero.title == "Strength is done today")
         // Names from completed session, deduped
-        XCTAssertTrue(hero.subtitle.contains("Snatch"))
-        XCTAssertTrue(hero.subtitle.contains("Lat Pulldown"))
+        #expect(hero.subtitle.contains("Snatch"))
+        #expect(hero.subtitle.contains("Lat Pulldown"))
     }
 
-    func testNoDuplicateExerciseNames() throws {
+    @Test func noDuplicateExerciseNames() throws {
         let ctx = try makeContext()
         let now = today
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-1800), in: ctx)
@@ -120,13 +124,13 @@ final class CoachHeroPresenterTests: XCTestCase {
             todayLoggedExerciseNames: names
         )
 
-        XCTAssertEqual(hero.title, "Strength is done today")
+        #expect(hero.title == "Strength is done today")
         // Back Squat should appear exactly once
         let count = hero.subtitle.components(separatedBy: "Back Squat").count - 1
-        XCTAssertEqual(count, 1, "Back Squat should appear exactly once, not duplicated")
+        #expect(count == 1, "Back Squat should appear exactly once, not duplicated")
     }
 
-    func testCompletedTodayStrengthAllowsCardioCard() throws {
+    @Test func completedTodayStrengthAllowsCardioCard() throws {
         let ctx = try makeContext()
         let now = today
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3600), in: ctx)
@@ -153,10 +157,10 @@ final class CoachHeroPresenterTests: XCTestCase {
         )
 
         // Primary is cardio but strength already done → title names the cardio session
-        XCTAssertEqual(hero.title, "Moderate Run")
+        #expect(hero.title == "Moderate Run")
     }
 
-    func testCompleteStateReturnsCorrectTitle() throws {
+    @Test func completeStateReturnsCorrectTitle() throws {
         let hero = CoachHeroPresenter.present(
             primaryKind: .rest,
             primaryTitle: "",
@@ -170,7 +174,8 @@ final class CoachHeroPresenterTests: XCTestCase {
             todayLoggedExerciseNames: ["Squat"]
         )
 
-        XCTAssertEqual(hero.title, "You put in the work")
-        XCTAssertEqual(hero.subtitle, "All done for today")
+        #expect(hero.title == "You put in the work")
+        #expect(hero.subtitle == "All done for today")
     }
 }
+#endif

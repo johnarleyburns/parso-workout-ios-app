@@ -1,24 +1,28 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @MainActor
-final class YourWeekPresenterTests: XCTestCase {
+struct YourWeekPresenterTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         return ModelContext(container)
     }
 
-    func testModalityMapping() {
-        XCTAssertEqual(YourWeekPresenter.modality(for: .run), .run)
-        XCTAssertEqual(YourWeekPresenter.modality(for: .walk), .walk)
-        XCTAssertEqual(YourWeekPresenter.modality(for: .cycle), .cycle)
-        XCTAssertEqual(YourWeekPresenter.modality(for: .boxing), .boxing)
+    @Test func modalityMapping() {
+        #expect(YourWeekPresenter.modality(for: .run) == .run)
+        #expect(YourWeekPresenter.modality(for: .walk) == .walk)
+        #expect(YourWeekPresenter.modality(for: .cycle) == .cycle)
+        #expect(YourWeekPresenter.modality(for: .boxing) == .boxing)
     }
 
-    func testIntensityFromHeartRate() throws {
+    @Test func intensityFromHeartRate() throws {
         let ctx = try makeContext()
         let start = Date()
         func cardio(avg: Double) -> CardioWorkout {
@@ -27,22 +31,22 @@ final class YourWeekPresenterTests: XCTestCase {
             ctx.insert(c); return c
         }
         // age nil → defaultMaxHR ~190. 100/190≈.53 easy, 135/190≈.71 moderate, 165/190≈.87 vigorous.
-        XCTAssertEqual(YourWeekPresenter.intensity(for: cardio(avg: 100), age: nil), .easy)
-        XCTAssertEqual(YourWeekPresenter.intensity(for: cardio(avg: 135), age: nil), .moderate)
-        XCTAssertEqual(YourWeekPresenter.intensity(for: cardio(avg: 165), age: nil), .vigorous)
+        #expect(YourWeekPresenter.intensity(for: cardio(avg: 100), age: nil) == .easy)
+        #expect(YourWeekPresenter.intensity(for: cardio(avg: 135), age: nil) == .moderate)
+        #expect(YourWeekPresenter.intensity(for: cardio(avg: 165), age: nil) == .vigorous)
     }
 
-    func testIntensityFallsBackToModalityWithoutHR() throws {
+    @Test func intensityFallsBackToModalityWithoutHR() throws {
         let ctx = try makeContext()
         let start = Date()
         let box = CardioWorkout(type: .boxing, start: start, end: start.addingTimeInterval(1800), source: .iphone)
         let walk = CardioWorkout(type: .walk, start: start, end: start.addingTimeInterval(1800), source: .iphone)
         ctx.insert(box); ctx.insert(walk)
-        XCTAssertEqual(YourWeekPresenter.intensity(for: box, age: nil), .vigorous)
-        XCTAssertEqual(YourWeekPresenter.intensity(for: walk, age: nil), .easy)
+        #expect(YourWeekPresenter.intensity(for: box, age: nil) == .vigorous)
+        #expect(YourWeekPresenter.intensity(for: walk, age: nil) == .easy)
     }
 
-    func testSampledIntervalUsesTheSharedEffortProfile() throws {
+    @Test func sampledIntervalUsesTheSharedEffortProfile() throws {
         let ctx = try makeContext()
         let start = Date()
         let cardio = CardioWorkout(type: .other, start: start,
@@ -52,10 +56,10 @@ final class YourWeekPresenterTests: XCTestCase {
                          (300.0, 161.0), (360.0, 136.0)] {
             ctx.insert(HRSample(t: t, bpm: bpm, cardio: cardio))
         }
-        XCTAssertEqual(YourWeekPresenter.intensity(for: cardio, age: 50), .vigorous)
+        #expect(YourWeekPresenter.intensity(for: cardio, age: 50) == .vigorous)
     }
 
-    func testWeeklyZoneMinutesExcludesBeforeWindow() throws {
+    @Test func weeklyZoneMinutesExcludesBeforeWindow() throws {
         let ctx = try makeContext()
         let now = Date()
         let weekStart = now.addingTimeInterval(-3 * 86_400)
@@ -69,12 +73,13 @@ final class YourWeekPresenterTests: XCTestCase {
         let zones = YourWeekPresenter.weeklyZoneMinutes(cardio: [inWeek, old], since: weekStart, age: 30)
         let total = zones.values.reduce(0, +)
         // Only the in-week 30-min workout should contribute (~30 minutes total).
-        XCTAssertGreaterThan(total, 0)
-        XCTAssertLessThanOrEqual(total, 31)
+        #expect(total > 0)
+        #expect(total <= 31)
     }
 
-    func testZoneRowsFiltersTinyValues() {
+    @Test func zoneRowsFiltersTinyValues() {
         let rows = YourWeekPresenter.zoneRows([1: 10.0, 2: 0.2, 3: 5.0])
-        XCTAssertEqual(rows.map(\.zone), [1, 3])
+        #expect(rows.map(\.zone) == [1, 3])
     }
 }
+#endif

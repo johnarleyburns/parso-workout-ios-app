@@ -1,10 +1,12 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Tests for the StrengthProgress engine — per-lift estimated-1RM time series
 /// bucketed by ISO week.
-final class StrengthProgressTests: XCTestCase {
+struct StrengthProgressTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -12,67 +14,67 @@ final class StrengthProgressTests: XCTestCase {
 
     // MARK: - E1RMSeries trend
 
-    func testTrendEmptySeries() {
+    @Test func trendEmptySeries() {
         let series = E1RMSeries(exercise: "Squat", points: [])
-        XCTAssertEqual(series.trend, .flat)
-        XCTAssertEqual(series.current, 0)
-        XCTAssertEqual(series.baseline, 0)
-        XCTAssertEqual(series.delta, 0)
+        #expect(series.trend == .flat)
+        #expect(series.current == 0)
+        #expect(series.baseline == 0)
+        #expect(series.delta == 0)
     }
 
-    func testTrendSinglePoint() {
+    @Test func trendSinglePoint() {
         let point = E1RMPoint(weekStart: Date(), e1rm: 100)
         let series = E1RMSeries(exercise: "Squat", points: [point])
-        XCTAssertEqual(series.trend, .flat)
-        XCTAssertEqual(series.current, 100)
-        XCTAssertEqual(series.baseline, 100)
-        XCTAssertEqual(series.delta, 0)
+        #expect(series.trend == .flat)
+        #expect(series.current == 100)
+        #expect(series.baseline == 100)
+        #expect(series.delta == 0)
     }
 
-    func testTrendFlatWithinNoiseBand() {
+    @Test func trendFlatWithinNoiseBand() {
         let start = Date()
         let series = E1RMSeries(exercise: "Squat", points: [
             E1RMPoint(weekStart: start, e1rm: 100),
             E1RMPoint(weekStart: start.addingTimeInterval(7 * 86400), e1rm: 101.5) // +1.5% < 2%
         ])
-        XCTAssertEqual(series.trend, .flat)
+        #expect(series.trend == .flat)
     }
 
-    func testTrendRisingAboveNoise() {
+    @Test func trendRisingAboveNoise() {
         let start = Date()
         let series = E1RMSeries(exercise: "Squat", points: [
             E1RMPoint(weekStart: start, e1rm: 100),
             E1RMPoint(weekStart: start.addingTimeInterval(7 * 86400), e1rm: 105) // +5% > 2%
         ])
-        XCTAssertEqual(series.trend, .rising)
+        #expect(series.trend == .rising)
     }
 
-    func testTrendDecliningBelowNoise() {
+    @Test func trendDecliningBelowNoise() {
         let start = Date()
         let series = E1RMSeries(exercise: "Squat", points: [
             E1RMPoint(weekStart: start, e1rm: 100),
             E1RMPoint(weekStart: start.addingTimeInterval(7 * 86400), e1rm: 94) // -6% > 2%
         ])
-        XCTAssertEqual(series.trend, .declining)
+        #expect(series.trend == .declining)
     }
 
-    func testDeltaComputedCorrectly() {
+    @Test func deltaComputedCorrectly() {
         let start = Date()
         let series = E1RMSeries(exercise: "Bench", points: [
             E1RMPoint(weekStart: start, e1rm: 80),
             E1RMPoint(weekStart: start.addingTimeInterval(14 * 86400), e1rm: 92)
         ])
-        XCTAssertEqual(series.delta, 12)
+        #expect(series.delta == 12)
     }
 
     // MARK: - StrengthProgress.series
 
-    func testSeriesEmptyStoreReturnsEmpty() throws {
+    @Test func seriesEmptyStoreReturnsEmpty() throws {
         let result = StrengthProgress.series(from: [])
-        XCTAssertTrue(result.isEmpty)
+        #expect(result.isEmpty)
     }
 
-    func testSeriesOneLiftTwoWeeksRising() throws {
+    @Test func seriesOneLiftTwoWeeksRising() throws {
         let ctx = try makeContext()
         let now = Date()
         let squat = try WorkoutRepository.findOrCreateExercise(
@@ -88,15 +90,15 @@ final class StrengthProgressTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: thisWeek, exercise: squat, weightKg: 110, reps: 5, in: ctx)
 
         let series = StrengthProgress.series(from: [twoWeeksAgo, thisWeek], now: now)
-        XCTAssertEqual(series.count, 1)
-        XCTAssertEqual(series[0].exercise, "Test Squat")
-        XCTAssertEqual(series[0].points.count, 2)
+        #expect(series.count == 1)
+        #expect(series[0].exercise == "Test Squat")
+        #expect(series[0].points.count == 2)
         // Epley: 100*(1+5/30)=116.67 and 110*(1+5/30)=128.33
-        XCTAssertGreaterThan(series[0].current, series[0].baseline)
-        XCTAssertEqual(series[0].trend, .rising)
+        #expect(series[0].current > series[0].baseline)
+        #expect(series[0].trend == .rising)
     }
 
-    func testSeriesWithinTwoPercentIsFlat() throws {
+    @Test func seriesWithinTwoPercentIsFlat() throws {
         let ctx = try makeContext()
         let now = Date()
         let ex = try WorkoutRepository.findOrCreateExercise(
@@ -112,11 +114,11 @@ final class StrengthProgressTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: thisWeek, exercise: ex, weightKg: 60, reps: 5, in: ctx)
 
         let series = StrengthProgress.series(from: [twoWeeksAgo, thisWeek], now: now)
-        XCTAssertEqual(series.count, 1)
-        XCTAssertEqual(series[0].trend, .flat)
+        #expect(series.count == 1)
+        #expect(series[0].trend == .flat)
     }
 
-    func testSeriesTopNSelectsMostSets() throws {
+    @Test func seriesTopNSelectsMostSets() throws {
         let ctx = try makeContext()
         let now = Date()
         let squat = try WorkoutRepository.findOrCreateExercise(
@@ -134,12 +136,12 @@ final class StrengthProgressTests: XCTestCase {
 
         // topN=2 should return only Squat and Bench
         let series = StrengthProgress.series(from: [s], now: now, topN: 2)
-        XCTAssertEqual(series.count, 2)
-        XCTAssertEqual(series[0].exercise, "Test Squat") // most sets
-        XCTAssertEqual(series[1].exercise, "Test Bench")
+        #expect(series.count == 2)
+        #expect(series[0].exercise == "Test Squat") // most sets
+        #expect(series[1].exercise == "Test Bench")
     }
 
-    func testSeriesSessionsOutsideWindowExcluded() throws {
+    @Test func seriesSessionsOutsideWindowExcluded() throws {
         let ctx = try makeContext()
         let now = Date()
         let ex = try WorkoutRepository.findOrCreateExercise(
@@ -150,10 +152,10 @@ final class StrengthProgressTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: old, exercise: ex, weightKg: 150, reps: 3, in: ctx)
 
         let result = StrengthProgress.series(from: [old], now: now, weeks: 12)
-        XCTAssertTrue(result.isEmpty)
+        #expect(result.isEmpty)
     }
 
-    func testSeriesDeletedSessionsExcluded() throws {
+    @Test func seriesDeletedSessionsExcluded() throws {
         let ctx = try makeContext()
         let now = Date()
         let ex = try WorkoutRepository.findOrCreateExercise(
@@ -165,10 +167,10 @@ final class StrengthProgressTests: XCTestCase {
         try WorkoutRepository.softDeleteSession(s, in: ctx)
 
         let result = StrengthProgress.series(from: [s], now: now)
-        XCTAssertTrue(result.isEmpty)
+        #expect(result.isEmpty)
     }
 
-    func testSeriesWarmupSetsExcluded() throws {
+    @Test func seriesWarmupSetsExcluded() throws {
         let ctx = try makeContext()
         let now = Date()
         let ex = try WorkoutRepository.findOrCreateExercise(
@@ -180,13 +182,13 @@ final class StrengthProgressTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 80, reps: 8, in: ctx)
 
         let series = StrengthProgress.series(from: [s], now: now)
-        XCTAssertEqual(series.count, 1)
+        #expect(series.count == 1)
         // warmup set of 40kg×10 was excluded, only working set counts
         let epley = WorkoutMath.estimated1RM(weight: 80, reps: 8, formula: .epley)
-        XCTAssertEqual(series[0].current, epley, accuracy: 0.01)
+        #expect(abs(series[0].current - epley) <= 0.01)
     }
 
-    func testSeriesSortedByCurrentDescending() throws {
+    @Test func seriesSortedByCurrentDescending() throws {
         let ctx = try makeContext()
         let now = Date()
         let squat = try WorkoutRepository.findOrCreateExercise(
@@ -200,12 +202,12 @@ final class StrengthProgressTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: curl, weightKg: 30, reps: 10, in: ctx)
 
         let series = StrengthProgress.series(from: [s], now: now, topN: 3)
-        XCTAssertEqual(series.count, 2)
+        #expect(series.count == 2)
         // Squat e1RM (132) > Curl e1RM (40), so Squat first
-        XCTAssertEqual(series[0].exercise, "Test Squat")
+        #expect(series[0].exercise == "Test Squat")
     }
 
-    func testChartDataIncludesFixedLiftsAndTotal() {
+    @Test func chartDataIncludesFixedLiftsAndTotal() {
         let now = Date()
         let input = StrengthProgressSessionInput(
             date: now.addingTimeInterval(-86_400),
@@ -221,13 +223,13 @@ final class StrengthProgressTests: XCTestCase {
 
         let data = StrengthProgress.chartData(from: [input], now: now)
 
-        XCTAssertEqual(data.exerciseNames, ["Bench Press", "Barbell Squat", "Deadlift", "Total"])
-        XCTAssertFalse(data.exerciseNames.contains("Powerlifter"))
-        XCTAssertEqual(data.allSeries.last?.exercise, "Total")
-        XCTAssertEqual(data.allSeries.last?.current ?? 0, 370, accuracy: 0.001)
+        #expect(data.exerciseNames == ["Bench Press", "Barbell Squat", "Deadlift", "Total"])
+        #expect(!data.exerciseNames.contains("Powerlifter"))
+        #expect(data.allSeries.last?.exercise == "Total")
+        #expect(abs((data.allSeries.last?.current ?? 0) - 370) <= 0.001)
     }
 
-    func testChartDataTotalIsTheSumOfCanonicalLiftValues() {
+    @Test func chartDataTotalIsTheSumOfCanonicalLiftValues() {
         let now = Date()
         let input = StrengthProgressSessionInput(
             date: now.addingTimeInterval(-86_400),
@@ -248,10 +250,10 @@ final class StrengthProgressTests: XCTestCase {
             + (values["Deadlift"] ?? 0)
         let total = values["Total"] ?? 0
 
-        XCTAssertEqual(total, expectedTotal, accuracy: 0.001)
+        #expect(abs(total - expectedTotal) <= 0.001)
     }
 
-    func testChartDataTotalCarriesOlderLiftsIntoTheLatestWeek() {
+    @Test func chartDataTotalCarriesOlderLiftsIntoTheLatestWeek() {
         let calendar = Calendar(identifier: .gregorian)
         let weekOne = Date(timeIntervalSince1970: 1_700_000_000)
         let weekTwo = calendar.date(byAdding: .day, value: 7, to: weekOne)!
@@ -270,10 +272,10 @@ final class StrengthProgressTests: XCTestCase {
         let data = StrengthProgress.chartData(from: [input], now: weekTwo,
                                               calendar: calendar)
         let total = data.allSeries.first { $0.exercise == "Total" }
-        XCTAssertEqual(total?.points.last?.e1rm ?? 0, 370, accuracy: 0.001)
+        #expect(abs((total?.points.last?.e1rm ?? 0) - 370) <= 0.001)
     }
 
-    func testChartDataTotalIncludesCustomChartedLifts() {
+    @Test func chartDataTotalIncludesCustomChartedLifts() {
         let now = Date()
         let input = StrengthProgressSessionInput(
             date: now.addingTimeInterval(-86_400),
@@ -289,10 +291,10 @@ final class StrengthProgressTests: XCTestCase {
 
         let data = StrengthProgress.chartData(from: [input], now: now)
         let values = Dictionary(uniqueKeysWithValues: data.allSeries.map { ($0.exercise, $0.current) })
-        XCTAssertEqual(values["Total"] ?? 0, 330, accuracy: 0.001)
+        #expect(abs((values["Total"] ?? 0) - 330) <= 0.001)
     }
 
-    func testChartDataIncludesNonCanonicalLiftsAsCustomSeries() {
+    @Test func chartDataIncludesNonCanonicalLiftsAsCustomSeries() {
         let now = Date()
         let input = StrengthProgressSessionInput(
             date: now.addingTimeInterval(-86_400),
@@ -304,13 +306,13 @@ final class StrengthProgressTests: XCTestCase {
 
         let data = StrengthProgress.chartData(from: [input], now: now)
 
-        XCTAssertTrue(data.exerciseNames.contains("Overhead Press"))
-        XCTAssertEqual(data.exerciseNames.last, "Total")
+        #expect(data.exerciseNames.contains("Overhead Press"))
+        #expect(data.exerciseNames.last == "Total")
     }
 
     /// The chart's Total counts only the lifts the user is charting: an
     /// unselected lift must not contribute to it.
-    func testTotalSeriesCountsOnlyTheProvidedChartedLifts() {
+    @Test func totalSeriesCountsOnlyTheProvidedChartedLifts() {
         let now = Date()
         let input = StrengthProgressSessionInput(
             date: now.addingTimeInterval(-86_400),
@@ -325,19 +327,20 @@ final class StrengthProgressTests: XCTestCase {
         let data = StrengthProgress.chartData(from: [input], now: now)
         let benchOnly = data.allSeries.filter { $0.exercise == "Bench Press" }
         let benchTotal = StrengthProgress.totalSeries(from: benchOnly)
-        XCTAssertEqual(benchTotal.exercise, "Total")
-        XCTAssertEqual(benchTotal.current, 100, accuracy: 0.001)
+        #expect(benchTotal.exercise == "Total")
+        #expect(abs(benchTotal.current - 100) <= 0.001)
 
         let chartedLifts = data.allSeries.filter { $0.exercise != "Total" }
-        XCTAssertEqual(StrengthProgress.totalSeries(from: chartedLifts).current, 250, accuracy: 0.001)
+        #expect(abs(StrengthProgress.totalSeries(from: chartedLifts).current - 250) <= 0.001)
     }
 
     // MARK: E1RMPoint
 
-    func testE1RMPointIdentifiableByWeekStart() {
+    @Test func e1RMPointIdentifiableByWeekStart() {
         let date = Date()
         let a = E1RMPoint(weekStart: date, e1rm: 100)
         let b = E1RMPoint(weekStart: date, e1rm: 100)
-        XCTAssertEqual(a.id, b.id)
+        #expect(a.id == b.id)
     }
 }
+#endif

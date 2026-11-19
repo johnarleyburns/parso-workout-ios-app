@@ -1,98 +1,99 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class StepActivitySummaryTests: XCTestCase {
+struct StepActivitySummaryTests {
 
     // MARK: - Threshold categories
 
-    func testStatusLowBelow4000() {
+    @Test func statusLowBelow4000() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 3500)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.status, .low)
+        #expect(summary.status == .low)
     }
 
-    func testStatusBuildingBetween4kAnd8k() {
+    @Test func statusBuildingBetween4kAnd8k() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 6000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.status, .building)
+        #expect(summary.status == .building)
     }
 
-    func testStatusOnTrackAtOrAbove8k() {
+    @Test func statusOnTrackAtOrAbove8k() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 9000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.status, .onTrack)
+        #expect(summary.status == .onTrack)
     }
 
-    func testStatusExactFloorIsBuilding() {
+    @Test func statusExactFloorIsBuilding() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 4000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.status, .building)
+        #expect(summary.status == .building)
     }
 
-    func testStatusExactTargetIsOnTrack() {
+    @Test func statusExactTargetIsOnTrack() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 8000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.status, .onTrack)
+        #expect(summary.status == .onTrack)
     }
 
     // MARK: - 7-day average
 
-    func testSevenDayAverageWithFullWeek() {
+    @Test func sevenDayAverageWithFullWeek() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 7000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.sevenDayAverageSteps, 7000.0)
+        #expect(summary.sevenDayAverageSteps == 7000.0)
     }
 
-    func testSevenDayAverageWithPartialData() {
+    @Test func sevenDayAverageWithPartialData() {
         let days: [DayActivity] = stride(from: 0, through: 2, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 3000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.sevenDayAverageSteps, 3000.0)
+        #expect(summary.sevenDayAverageSteps == 3000.0)
     }
 
-    func testSevenDayAverageWithEmptyData() {
+    @Test func sevenDayAverageWithEmptyData() {
         let summary = StepActivitySummary(from: [])
-        XCTAssertEqual(summary.sevenDayAverageSteps, 0.0)
-        XCTAssertEqual(summary.todaySteps, 0)
-        XCTAssertEqual(summary.weeklyTotalSteps, 0)
-        XCTAssertEqual(summary.status, .low)
+        #expect(summary.sevenDayAverageSteps == 0.0)
+        #expect(summary.todaySteps == 0)
+        #expect(summary.weeklyTotalSteps == 0)
+        #expect(summary.status == .low)
     }
 
     // MARK: - Weekly total
 
-    func testWeeklyTotalSteps() {
+    @Test func weeklyTotalSteps() {
         let days: [DayActivity] = stride(from: 0, through: 6, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 7500)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.weeklyTotalSteps, 7 * 7500)
+        #expect(summary.weeklyTotalSteps == 7 * 7500)
     }
 
-    func testWeeklyTotalWithMoreThan7Days() {
+    @Test func weeklyTotalWithMoreThan7Days() {
         let days: [DayActivity] = stride(from: 0, through: 9, by: 1).map { offset in
             DayActivity(date: Date().addingTimeInterval(-Double(offset) * 86400), steps: 5000)
         }
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.weeklyTotalSteps, 7 * 5000)
-        XCTAssertEqual(summary.sevenDayAverageSteps, 5000.0)
+        #expect(summary.weeklyTotalSteps == 7 * 5000)
+        #expect(summary.sevenDayAverageSteps == 5000.0)
     }
 
     // MARK: - Today steps
 
-    func testTodayStepsIsMostRecent() {
+    @Test func todayStepsIsMostRecent() {
         let today = Date()
         let days: [DayActivity] = [
             DayActivity(date: today.addingTimeInterval(-3 * 86400), steps: 1000),
@@ -100,14 +101,14 @@ final class StepActivitySummaryTests: XCTestCase {
             DayActivity(date: today.addingTimeInterval(-1 * 86400), steps: 3000),
         ]
         let summary = StepActivitySummary(from: days)
-        XCTAssertEqual(summary.todaySteps, 5000)
+        #expect(summary.todaySteps == 5000)
     }
 
     // MARK: - Static constants
 
-    func testStaticConstants() {
-        XCTAssertEqual(StepActivitySummary.floorDailySteps, 4_000)
-        XCTAssertEqual(StepActivitySummary.targetDailySteps, 8_000)
-        XCTAssertEqual(StepActivitySummary.weeklyTargetSteps, 56_000)
+    @Test func staticConstants() {
+        #expect(StepActivitySummary.floorDailySteps == 4_000)
+        #expect(StepActivitySummary.targetDailySteps == 8_000)
+        #expect(StepActivitySummary.weeklyTargetSteps == 56_000)
     }
 }

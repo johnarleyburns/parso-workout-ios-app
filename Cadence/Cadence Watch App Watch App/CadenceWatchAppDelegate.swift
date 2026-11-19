@@ -8,23 +8,7 @@ import WatchKit
 /// manager when the screen turns on and off.
 @MainActor
 final class CadenceWatchAppDelegate: NSObject, WKApplicationDelegate {
-    let watchManager = WatchWorkoutManager(uiTestMode: ProcessInfo.processInfo.arguments.contains("-uiTest"))
-
-    override init() {
-        super.init()
-        // UI-test-only seam (requires -uiTest): present an active phone-owned workout,
-        // then deliver one heart-rate sample after a short delay.
-        let arguments = ProcessInfo.processInfo.arguments
-        if arguments.contains("-uiTest"), arguments.contains("-uiTestPhoneWorkout") {
-            watchManager.isActive = true
-            watchManager.phoneRequestID = "ui-test-phone-request"
-            let manager = watchManager
-            Task { @MainActor in
-                try? await Task.sleep(for: .seconds(3))
-                manager.currentBPM = 72
-            }
-        }
-    }
+    let watchManager = WatchWorkoutManager()
 
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
         watchManager.startPhoneLaunchedWorkout(configuration: workoutConfiguration)

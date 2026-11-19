@@ -1,9 +1,12 @@
-import XCTest
+import Testing
+import Foundation
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
+import CadencePhoneFeatures
 
 @MainActor
-final class WatchSingleExerciseSuggestionSessionTests: XCTestCase {
+@Suite final class WatchSingleExerciseSuggestionSessionTests {
     private func input(_ count: Int = 6) -> SuggestedWorkoutInput {
         let muscles = ["chest", "lats", "quadriceps", "shoulders", "hamstrings", "biceps"]
         let candidates = (0..<count).map {
@@ -20,19 +23,19 @@ final class WatchSingleExerciseSuggestionSessionTests: XCTestCase {
                                  repRange: 8...12, contributions: [], selectionScore: 1)
     }
 
-    func testInitialResultMatchesSharedGenerator() async {
+    @Test func initialResultMatchesSharedGenerator() async {
         let i = input()
         let session = WatchSingleExerciseSuggestionSession()
-        XCTAssertEqual(session.state, .idle)
+        #expect(session.state == .idle)
         session.suggest(input: i)
-        XCTAssertEqual(session.state, .calculating)
+        #expect(session.state == .calculating)
         await session.pendingTask?.value
         let direct = SuggestedWorkoutGenerator.suggestSingleExercise(input: i, style: i.preferredStyle)
-        XCTAssertNotNil(direct)
-        XCTAssertEqual(session.state, .ready(direct!))
+        #expect(direct != nil)
+        #expect(session.state == .ready(direct!))
     }
 
-    func testSuggestAnotherNeverRepeatsAndLeavesInputUntouched() async {
+    @Test func suggestAnotherNeverRepeatsAndLeavesInputUntouched() async {
         let i = input()
         let before = i
         let session = WatchSingleExerciseSuggestionSession()
@@ -40,31 +43,37 @@ final class WatchSingleExerciseSuggestionSessionTests: XCTestCase {
         await session.pendingTask?.value
         var seen: [String] = []
         for _ in 0..<5 {
-            guard case .ready(let shown) = session.state else { return XCTFail("not ready") }
-            XCTAssertFalse(seen.contains(shown.candidateID))
+            guard case .ready(let shown) = session.state else {
+                Issue.record("not ready")
+                return
+            }
+            #expect(!seen.contains(shown.candidateID))
             seen.append(shown.candidateID)
             session.suggestAnother(input: i)
             await session.pendingTask?.value
         }
-        XCTAssertEqual(i, before)
+        #expect(i == before)
     }
 
-    func testCancelClearsExclusionsAndState() async {
+    @Test func cancelClearsExclusionsAndState() async {
         let i = input()
         let session = WatchSingleExerciseSuggestionSession()
         session.suggest(input: i)
         await session.pendingTask?.value
-        guard case .ready(let first) = session.state else { return XCTFail() }
+        guard case .ready(let first) = session.state else {
+            Issue.record()
+            return
+        }
         session.suggestAnother(input: i)
         await session.pendingTask?.value
         session.cancel()
-        XCTAssertEqual(session.state, .idle)
+        #expect(session.state == .idle)
         session.suggest(input: i)
         await session.pendingTask?.value
-        XCTAssertEqual(session.state, .ready(first))
+        #expect(session.state == .ready(first))
     }
 
-    func testStaleCompletionCannotReplaceNewerResult() async {
+    @Test func staleCompletionCannotReplaceNewerResult() async {
         let gate = DispatchSemaphore(value: 0)
         let calls = LockedCounter()
         let session = WatchSingleExerciseSuggestionSession { _, _ in
@@ -80,13 +89,13 @@ final class WatchSingleExerciseSuggestionSessionTests: XCTestCase {
         let first = session.pendingTask
         session.suggest(input: i)
         await session.pendingTask?.value
-        XCTAssertEqual(session.state, .ready(exercise("new")))
+        #expect(session.state == .ready(exercise("new")))
         gate.signal()
         await first?.value
-        XCTAssertEqual(session.state, .ready(exercise("new")))
+        #expect(session.state == .ready(exercise("new")))
     }
 
-    func testCancelDiscardsLateCompletion() async {
+    @Test func cancelDiscardsLateCompletion() async {
         let gate = DispatchSemaphore(value: 0)
         let session = WatchSingleExerciseSuggestionSession { _, _ in gate.wait(); return nil }
         session.suggest(input: input())
@@ -94,34 +103,49 @@ final class WatchSingleExerciseSuggestionSessionTests: XCTestCase {
         session.cancel()
         gate.signal()
         await task?.value
-        XCTAssertEqual(session.state, .idle)
+        #expect(session.state == .idle)
     }
 
-    func testEmptyAndFailedStatesAreDistinct() async {
+    @Test func emptyAndFailedStatesAreDistinct() async {
         let empty = WatchSingleExerciseSuggestionSession { _, _ in nil }
         empty.suggest(input: input())
         await empty.pendingTask?.value
-        XCTAssertEqual(empty.state, .empty)
+        #expect(empty.state == .empty)
 
         struct Boom: Error {}
         let failing = WatchSingleExerciseSuggestionSession { _, _ in throw Boom() }
         failing.suggest(input: input())
         await failing.pendingTask?.value
-        if case .failed = failing.state {} else { XCTFail("expected failed") }
+        if case .failed = failing.state {} else { Issue.record("expected failed") }
 
         let invalid = WatchSingleExerciseSuggestionSession()
         invalid.suggest(input: input(0))
-        if case .failed = invalid.state {} else { XCTFail("expected failed for no catalog") }
+        if case .failed = invalid.state {} else { Issue.record("expected failed for no catalog") }
     }
 
-    func testExhaustingCandidatesYieldsEmpty() async {
+    @Test func exhaustingCandidatesYieldsEmpty() async {
         let i = input(1)
         let session = WatchSingleExerciseSuggestionSession()
         session.suggest(input: i)
         await session.pendingTask?.value
         session.suggestAnother(input: i)
         await session.pendingTask?.value
-        XCTAssertEqual(session.state, .empty)
+        #expect(session.state == .empty)
+    }
+
+    /// A slow/looping generator (large candidate pools on Watch hardware) must
+    /// not leave the session stuck in `.calculating` ("Finding an exercise...")
+    /// forever -- it should surface a terminal `.failed` state once the bounded
+    /// timeout elapses.
+    @Test func timesOutInsteadOfHangingForever() async {
+        let session = WatchSingleExerciseSuggestionSession(generator: { _, _ in
+            Thread.sleep(forTimeInterval: 0.3)
+            return nil
+        }, timeout: 0.05)
+        session.suggest(input: input())
+        #expect(session.state == .calculating)
+        await session.pendingTask?.value
+        if case .failed = session.state {} else { Issue.record("expected a timeout failure, got \(session.state)") }
     }
 }
 

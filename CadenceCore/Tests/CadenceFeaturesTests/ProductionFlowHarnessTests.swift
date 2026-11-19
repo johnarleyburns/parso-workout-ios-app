@@ -1,6 +1,8 @@
 import Testing
 import Foundation
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Hermetic production-flow harness (issue #306). Every scenario drives the real
 /// production types (`WatchHRPreflightLedger`, `WatchHeartRateOutbox`,

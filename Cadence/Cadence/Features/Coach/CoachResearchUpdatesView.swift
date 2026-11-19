@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The Coach knowledge-base changelog ("Coach research updates"). Every user can
 /// read the research history, and every entry renders its citations tappably.

@@ -1,6 +1,8 @@
 import Testing
 import Foundation
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 final class FakeHRStore: WatchHeartRateOutboxStore {
     var saved: WatchHeartRateOutboxState?

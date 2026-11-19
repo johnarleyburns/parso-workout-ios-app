@@ -1,10 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class HealthRestoreContractsTests: XCTestCase {
+struct HealthRestoreContractsTests {
     private let start = Date(timeIntervalSince1970: 1_700_000_000)
 
-    func testDecoderRestoresOwnerOnlyStrengthPayloadWithSyncVersion() throws {
+    @Test func decoderRestoresOwnerOnlyStrengthPayloadWithSyncVersion() throws {
         let id = UUID()
         let set = CladironHealthBackup.SetPayload(
             id: UUID(), exerciseKey: "bench-press", exerciseName: "Bench Press",
@@ -24,15 +25,16 @@ final class HealthRestoreContractsTests: XCTestCase {
             source: .iphone))
 
         guard case .strength(let summary, _, _) = object else {
-            return XCTFail("expected a strength restore object")
+            Issue.record("expected a strength restore object")
+            return
         }
-        XCTAssertEqual(summary.id, id)
-        XCTAssertEqual(summary.titleMetadata, "Upper body")
-        XCTAssertEqual(summary.metadata[CladironHealthBackup.ownerSetsKey], metadata[CladironHealthBackup.ownerSetsKey])
-        XCTAssertEqual(summary.updatedAt, start.addingTimeInterval(300))
+        #expect(summary.id == id)
+        #expect(summary.titleMetadata == "Upper body")
+        #expect(summary.metadata[CladironHealthBackup.ownerSetsKey] == metadata[CladironHealthBackup.ownerSetsKey])
+        #expect(summary.updatedAt == start.addingTimeInterval(300))
     }
 
-    func testDecoderCreatesSummaryOnlyObjectForLegacyHealthWorkout() throws {
+    @Test func decoderCreatesSummaryOnlyObjectForLegacyHealthWorkout() throws {
         let healthID = UUID()
         let object = try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
             healthObjectID: healthID, kind: .strength, activityType: .traditionalStrength,
@@ -40,33 +42,34 @@ final class HealthRestoreContractsTests: XCTestCase {
             metadata: [:], source: .watch))
 
         guard case .legacySummary(let summary) = object else {
-            return XCTFail("expected a legacy summary")
+            Issue.record("expected a legacy summary")
+            return
         }
-        XCTAssertEqual(summary.healthObjectID, healthID)
-        XCTAssertEqual(summary.source, .watch)
-        XCTAssertEqual(HealthBackupRestorePlanner.plan(incoming: [object], local: []).summariesOnly, 1)
+        #expect(summary.healthObjectID == healthID)
+        #expect(summary.source == .watch)
+        #expect(HealthBackupRestorePlanner.plan(incoming: [object], local: []).summariesOnly == 1)
     }
 
-    func testDecoderRejectsNewerSchemaAndMalformedOwnerSets() throws {
+    @Test func decoderRejectsNewerSchemaAndMalformedOwnerSets() throws {
         let id = UUID()
         var newer = CladironHealthBackup.baseMetadata(id: id, updatedAt: start)
         newer[CladironHealthBackup.schemaKey] = "99"
-        XCTAssertThrowsError(try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
-            healthObjectID: UUID(), kind: .cardio, activityType: .running,
-            start: start, end: start.addingTimeInterval(60), metadata: newer, source: .iphone))) { error in
-            XCTAssertEqual(error as? HealthBackupDecodeError, .unknownSchema(99))
+        #expect(throws: HealthBackupDecodeError.unknownSchema(99)) {
+            try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
+                healthObjectID: UUID(), kind: .cardio, activityType: .running,
+                start: start, end: start.addingTimeInterval(60), metadata: newer, source: .iphone))
         }
 
         var malformed = CladironHealthBackup.baseMetadata(id: id, updatedAt: start)
         malformed[CladironHealthBackup.ownerSetsKey] = "not-json"
-        XCTAssertThrowsError(try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
-            healthObjectID: UUID(), kind: .strength, activityType: .traditionalStrength,
-            start: start, end: start.addingTimeInterval(60), metadata: malformed, source: .iphone))) { error in
-            XCTAssertEqual(error as? HealthBackupDecodeError, .invalidOwnerSets)
+        #expect(throws: HealthBackupDecodeError.invalidOwnerSets) {
+            try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
+                healthObjectID: UUID(), kind: .strength, activityType: .traditionalStrength,
+                start: start, end: start.addingTimeInterval(60), metadata: malformed, source: .iphone))
         }
     }
 
-    func testDecoderRestoresAllAssessmentInputs() throws {
+    @Test func decoderRestoresAllAssessmentInputs() throws {
         let id = UUID()
         var metadata = CladironHealthBackup.baseMetadata(id: id, updatedAt: start.addingTimeInterval(45))
         metadata[CladironHealthBackup.assessmentKindKey] = AssessmentKind.e1RM.rawValue
@@ -84,18 +87,19 @@ final class HealthRestoreContractsTests: XCTestCase {
             start: start, end: start.addingTimeInterval(60), metadata: metadata, source: .iphone))
 
         guard case .assessment(let payload, _, _) = object else {
-            return XCTFail("expected an assessment restore object")
+            Issue.record("expected an assessment restore object")
+            return
         }
-        XCTAssertEqual(payload.inputWeight, 85.5)
-        XCTAssertEqual(payload.inputReps, 5)
-        XCTAssertEqual(payload.exerciseName, "Bench Press")
-        XCTAssertEqual(payload.protocolName, "Five-rep estimate")
-        XCTAssertEqual(payload.notes, "After warm-up")
-        XCTAssertEqual(payload.inputAge, 39)
-        XCTAssertEqual(payload.inputSex, 1)
+        #expect(payload.inputWeight == 85.5)
+        #expect(payload.inputReps == 5)
+        #expect(payload.exerciseName == "Bench Press")
+        #expect(payload.protocolName == "Five-rep estimate")
+        #expect(payload.notes == "After warm-up")
+        #expect(payload.inputAge == 39)
+        #expect(payload.inputSex == 1)
     }
 
-    func testRestorePlannerDeduplicatesSourcesAndNewerHealthReplacesOlderLocal() throws {
+    @Test func restorePlannerDeduplicatesSourcesAndNewerHealthReplacesOlderLocal() throws {
         let id = UUID()
         var olderMetadata = CladironHealthBackup.baseMetadata(id: id, updatedAt: start.addingTimeInterval(100))
         olderMetadata[CladironHealthBackup.titleKey] = "Older copy"
@@ -110,12 +114,12 @@ final class HealthRestoreContractsTests: XCTestCase {
                                             updatedAt: start.addingTimeInterval(150))
 
         let plan = HealthBackupRestorePlanner.plan(incoming: [oldObject, newObject], local: [local])
-        XCTAssertEqual(plan.operations.count, 1)
-        XCTAssertEqual(plan.operations.first?.action, .replace)
-        XCTAssertEqual(plan.replacements, 1)
+        #expect(plan.operations.count == 1)
+        #expect(plan.operations.first?.action == .replace)
+        #expect(plan.replacements == 1)
     }
 
-    func testRestorePlannerKeepsNewerLocalAndMatchesLegacyByHealthObjectID() throws {
+    @Test func restorePlannerKeepsNewerLocalAndMatchesLegacyByHealthObjectID() throws {
         let id = UUID()
         let metadata = CladironHealthBackup.baseMetadata(id: id, updatedAt: start)
         let object = try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
@@ -124,7 +128,7 @@ final class HealthRestoreContractsTests: XCTestCase {
         let local = HealthRestoreLocalState(kind: .cardioWorkout, id: id,
                                             updatedAt: start.addingTimeInterval(100))
         let plan = HealthBackupRestorePlanner.plan(incoming: [object], local: [local])
-        XCTAssertEqual(plan.skipped, 1)
+        #expect(plan.skipped == 1)
 
         let legacyID = UUID()
         let legacy = try HealthBackupDecoder.workout(HealthWorkoutReadPayload(
@@ -133,24 +137,24 @@ final class HealthRestoreContractsTests: XCTestCase {
         let matching = HealthRestoreLocalState(kind: .strengthSession, id: UUID(),
                                                updatedAt: start.addingTimeInterval(-100),
                                                healthObjectID: legacyID)
-        XCTAssertEqual(HealthBackupRestorePlanner.plan(incoming: [legacy], local: [matching]).skipped, 1)
+        #expect(HealthBackupRestorePlanner.plan(incoming: [legacy], local: [matching]).skipped == 1)
     }
 
-    func testRestorePlannerTurnsHealthDeletionIntoLocalDelete() {
+    @Test func restorePlannerTurnsHealthDeletionIntoLocalDelete() {
         let healthID = UUID()
         let local = HealthRestoreLocalState(kind: .cardioWorkout, id: UUID(),
                                             updatedAt: start,
                                             healthObjectID: healthID)
         let plan = HealthBackupRestorePlanner.plan(
             incoming: [.deleted(healthObjectID: healthID)], local: [local])
-        XCTAssertEqual(plan.operations.count, 1)
-        XCTAssertEqual(plan.operations.first?.action, .delete)
+        #expect(plan.operations.count == 1)
+        #expect(plan.operations.first?.action == .delete)
     }
 
-    func testUnknownHealthDeletionIsIgnored() {
+    @Test func unknownHealthDeletionIsIgnored() {
         let plan = HealthBackupRestorePlanner.plan(
             incoming: [.deleted(healthObjectID: UUID())], local: [])
-        XCTAssertEqual(plan.skipped, 1)
+        #expect(plan.skipped == 1)
     }
 }
 

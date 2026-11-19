@@ -1,13 +1,15 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class FITExportTests: XCTestCase {
+struct FITExportTests {
     private func makeStore() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
-    func testFITRoundTripPreservesCardioInterchangeData() throws {
+    @Test func fITRoundTripPreservesCardioInterchangeData() throws {
         let start = Date(timeIntervalSince1970: 1_750_000_000)
         let cardio = ExportCardio(
             id: UUID(), type: CardioType.run.rawValue, start: start,
@@ -20,38 +22,38 @@ final class FITExportTests: XCTestCase {
         let original = CadenceExport(sessions: [], cardio: [cardio])
 
         let data = try DataExport.encodeFIT(original)
-        XCTAssertTrue(DataExport.isFIT(data))
-        XCTAssertEqual(data[8..<12], Data(".FIT".utf8))
+        #expect(DataExport.isFIT(data))
+        #expect(data[8..<12] == Data(".FIT".utf8))
 
         let decoded = try DataExport.decodeFIT(data)
-        let imported = try XCTUnwrap(decoded.cardio.first)
-        XCTAssertEqual(decoded.cardio.count, 1)
+        let imported = try #require(decoded.cardio.first)
+        #expect(decoded.cardio.count == 1)
         let decodedAgain = try DataExport.decodeFIT(data)
-        XCTAssertEqual(decoded.cardio.map(\.id), decodedAgain.cardio.map(\.id),
+        #expect(decoded.cardio.map(\.id) == decodedAgain.cardio.map(\.id),
                        "Repeated FIT imports must use stable IDs for deduplication")
-        XCTAssertEqual(imported.type, CardioType.run.rawValue)
-        XCTAssertEqual(try XCTUnwrap(imported.distanceMeters), 5_000, accuracy: 1)
-        XCTAssertEqual(try XCTUnwrap(imported.activeEnergyKcal), 410, accuracy: 1)
-        XCTAssertEqual(imported.hrSamples?.count, 2)
-        XCTAssertEqual(imported.routeSamples?.count, 2)
-        XCTAssertEqual(imported.source, CardioSource.iphone.rawValue)
-        XCTAssertEqual(imported.routeSamples?.first?.lat ?? 0, 37.0, accuracy: 0.00001)
-        XCTAssertEqual(imported.routeSamples?.first?.lon ?? 0, -122.0, accuracy: 0.00001)
-        XCTAssertEqual(imported.start.timeIntervalSince(start), 0, accuracy: 1)
-        XCTAssertEqual(try XCTUnwrap(imported.end).timeIntervalSince(start), 600, accuracy: 1)
+        #expect(imported.type == CardioType.run.rawValue)
+        #expect(abs(try #require(imported.distanceMeters) - 5_000) <= 1)
+        #expect(abs(try #require(imported.activeEnergyKcal) - 410) <= 1)
+        #expect(imported.hrSamples?.count == 2)
+        #expect(imported.routeSamples?.count == 2)
+        #expect(imported.source == CardioSource.iphone.rawValue)
+        #expect(abs((imported.routeSamples?.first?.lat ?? 0) - 37.0) <= 0.00001)
+        #expect(abs((imported.routeSamples?.first?.lon ?? 0) - -122.0) <= 0.00001)
+        #expect(abs(imported.start.timeIntervalSince(start) - 0) <= 1)
+        #expect(abs(try #require(imported.end).timeIntervalSince(start) - 600) <= 1)
     }
 
-    func testDecodeAnySniffsFITBeforeJSON() throws {
+    @Test func decodeAnySniffsFITBeforeJSON() throws {
         let start = Date(timeIntervalSince1970: 1_750_000_000)
         let cardio = ExportCardio(id: UUID(), type: CardioType.cycle.rawValue,
                                   start: start, end: start.addingTimeInterval(300),
                                   distanceMeters: 2_000, activeEnergyKcal: nil,
                                   avgHeartRate: nil, source: CardioSource.iphone.rawValue)
         let data = try DataExport.encodeFIT(CadenceExport(sessions: [], cardio: [cardio]))
-        XCTAssertEqual(try DataExport.decodeAny(data).cardio.count, 1)
+        #expect(try DataExport.decodeAny(data).cardio.count == 1)
     }
 
-    func testRepeatedFITImportIsIdempotentInStore() throws {
+    @Test func repeatedFITImportIsIdempotentInStore() throws {
         let start = Date(timeIntervalSince1970: 1_750_000_000)
         let cardio = ExportCardio(id: UUID(), type: CardioType.run.rawValue,
                                   start: start, end: start.addingTimeInterval(300),
@@ -61,12 +63,12 @@ final class FITExportTests: XCTestCase {
         let imported = try DataExport.decodeFIT(data)
         let context = try makeStore()
 
-        XCTAssertEqual(try WorkoutRepository.merge(imported, in: context), 1)
-        XCTAssertEqual(try WorkoutRepository.merge(imported, in: context), 0,
+        #expect(try WorkoutRepository.merge(imported, in: context) == 1)
+        #expect(try WorkoutRepository.merge(imported, in: context) == 0,
                        "Importing the same FIT file twice must not duplicate cardio")
     }
 
-    func testFITRejectsCorruptedData() throws {
+    @Test func fITRejectsCorruptedData() throws {
         let start = Date(timeIntervalSince1970: 1_750_000_000)
         let cardio = ExportCardio(id: UUID(), type: CardioType.walk.rawValue,
                                   start: start, end: start.addingTimeInterval(60),
@@ -74,6 +76,7 @@ final class FITExportTests: XCTestCase {
                                   avgHeartRate: nil, source: CardioSource.watch.rawValue)
         var data = try DataExport.encodeFIT(CadenceExport(sessions: [], cardio: [cardio]))
         data[data.count - 1] ^= 0xFF
-        XCTAssertThrowsError(try DataExport.decodeFIT(data))
+        #expect(throws: (any Error).self) { try DataExport.decodeFIT(data) }
     }
 }
+#endif

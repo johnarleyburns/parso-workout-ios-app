@@ -1,8 +1,11 @@
-import XCTest
+import Foundation
+import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class RecentSuggestionExclusionTests: XCTestCase {
-    func testUsesMostRecentCompletedWorkoutEvenWhenItIsOnAnEarlierDay() {
+struct RecentSuggestionExclusionTests {
+    @Test func usesMostRecentCompletedWorkoutEvenWhenItIsOnAnEarlierDay() {
         let older = RecentCompletedWorkoutSnapshot(
             startedAt: Date(timeIntervalSince1970: 100),
             endedAt: Date(timeIntervalSince1970: 200),
@@ -12,12 +15,12 @@ final class RecentSuggestionExclusionTests: XCTestCase {
             endedAt: Date(timeIntervalSince1970: 400),
             exerciseNames: ["Cable Row", "  " ] )
 
-        XCTAssertEqual(
-            RecentSuggestionExclusion.exerciseNames(from: [latest, older]),
-            ["cable row"])
+        #expect(
+            RecentSuggestionExclusion.exerciseNames(from: [latest, older])
+            == ["cable row"])
     }
 
-    func testCompletionTimeWinsOverStartTime() {
+    @Test func completionTimeWinsOverStartTime() {
         let startedLaterButFinishedEarlier = RecentCompletedWorkoutSnapshot(
             startedAt: Date(timeIntervalSince1970: 300),
             endedAt: Date(timeIntervalSince1970: 350),
@@ -27,9 +30,9 @@ final class RecentSuggestionExclusionTests: XCTestCase {
             endedAt: Date(timeIntervalSince1970: 400),
             exerciseNames: ["Deadlift"])
 
-        XCTAssertEqual(
+        #expect(
             RecentSuggestionExclusion.exerciseNames(
-                from: [startedLaterButFinishedEarlier, startedEarlierButFinishedLater]),
-            ["deadlift"])
+                from: [startedLaterButFinishedEarlier, startedEarlierButFinishedLater])
+            == ["deadlift"])
     }
 }

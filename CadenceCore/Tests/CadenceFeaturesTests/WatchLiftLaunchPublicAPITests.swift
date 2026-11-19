@@ -1,13 +1,14 @@
-import XCTest
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Deliberately no @testable: the Watch app consumes this public initializer.
-final class WatchLiftLaunchPublicAPITests: XCTestCase {
-    func testWatchAppCanConstructFreshSuggestionLaunch() {
+struct WatchLiftLaunchPublicAPITests {
+    @Test func watchAppCanConstructFreshSuggestionLaunch() {
         let launch = WatchLiftLaunch(title: "Suggested", exerciseNames: ["Biceps Curl"], repLadder: [10])
-        XCTAssertEqual(launch.title, "Suggested")
-        XCTAssertEqual(launch.exerciseNames, ["Biceps Curl"])
-        XCTAssertEqual(launch.repLadder, [10])
-        XCTAssertNil(launch.planPayload)
+        #expect(launch.title == "Suggested")
+        #expect(launch.exerciseNames == ["Biceps Curl"])
+        #expect(launch.repLadder == [10])
+        #expect(launch.planPayload == nil)
     }
 }

@@ -1,5 +1,6 @@
 import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @Suite struct WatchWorkoutExerciseRowPresentationTests {
     private let name = "Incline Dumbbell Press"

@@ -1,17 +1,18 @@
-import XCTest
+#if canImport(SwiftData)
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Existing installs that already seeded both the empty "Handstand Push-Up" stub
 /// and the full "Handstand Push-Ups" must collapse to a single row on next launch,
 /// preserving logged sets and the favorite flag. Custom exercises are untouched.
-final class ExerciseDedupMigrationTests: XCTestCase {
+struct ExerciseDedupMigrationTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
-    func testCollapsesDuplicateBuiltInsPreservingSetsAndFavorite() throws {
+    @Test func collapsesDuplicateBuiltInsPreservingSetsAndFavorite() throws {
         let ctx = try makeContext()
 
         // Empty stub (canonical name) + full imported twin (plural), as a prior seed
@@ -30,20 +31,20 @@ final class ExerciseDedupMigrationTests: XCTestCase {
         try ctx.save()
 
         let changed = try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx)
-        XCTAssertTrue(changed)
+        #expect(changed)
 
         let remaining = try WorkoutRepository.allExercises(ctx)
-        XCTAssertEqual(remaining.count, 1, "the two rows collapse to one")
+        #expect(remaining.count == 1, "the two rows collapse to one")
         let survivor = remaining[0]
-        XCTAssertEqual(survivor.name, "Handstand Push-Up", "canonical library name survives")
-        XCTAssertFalse(survivor.instructions.isEmpty, "instructions carried over from the twin")
-        XCTAssertEqual(survivor.imageName, "Handstand_Push-Ups")
-        XCTAssertTrue(survivor.isFavorite, "favorite flag transferred")
-        XCTAssertEqual(survivor.sets?.count, 1, "the logged set was repointed, not orphaned")
-        XCTAssertEqual(survivor.sets?.first?.id, set.id)
+        #expect(survivor.name == "Handstand Push-Up", "canonical library name survives")
+        #expect(!survivor.instructions.isEmpty, "instructions carried over from the twin")
+        #expect(survivor.imageName == "Handstand_Push-Ups")
+        #expect(survivor.isFavorite, "favorite flag transferred")
+        #expect(survivor.sets?.count == 1, "the logged set was repointed, not orphaned")
+        #expect(survivor.sets?.first?.id == set.id)
     }
 
-    func testIsIdempotent() throws {
+    @Test func isIdempotent() throws {
         let ctx = try makeContext()
         let a = Exercise(name: "Ring Dip", category: .push, equipment: .bodyweight, mechanics: .compound, force: .push)
         let b = Exercise(name: "Ring Dips", category: .push, equipment: .bodyweight, mechanics: .compound, force: .push,
@@ -51,13 +52,13 @@ final class ExerciseDedupMigrationTests: XCTestCase {
         ctx.insert(a); ctx.insert(b)
         try ctx.save()
 
-        XCTAssertTrue(try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx))
-        XCTAssertFalse(try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx),
+        #expect(try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx))
+        #expect(!(try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx)),
                        "second run is a no-op")
-        XCTAssertEqual(try WorkoutRepository.allExercises(ctx).count, 1)
+        #expect(try WorkoutRepository.allExercises(ctx).count == 1)
     }
 
-    func testDoesNotTouchCustomExercises() throws {
+    @Test func doesNotTouchCustomExercises() throws {
         let ctx = try makeContext()
         // A built-in and a same-key CUSTOM entry the user created — must NOT merge.
         let builtIn = Exercise(name: "Mountain Climbers", category: .core, equipment: .bodyweight,
@@ -67,8 +68,9 @@ final class ExerciseDedupMigrationTests: XCTestCase {
         ctx.insert(builtIn); ctx.insert(custom)
         try ctx.save()
 
-        XCTAssertFalse(try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx),
+        #expect(!(try WorkoutRepository.collapseDuplicateBuiltInExercises(ctx)),
                        "custom entries are never collapsed")
-        XCTAssertEqual(try WorkoutRepository.allExercises(ctx).count, 2)
+        #expect(try WorkoutRepository.allExercises(ctx).count == 2)
     }
 }
+#endif

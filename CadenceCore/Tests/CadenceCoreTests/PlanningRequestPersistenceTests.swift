@@ -1,9 +1,9 @@
 import Foundation
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class PlanningRequestPersistenceTests: XCTestCase {
-    func testPlanRoundTripPreservesStructuredPlanningIntent() throws {
+struct PlanningRequestPersistenceTests {
+    @Test func planRoundTripPreservesStructuredPlanningIntent() throws {
         let request = PlanningRequest(
             goal: .strength,
             experience: .advanced,
@@ -27,7 +27,7 @@ final class PlanningRequestPersistenceTests: XCTestCase {
         let data = try JSONEncoder().encode(plan)
         let decoded = try JSONDecoder().decode(Plan.self, from: data)
 
-        XCTAssertEqual(decoded.planningRequest, request)
+        #expect(decoded.planningRequest == request)
     }
 
     private var mondayFirst: [Weekday] {

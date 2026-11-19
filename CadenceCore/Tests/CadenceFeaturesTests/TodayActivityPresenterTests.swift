@@ -1,10 +1,14 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import CadenceCore
 import SwiftData
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Phase D (field-test-fixes): true today-list presenter for "What you did."
-final class TodayActivityPresenterTests: XCTestCase {
+struct TodayActivityPresenterTests {
 
     private var now: Date {
         var c = DateComponents()
@@ -16,7 +20,7 @@ final class TodayActivityPresenterTests: XCTestCase {
 
     // MARK: - includesOnlyToday
 
-    func testIncludesOnlyToday() {
+    @Test func includesOnlyToday() {
         let today1 = WorkoutSession(title: "Today AM", date: now.addingTimeInterval(-3600))
         today1.endedAt = now.addingTimeInterval(-3000)
         let yesterday = WorkoutSession(title: "Yesterday", date: now.addingTimeInterval(-86400))
@@ -26,13 +30,13 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [today1, yesterday, tomorrow], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 1)
-        XCTAssertEqual(entries.first?.title, "Today AM")
+        #expect(entries.count == 1)
+        #expect(entries.first?.title == "Today AM")
     }
 
     // MARK: - inProgressExcluded
 
-    func testInProgressExcluded() {
+    @Test func inProgressExcluded() {
         let inProgress = WorkoutSession(title: "Open", date: now.addingTimeInterval(-1800))
         // endedAt nil → isResumable → excluded
         let completed = WorkoutSession(title: "Done", date: now.addingTimeInterval(-900))
@@ -40,13 +44,13 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [inProgress, completed], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 1)
-        XCTAssertEqual(entries.first?.title, "Done")
+        #expect(entries.count == 1)
+        #expect(entries.first?.title == "Done")
     }
 
     // MARK: - deletedExcluded
 
-    func testDeletedExcluded() {
+    @Test func deletedExcluded() {
         let deleted = WorkoutSession(title: "Deleted", date: now.addingTimeInterval(-1800))
         deleted.endedAt = now.addingTimeInterval(-1500)
         deleted.deletedAt = now
@@ -55,13 +59,13 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [deleted, kept], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 1)
-        XCTAssertEqual(entries.first?.title, "Kept")
+        #expect(entries.count == 1)
+        #expect(entries.first?.title == "Kept")
     }
 
     // MARK: - multipleSameDayAllListed
 
-    func testMultipleSameDayAllListed() {
+    @Test func multipleSameDayAllListed() {
         let s1 = WorkoutSession(title: "Morning", date: now.addingTimeInterval(-7200))
         s1.endedAt = now.addingTimeInterval(-6600)
         let s2 = WorkoutSession(title: "Afternoon", date: now.addingTimeInterval(-3600))
@@ -69,14 +73,14 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [s1, s2], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 2)
-        XCTAssertTrue(entries.map(\.title).contains("Morning"))
-        XCTAssertTrue(entries.map(\.title).contains("Afternoon"))
+        #expect(entries.count == 2)
+        #expect(entries.map(\.title).contains("Morning"))
+        #expect(entries.map(\.title).contains("Afternoon"))
     }
 
     // MARK: - mixedSortedNewestFirst
 
-    func testMixedSortedNewestFirst() {
+    @Test func mixedSortedNewestFirst() {
         let earlier = WorkoutSession(title: "Earlier", date: now.addingTimeInterval(-7200))
         earlier.endedAt = now.addingTimeInterval(-6600)
         let later = WorkoutSession(title: "Later", date: now.addingTimeInterval(-1800))
@@ -84,14 +88,14 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [earlier, later], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 2)
-        XCTAssertEqual(entries[0].title, "Later")
-        XCTAssertEqual(entries[1].title, "Earlier")
+        #expect(entries.count == 2)
+        #expect(entries[0].title == "Later")
+        #expect(entries[1].title == "Earlier")
     }
 
     // MARK: - midnightBoundary
 
-    func testMidnightBoundary() {
+    @Test func midnightBoundary() {
         let todayStart = cal.startOfDay(for: now)
         let justAfterMidnight = WorkoutSession(title: "Late Night", date: todayStart.addingTimeInterval(60))
         justAfterMidnight.endedAt = todayStart.addingTimeInterval(3600)
@@ -100,25 +104,25 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [justAfterMidnight, beforeMidnight], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 1)
-        XCTAssertEqual(entries.first?.title, "Late Night")
+        #expect(entries.count == 1)
+        #expect(entries.first?.title == "Late Night")
     }
 
     // MARK: - unitFormatting
 
-    func testUnitFormatting() {
+    @Test func unitFormatting() {
         let s = WorkoutSession(title: "Squat day", date: now.addingTimeInterval(-3600))
         s.endedAt = now.addingTimeInterval(-1200)
         let entries = TodayActivityPresenter.entries(sessions: [s], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 1)
-        XCTAssertTrue(entries[0].value.contains("m"), "Should format duration")
+        #expect(entries.count == 1)
+        #expect(entries[0].value.contains("m"), "Should format duration")
     }
 
     // MARK: - emptyDay
 
-    func testEmptyDay() {
+    @Test func emptyDay() {
         let entries = TodayActivityPresenter.entries(sessions: [], cardio: [], now: now, calendar: cal)
-        XCTAssertTrue(entries.isEmpty)
+        #expect(entries.isEmpty)
     }
 
     // MARK: - observedFacts defect: engine observedFacts yields ≤1 strength
@@ -126,7 +130,7 @@ final class TodayActivityPresenterTests: XCTestCase {
     /// Documents the old source's defect: `coachDecision.observedFacts`
     /// yields ≤1 strength entry, which means a user with two completed-today
     /// sessions would only see one in "What you did".
-    func testMultipleStrengthTodayAllVisible() {
+    @Test func multipleStrengthTodayAllVisible() {
         let s1 = WorkoutSession(title: "Push", date: now.addingTimeInterval(-10800))
         s1.endedAt = now.addingTimeInterval(-7200)
         let s2 = WorkoutSession(title: "Pull", date: now.addingTimeInterval(-3600))
@@ -134,13 +138,13 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [s1, s2], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 2,
+        #expect(entries.count == 2,
                        "Two completed-today sessions must both appear (old observedFacts showed ≤1)")
     }
 
     // MARK: - resumable excluded (joint invariant)
 
-    func testResumableExcluded() {
+    @Test func resumableExcluded() {
         let resumable = WorkoutSession(title: "In Progress", date: now.addingTimeInterval(-1800))
         // endedAt nil → isResumable means excluded by presenter
         let completed = WorkoutSession(title: "Completed", date: now.addingTimeInterval(-3600))
@@ -148,11 +152,11 @@ final class TodayActivityPresenterTests: XCTestCase {
 
         let entries = TodayActivityPresenter.entries(
             sessions: [resumable, completed], cardio: [], now: now, calendar: cal)
-        XCTAssertEqual(entries.count, 1)
+        #expect(entries.count == 1)
         // The resumable session is excluded because the Resume card covers it.
     }
 
-    func testWeekEntriesGroupsCompletedWorkoutsAndExcludesPriorWeek() {
+    @Test func weekEntriesGroupsCompletedWorkoutsAndExcludesPriorWeek() {
         let weekStrength = WorkoutSession(title: "This Week Strength", date: now.addingTimeInterval(-86_400))
         weekStrength.endedAt = now.addingTimeInterval(-82_000)
         let priorStrength = WorkoutSession(title: "Prior Strength", date: now.addingTimeInterval(-8 * 86_400))
@@ -165,12 +169,12 @@ final class TodayActivityPresenterTests: XCTestCase {
             cardio: [weekCardio, priorCardio],
             now: now)
 
-        XCTAssertEqual(result.strength.map(\.title), ["This Week Strength"])
-        XCTAssertEqual(result.cardio.count, 1)
-        XCTAssertEqual(result.cardio.first?.title, "Run")
+        #expect(result.strength.map(\.title) == ["This Week Strength"])
+        #expect(result.cardio.count == 1)
+        #expect(result.cardio.first?.title == "Run")
     }
 
-    func testHistoryEntriesIncludesRetainedHistoryAndExcludesDeletedWorkouts() {
+    @Test func historyEntriesIncludesRetainedHistoryAndExcludesDeletedWorkouts() {
         let older = WorkoutSession(title: "Older Strength", date: now.addingTimeInterval(-20 * 86_400))
         older.endedAt = older.date.addingTimeInterval(3_600)
         let recent = CardioWorkout(type: .cycle, start: now.addingTimeInterval(-3_600), end: now.addingTimeInterval(-1_800))
@@ -181,7 +185,7 @@ final class TodayActivityPresenterTests: XCTestCase {
         let entries = TodayActivityPresenter.historyEntries(
             sessions: [older, deleted], cardio: [recent])
 
-        XCTAssertEqual(entries.map(\.title), ["Cycle", "Older Strength"])
+        #expect(entries.map(\.title) == ["Cycle", "Older Strength"])
     }
 
     private func makeMultiExerciseSession(orders: [Int]) throws -> WorkoutSession {
@@ -199,18 +203,19 @@ final class TodayActivityPresenterTests: XCTestCase {
         return session
     }
 
-    func testHistoryEntryDetailAndValueUnchangedForMultiExerciseSession() throws {
+    @Test func historyEntryDetailAndValueUnchangedForMultiExerciseSession() throws {
         let session = try makeMultiExerciseSession(orders: [0, 1, 2, 3])
         let entries = TodayActivityPresenter.historyEntries(sessions: [session], cardio: [])
-        XCTAssertEqual(entries.first?.detail, "A, B, C")
-        XCTAssertTrue(entries.first?.value.hasPrefix("4 sets · ") ?? false,
-                      entries.first?.value ?? "nil")
+        #expect(entries.first?.detail == "A, B, C")
+        #expect(entries.first?.value.hasPrefix("4 sets · ") ?? false,
+                      "\(entries.first?.value ?? "nil")")
     }
 
-    func testHistoryEntrySetCountIgnoresSetOrderField() throws {
+    @Test func historyEntrySetCountIgnoresSetOrderField() throws {
         let session = try makeMultiExerciseSession(orders: [30, 10, 20, 0])
         let entries = TodayActivityPresenter.historyEntries(sessions: [session], cardio: [])
-        XCTAssertTrue(entries.first?.value.hasPrefix("4 sets · ") ?? false)
-        XCTAssertEqual(entries.first?.detail, "C, B, A")
+        #expect(entries.first?.value.hasPrefix("4 sets · ") ?? false)
+        #expect(entries.first?.detail == "C, B, A")
     }
 }
+#endif

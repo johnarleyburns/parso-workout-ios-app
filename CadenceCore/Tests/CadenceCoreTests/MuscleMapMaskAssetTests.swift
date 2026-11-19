@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 #if canImport(ImageIO)
 import CoreGraphics
@@ -10,57 +11,57 @@ import ImageIO
 /// found: a tracked group with no colour at all, a mask that only covers part
 /// of its muscle, a mask drawn over the wrong muscle, and two groups claiming
 /// the same pixels.
-final class MuscleMapMaskAssetTests: XCTestCase {
-    func testEveryTrackedGroupIsColouredOnAtLeastOnePanel() {
+struct MuscleMapMaskAssetTests {
+    @Test func everyTrackedGroupIsColouredOnAtLeastOnePanel() {
         let coloured = Set(MuscleMapLayout.maskGroups(for: .front) + MuscleMapLayout.maskGroups(for: .back))
-        XCTAssertEqual(coloured, Set(MuscleGroup.allCases))
-        XCTAssertTrue(MuscleMapLayout.maskGroups(for: .list).isEmpty)
+        #expect(coloured == Set(MuscleGroup.allCases))
+        #expect(MuscleMapLayout.maskGroups(for: .list).isEmpty)
     }
 
-    func testEveryCalloutIsColouredOnItsOwnPanel() {
+    @Test func everyCalloutIsColouredOnItsOwnPanel() {
         for callout in MuscleMapLayout.callouts {
-            XCTAssertTrue(MuscleMapLayout.maskGroups(for: callout.panel).contains(callout.group),
+            #expect(MuscleMapLayout.maskGroups(for: callout.panel).contains(callout.group),
                           "\(callout.id) has a tap target but no colour mask")
         }
         for group in MuscleGroup.allCases {
             let panel = MuscleMapLayout.primaryPanel(for: group)
-            XCTAssertTrue(MuscleMapLayout.maskGroups(for: panel).contains(group), group.rawValue)
+            #expect(MuscleMapLayout.maskGroups(for: panel).contains(group), "\(group.rawValue)")
         }
     }
 
-    func testVisibleMaskGroupsFollowTheVolumeScope() {
+    @Test func visibleMaskGroupsFollowTheVolumeScope() {
         let visible = MuscleMapLayout.maskGroups(for: .back, visibleGroups: MuscleGroup.defaultTracked)
-        XCTAssertTrue(visible.contains(.rotatorCuff))
-        XCTAssertTrue(visible.contains(.lats))
+        #expect(visible.contains(.rotatorCuff))
+        #expect(visible.contains(.lats))
     }
 
     /// Field report 2026-10-04: with every group on target no muscle may stay red or white.
     /// Groups outside the volume scope take their nearest tracked group's colour.
-    func testUntrackedGroupsTakeTheirNearestTrackedGroupsColour() {
+    @Test func untrackedGroupsTakeTheirNearestTrackedGroupsColour() {
         let visible = MuscleGroup.defaultTracked.subtracting([.neck, .tibialis, .rotatorCuff, .hipFlexors])
-        XCTAssertEqual(MuscleMapLayout.colourGroup(for: .neck, visibleGroups: visible), .traps)
-        XCTAssertEqual(MuscleMapLayout.colourGroup(for: .tibialis, visibleGroups: visible), .calves)
-        XCTAssertEqual(MuscleMapLayout.colourGroup(for: .rotatorCuff, visibleGroups: visible), .middleBack)
-        XCTAssertEqual(MuscleMapLayout.colourGroup(for: .hipFlexors, visibleGroups: visible), .adductors)
-        XCTAssertEqual(MuscleMapLayout.colourGroup(for: .neck, visibleGroups: visible.union([.neck])), .neck,
+        #expect(MuscleMapLayout.colourGroup(for: .neck, visibleGroups: visible) == .traps)
+        #expect(MuscleMapLayout.colourGroup(for: .tibialis, visibleGroups: visible) == .calves)
+        #expect(MuscleMapLayout.colourGroup(for: .rotatorCuff, visibleGroups: visible) == .middleBack)
+        #expect(MuscleMapLayout.colourGroup(for: .hipFlexors, visibleGroups: visible) == .adductors)
+        #expect(MuscleMapLayout.colourGroup(for: .neck, visibleGroups: visible.union([.neck])) == .neck,
                        "a tracked group keeps its own colour")
         for panel in [MuscleMapPanel.front, .back] {
             let layers = MuscleMapLayout.colourLayers(for: panel, visibleGroups: visible)
-            XCTAssertEqual(layers.map(\.mask), MuscleMapLayout.maskGroups(for: panel),
+            #expect(layers.map(\.mask) == MuscleMapLayout.maskGroups(for: panel),
                            "every mask on \(panel) is coloured by some tracked group")
-            XCTAssertTrue(layers.allSatisfy { visible.contains($0.colourGroup) })
+            #expect(layers.allSatisfy { visible.contains($0.colourGroup) })
         }
     }
 
     #if canImport(ImageIO)
-    func testAssetCatalogHoldsExactlyTheListedMasks() throws {
+    @Test func assetCatalogHoldsExactlyTheListedMasks() throws {
         let names = try FileManager.default.contentsOfDirectory(atPath: Self.assetCatalog.path)
             .filter { $0.hasPrefix("MuscleMask-") && $0.hasSuffix(".imageset") }
             .map { String($0.dropLast(".imageset".count)) }
         let expected = [MuscleMapPanel.front, .back].flatMap { panel in
             MuscleMapLayout.maskGroups(for: panel).map { MuscleMapLayout.maskAssetName(for: $0, panel: panel) }
         }
-        XCTAssertEqual(Set(names), Set(expected))
+        #expect(Set(names) == Set(expected))
     }
 
     /// Loads every mask once (decoding PNGs is the slow part) and checks that
@@ -70,7 +71,7 @@ final class MuscleMapMaskAssetTests: XCTestCase {
     /// mask, so with every group on target no red remains, no tracked muscle is
     /// partly coloured, and no two masks colour the same pixel. The owner's
     /// named regions sit in the masks that colour them.
-    func testMasksAreCompleteAlignedAndDisjoint() throws {
+    @Test func masksAreCompleteAlignedAndDisjoint() throws {
         let width = Int(MuscleMapLayout.panelPixelWidth)
         let height = Int(MuscleMapLayout.panelPixelHeight)
         for panel in [MuscleMapPanel.front, .back] {
@@ -79,12 +80,12 @@ final class MuscleMapMaskAssetTests: XCTestCase {
             for group in MuscleMapLayout.maskGroups(for: panel) {
                 let name = MuscleMapLayout.maskAssetName(for: group, panel: panel)
                 let mask = try Self.render(name, alphaOnly: true)
-                XCTAssertEqual(mask.width, width, name)
-                XCTAssertEqual(mask.height, height, name)
+                #expect(mask.width == width, "\(name)")
+                #expect(mask.height == height, "\(name)")
                 guard mask.width == width, mask.height == height else { continue }
                 let covered = Self.accumulate(mask.bytes, into: &owners)
                 totalCovered += covered
-                XCTAssertGreaterThan(covered, 2_000, "\(name) is (nearly) uncoloured")
+                #expect(covered > 2_000, "\(name) is (nearly) uncoloured")
                 for callout in MuscleMapLayout.callouts(for: panel) where callout.group == group {
                     let x = Int((callout.anchorX * Double(width)).rounded())
                     let y = Int((callout.anchorY * Double(height)).rounded())
@@ -93,14 +94,14 @@ final class MuscleMapMaskAssetTests: XCTestCase {
                     let onMuscle = (-4...4).contains { dy in
                         (-4...4).contains { dx in mask.bytes[(y + dy) * width + x + dx] > 0 }
                     }
-                    XCTAssertTrue(onMuscle, "\(callout.id) anchor is not on its own muscle")
+                    #expect(onMuscle, "\(callout.id) anchor is not on its own muscle")
                 }
             }
 
             for (group, x, y, what) in Self.namedRegions[panel] ?? [] {
                 let name = MuscleMapLayout.maskAssetName(for: group, panel: panel)
                 let mask = try Self.render(name, alphaOnly: true)
-                XCTAssertGreaterThan(mask.bytes[y * width + x], 0, "\(what) is not in \(name)")
+                #expect(mask.bytes[y * width + x] > 0, "\(what) is not in \(name)")
             }
 
             let art = try Self.render(panel == .front ? "MuscleMapFront" : "MuscleMapBack",
@@ -119,10 +120,10 @@ final class MuscleMapMaskAssetTests: XCTestCase {
                     return (uncovered, overlapping)
                 }
             }
-            XCTAssertEqual(art.bytes.count, width * height * 4, "\(panel) artwork did not load")
-            XCTAssertGreaterThan(totalCovered, 200_000, "\(panel) masks colour too little of the body")
-            XCTAssertEqual(uncovered, 0, "\(panel): \(uncovered) red muscle pixels are covered by no mask")
-            XCTAssertEqual(overlapping, 0, "\(panel): \(overlapping) pixels are coloured by two groups")
+            #expect(art.bytes.count == width * height * 4, "\(panel) artwork did not load")
+            #expect(totalCovered > 200_000, "\(panel) masks colour too little of the body")
+            #expect(uncovered == 0, "\(panel): \(uncovered) red muscle pixels are covered by no mask")
+            #expect(overlapping == 0, "\(panel): \(overlapping) pixels are coloured by two groups")
         }
     }
 
@@ -181,7 +182,7 @@ final class MuscleMapMaskAssetTests: XCTestCase {
             context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
             return true
         }
-        XCTAssertTrue(drawn, name)
+        #expect(drawn, "\(name)")
         return Bitmap(width: width, height: height, bytes: bytes)
     }
 

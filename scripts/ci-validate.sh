@@ -33,6 +33,7 @@ if [[ "$mode" == --all || "$mode" == --fast ]]; then
 
   step "Automation regression tests"
   python3 scripts/tests/test_ci_throughput.py
+  python3 scripts/tests/test_module_boundaries.py
   bash scripts/tests/test-xcodebuild-platform.sh
   bash scripts/tests/test-issue-pr-policy.sh
   bash scripts/tests/test-issue-pr-introspection.sh

@@ -1,40 +1,42 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class ElapsedTimeTrackerTests: XCTestCase {
+struct ElapsedTimeTrackerTests {
 
-    func testInitialState_notPaused() {
+    @Test func initialState_notPaused() {
         let t = ElapsedTimeTracker()
-        XCTAssertFalse(t.isPaused)
-        XCTAssertEqual(t.totalPausedDuration, 0)
+        #expect(!t.isPaused)
+        #expect(t.totalPausedDuration == 0)
     }
 
-    func testElapsedWithoutPause() {
+    @Test func elapsedWithoutPause() {
         let t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-60)
         let elapsed = t.elapsed(since: start)
-        XCTAssertEqual(elapsed, 60, accuracy: 0.1)
+        #expect(abs(elapsed - 60) <= 0.1)
     }
 
-    func testPauseStopsElapsed() {
+    @Test func pauseStopsElapsed() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-10)
         t.startPause(now: start.addingTimeInterval(10))
         let elapsed = t.elapsed(since: start, now: start.addingTimeInterval(15))
-        XCTAssertEqual(elapsed, 10, accuracy: 0.1)
+        #expect(abs(elapsed - 10) <= 0.1)
     }
 
-    func testResumeContinuesElapsed() {
+    @Test func resumeContinuesElapsed() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-30)
         t.startPause(now: start.addingTimeInterval(10))
         t.resume(now: start.addingTimeInterval(15))
         let elapsed = t.elapsed(since: start, now: start.addingTimeInterval(25))
-        XCTAssertEqual(elapsed, 20, accuracy: 0.1)
+        #expect(abs(elapsed - 20) <= 0.1)
     }
 
-    func testMultiplePausesAccumulate() {
+    @Test func multiplePausesAccumulate() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-100)
         t.startPause(now: start.addingTimeInterval(10))
@@ -42,60 +44,60 @@ final class ElapsedTimeTrackerTests: XCTestCase {
         t.startPause(now: start.addingTimeInterval(30))
         t.resume(now: start.addingTimeInterval(50))
         let elapsed = t.elapsed(since: start, now: start.addingTimeInterval(100))
-        XCTAssertEqual(elapsed, 70, accuracy: 0.1)
+        #expect(abs(elapsed - 70) <= 0.1)
     }
 
-    func testDoubleStartPause_isNoop() {
+    @Test func doubleStartPause_isNoop() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-20)
         t.startPause(now: start.addingTimeInterval(5))
         t.startPause(now: start.addingTimeInterval(8))
         t.resume(now: start.addingTimeInterval(10))
         let elapsed = t.elapsed(since: start, now: start.addingTimeInterval(20))
-        XCTAssertEqual(elapsed, 15, accuracy: 0.1)
+        #expect(abs(elapsed - 15) <= 0.1)
     }
 
-    func testDoubleResume_isNoop() {
+    @Test func doubleResume_isNoop() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-20)
         t.startPause(now: start.addingTimeInterval(5))
         t.resume(now: start.addingTimeInterval(10))
         t.resume(now: start.addingTimeInterval(12))
-        XCTAssertFalse(t.isPaused)
+        #expect(!t.isPaused)
     }
 
-    func testTogglePause() {
+    @Test func togglePause() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-30)
         t.togglePause(now: start.addingTimeInterval(10))
-        XCTAssertTrue(t.isPaused)
+        #expect(t.isPaused)
         t.togglePause(now: start.addingTimeInterval(20))
-        XCTAssertFalse(t.isPaused)
+        #expect(!t.isPaused)
         let elapsed = t.elapsed(since: start, now: start.addingTimeInterval(30))
-        XCTAssertEqual(elapsed, 20, accuracy: 0.1)
+        #expect(abs(elapsed - 20) <= 0.1)
     }
 
-    func testResetClearsState() {
+    @Test func resetClearsState() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-10)
         t.startPause(now: start.addingTimeInterval(5))
         t.reset()
-        XCTAssertFalse(t.isPaused)
-        XCTAssertEqual(t.totalPausedDuration, 0)
+        #expect(!t.isPaused)
+        #expect(t.totalPausedDuration == 0)
     }
 
-    func testResumeWhileNotPaused_isNoop() {
+    @Test func resumeWhileNotPaused_isNoop() {
         var t = ElapsedTimeTracker()
         t.resume()
-        XCTAssertEqual(t.totalPausedDuration, 0)
+        #expect(t.totalPausedDuration == 0)
     }
 
-    func testPauseWhileAlreadyPaused_isNoop() {
+    @Test func pauseWhileAlreadyPaused_isNoop() {
         var t = ElapsedTimeTracker()
         let start = Date().addingTimeInterval(-20)
         t.startPause(now: start.addingTimeInterval(5))
         let before = t.totalPausedDuration
         t.startPause(now: start.addingTimeInterval(8))
-        XCTAssertEqual(t.totalPausedDuration, before)
+        #expect(t.totalPausedDuration == before)
     }
 }

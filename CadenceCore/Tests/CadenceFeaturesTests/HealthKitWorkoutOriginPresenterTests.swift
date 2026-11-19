@@ -1,8 +1,10 @@
-import XCTest
+import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class HealthKitWorkoutOriginPresenterTests: XCTestCase {
+struct HealthKitWorkoutOriginPresenterTests {
     private func p(source: String = "", device: String? = nil, model: String? = nil,
                    brand: String? = nil, plus: Bool = false,
                    product: String? = nil) -> HealthKitWorkoutProvenance {
@@ -11,33 +13,33 @@ final class HealthKitWorkoutOriginPresenterTests: XCTestCase {
                                    workoutBrandName: brand, isAppleFitnessPlus: plus)
     }
 
-    func testPrecedence() {
+    @Test func precedence() {
         let l = HealthKitWorkoutOriginPresenter.label
-        XCTAssertEqual(l(p(source: "S", brand: "B", plus: true)).primary, "Imported from Apple Fitness+")
-        XCTAssertEqual(l(p(source: "S", brand: "Peloton")).primary, "Imported from Peloton")
-        XCTAssertEqual(l(p(source: "Strava", device: "Apple Watch")).primary, "Imported from Strava on Apple Watch")
-        XCTAssertEqual(l(p(source: "Strava")).primary, "Imported from Strava")
-        XCTAssertEqual(l(p(model: "Garmin Edge")).primary, "Imported from Garmin Edge")
-        XCTAssertEqual(l(p()).primary, "Imported from HealthKit")
-        XCTAssertEqual(l(nil).primary, "Imported from HealthKit")
+        #expect(l(p(source: "S", brand: "B", plus: true)).primary == "Imported from Apple Fitness+")
+        #expect(l(p(source: "S", brand: "Peloton")).primary == "Imported from Peloton")
+        #expect(l(p(source: "Strava", device: "Apple Watch")).primary == "Imported from Strava on Apple Watch")
+        #expect(l(p(source: "Strava")).primary == "Imported from Strava")
+        #expect(l(p(model: "Garmin Edge")).primary == "Imported from Garmin Edge")
+        #expect(l(p()).primary == "Imported from HealthKit")
+        #expect(l(nil).primary == "Imported from HealthKit")
     }
 
-    func testBlankBrandAndDuplicateDevice() {
+    @Test func blankBrandAndDuplicateDevice() {
         let a = HealthKitWorkoutOriginPresenter.label(for: p(source: "Strava", brand: "  "))
-        XCTAssertEqual(a.primary, "Imported from Strava")
+        #expect(a.primary == "Imported from Strava")
         let b = HealthKitWorkoutOriginPresenter.label(for: p(source: "Wahoo", device: "wahoo"))
-        XCTAssertEqual(b.primary, "Imported from Wahoo")
-        XCTAssertEqual(b.detail, "Wahoo")
+        #expect(b.primary == "Imported from Wahoo")
+        #expect(b.detail == "Wahoo")
     }
 
-    func testWatchProductTypeAloneNeverImpliesFitness() {
+    @Test func watchProductTypeAloneNeverImpliesFitness() {
         let r = HealthKitWorkoutOriginPresenter.label(for: p(product: "Watch7,1"))
-        XCTAssertEqual(r.primary, "Imported from HealthKit")
+        #expect(r.primary == "Imported from HealthKit")
     }
 
-    func testAccessibilityDetailAndNoBundleID() {
+    @Test func accessibilityDetailAndNoBundleID() {
         let r = HealthKitWorkoutOriginPresenter.label(for: p(source: "Strava", device: "Apple Watch"))
-        XCTAssertEqual(r.accessibilityLabel, "Imported from Strava on Apple Watch. Recorded by Strava on Apple Watch")
-        XCTAssertFalse(r.accessibilityLabel.contains("com.x"))
+        #expect(r.accessibilityLabel == "Imported from Strava on Apple Watch. Recorded by Strava on Apple Watch")
+        #expect(!r.accessibilityLabel.contains("com.x"))
     }
 }

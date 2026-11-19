@@ -1,8 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
-final class SetAlternationTests: XCTestCase {
+struct SetAlternationTests {
 
     private func pending(_ performerID: UUID?, _ setIndex: Int) -> SessionRenderModel.PendingSetDisplay {
         SessionRenderModel.PendingSetDisplay(
@@ -23,7 +25,7 @@ final class SetAlternationTests: XCTestCase {
     /// indices 1–2, partner owes 0–2. The old column round-robin emitted
     /// Me, P, Me, P, P (same name twice); the fair queue must emit
     /// P, Me, P, Me, P.
-    func testSpreadAlternatesTheFieldReportScenario() {
+    @Test func spreadAlternatesTheFieldReportScenario() {
         let partner = UUID()
         let me = pending(nil, 1)
         let me2 = pending(nil, 2)
@@ -33,14 +35,14 @@ final class SetAlternationTests: XCTestCase {
 
         let result = SetAlternation.spread([[me, me2], [p0, p1, p2]])
 
-        XCTAssertEqual(result.map(\.setIndex), [0, 1, 1, 2, 2])
-        XCTAssertEqual(names(result), [false, true, false, true, false],
+        #expect(result.map(\.setIndex) == [0, 1, 1, 2, 2])
+        #expect(names(result) == [false, true, false, true, false],
                        "Same performer twice in a row while the other still owes rows")
     }
 
     /// Field test 2026-08-20 #1: no two consecutive rows from the same performer
     /// while at least two performers still have outstanding rows.
-    func testSpreadNeverRepeatsAPerformerWhileTwoPerformersHaveRows() {
+    @Test func spreadNeverRepeatsAPerformerWhileTwoPerformersHaveRows() {
         let me = [pending(nil, 0), pending(nil, 1)]
         let a = [pending(UUID(), 0), pending(UUID(), 1)]
         let b = [pending(UUID(), 0), pending(UUID(), 1), pending(UUID(), 2)]
@@ -48,31 +50,31 @@ final class SetAlternationTests: XCTestCase {
         let result = SetAlternation.spread([me, a, b])
         let isAlternating = zip(result, result.dropFirst())
             .allSatisfy { $0.performerID != $1.performerID }
-        XCTAssertTrue(isAlternating, "Pending rows repeat a performer: \(result.map { $0.performerID })")
+        #expect(isAlternating, "Pending rows repeat a performer: \(result.map { $0.performerID })")
     }
 
     /// When only one performer has rows left, their remainder is emitted (the
     /// unavoidable, correct tail).
-    func testSpreadSoloGroupEmitsTail() {
+    @Test func spreadSoloGroupEmitsTail() {
         let p = [pending(UUID(), 0), pending(UUID(), 1), pending(UUID(), 2)]
         let result = SetAlternation.spread([[], p])
-        XCTAssertEqual(result.map(\.setIndex), [0, 1, 2])
+        #expect(result.map(\.setIndex) == [0, 1, 2])
     }
 
-    func testSpreadIsDeterministicGivenTheSameGroups() {
+    @Test func spreadIsDeterministicGivenTheSameGroups() {
         let groups = [[pending(nil, 0), pending(nil, 1), pending(nil, 2)],
                       [pending(UUID(), 0), pending(UUID(), 1)],
                       [pending(UUID(), 0)]]
-        XCTAssertEqual(SetAlternation.spread(groups), SetAlternation.spread(groups))
+        #expect(SetAlternation.spread(groups) == SetAlternation.spread(groups))
     }
 
-    func testSpreadEmptyGroupsReturnsEmpty() {
-        XCTAssertTrue(SetAlternation.spread([[], []]).isEmpty)
+    @Test func spreadEmptyGroupsReturnsEmpty() {
+        #expect(SetAlternation.spread([[], []]).isEmpty)
     }
 
     // MARK: - nextPerformerID
 
-    func testNextPerformerIDIsFirstPendingRow() {
+    @Test func nextPerformerIDIsFirstPendingRow() {
         let partner = UUID()
         let me = pending(nil, 0)
         let p0 = pending(partner, 0)
@@ -80,74 +82,74 @@ final class SetAlternationTests: XCTestCase {
             pendingSets: [p0, me],
             rosterOrder: [nil, partner],
             lastLoggedPerformerID: nil)
-        XCTAssertEqual(id, partner, "The first pending row must win over any rotation")
+        #expect(id == partner, "The first pending row must win over any rotation")
     }
 
-    func testNextPerformerIDIsFirstPendingRowForTheOwner() {
+    @Test func nextPerformerIDIsFirstPendingRowForTheOwner() {
         let partner = UUID()
         let me = pending(nil, 0)
         let id = SetAlternation.nextPerformerID(
             pendingSets: [me],
             rosterOrder: [nil, partner],
             lastLoggedPerformerID: partner)
-        XCTAssertNil(id, "An owner-led pending row must win over any rotation")
+        #expect(id == nil, "An owner-led pending row must win over any rotation")
     }
 
-    func testNextPerformerIDFallsBackToRosterRotation() {
+    @Test func nextPerformerIDFallsBackToRosterRotation() {
         let partner = UUID()
         let id = SetAlternation.nextPerformerID(
             pendingSets: [],
             rosterOrder: [nil, partner],
             lastLoggedPerformerID: partner,
             hasLoggedWorkingSet: true)
-        XCTAssertNil(id, "After a partner, the rotation falls back to the owner")
+        #expect(id == nil, "After a partner, the rotation falls back to the owner")
     }
 
-    func testNextPerformerIDDefaultsToFirstConfiguredPerformer() {
+    @Test func nextPerformerIDDefaultsToFirstConfiguredPerformer() {
         let partner = UUID()
         let id = SetAlternation.nextPerformerID(
             pendingSets: [],
             rosterOrder: [partner, nil],
             lastLoggedPerformerID: nil)
-        XCTAssertEqual(id, partner, "Nothing logged → the configured first performer leads")
+        #expect(id == partner, "Nothing logged → the configured first performer leads")
     }
 
-    func testNextPerformerIDAdvancesAfterOwnerEvenWhenPendingOwnerRowLeads() {
+    @Test func nextPerformerIDAdvancesAfterOwnerEvenWhenPendingOwnerRowLeads() {
         let partner = UUID()
         let id = SetAlternation.nextPerformerID(
             pendingSets: [pending(nil, 0), pending(partner, 0)],
             rosterOrder: [nil, partner],
             lastLoggedPerformerID: nil,
             hasLoggedWorkingSet: true)
-        XCTAssertEqual(id, partner, "After Me logs, Add Set must advance to the partner")
+        #expect(id == partner, "After Me logs, Add Set must advance to the partner")
     }
 
-    func testNextPerformerIDCyclesThreeConfiguredPerformers() {
+    @Test func nextPerformerIDCyclesThreeConfiguredPerformers() {
         let sam = UUID()
         let alex = UUID()
-        XCTAssertEqual(SetAlternation.nextPerformerID(
+        #expect(SetAlternation.nextPerformerID(
             pendingSets: [], rosterOrder: [nil, sam, alex],
-            lastLoggedPerformerID: sam, hasLoggedWorkingSet: true), alex)
-        XCTAssertNil(SetAlternation.nextPerformerID(
+            lastLoggedPerformerID: sam, hasLoggedWorkingSet: true) == alex)
+        #expect(SetAlternation.nextPerformerID(
             pendingSets: [], rosterOrder: [nil, sam, alex],
-            lastLoggedPerformerID: alex, hasLoggedWorkingSet: true))
+            lastLoggedPerformerID: alex, hasLoggedWorkingSet: true) == nil)
     }
 
-    func testNextPerformerIDRecoversWhenLastPerformerWasRemoved() {
+    @Test func nextPerformerIDRecoversWhenLastPerformerWasRemoved() {
         let removed = UUID()
         let partner = UUID()
-        XCTAssertNil(SetAlternation.nextPerformerID(
+        #expect(SetAlternation.nextPerformerID(
             pendingSets: [], rosterOrder: [nil, partner],
-            lastLoggedPerformerID: removed, hasLoggedWorkingSet: true))
+            lastLoggedPerformerID: removed, hasLoggedWorkingSet: true) == nil)
     }
 
-    func testNextPerformerIDEmptyRosterIsSafe() {
-        XCTAssertNil(SetAlternation.nextPerformerID(
+    @Test func nextPerformerIDEmptyRosterIsSafe() {
+        #expect(SetAlternation.nextPerformerID(
             pendingSets: [], rosterOrder: [], lastLoggedPerformerID: nil,
-            hasLoggedWorkingSet: true))
+            hasLoggedWorkingSet: true) == nil)
     }
 
-    func testCurrentPendingUsesInterleavedFirstRowNotPerformerSetIndex() {
+    @Test func currentPendingUsesInterleavedFirstRowNotPerformerSetIndex() {
         let partner = UUID()
         let completed = SessionRenderModel.SetDisplay(
             setID: UUID(), weight: 57, reps: 8, rpe: nil, isWarmup: false,
@@ -160,29 +162,29 @@ final class SetAlternationTests: XCTestCase {
             pendingCount: 2, pendingReps: [], performerContexts: [],
             pendingSets: [partnerPending, ownerPending], hasPlannedWork: true)
 
-        XCTAssertTrue(context.isCurrentPending(partnerPending))
-        XCTAssertFalse(context.isCurrentPending(ownerPending))
+        #expect(context.isCurrentPending(partnerPending))
+        #expect(!context.isCurrentPending(ownerPending))
     }
 
-    func testRepeatTargetsTheFirstPendingPartnerInsteadOfOwnersLastSet() {
+    @Test func repeatTargetsTheFirstPendingPartnerInsteadOfOwnersLastSet() {
         let partner = UUID()
         let partnerPending = pending(partner, 0)
 
-        XCTAssertEqual(SetAlternation.performerForRepeat(
-            pendingSets: [partnerPending], fallbackPerformerID: nil), partner)
-        XCTAssertNil(SetAlternation.performerForRepeat(
-            pendingSets: [], fallbackPerformerID: nil))
+        #expect(SetAlternation.performerForRepeat(
+            pendingSets: [partnerPending], fallbackPerformerID: nil) == partner)
+        #expect(SetAlternation.performerForRepeat(
+            pendingSets: [], fallbackPerformerID: nil) == nil)
     }
 
-    func testRepeatTracksEachPartnerInTheInterleavedQueue() {
+    @Test func repeatTracksEachPartnerInTheInterleavedQueue() {
         let firstPartner = UUID()
         let secondPartner = UUID()
         let first = pending(firstPartner, 0)
         let second = pending(secondPartner, 0)
 
-        XCTAssertEqual(SetAlternation.performerForRepeat(
-            pendingSets: [first, second], fallbackPerformerID: nil), firstPartner)
-        XCTAssertEqual(SetAlternation.performerForRepeat(
-            pendingSets: [second], fallbackPerformerID: firstPartner), secondPartner)
+        #expect(SetAlternation.performerForRepeat(
+            pendingSets: [first, second], fallbackPerformerID: nil) == firstPartner)
+        #expect(SetAlternation.performerForRepeat(
+            pendingSets: [second], fallbackPerformerID: firstPartner) == secondPartner)
     }
 }

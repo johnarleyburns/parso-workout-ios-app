@@ -1,20 +1,24 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
+import CadencePhoneFeatures
 
-final class WatchStrengthFlowModelTests: XCTestCase {
+final class WatchStrengthFlowModelTests {
 
-    private var container: ModelContainer!
-    private var context: ModelContext!
+    private nonisolated(unsafe) var container: ModelContainer!
+    private nonisolated(unsafe) var context: ModelContext!
 
-    override func setUpWithError() throws {
+    init() throws {
         container = try CadenceStore.makeModelContainer(inMemory: true)
         context = ModelContext(container)
         _ = try WorkoutRepository.seedStarterLibraryIfNeeded(context)
     }
 
-    override func tearDown() {
+    deinit {
         container = nil
         context = nil
     }
@@ -29,84 +33,91 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
     // MARK: - Warm-up
 
-    func testWarmup_offWhenZeroMinutes() {
+    @Test func warmup_offWhenZeroMinutes() {
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertFalse(m.beginWarmup())
-        XCTAssertEqual(m.stage, .home)
+        #expect(!m.beginWarmup())
+        #expect(m.stage == .home)
     }
 
-    func testWarmup_beginAndSkipRecordsTimeAndGoesHome() {
+    @Test func warmup_beginAndSkipRecordsTimeAndGoesHome() {
         let m = WatchStrengthFlowModel(context: context, cooldownDefault: 5, restDefault: 90, warmupDefault: 5)
         m.start(createSession: true)
-        XCTAssertTrue(m.beginWarmup())
-        XCTAssertEqual(m.stage, .warmup(300))
+        #expect(m.beginWarmup())
+        #expect(m.stage == .warmup(300))
         m.endWarmup()
-        XCTAssertEqual(m.stage, .home)
-        XCTAssertNotNil(m.session)
+        #expect(m.stage == .home)
+        #expect(m.session != nil)
     }
 
     // MARK: - Stage transitions
 
-    func testStart_showsHome() {
+    @Test func start_showsHome() {
         let m = makeModel()
         m.start()
-        XCTAssertEqual(m.stage, .home)
-        XCTAssertNil(m.session)
+        #expect(m.stage == .home)
+        #expect(m.session == nil)
     }
 
-    func testGoToAddExercise() {
+    @Test func goToAddExercise() {
         let m = makeModel()
         m.start()
         m.goToAddExercise()
-        if case .addExercise = m.stage {} else { XCTFail("Expected addExercise stage") }
+        if case .addExercise = m.stage {} else { Issue.record("Expected addExercise stage") }
     }
 
-    func testAddExercise_returnsToHome() {
+    @Test func addExercise_returnsToHome() {
         let m = makeModel()
         m.start()
         m.addExercise(named: "Bench Press")
-        XCTAssertEqual(m.pendingExercises, ["Bench Press"])
-        XCTAssertEqual(m.stage, .home)
+        #expect(m.pendingExercises == ["Bench Press"])
+        #expect(m.stage == .home)
     }
 
-    func testNewBodyweightExerciseDefaultsToBodyweightInsteadOfBarbellFallback() {
+    @Test func newBodyweightExerciseDefaultsToBodyweightInsteadOfBarbellFallback() {
         let m = makeModel()
         m.start(title: "Bodyweight", plannedExerciseNames: ["Push-Up"], createSession: true)
-        guard let pushUp = m.exerciseList.first?.exercise else { return XCTFail("Missing Push-Up") }
+        guard let pushUp = m.exerciseList.first?.exercise else {
+            Issue.record("Missing Push-Up")
+            return
+        }
 
         m.startLogSet(for: pushUp)
 
-        XCTAssertEqual(m.currentWeight, 0)
+        #expect(m.currentWeight == 0)
     }
 
-    func testMountainClimbersShowBWAndNeverLogAnExternalLoad() throws {
+    @Test func mountainClimbersShowBWAndNeverLogAnExternalLoad() throws {
         let model = makeModel()
         model.start(title: "Bodyweight", plannedExerciseNames: ["Mountain Climbers"], createSession: true)
-        let exercise = try XCTUnwrap(model.exerciseList.first?.exercise)
+        let exercise = try #require(model.exerciseList.first?.exercise)
         model.startLogSet(for: exercise)
-        let card = try XCTUnwrap(model.setCardState)
-        XCTAssertTrue(card.isNonWeighted)
-        XCTAssertEqual(card.weightText, "BW")
+        let card = try #require(model.setCardState)
+        #expect(card.isNonWeighted)
+        #expect(card.weightText == "BW")
         // Even stale imported/planned weights cannot leak into the saved set.
         model.currentWeight = 20
-        let set = try XCTUnwrap(model.logSet())
-        XCTAssertEqual(set.weight, 0)
-        XCTAssertEqual(set.usesBodyweight, true)
+        let set = try #require(model.logSet())
+        #expect(set.weight == 0)
+        #expect(set.usesBodyweight == true)
     }
 
-    func testLoggedSetContextIsFrozenBeforeRestAdvancesToNextExercise() {
+    @Test func loggedSetContextIsFrozenBeforeRestAdvancesToNextExercise() {
         let m = makeModel()
         m.start(title: "Test", plannedExerciseNames: ["Bench Press", "Squat"], createSession: true)
         guard let bench = m.exerciseList.first(where: { $0.exercise.name == "Bench Press" })?.exercise else {
-            return XCTFail("Missing bench")
+            Issue.record("Missing bench")
+            return
         }
         m.startLogSet(for: bench)
         m.currentWeight = 80
         m.currentReps = 5
-        guard let logged = m.logSet() else { return XCTFail("Set did not log") }
+        guard let logged = m.logSet() else {
+            Issue.record("Set did not log")
+            return
+        }
 
-        XCTAssertEqual(m.lastLoggedSetContext,
+        #expect(m.lastLoggedSetContext ==
                        WatchLoggedSetContext(exerciseName: "Bench Press",
                                              weightKg: logged.effectiveLoadKg,
                                              reps: logged.reps))
@@ -116,86 +127,86 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
     private struct SaveBoom: Error {}
 
-    func testAddExerciseResult_addsOnceToActiveSessionAndPersists() {
+    @Test func addExerciseResult_addsOnceToActiveSessionAndPersists() {
         let m = makeModel()
         m.start(createSession: true)
         m.goToAddExercise()
-        XCTAssertEqual(m.addExercise(named: "Bench Press"), .added(name: "Bench Press"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
-        XCTAssertEqual(m.stage, .home)
-        XCTAssertEqual(m.lastAddedExerciseName, "Bench Press")
-        XCTAssertFalse(context.hasChanges)
+        #expect(m.addExercise(named: "Bench Press") == .added(name: "Bench Press"))
+        #expect(m.session?.plannedExerciseNames == ["Bench Press"])
+        #expect(m.stage == .home)
+        #expect(m.lastAddedExerciseName == "Bench Press")
+        #expect(!context.hasChanges)
     }
 
-    func testAddExerciseResult_duplicateAndCaseVariantAreRejected() {
+    @Test func addExerciseResult_duplicateAndCaseVariantAreRejected() {
         let m = makeModel()
         m.start(createSession: true)
         m.addExercise(named: "Bench Press")
         m.goToAddExercise()
-        XCTAssertEqual(m.addExercise(named: "Bench Press"), .alreadyPresent(name: "Bench Press"))
-        XCTAssertEqual(m.addExercise(named: "bench press"), .alreadyPresent(name: "Bench Press"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
-        XCTAssertEqual(m.stage, .addExercise)
+        #expect(m.addExercise(named: "Bench Press") == .alreadyPresent(name: "Bench Press"))
+        #expect(m.addExercise(named: "bench press") == .alreadyPresent(name: "Bench Press"))
+        #expect(m.session?.plannedExerciseNames == ["Bench Press"])
+        #expect(m.stage == .addExercise)
     }
 
-    func testAddExerciseResult_unavailableLeavesWorkoutUnchanged() {
+    @Test func addExerciseResult_unavailableLeavesWorkoutUnchanged() {
         let m = makeModel()
         m.start(createSession: true)
         m.goToAddExercise()
-        XCTAssertEqual(m.addExercise(named: "   "), .unavailable(name: ""))
-        XCTAssertEqual(m.addExercise(id: UUID(), named: "Gone Lift"), .unavailable(name: "Gone Lift"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, [])
-        XCTAssertEqual(m.stage, .addExercise)
-        XCTAssertNil(m.lastAddedExerciseName)
+        #expect(m.addExercise(named: "   ") == .unavailable(name: ""))
+        #expect(m.addExercise(id: UUID(), named: "Gone Lift") == .unavailable(name: "Gone Lift"))
+        #expect(m.session?.plannedExerciseNames == [])
+        #expect(m.stage == .addExercise)
+        #expect(m.lastAddedExerciseName == nil)
     }
 
-    func testAddExerciseResult_byIdAddsCatalogExerciseWithoutCreatingOne() throws {
+    @Test func addExerciseResult_byIdAddsCatalogExerciseWithoutCreatingOne() throws {
         let bench = simpleExercise(named: "Bench Press")
         let before = try context.fetchCount(FetchDescriptor<Exercise>())
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertEqual(m.addExercise(id: bench.id, named: "Bench Press"), .added(name: "Bench Press"))
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Exercise>()), before)
+        #expect(m.addExercise(id: bench.id, named: "Bench Press") == .added(name: "Bench Press"))
+        #expect(try context.fetchCount(FetchDescriptor<Exercise>()) == before)
     }
 
-    func testAddSuggestedExercise_attachesPrescriptionAndAddsOnce() {
+    @Test func addSuggestedExercise_attachesPrescriptionAndAddsOnce() {
         let bench = simpleExercise(named: "Bench Press")
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertEqual(m.addSuggestedExercise(id: bench.id, name: "Bench Press", sets: 3, repRange: 8...12),
+        #expect(m.addSuggestedExercise(id: bench.id, name: "Bench Press", sets: 3, repRange: 8...12) ==
                        .added(name: "Bench Press"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
+        #expect(m.session?.plannedExerciseNames == ["Bench Press"])
         let rx = m.session?.plannedPrescriptions.first
-        XCTAssertEqual(m.session?.plannedPrescriptions.count, 1)
-        XCTAssertEqual(rx?.exerciseName, "Bench Press")
-        XCTAssertEqual(rx?.sets.count, 3)
-        XCTAssertEqual(rx?.sets.first?.targetReps, 8)
-        XCTAssertEqual(m.stage, .home)
+        #expect(m.session?.plannedPrescriptions.count == 1)
+        #expect(rx?.exerciseName == "Bench Press")
+        #expect(rx?.sets.count == 3)
+        #expect(rx?.sets.first?.targetReps == 8)
+        #expect(m.stage == .home)
     }
 
-    func testAddSuggestedExercise_unavailableNeverCreatesByName() throws {
+    @Test func addSuggestedExercise_unavailableNeverCreatesByName() throws {
         let before = try context.fetchCount(FetchDescriptor<Exercise>())
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertEqual(m.addSuggestedExercise(id: UUID(), name: "Ghost Lift", sets: 3, repRange: 8...12),
+        #expect(m.addSuggestedExercise(id: UUID(), name: "Ghost Lift", sets: 3, repRange: 8...12) ==
                        .unavailable(name: "Ghost Lift"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, [])
-        XCTAssertEqual(m.session?.plannedPrescriptions.count, 0)
-        XCTAssertEqual(try context.fetchCount(FetchDescriptor<Exercise>()), before)
+        #expect(m.session?.plannedExerciseNames == [])
+        #expect(m.session?.plannedPrescriptions.count == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Exercise>()) == before)
     }
 
-    func testAddSuggestedExercise_saveFailureRestoresPrescriptions() {
+    @Test func addSuggestedExercise_saveFailureRestoresPrescriptions() {
         let bench = simpleExercise(named: "Bench Press")
         let m = makeModel()
         m.start(createSession: true)
         m.saveHandler = { _ in throw SaveBoom() }
-        XCTAssertEqual(m.addSuggestedExercise(id: bench.id, name: "Bench Press", sets: 3, repRange: 8...12),
+        #expect(m.addSuggestedExercise(id: bench.id, name: "Bench Press", sets: 3, repRange: 8...12) ==
                        .saveFailed(name: "Bench Press"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, [])
-        XCTAssertEqual(m.session?.plannedPrescriptions.count, 0)
+        #expect(m.session?.plannedExerciseNames == [])
+        #expect(m.session?.plannedPrescriptions.count == 0)
     }
 
-    func testSuggestedCard_resolvesByNameAndFormatsPrescription() {
+    @Test func suggestedCard_resolvesByNameAndFormatsPrescription() {
         let entry = ExerciseCatalogEntry(id: UUID(), name: "Bench Press",
                                          summaryMuscleGroups: [.chest])
         let catalog = ExerciseCatalogSnapshot(entries: [entry], recent: [])
@@ -203,139 +214,139 @@ final class WatchStrengthFlowModelTests: XCTestCase {
                                            plannedSets: 3, repRange: 8...12, contributions: [], selectionScore: 1)
         let miss = SuggestedWorkoutExercise(candidateID: "y", name: "Ghost", mechanics: .compound,
                                             plannedSets: 2, repRange: 5...5, contributions: [], selectionScore: 1)
-        XCTAssertEqual(WatchSuggestedExerciseCard.resolve(hit, in: catalog)?.id, entry.id)
-        XCTAssertNil(WatchSuggestedExerciseCard.resolve(miss, in: catalog))
-        XCTAssertEqual(WatchSuggestedExerciseCard.prescriptionText(hit), "3 sets · 8–12 reps")
-        XCTAssertEqual(WatchSuggestedExerciseCard.prescriptionText(miss), "2 sets · 5 reps")
+        #expect(WatchSuggestedExerciseCard.resolve(hit, in: catalog)?.id == entry.id)
+        #expect(WatchSuggestedExerciseCard.resolve(miss, in: catalog) == nil)
+        #expect(WatchSuggestedExerciseCard.prescriptionText(hit) == "3 sets · 8–12 reps")
+        #expect(WatchSuggestedExerciseCard.prescriptionText(miss) == "2 sets · 5 reps")
     }
 
-    func testAddExerciseResult_saveFailureRestoresAndStaysInAddExercise() {
+    @Test func addExerciseResult_saveFailureRestoresAndStaysInAddExercise() {
         let m = makeModel()
         m.start(createSession: true)
         m.goToAddExercise()
         m.saveHandler = { _ in throw SaveBoom() }
-        XCTAssertEqual(m.addExercise(named: "Bench Press"), .saveFailed(name: "Bench Press"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, [])
-        XCTAssertEqual(m.stage, .addExercise)
-        XCTAssertNil(m.lastAddedExerciseName)
+        #expect(m.addExercise(named: "Bench Press") == .saveFailed(name: "Bench Press"))
+        #expect(m.session?.plannedExerciseNames == [])
+        #expect(m.stage == .addExercise)
+        #expect(m.lastAddedExerciseName == nil)
 
         let pending = makeModel()
         pending.start()
         pending.saveHandler = { _ in throw SaveBoom() }
-        XCTAssertEqual(pending.addExercise(named: "Squat"), .saveFailed(name: "Squat"))
-        XCTAssertTrue(pending.pendingExercises.isEmpty)
+        #expect(pending.addExercise(named: "Squat") == .saveFailed(name: "Squat"))
+        #expect(pending.pendingExercises.isEmpty)
     }
 
-    func testCreateAndAddExerciseFollowsSameContract() {
+    @Test func createAndAddExerciseFollowsSameContract() {
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertEqual(m.createAndAddExercise(named: "Cable Twist", muscleGroups: [.abdominals]),
+        #expect(m.createAndAddExercise(named: "Cable Twist", muscleGroups: [.abdominals]) ==
                        .added(name: "Cable Twist"))
-        XCTAssertEqual(m.createAndAddExercise(named: "cable twist", muscleGroups: [.abdominals]),
+        #expect(m.createAndAddExercise(named: "cable twist", muscleGroups: [.abdominals]) ==
                        .alreadyPresent(name: "Cable Twist"))
-        XCTAssertEqual(m.createAndAddExercise(named: "", muscleGroups: [.abdominals]), .unavailable(name: ""))
+        #expect(m.createAndAddExercise(named: "", muscleGroups: [.abdominals]) == .unavailable(name: ""))
         m.saveHandler = { _ in throw SaveBoom() }
-        XCTAssertEqual(m.createAndAddExercise(named: "Other Twist", muscleGroups: [.abdominals]),
+        #expect(m.createAndAddExercise(named: "Other Twist", muscleGroups: [.abdominals]) ==
                        .saveFailed(name: "Other Twist"))
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Cable Twist"])
+        #expect(m.session?.plannedExerciseNames == ["Cable Twist"])
     }
 
-    func testCreateAndAddCustomExercisePersistsPrimaryAndSecondaryMuscles() {
+    @Test func createAndAddCustomExercisePersistsPrimaryAndSecondaryMuscles() {
         let model = makeModel()
         model.start(createSession: true)
-        XCTAssertEqual(
+        #expect(
             model.createAndAddExercise(
                 named: "Ring Push-up",
-                attribution: .init(primary: [.chest, .triceps], secondary: [.shoulders, .abdominals])),
+                attribution: .init(primary: [.chest, .triceps], secondary: [.shoulders, .abdominals])) ==
             .added(name: "Ring Push-up"))
         let exercise = try! WorkoutRepository.findOrCreateExercise(named: "Ring Push-up", in: context)
-        XCTAssertEqual(exercise.primaryMuscles, ["chest", "triceps"])
-        XCTAssertEqual(exercise.secondaryMuscles, ["shoulders", "abdominals"])
+        #expect(exercise.primaryMuscles == ["chest", "triceps"])
+        #expect(exercise.secondaryMuscles == ["shoulders", "abdominals"])
     }
 
-    func testCreateAndAddCustomExerciseRejectsSecondaryOnly() {
+    @Test func createAndAddCustomExerciseRejectsSecondaryOnly() {
         let model = makeModel()
         model.start(createSession: true)
-        XCTAssertEqual(
-            model.createAndAddExercise(named: "Ghost", attribution: .init(secondary: [.shoulders])),
+        #expect(
+            model.createAndAddExercise(named: "Ghost", attribution: .init(secondary: [.shoulders])) ==
             .unavailable(name: "Ghost"))
     }
 
-    func testAddPresenter_outcomesNeedNoClockAndSearchGenerationRejectsStale() {
+    @Test func addPresenter_outcomesNeedNoClockAndSearchGenerationRejectsStale() {
         let added = WatchExerciseAddPresenter.outcome(for: .added(name: "Squat"))
-        XCTAssertEqual(added.message, "Added Squat")
-        XCTAssertTrue(added.returnsToPlan)
+        #expect(added.message == "Added Squat")
+        #expect(added.returnsToPlan)
         for result in [WatchExerciseAddResult.alreadyPresent(name: "A"), .unavailable(name: "A"), .saveFailed(name: "A")] {
             let o = WatchExerciseAddPresenter.outcome(for: result)
-            XCTAssertFalse(o.returnsToPlan)
-            XCTAssertEqual(o.feedback, .failure)
+            #expect(!o.returnsToPlan)
+            #expect(o.feedback == .failure)
         }
-        XCTAssertTrue(WatchExerciseAddPresenter.acceptsSearchResults(
+        #expect(WatchExerciseAddPresenter.acceptsSearchResults(
             generation: 3, current: 3, searchedQuery: "ben", currentQuery: " ben "))
-        XCTAssertFalse(WatchExerciseAddPresenter.acceptsSearchResults(
+        #expect(!WatchExerciseAddPresenter.acceptsSearchResults(
             generation: 2, current: 3, searchedQuery: "ben", currentQuery: "ben"))
-        XCTAssertFalse(WatchExerciseAddPresenter.acceptsSearchResults(
+        #expect(!WatchExerciseAddPresenter.acceptsSearchResults(
             generation: 3, current: 3, searchedQuery: "ben", currentQuery: "bench"))
     }
 
-    func testAddCustomExerciseCreatesFacetedExerciseAndAddsItToWorkout() {
+    @Test func addCustomExerciseCreatesFacetedExerciseAndAddsItToWorkout() {
         let m = makeModel()
         m.start(createSession: true)
 
         let exercise = m.addCustomExercise(named: "  Standing Cable Twist  ",
                                            muscleGroups: [.abdominals, .shoulders])
 
-        XCTAssertEqual(exercise?.name, "Standing Cable Twist")
-        XCTAssertEqual(exercise?.isCustom, true)
-        XCTAssertEqual(Set(exercise?.primaryMuscles ?? []), ["shoulders", "abdominals"])
-        XCTAssertEqual(exercise?.categoryValue, .other)
-        XCTAssertEqual(m.stage, .home)
-        XCTAssertTrue(m.exerciseList.contains { $0.exercise.name == "Standing Cable Twist" })
+        #expect(exercise?.name == "Standing Cable Twist")
+        #expect(exercise?.isCustom == true)
+        #expect(Set(exercise?.primaryMuscles ?? []) == ["shoulders", "abdominals"])
+        #expect(exercise?.categoryValue == .other)
+        #expect(m.stage == .home)
+        #expect(m.exerciseList.contains { $0.exercise.name == "Standing Cable Twist" })
     }
 
-    func testAddCustomExerciseRequiresNameAndMuscleGroup() {
+    @Test func addCustomExerciseRequiresNameAndMuscleGroup() {
         let m = makeModel()
         m.start(createSession: true)
-        XCTAssertNil(m.addCustomExercise(named: "", muscleGroups: [.lats]))
-        XCTAssertNil(m.addCustomExercise(named: "Mystery Lift", muscleGroups: []))
+        #expect(m.addCustomExercise(named: "", muscleGroups: [.lats]) == nil)
+        #expect(m.addCustomExercise(named: "Mystery Lift", muscleGroups: []) == nil)
     }
 
-    func testAddExercise_showsPendingExerciseOnHome() {
+    @Test func addExercise_showsPendingExerciseOnHome() {
         let m = makeModel()
         m.start()
         m.addExercise(named: "Bench Press")
-        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press"])
-        XCTAssertEqual(m.exerciseList.first?.setCount, 0)
+        #expect(m.exerciseList.map { $0.exercise.name } == ["Bench Press"])
+        #expect(m.exerciseList.first?.setCount == 0)
     }
 
-    func testAddExerciseAliasStoresCanonicalBuiltInName() {
+    @Test func addExerciseAliasStoresCanonicalBuiltInName() {
         let m = makeModel()
         m.start()
         m.addExercise(named: "Tricep Pushdown")
-        XCTAssertEqual(m.pendingExercises, ["Triceps Pushdown"])
-        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Triceps Pushdown"])
-        XCTAssertEqual(m.exerciseList.first?.exercise.primaryMuscles, ["triceps"])
+        #expect(m.pendingExercises == ["Triceps Pushdown"])
+        #expect(m.exerciseList.map { $0.exercise.name } == ["Triceps Pushdown"])
+        #expect(m.exerciseList.first?.exercise.primaryMuscles == ["triceps"])
     }
 
-    func testPlannedAliasLogSetPayloadUsesCanonicalBuiltInName() {
+    @Test func plannedAliasLogSetPayloadUsesCanonicalBuiltInName() {
         let m = makeModel()
         m.start(
             title: "Shoulders",
             plannedExerciseNames: ["Lateral Raise"],
             createSession: true
         )
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Dumbbell Lateral Raise"])
-        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Dumbbell Lateral Raise"])
+        #expect(m.session?.plannedExerciseNames == ["Dumbbell Lateral Raise"])
+        #expect(m.exerciseList.map { $0.exercise.name } == ["Dumbbell Lateral Raise"])
 
         let exercise = m.exerciseList[0].exercise
         m.startLogSet(for: exercise)
         _ = m.logSet()
 
-        XCTAssertEqual(m.lastSyncPayload?["exercise"] as? String, "Dumbbell Lateral Raise")
-        XCTAssertEqual(m.lastSyncPayload?["planned_exercises"] as? [String], ["Dumbbell Lateral Raise"])
+        #expect(m.lastSyncPayload?["exercise"] as? String == "Dumbbell Lateral Raise")
+        #expect(m.lastSyncPayload?["planned_exercises"] as? [String] == ["Dumbbell Lateral Raise"])
     }
 
-    func testLogSetFromAddedExercise_createsSessionAndKeepsExerciseVisible() {
+    @Test func logSetFromAddedExercise_createsSessionAndKeepsExerciseVisible() {
         let m = makeModel()
         m.start()
         m.addExercise(named: "Bench Press")
@@ -343,13 +354,13 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.startLogSet(for: ex)
         _ = m.logSet()
         m.finishRest()
-        XCTAssertNotNil(m.session)
-        XCTAssertEqual(m.pendingExercises, [])
-        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press"])
-        XCTAssertEqual(m.exerciseList.first?.setCount, 1)
+        #expect(m.session != nil)
+        #expect(m.pendingExercises == [])
+        #expect(m.exerciseList.map { $0.exercise.name } == ["Bench Press"])
+        #expect(m.exerciseList.first?.setCount == 1)
     }
 
-    func testQueuedExercisesSurviveFirstLoggedSet() {
+    @Test func queuedExercisesSurviveFirstLoggedSet() {
         let m = makeModel()
         m.start()
         m.addExercise(named: "Bench Press")
@@ -358,48 +369,49 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.startLogSet(for: ex)
         _ = m.logSet()
         m.finishRest()
-        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press", "Squat"])
-        XCTAssertEqual(m.exerciseList.map { $0.setCount }, [1, 0])
+        #expect(m.exerciseList.map { $0.exercise.name } == ["Bench Press", "Squat"])
+        #expect(m.exerciseList.map { $0.setCount } == [1, 0])
     }
 
-    func testFinishAfterOnlyAddingExercise_discardsEmptySession() {
+    @Test func finishAfterOnlyAddingExercise_discardsEmptySession() {
         let m = makeModel()
         m.start()
         m.addExercise(named: "Bench Press")
         m.finish()
-        XCTAssertEqual(m.stage, .discarded)
-        XCTAssertNil(m.session)
+        #expect(m.stage == .discarded)
+        #expect(m.session == nil)
     }
 
-    func testLogSet_createsSessionLazily() {
+    @Test func logSet_createsSessionLazily() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         _ = m.logSet()
-        XCTAssertNotNil(m.session)
-        XCTAssertEqual(m.stage, .rest)
+        #expect(m.session != nil)
+        #expect(m.stage == .rest)
     }
 
-    func testLogSetGoesToRestAndNextSetReturnsToSameExercise() {
+    @Test func logSetGoesToRestAndNextSetReturnsToSameExercise() {
         let m = makeModel()
         m.start(repLadder: [12, 10, 8], createSession: true)
         let ex = simpleExercise(named: "Rest Return Press")
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 12)
+        #expect(Int(m.currentReps) == 12)
 
         _ = m.logSet()
-        XCTAssertEqual(m.stage, .rest)
+        #expect(m.stage == .rest)
 
         m.finishRest()
         guard case .keypad(let returnedExercise) = m.stage else {
-            return XCTFail("Expected Next Set to return to the same exercise keypad")
+            Issue.record("Expected Next Set to return to the same exercise keypad")
+            return
         }
-        XCTAssertEqual(returnedExercise.id, ex.id)
-        XCTAssertEqual(Int(m.currentReps), 10)
+        #expect(returnedExercise.id == ex.id)
+        #expect(Int(m.currentReps) == 10)
     }
 
-    func testSecondAndThirdSetDefaultToPreviousLoadAndReps() {
+    @Test func secondAndThirdSetDefaultToPreviousLoadAndReps() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "Default Carry Press")
@@ -408,16 +420,16 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.currentReps = 8
         _ = m.logSet()
         m.finishRest()
-        XCTAssertEqual(m.currentWeight, 62.5)
-        XCTAssertEqual(Int(m.currentReps), 8)
+        #expect(m.currentWeight == 62.5)
+        #expect(Int(m.currentReps) == 8)
         m.currentWeight = 65
         _ = m.logSet()
         m.finishRest()
-        XCTAssertEqual(m.currentWeight, 65)
-        XCTAssertEqual(Int(m.currentReps), 8)
+        #expect(m.currentWeight == 65)
+        #expect(Int(m.currentReps) == 8)
     }
 
-    func testFirstSetDefaultsToPreviousWorkoutLoad() throws {
+    @Test func firstSetDefaultsToPreviousWorkoutLoad() throws {
         let first = makeModel()
         first.start()
         let ex = simpleExercise(named: "History Carry Press")
@@ -430,11 +442,11 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let second = makeModel()
         second.start()
         second.startLogSet(for: ex)
-        XCTAssertEqual(second.currentWeight, 80)
-        XCTAssertEqual(Int(second.currentReps), 6)
+        #expect(second.currentWeight == 80)
+        #expect(Int(second.currentReps) == 6)
     }
 
-    func testStartCreateSessionPrefillsPlannedExercisesAndLadder() {
+    @Test func startCreateSessionPrefillsPlannedExercisesAndLadder() {
         let m = makeModel()
         m.start(title: "Push Day",
                 plannedExerciseNames: ["Bench Press", "Back Squat"],
@@ -442,15 +454,15 @@ final class WatchStrengthFlowModelTests: XCTestCase {
                 planKey: "preset-push",
                 createSession: true)
 
-        XCTAssertEqual(m.session?.title, "Push Day")
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press", "Back Squat"])
-        XCTAssertEqual(m.session?.plannedRepLadder, [12, 10, 8])
-        XCTAssertEqual(m.session?.planKey, "preset-push")
-        XCTAssertEqual(m.exerciseList.map { $0.exercise.name }, ["Bench Press", "Back Squat"])
-        XCTAssertEqual(m.exerciseList.map { $0.setCount }, [0, 0])
+        #expect(m.session?.title == "Push Day")
+        #expect(m.session?.plannedExerciseNames == ["Bench Press", "Back Squat"])
+        #expect(m.session?.plannedRepLadder == [12, 10, 8])
+        #expect(m.session?.planKey == "preset-push")
+        #expect(m.exerciseList.map { $0.exercise.name } == ["Bench Press", "Back Squat"])
+        #expect(m.exerciseList.map { $0.setCount } == [0, 0])
     }
 
-    func testStartWithVersionedPlanPayloadKeepsRichPrescriptionAndTransportData() {
+    @Test func startWithVersionedPlanPayloadKeepsRichPrescriptionAndTransportData() {
         let sessionID = UUID()
         let payload = WatchPlanPayload(
             planSessionID: sessionID,
@@ -466,24 +478,24 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         m.start(planPayload: payload, createSession: true)
 
-        XCTAssertEqual(m.session?.planSessionID, sessionID)
-        XCTAssertEqual(m.session?.plannedPrescriptions.first?.exerciseKey, "bench_press")
-        XCTAssertEqual(m.session?.plannedPrescriptions.first?.sets.first?.restSeconds, 150)
-        XCTAssertEqual(m.session?.plannedExerciseNames, ["Bench Press"])
+        #expect(m.session?.planSessionID == sessionID)
+        #expect(m.session?.plannedPrescriptions.first?.exerciseKey == "bench_press")
+        #expect(m.session?.plannedPrescriptions.first?.sets.first?.restSeconds == 150)
+        #expect(m.session?.plannedExerciseNames == ["Bench Press"])
     }
 
-    func testLogSet_ownerSet_countsVolume() {
+    @Test func logSet_ownerSet_countsVolume() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.currentWeight = 100; m.currentReps = 5
         m.startLogSet(for: ex)
         _ = m.logSet()
-        XCTAssertEqual(m.setCount, 1)
-        XCTAssertGreaterThan(m.volume, 0)
+        #expect(m.setCount == 1)
+        #expect(m.volume > 0)
     }
 
-    func testWarmupSet_excludedFromVolume() {
+    @Test func warmupSet_excludedFromVolume() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
@@ -491,38 +503,38 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.toggleWarmup()
         m.currentWeight = 60; m.currentReps = 10
         _ = m.logSet()
-        XCTAssertEqual(m.setCount, 0)
-        XCTAssertEqual(m.volume, 0, accuracy: 0.1)
+        #expect(m.setCount == 0)
+        #expect(abs(m.volume - 0) <= 0.1)
     }
 
-    func testLogSetPayload_includesWarmupFlag() {
+    @Test func logSetPayload_includesWarmupFlag() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         m.toggleWarmup()
         _ = m.logSet()
-        XCTAssertEqual(m.lastSyncPayload?["is_warmup"] as? Bool, true)
+        #expect(m.lastSyncPayload?["is_warmup"] as? Bool == true)
     }
 
-    func testFinish_withSets_transitionsToCooldown() {
+    @Test func finish_withSets_transitionsToCooldown() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         _ = m.logSet()
         m.finish()
-        if case .cooldown = m.stage {} else { XCTFail("Expected cooldown stage") }
+        if case .cooldown = m.stage {} else { Issue.record("Expected cooldown stage") }
     }
 
-    func testFinish_emptySession_autoDiscards() {
+    @Test func finish_emptySession_autoDiscards() {
         let m = makeModel()
         m.start()
         m.finish()
-        XCTAssertEqual(m.stage, .discarded)
+        #expect(m.stage == .discarded)
     }
 
-    func testSkipCooldown_goesToSummary() {
+    @Test func skipCooldown_goesToSummary() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
@@ -530,10 +542,10 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         _ = m.logSet()
         m.finish()
         m.skipCooldown()
-        XCTAssertEqual(m.stage, .summary)
+        #expect(m.stage == .summary)
     }
 
-    func testCompleteCooldown_goesToSummary() {
+    @Test func completeCooldown_goesToSummary() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
@@ -541,42 +553,42 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         _ = m.logSet()
         m.finish()
         m.completeCooldown()
-        XCTAssertEqual(m.stage, .summary)
+        #expect(m.stage == .summary)
     }
 
-    func testCancel_beforeCreate_noDiscardPayload() {
+    @Test func cancel_beforeCreate_noDiscardPayload() {
         let m = makeModel()
         m.start()
         m.cancel()
-        XCTAssertEqual(m.stage, .discarded)
-        XCTAssertNil(m.discardPayload)
+        #expect(m.stage == .discarded)
+        #expect(m.discardPayload == nil)
     }
 
-    func testCancel_afterSync_emitsDiscardPayload() {
+    @Test func cancel_afterSync_emitsDiscardPayload() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         _ = m.logSet()
         m.cancel()
-        XCTAssertEqual(m.stage, .discarded)
-        XCTAssertNotNil(m.discardPayload)
-        XCTAssertEqual(m.discardPayload?["action"] as? String, "discard_session")
+        #expect(m.stage == .discarded)
+        #expect(m.discardPayload != nil)
+        #expect(m.discardPayload?["action"] as? String == "discard_session")
     }
 
     // MARK: - Partners
 
-    func testAddPartner() {
+    @Test func addPartner() {
         let m = makeModel()
         m.start()
         m.addPartner(named: "Jo")
-        XCTAssertEqual(m.partners.count, 1)
-        XCTAssertEqual(m.partners.first?.name, "Jo")
-        XCTAssertEqual(m.performerOptions.map(\.name), ["Me", "Jo"])
-        XCTAssertEqual(m.performerLabel, "Me")
+        #expect(m.partners.count == 1)
+        #expect(m.partners.first?.name == "Jo")
+        #expect(m.performerOptions.map(\.name) == ["Me", "Jo"])
+        #expect(m.performerLabel == "Me")
     }
 
-    func testPartnerRotation_afterLogSet() {
+    @Test func partnerRotation_afterLogSet() {
         let m = makeModel()
         m.start()
         m.addPartner(named: "Jo")
@@ -584,16 +596,16 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         _ = m.logSet()
-        XCTAssertEqual(m.currentPerformerIndex, 1)
+        #expect(m.currentPerformerIndex == 1)
         m.startLogSet(for: ex)
         _ = m.logSet()
-        XCTAssertEqual(m.currentPerformerIndex, 2)
+        #expect(m.currentPerformerIndex == 2)
         m.startLogSet(for: ex)
         _ = m.logSet()
-        XCTAssertEqual(m.currentPerformerIndex, 0)
+        #expect(m.currentPerformerIndex == 0)
     }
 
-    func testPartnerRotationShowsOnlyTheActiveLiftersSetsAndSetNumber() {
+    @Test func partnerRotationShowsOnlyTheActiveLiftersSetsAndSetNumber() {
         let m = makeModel()
         m.start(initialPartnerNames: ["Jo", "Sam"], createSession: true)
         let ex = simpleExercise(named: "Partner History Press")
@@ -602,33 +614,33 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.currentReps = 8
         _ = m.logSet() // Me -> Jo
         m.finishRest()
-        XCTAssertEqual(m.performerLabel, "Jo")
-        XCTAssertEqual(m.currentWorkoutHistoryLines, [])
-        XCTAssertEqual(m.currentWorkingSetIndex, 1)
+        #expect(m.performerLabel == "Jo")
+        #expect(m.currentWorkoutHistoryLines == [])
+        #expect(m.currentWorkingSetIndex == 1)
 
         m.currentReps = 10
         _ = m.logSet() // Jo -> Sam
         m.finishRest()
-        XCTAssertEqual(m.performerLabel, "Sam")
-        XCTAssertEqual(m.currentWorkoutHistoryLines, [])
-        XCTAssertEqual(m.currentWorkingSetIndex, 1)
+        #expect(m.performerLabel == "Sam")
+        #expect(m.currentWorkoutHistoryLines == [])
+        #expect(m.currentWorkingSetIndex == 1)
 
         m.currentReps = 12
         _ = m.logSet() // Sam -> Me
         m.finishRest()
-        XCTAssertEqual(m.performerLabel, "Me")
-        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [8])
-        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+        #expect(m.performerLabel == "Me")
+        #expect(m.currentWorkoutHistoryLines.map(\.reps) == [8])
+        #expect(m.currentWorkingSetIndex == 2)
 
         m.selectPerformer(at: 1)
-        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [10])
-        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+        #expect(m.currentWorkoutHistoryLines.map(\.reps) == [10])
+        #expect(m.currentWorkingSetIndex == 2)
         m.selectPerformer(at: 2)
-        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [12])
-        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+        #expect(m.currentWorkoutHistoryLines.map(\.reps) == [12])
+        #expect(m.currentWorkingSetIndex == 2)
     }
 
-    func testPriorWorkoutHistoryAlsoFollowsSelectedPartner() throws {
+    @Test func priorWorkoutHistoryAlsoFollowsSelectedPartner() throws {
         let jo = try WorkoutRepository.findOrCreatePerson(named: "Jo", in: context)
         let ex = simpleExercise(named: "Prior Partner Press")
         let prior = try WorkoutRepository.createSession(title: "Prior", in: context)
@@ -639,35 +651,35 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let m = makeModel()
         m.start(initialPartnerNames: ["Jo"], createSession: true)
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.reps), [8])
+        #expect(m.previousWorkoutHistoryLines.map(\.reps) == [8])
 
         m.selectPerformer(at: 1)
-        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.reps), [12])
+        #expect(m.previousWorkoutHistoryLines.map(\.reps) == [12])
     }
 
-    func testSelectPerformer() {
+    @Test func selectPerformer() {
         let m = makeModel()
         m.start()
         m.addPartner(named: "Jo")
         m.addPartner(named: "Sam")
         m.selectPerformer(at: 2)
-        XCTAssertEqual(m.currentPerformerIndex, 2)
-        XCTAssertEqual(m.performerLabel, "Sam")
+        #expect(m.currentPerformerIndex == 2)
+        #expect(m.performerLabel == "Sam")
         m.selectPerformer(at: 0)
-        XCTAssertEqual(m.performerLabel, "Me")
+        #expect(m.performerLabel == "Me")
     }
 
-    func testRemovePartner() {
+    @Test func removePartner() {
         let m = makeModel()
         m.start()
         m.addPartner(named: "Jo")
         m.addPartner(named: "Sam")
         m.removePartner(at: 0)
-        XCTAssertEqual(m.partners.count, 1)
-        XCTAssertEqual(m.partners.first?.name, "Sam")
+        #expect(m.partners.count == 1)
+        #expect(m.partners.first?.name == "Sam")
     }
 
-    func testPartnerSet_excludedFromVolume() {
+    @Test func partnerSet_excludedFromVolume() {
         let m = makeModel()
         m.start()
         m.addPartner(named: "Jo")
@@ -677,12 +689,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.startLogSet(for: ex); _ = m.logSet()
         m.startLogSet(for: ex); _ = m.logSet()
         m.startLogSet(for: ex); _ = m.logSet()
-        XCTAssertGreaterThan(m.setCount, 0)
+        #expect(m.setCount > 0)
     }
 
     // MARK: - Sync payloads
 
-    func testLogSetPayload_includesPerformedBy() {
+    @Test func logSetPayload_includesPerformedBy() {
         let m = makeModel()
         m.start()
         m.addPartner(named: "Jo")
@@ -692,20 +704,20 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.startLogSet(for: ex)
         m.selectPerformer(at: 2)
         _ = m.logSet()
-        XCTAssertEqual(m.lastPerformedByName, "Sam")
-        XCTAssertNotNil(m.lastSyncPayload?["performed_by_id"])
+        #expect(m.lastPerformedByName == "Sam")
+        #expect(m.lastSyncPayload?["performed_by_id"] != nil)
     }
 
-    func testLogSetPayload_includesSetId() {
+    @Test func logSetPayload_includesSetId() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         _ = m.logSet()
-        XCTAssertNotNil(m.lastSyncPayload?["set_id"])
+        #expect(m.lastSyncPayload?["set_id"] != nil)
     }
 
-    func testEndSessionPayload() {
+    @Test func endSessionPayload() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
@@ -714,18 +726,18 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.finish()
         m.skipCooldown()
         let payload = m.endSessionPayload()
-        XCTAssertNotNil(payload)
-        XCTAssertEqual(payload?["action"] as? String, "end_session")
+        #expect(payload != nil)
+        #expect(payload?["action"] as? String == "end_session")
     }
 
-    func testDurationText() {
+    @Test func durationText() {
         let m = makeModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         m.startLogSet(for: ex)
         _ = m.logSet()
         let text = m.durationText
-        XCTAssertFalse(text.isEmpty)
+        #expect(!text.isEmpty)
     }
 
     // MARK: - Weight defaulting & display units
@@ -736,7 +748,7 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
     /// Field regression: reopening the keypad must preserve a precise cable
     /// stack value instead of silently snapping it to a 2.5 lb boundary.
-    func testStartLogSet_pounds_preservesPreciseLastWeight() {
+    @Test func startLogSet_pounds_preservesPreciseLastWeight() {
         let m = poundsModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
@@ -745,37 +757,37 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.currentWeightDisplay, 17.7, accuracy: 0.001)
+        #expect(abs(m.currentWeightDisplay - 17.7) <= 0.001)
     }
 
     /// With no history, pounds still starts at the familiar empty-bar value.
-    func testStartLogSet_pounds_noHistoryDefaultsTo45() {
+    @Test func startLogSet_pounds_noHistoryDefaultsTo45() {
         let m = poundsModel()
         m.start()
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "Fresh", equipment: nil, in: context)
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.currentWeightDisplay, 45, accuracy: 0.001)
+        #expect(abs(m.currentWeightDisplay - 45) <= 0.001)
     }
 
     /// The display accessor round-trips through canonical kg without drift.
-    func testCurrentWeightDisplay_roundTripsPounds() {
+    @Test func currentWeightDisplay_roundTripsPounds() {
         let m = poundsModel()
         m.currentWeightDisplay = 135
-        XCTAssertEqual(m.currentWeightDisplay, 135, accuracy: 0.001)
-        XCTAssertEqual(m.currentWeight, WorkoutMath.canonical(135, from: .pounds), accuracy: 0.001)
+        #expect(abs(m.currentWeightDisplay - 135) <= 0.001)
+        #expect(abs(m.currentWeight - WorkoutMath.canonical(135, from: .pounds)) <= 0.001)
     }
 
     /// Field regression: cable-stack loads must not be locked to 2.5 lb steps.
-    func testCrownIncrement_acceptsDecimalPounds() {
+    @Test func crownIncrement_acceptsDecimalPounds() {
         let m = poundsModel()
         m.currentWeightDisplay = 100
         m.currentWeightDisplay += WeightIncrement(unit: .pounds).crownDetent
-        XCTAssertEqual(m.currentWeightDisplay, 100.1, accuracy: 0.001)
+        #expect(abs(m.currentWeightDisplay - 100.1) <= 0.001)
         m.currentWeightDisplay = 17.7
-        XCTAssertEqual(m.currentWeightText, "17.7")
+        #expect(m.currentWeightText == "17.7")
     }
 
-    func testPreviousSetHint() {
+    @Test func previousSetHint() {
         let ex = try! WorkoutRepository.findOrCreateExercise(named: "TestPress", equipment: nil, in: context)
         let prior = try! WorkoutRepository.createSession(title: "Last",
                                                          date: Date(timeIntervalSince1970: 100),
@@ -786,8 +798,8 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.start(createSession: true)
         m.startLogSet(for: ex)
         let hint = m.previousSetHint
-        XCTAssertNotNil(hint)
-        XCTAssertTrue(hint!.contains("Previous:"))
+        #expect(hint != nil)
+        #expect(hint!.contains("Previous:"))
     }
 
     /// `lastPriorWorkingSet` now beats the rep-pattern ladder guess for a
@@ -796,7 +808,7 @@ final class WatchStrengthFlowModelTests: XCTestCase {
     /// `.testExtraSetBeyondPlanReturnsToHistory`): every set defaults to the
     /// exact last working set (70 kg x 8), not the historical ladder
     /// (12, 10, 8). The warmup set is still excluded from that pick.
-    func testDefaultRepsUseLastPriorWorkingSetIgnoringWarmups() {
+    @Test func defaultRepsUseLastPriorWorkingSetIgnoringWarmups() {
         let ex = simpleExercise(named: "Ladder Press")
         let prior = try! WorkoutRepository.createSession(title: "Last",
                                                          date: Date(timeIntervalSince1970: 100),
@@ -809,15 +821,15 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let m = makeModel()
         m.start(createSession: true)
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 8)
+        #expect(Int(m.currentReps) == 8)
 
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(Int(m.currentReps), 8)
+        #expect(Int(m.currentReps) == 8)
     }
 
-    func testSetHistoryLinesShowPriorAndCurrentWorkoutSets() {
+    @Test func setHistoryLinesShowPriorAndCurrentWorkoutSets() {
         let ex = simpleExercise(named: "History Press")
         let prior = try! WorkoutRepository.createSession(title: "Last",
                                                          date: Date(timeIntervalSince1970: 100),
@@ -829,20 +841,20 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let m = makeModel()
         m.start(createSession: true)
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.label), ["W", "1", "2"])
-        XCTAssertEqual(m.previousWorkoutHistoryLines.map(\.reps), [6, 12, 10])
+        #expect(m.previousWorkoutHistoryLines.map(\.label) == ["W", "1", "2"])
+        #expect(m.previousWorkoutHistoryLines.map(\.reps) == [6, 12, 10])
 
         m.currentWeight = 70
         m.currentReps = 12
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.label), ["1"])
-        XCTAssertEqual(m.currentWorkoutHistoryLines.map(\.reps), [12])
-        XCTAssertEqual(m.currentWorkingSetIndex, 2)
+        #expect(m.currentWorkoutHistoryLines.map(\.label) == ["1"])
+        #expect(m.currentWorkoutHistoryLines.map(\.reps) == [12])
+        #expect(m.currentWorkingSetIndex == 2)
     }
 
-    func testLogSetPayloadIncludesPlannedSessionMetadata() {
+    @Test func logSetPayloadIncludesPlannedSessionMetadata() {
         let m = makeModel()
         m.start(title: "Push Day",
                 plannedExerciseNames: ["Bench Press"],
@@ -854,21 +866,21 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.startLogSet(for: ex)
         _ = m.logSet()
 
-        XCTAssertEqual(m.lastSyncPayload?["session_title"] as? String, "Push Day")
-        XCTAssertEqual(m.lastSyncPayload?["planned_exercises"] as? [String], ["Bench Press"])
-        XCTAssertEqual(m.lastSyncPayload?["planned_rep_ladder"] as? [Int], [12, 10, 8])
-        XCTAssertEqual(m.lastSyncPayload?["plan_key"] as? String, "preset-push")
+        #expect(m.lastSyncPayload?["session_title"] as? String == "Push Day")
+        #expect(m.lastSyncPayload?["planned_exercises"] as? [String] == ["Bench Press"])
+        #expect(m.lastSyncPayload?["planned_rep_ladder"] as? [Int] == [12, 10, 8])
+        #expect(m.lastSyncPayload?["plan_key"] as? String == "preset-push")
     }
 
-    func testStartCreateSessionLoadsInitialPartnersAndSessionRoster() {
+    @Test func startCreateSessionLoadsInitialPartnersAndSessionRoster() {
         let m = makeModel()
         m.start(initialPartnerNames: ["Jo", "Sam", "Jo"], createSession: true)
 
-        XCTAssertEqual(m.partners.map(\.name), ["Jo", "Sam"])
-        XCTAssertEqual(m.session?.activePartnerIDs.count, 2)
+        #expect(m.partners.map(\.name) == ["Jo", "Sam"])
+        #expect(m.session?.activePartnerIDs.count == 2)
     }
 
-    func testEffortRPELogsToSetAndPayload() {
+    @Test func effortRPELogsToSetAndPayload() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "Effort Press")
@@ -878,12 +890,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         let set = m.logSet()
 
-        XCTAssertEqual(set?.rpe, 8)
-        XCTAssertEqual(m.lastSyncPayload?["rpe"] as? Double, 8)
-        XCTAssertEqual(m.lastSyncPayload?["effort_mode"] as? String, "rpe")
+        #expect(set?.rpe == 8)
+        #expect(m.lastSyncPayload?["rpe"] as? Double == 8)
+        #expect(m.lastSyncPayload?["effort_mode"] as? String == "rpe")
     }
 
-    func testEffortRIRConvertsToStoredRPE() {
+    @Test func effortRIRConvertsToStoredRPE() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "RIR Press")
@@ -893,12 +905,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         let set = m.logSet()
 
-        XCTAssertEqual(set?.rpe, 8)
-        XCTAssertEqual(m.lastSyncPayload?["effort_mode"] as? String, "rir")
-        XCTAssertEqual(m.lastSyncPayload?["effort_value"] as? Double, 2)
+        #expect(set?.rpe == 8)
+        #expect(m.lastSyncPayload?["effort_mode"] as? String == "rir")
+        #expect(m.lastSyncPayload?["effort_value"] as? Double == 2)
     }
 
-    func testLogLastSetRestsThenAdvancesToNextExercise() {
+    @Test func logLastSetRestsThenAdvancesToNextExercise() {
         let m = makeModel()
         m.start()
         let first = simpleExercise(named: "Last Set Press")
@@ -908,12 +920,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.finishRest()
         m.startLogSet(for: first)
         _ = m.logLastSet()
-        XCTAssertEqual(m.stage, .rest)
+        #expect(m.stage == .rest)
         m.finishRest()
-        XCTAssertNotEqual(m.stage, .keypad(first))
+        #expect(m.stage != .keypad(first))
     }
 
-    func testLogLastSetWithNoNextExerciseRestsThenHome() {
+    @Test func logLastSetWithNoNextExerciseRestsThenHome() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "Last Set Press")
@@ -921,11 +933,11 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         _ = m.logLastSet()
 
-        XCTAssertEqual(m.stage, .rest)
+        #expect(m.stage == .rest)
         m.finishRest()
-        XCTAssertEqual(m.stage, .home)
-        XCTAssertEqual(m.exerciseList.first?.setCount, 1)
-        XCTAssertTrue(m.allExercisesCompletePrompt)
+        #expect(m.stage == .home)
+        #expect(m.exerciseList.first?.setCount == 1)
+        #expect(m.allExercisesCompletePrompt)
     }
 
     // MARK: - Exercise-wide partner completion (#444)
@@ -955,12 +967,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
     private func logNormal(_ m: WatchStrengthFlowModel, _ ex: Exercise) -> Int {
         m.startLogSet(for: ex)
         let who = m.currentPerformerIndex
-        XCTAssertNotNil(m.logSet())
-        XCTAssertEqual(m.stage, .rest)
+        #expect(m.logSet() != nil)
+        #expect(m.stage == .rest)
         return who
     }
 
-    func testTwoLiftersThreeSets_allSixTurnsInOrder_thenCompletes() {
+    @Test func twoLiftersThreeSets_allSixTurnsInOrder_thenCompletes() {
         let (m, exs) = plannedPartnerModel(counts: [3, 3])
         let ex = exs[0]
         var order: [Int] = []
@@ -968,111 +980,111 @@ final class WatchStrengthFlowModelTests: XCTestCase {
             if case .keypad = m.stage {} else { m.startLogSet(for: ex) }
             order.append(logNormal(m, ex))
             if order.count < 6 {
-                XCTAssertEqual(m.exercisePendingAfterRest?.id, ex.id)
-                XCTAssertEqual(m.currentPerformerIndex, order.count % 2)
+                #expect(m.exercisePendingAfterRest?.id == ex.id)
+                #expect(m.currentPerformerIndex == order.count % 2)
                 m.finishRest()
-                XCTAssertEqual(m.stage, .keypad(ex))
+                #expect(m.stage == .keypad(ex))
             }
         }
-        XCTAssertEqual(order, [0, 1, 0, 1, 0, 1])
-        XCTAssertNil(m.exercisePendingAfterRest)
+        #expect(order == [0, 1, 0, 1, 0, 1])
+        #expect(m.exercisePendingAfterRest == nil)
         m.finishRest()
-        XCTAssertEqual(m.stage, .home)
+        #expect(m.stage == .home)
     }
 
-    func testMeFinalSetDoesNotLeaveWhilePartnerOutstanding() {
+    @Test func meFinalSetDoesNotLeaveWhilePartnerOutstanding() {
         let (m, exs) = plannedPartnerModel(counts: [3, 3])
         for _ in 0..<5 { logNormal(m, exs[0]); m.finishRest() }
         // Me3 was the fifth turn.
-        XCTAssertEqual(m.currentPerformerIndex, 1)
-        XCTAssertEqual(m.stage, .keypad(exs[0]))
-        XCTAssertEqual(m.setCardState?.lifterText, "Partner 1")
+        #expect(m.currentPerformerIndex == 1)
+        #expect(m.stage == .keypad(exs[0]))
+        #expect(m.setCardState?.lifterText == "Partner 1")
     }
 
-    func testCompletedExerciseRoutesToNextPlannedExercise() {
+    @Test func completedExerciseRoutesToNextPlannedExercise() {
         let (m, exs) = plannedPartnerModel(counts: [1, 1], exercises: ["Shared Press", "Shared Row"])
         logNormal(m, exs[0]); m.finishRest()
         logNormal(m, exs[0])
-        XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[1].id)
+        #expect(m.exercisePendingAfterRest?.id == exs[1].id)
         m.finishRest()
-        XCTAssertEqual(m.stage, .keypad(exs[1]))
-        XCTAssertEqual(m.currentPerformerIndex, 0)
+        #expect(m.stage == .keypad(exs[1]))
+        #expect(m.currentPerformerIndex == 0)
     }
 
-    func testUnequalPlans_meThreePartnerTwo() {
+    @Test func unequalPlans_meThreePartnerTwo() {
         let (m, exs) = plannedPartnerModel(counts: [3, 2])
         var order: [Int] = []
         for _ in 0..<5 {
             if case .keypad = m.stage {} else { m.startLogSet(for: exs[0]) }
             order.append(logNormal(m, exs[0]))
-            if order.count < 5 { XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[0].id); m.finishRest() }
+            if order.count < 5 { #expect(m.exercisePendingAfterRest?.id == exs[0].id); m.finishRest() }
         }
-        XCTAssertEqual(order, [0, 1, 0, 1, 0])
-        XCTAssertNil(m.exercisePendingAfterRest)
+        #expect(order == [0, 1, 0, 1, 0])
+        #expect(m.exercisePendingAfterRest == nil)
     }
 
-    func testThreeLifters_unequalCounts_noOneRepeatsWhileOthersPending() {
+    @Test func threeLifters_unequalCounts_noOneRepeatsWhileOthersPending() {
         let (m, exs) = plannedPartnerModel(counts: [3, 2, 1])
         var order: [Int] = []
         for _ in 0..<6 {
             if case .keypad = m.stage {} else { m.startLogSet(for: exs[0]) }
             order.append(logNormal(m, exs[0]))
-            if order.count < 6 { XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[0].id); m.finishRest() }
+            if order.count < 6 { #expect(m.exercisePendingAfterRest?.id == exs[0].id); m.finishRest() }
         }
-        XCTAssertEqual(order, [0, 1, 2, 0, 1, 0])
-        XCTAssertNil(m.exercisePendingAfterRest)
+        #expect(order == [0, 1, 2, 0, 1, 0])
+        #expect(m.exercisePendingAfterRest == nil)
     }
 
-    func testSingleLifterFinalPlannedSetMovesOn() {
+    @Test func singleLifterFinalPlannedSetMovesOn() {
         let (m, exs) = plannedPartnerModel(counts: [1], exercises: ["Solo Press", "Solo Row"])
         logNormal(m, exs[0])
-        XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[1].id)
+        #expect(m.exercisePendingAfterRest?.id == exs[1].id)
     }
 
-    func testAdHocExerciseKeepsRoundRobinWithoutManufacturingObligations() {
+    @Test func adHocExerciseKeepsRoundRobinWithoutManufacturingObligations() {
         let m = makeModel()
         m.start(createSession: true)
         m.addPartner(named: "Pat")
         let ex = simpleExercise(named: "Ad Hoc Curl")
         logNormal(m, ex)
-        XCTAssertEqual(m.exercisePendingAfterRest?.id, ex.id)
-        XCTAssertEqual(m.currentPerformerIndex, 1)
+        #expect(m.exercisePendingAfterRest?.id == ex.id)
+        #expect(m.currentPerformerIndex == 1)
         m.finishRest()
-        XCTAssertFalse(m.hasOutstandingWorkingSet(for: ex, performerIndex: 1))
+        #expect(!m.hasOutstandingWorkingSet(for: ex, performerIndex: 1))
     }
 
-    func testSetCardNextLifterSkipsCompleted() {
+    @Test func setCardNextLifterSkipsCompleted() {
         let (m, exs) = plannedPartnerModel(counts: [2, 1, 2])
         for _ in 0..<3 { logNormal(m, exs[0]); m.finishRest() }   // Me1, P1, P2(1)
         // Selected: Me (2nd set, last for Me); Partner 1 is complete, Partner 2 remains.
-        XCTAssertEqual(m.currentPerformerIndex, 0)
+        #expect(m.currentPerformerIndex == 0)
         let card = m.setCardState
-        XCTAssertEqual(card?.lifterText, "Me · then Partner 2")
-        XCTAssertEqual(card?.logTitle, "Log set", "the primary action always reads \"Log set\"")
+        #expect(card?.lifterText == "Me · then Partner 2")
+        #expect(card?.logTitle == "Log set", "the primary action always reads \"Log set\"")
     }
 
-    func testManualSelectionDoesNotOrphanPlannedPerformer() {
+    @Test func manualSelectionDoesNotOrphanPlannedPerformer() {
         let (m, exs) = plannedPartnerModel(counts: [2, 2])
         m.selectPerformer(at: 1)
         logNormal(m, exs[0]); m.finishRest()      // Partner 1 set 1 → Me
-        XCTAssertEqual(m.currentPerformerIndex, 0)
+        #expect(m.currentPerformerIndex == 0)
         logNormal(m, exs[0]); m.finishRest()      // Me 1 → Partner 1
         logNormal(m, exs[0]); m.finishRest()      // Partner 1 set 2 (done) → Me
-        XCTAssertEqual(m.currentPerformerIndex, 0)
+        #expect(m.currentPerformerIndex == 0)
         logNormal(m, exs[0])                      // Me 2
-        XCTAssertNil(m.exercisePendingAfterRest)  // every planned turn is done
-        XCTAssertFalse(m.performerIndices.contains { m.hasOutstandingWorkingSet(for: exs[0], performerIndex: $0) })
+        #expect(m.exercisePendingAfterRest == nil)  // every planned turn is done
+        #expect(!m.performerIndices.contains { m.hasOutstandingWorkingSet(for: exs[0], performerIndex: $0) })
     }
 
-    func testLogAsLastSetDoesNotAbandonOutstandingPartner() {
+    @Test func logAsLastSetDoesNotAbandonOutstandingPartner() {
         let (m, exs) = plannedPartnerModel(counts: [2, 2])
         m.startLogSet(for: exs[0])
-        XCTAssertNotNil(m.logLastSet())
-        XCTAssertEqual(m.exercisePendingAfterRest?.id, exs[0].id)
-        XCTAssertEqual(m.currentPerformerIndex, 1)
+        #expect(m.logLastSet() != nil)
+        #expect(m.exercisePendingAfterRest?.id == exs[0].id)
+        #expect(m.currentPerformerIndex == 1)
     }
 
-    func testDeleteSetRemovesLocalSetAndEmitsPayload() {
+    @Test func deleteSetRemovesLocalSetAndEmitsPayload() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "Delete Set Press")
@@ -1083,12 +1095,12 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         let payload = m.deleteSet(id: set!.id)
 
-        XCTAssertEqual(m.currentWorkoutHistoryLines.count, 0)
-        XCTAssertEqual(payload?["action"] as? String, "delete_set")
-        XCTAssertEqual(payload?["set_id"] as? String, set?.id.uuidString)
+        #expect(m.currentWorkoutHistoryLines.count == 0)
+        #expect(payload?["action"] as? String == "delete_set")
+        #expect(payload?["set_id"] as? String == set?.id.uuidString)
     }
 
-    func testDeleteSetAllowsReentryDuringSameExercise() {
+    @Test func deleteSetAllowsReentryDuringSameExercise() {
         let m = makeModel()
         m.start()
         let ex = simpleExercise(named: "Reenter Set Press")
@@ -1096,20 +1108,20 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let first = m.logSet()
         m.finishRest()
 
-        XCTAssertNotNil(m.deleteSet(id: first!.id))
-        XCTAssertEqual(m.currentWorkoutHistoryLines, [])
+        #expect(m.deleteSet(id: first!.id) != nil)
+        #expect(m.currentWorkoutHistoryLines == [])
 
         m.currentWeight = 75
         m.currentReps = 6
         let replacement = m.logLastSet()
 
-        XCTAssertNotNil(replacement)
-        XCTAssertEqual(m.session?.orderedSets.count, 1)
-        XCTAssertEqual(m.session?.orderedSets.first?.reps, 6)
-        XCTAssertEqual(m.stage, .rest)
+        #expect(replacement != nil)
+        #expect(m.session?.orderedSets.count == 1)
+        #expect(m.session?.orderedSets.first?.reps == 6)
+        #expect(m.stage == .rest)
     }
 
-    func testDeleteExerciseRemovesPlannedNameSetsAndEmitsPayload() {
+    @Test func deleteExerciseRemovesPlannedNameSetsAndEmitsPayload() {
         let m = makeModel()
         m.start(createSession: true)
         let ex = simpleExercise(named: "Delete Exercise Press")
@@ -1119,13 +1131,13 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         let payload = m.deleteExercise(ex)
 
-        XCTAssertTrue(m.exerciseList.isEmpty)
-        XCTAssertTrue(m.session?.orderedSets.isEmpty == true)
-        XCTAssertEqual(payload?["action"] as? String, "delete_exercise")
-        XCTAssertEqual(payload?["exercise"] as? String, ex.name)
+        #expect(m.exerciseList.isEmpty)
+        #expect(m.session?.orderedSets.isEmpty == true)
+        #expect(payload?["action"] as? String == "delete_exercise")
+        #expect(payload?["exercise"] as? String == ex.name)
     }
 
-    func testEndSessionPayloadIncludesMetadataForOutOfOrderPhoneFinalize() {
+    @Test func endSessionPayloadIncludesMetadataForOutOfOrderPhoneFinalize() {
         let m = makeModel()
         m.start(title: "Push Day",
                 plannedExerciseNames: ["Bench Press"],
@@ -1140,14 +1152,14 @@ final class WatchStrengthFlowModelTests: XCTestCase {
 
         let payload = m.endSessionPayload()
 
-        XCTAssertEqual(payload?["session_title"] as? String, "Push Day")
-        XCTAssertEqual(payload?["planned_exercises"] as? [String], ["Bench Press"])
-        XCTAssertEqual(payload?["planned_rep_ladder"] as? [Int], [12, 10, 8])
-        XCTAssertEqual(payload?["plan_key"] as? String, "preset-push")
-        XCTAssertNotNil(payload?["ended_at"])
+        #expect(payload?["session_title"] as? String == "Push Day")
+        #expect(payload?["planned_exercises"] as? [String] == ["Bench Press"])
+        #expect(payload?["planned_rep_ladder"] as? [Int] == [12, 10, 8])
+        #expect(payload?["plan_key"] as? String == "preset-push")
+        #expect(payload?["ended_at"] != nil)
     }
 
-    func testDirectSummaryHeartRateSnapshotIsKeptAndIdempotent() throws {
+    @Test func directSummaryHeartRateSnapshotIsKeptAndIdempotent() throws {
         let m = makeModel()
         m.start(title: "Push", plannedExerciseNames: ["Bench Press"], createSession: true)
         let dense = (0..<5).map { HRSamplePoint(t: Double($0) * 5, bpm: 110 + Double($0)) }
@@ -1158,31 +1170,31 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         m.recordHeartRate(dense)
         m.recordHeartRate(dense)  // reappearing summary / retried send
         m.recordHeartRate([])     // post-teardown empty recorder must not erase it
-        let payload = try XCTUnwrap(m.endSessionPayload())
-        XCTAssertNotNil(payload[WatchStrengthHeartRate.transportKey])
-        XCTAssertEqual(m.recordedHeartRate, dense)
+        let payload = try #require(m.endSessionPayload())
+        #expect(payload[WatchStrengthHeartRate.transportKey] != nil)
+        #expect(m.recordedHeartRate == dense)
     }
 
-    func testLegacyPayloadHasSourceButNoInventedFinalSequence() throws {
+    @Test func legacyPayloadHasSourceButNoInventedFinalSequence() throws {
         let m = makeModel()
         m.start(title: "Push", plannedExerciseNames: ["Bench Press"], createSession: true)
         let dense = (0..<5).map { HRSamplePoint(t: Double($0) * 5, bpm: 110 + Double($0)) }
         m.recordHeartRate(dense)
-        let legacy = try XCTUnwrap(m.endSessionPayload())
-        XCTAssertNil(legacy["hr_final_sequence"])
-        XCTAssertEqual(legacy["hr_source"] as? String, HeartRateSource.watchHealthKit.rawValue)
-        XCTAssertNotNil(legacy["hr_captured_at"])
-        let durable = try XCTUnwrap(m.endSessionPayload(finalSequence: 2))
-        XCTAssertEqual(durable["hr_final_sequence"] as? Int, 2)
-        XCTAssertNotEqual(durable["hr_sample_count"] as? Int, 2)
+        let legacy = try #require(m.endSessionPayload())
+        #expect(legacy["hr_final_sequence"] == nil)
+        #expect(legacy["hr_source"] as? String == HeartRateSource.watchHealthKit.rawValue)
+        #expect(legacy["hr_captured_at"] != nil)
+        let durable = try #require(m.endSessionPayload(finalSequence: 2))
+        #expect(durable["hr_final_sequence"] as? Int == 2)
+        #expect(durable["hr_sample_count"] as? Int != 2)
     }
 
     // MARK: - Synced owner history defaults
 
     private struct StubHistory: WatchSetDefaultHistoryProviding {
         var snapshot: WatchSetDefaultSnapshot
-        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID, performerName: performerName)
         }
     }
 
@@ -1204,7 +1216,7 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         return m
     }
 
-    func testSyncedOwnerSnapshotPrefillsFirstSetAndMatchesDirectResolver() {
+    @Test func syncedOwnerSnapshotPrefillsFirstSetAndMatchesDirectResolver() {
         let snap = benchSnapshot()
         let m = syncedModel(snapshot: snap)
         let ex = m.exerciseList[0].exercise
@@ -1212,13 +1224,13 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let direct = PerformerSetPlanner.resolve(
             setIndex: 0, performerPlan: nil, ownerPlan: [], ownerLadder: nil, isOwner: true,
             history: snap.history(exerciseKey: "Bench Press", performerID: "owner"))
-        XCTAssertEqual(m.currentWeight, 125)
-        XCTAssertEqual(m.currentReps, 8)
-        XCTAssertEqual(m.currentWeight, direct.weightKg)
-        XCTAssertEqual(m.currentReps, Double(direct.reps))
+        #expect(m.currentWeight == 125)
+        #expect(m.currentReps == 8)
+        #expect(m.currentWeight == direct.weightKg)
+        #expect(m.currentReps == Double(direct.reps))
     }
 
-    func testJustLoggedWatchSetOverridesSnapshot() {
+    @Test func justLoggedWatchSetOverridesSnapshot() {
         var snap = benchSnapshot()
         snap.performers[0].exercises[0].repLadders = []
         let m = syncedModel(snapshot: snap)
@@ -1229,11 +1241,11 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         _ = m.logSet()
         m.finishRest()
         m.startLogSet(for: ex)
-        XCTAssertEqual(m.currentWeight, 130)
-        XCTAssertEqual(m.currentReps, 6)
+        #expect(m.currentWeight == 130)
+        #expect(m.currentReps == 6)
     }
 
-    func testExplicitPlanOverridesSnapshot() {
+    @Test func explicitPlanOverridesSnapshot() {
         let plan = WatchPlanPayload(strength: .init(
             exerciseNames: ["Bench Press"],
             prescriptions: [PlannedExercisePrescription(
@@ -1241,18 +1253,18 @@ final class WatchStrengthFlowModelTests: XCTestCase {
                 sets: [PlannedSetPrescription(targetReps: 6, targetWeightKg: 135)])]))
         let m = syncedModel(plan: plan, snapshot: benchSnapshot())
         m.startLogSet(for: m.exerciseList[0].exercise)
-        XCTAssertEqual(m.currentWeight, 135)
-        XCTAssertEqual(m.currentReps, 6)
+        #expect(m.currentWeight == 135)
+        #expect(m.currentReps == 6)
     }
 
-    func testNoSnapshotOrNoHistoryKeepsFallbacks() {
+    @Test func noSnapshotOrNoHistoryKeepsFallbacks() {
         let m = syncedModel()
         m.startLogSet(for: m.exerciseList[0].exercise)
-        XCTAssertEqual(m.currentWeight, 20)
+        #expect(m.currentWeight == 20)
         let empty = syncedModel(snapshot: WatchSetDefaultSnapshot(generatedAt: Date(), performers: []))
         empty.startLogSet(for: empty.exerciseList[0].exercise)
-        XCTAssertEqual(empty.currentWeight, m.currentWeight)
-        XCTAssertEqual(empty.currentReps, m.currentReps)
+        #expect(empty.currentWeight == m.currentWeight)
+        #expect(empty.currentReps == m.currentReps)
     }
     // MARK: - Completion attribution (all end paths)
 
@@ -1289,36 +1301,39 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         let result = WatchStrengthCompletionCoordinator.complete(
             model: m, samples: samples, profile: hrProfile, outbox: completionOutbox(),
             weekKey: { _ in "wk" },
-            recordOverlay: { recorded.append($0); XCTAssertEqual(sent, 0, "overlay before transfer") },
+            recordOverlay: { recorded.append($0); #expect(sent == 0, "overlay before transfer") },
             send: { _ in sent += 1 })
-        let attribution = try XCTUnwrap(result)
-        XCTAssertEqual(sent, 1)
-        XCTAssertEqual(m.recordedHeartRate, samples)
-        XCTAssertEqual(attribution.hrSamples, samples)
-        XCTAssertEqual(recorded.count, 1)
-        XCTAssertEqual(recorded[0].id.uuidString, m.session?.completionID)
-        XCTAssertEqual(recorded[0].sets, Double(m.session?.completedOwnerWorkingSetCount ?? -1))
-        XCTAssertEqual(recorded[0].sets, 1)
-        XCTAssertEqual(recorded[0].completedAt, m.session?.endedAt)
-        XCTAssertGreaterThan(recorded[0].moderateEquivalentMinutes, 0)
-        XCTAssertEqual(attribution.cardioSummary,
+        let attribution = try #require(result)
+        #expect(sent == 1)
+        #expect(m.recordedHeartRate == samples)
+        #expect(attribution.hrSamples == samples)
+        #expect(recorded.count == 1)
+        #expect(recorded[0].id.uuidString == m.session?.completionID)
+        #expect(recorded[0].sets == Double(m.session?.completedOwnerWorkingSetCount ?? -1))
+        #expect(recorded[0].sets == 1)
+        #expect(recorded[0].completedAt == m.session?.endedAt)
+        #expect(recorded[0].moderateEquivalentMinutes > 0)
+        #expect(attribution.cardioSummary ==
                        CardioMinuteAccumulator.summarize(duration: m.durationSeconds, samples: samples, profile: hrProfile))
         // Retry keeps the same completion identity (store replaces by ID).
         let again = WatchStrengthCompletionCoordinator.complete(
             model: m, samples: samples, profile: hrProfile, outbox: completionOutbox(),
             weekKey: { _ in "wk" }, recordOverlay: { recorded.append($0) }, send: { _ in })
-        XCTAssertEqual(again?.overlay.id, recorded[0].id)
+        #expect(again?.overlay.id == recorded[0].id)
     }
 
-    @MainActor func testCompletionCoordinator_cooldownCompletionPath() throws {
+    @MainActor
+    @Test func completionCoordinator_cooldownCompletionPath() throws {
         try assertCoordinatorPath { $0.completeCooldown() }
     }
 
-    @MainActor func testCompletionCoordinator_zeroCooldownDirectSummaryPath() throws {
+    @MainActor
+    @Test func completionCoordinator_zeroCooldownDirectSummaryPath() throws {
         try assertCoordinatorPath { $0.skipCooldown() }
     }
 
-    @MainActor func testCompletionCoordinator_inactivityResumedSessionPath() throws {
+    @MainActor
+    @Test func completionCoordinator_inactivityResumedSessionPath() throws {
         try assertCoordinatorPath { m in
             // Inactivity finalization resumes a persisted session in a fresh model.
             let session = m.session!
@@ -1328,70 +1343,74 @@ final class WatchStrengthFlowModelTests: XCTestCase {
         }
     }
 
-    @MainActor func testCompletionCoordinator_noSamplesCreditsSetsOnly() throws {
+    @MainActor
+    @Test func completionCoordinator_noSamplesCreditsSetsOnly() throws {
         let m = loggedModel()
         m.skipCooldown()
         var recorded: [WatchWeekLocalOverlay] = []
         WatchStrengthCompletionCoordinator.complete(
             model: m, samples: [], profile: hrProfile, outbox: completionOutbox(),
             weekKey: { _ in "wk" }, recordOverlay: { recorded.append($0) }, send: { _ in })
-        XCTAssertEqual(recorded.first?.sets, 1)
-        XCTAssertEqual(recorded.first?.moderateEquivalentMinutes, 0)
+        #expect(recorded.first?.sets == 1)
+        #expect(recorded.first?.moderateEquivalentMinutes == 0)
     }
 }
 
-final class WatchAddConfirmationTests: XCTestCase {
+struct WatchAddConfirmationTests {
     private let target = WatchAddConfirmation.Target(id: UUID(), name: "Bench Press")
 
-    func testRequestAndCancelNeverCallAdd() {
+    @Test func requestAndCancelNeverCallAdd() {
         var state = WatchAddConfirmation()
         state.request(target)
-        XCTAssertEqual(state.pending, target)
+        #expect(state.pending == target)
         state.cancel()
         var calls = 0
-        XCTAssertNil(state.confirm { _, _ in calls += 1; return .added(name: "x") })
-        XCTAssertEqual(calls, 0)
-        XCTAssertNil(state.pending)
-        XCTAssertNil(state.outcome)
+        #expect(state.confirm { _, _ in calls += 1; return .added(name: "x") } == nil)
+        #expect(calls == 0)
+        #expect(state.pending == nil)
+        #expect(state.outcome == nil)
     }
 
-    func testConfirmCallsAddOnceAndRecordsOutcomes() {
+    @Test func confirmCallsAddOnceAndRecordsOutcomes() {
         var state = WatchAddConfirmation()
         var calls = 0
         state.request(target)
-        XCTAssertEqual(state.confirm { id, name in calls += 1; XCTAssertEqual(id, self.target.id); return .added(name: name) },
+        var confirmedID: UUID?
+        #expect(state.confirm { id, name in calls += 1; confirmedID = id; return .added(name: name) } ==
                        .added(name: "Bench Press"))
-        XCTAssertEqual(calls, 1)
-        XCTAssertNil(state.outcome)
+        #expect(confirmedID == self.target.id)
+        #expect(calls == 1)
+        #expect(state.outcome == nil)
 
         state.request(target)
         state.confirm { _, name in .alreadyPresent(name: name) }
-        XCTAssertEqual(state.outcome, .alreadyPresent(name: "Bench Press"))
+        #expect(state.outcome == .alreadyPresent(name: "Bench Press"))
         state.request(target)
         state.confirm { _, name in .unavailable(name: name) }
-        XCTAssertEqual(state.outcome, .unavailable(target))
+        #expect(state.outcome == .unavailable(target))
     }
 
-    func testRetryReopensConfirmationWithoutMutating() {
+    @Test func retryReopensConfirmationWithoutMutating() {
         var state = WatchAddConfirmation()
         var calls = 0
         state.request(target)
         state.confirm { _, name in calls += 1; return .saveFailed(name: name) }
-        XCTAssertEqual(state.outcome, .saveFailed(target))
+        #expect(state.outcome == .saveFailed(target))
         state.retry()
-        XCTAssertEqual(calls, 1)
-        XCTAssertEqual(state.pending, target)
-        XCTAssertNil(state.outcome)
+        #expect(calls == 1)
+        #expect(state.pending == target)
+        #expect(state.outcome == nil)
         state.cancel()
-        XCTAssertNil(state.confirm { _, name in calls += 1; return .added(name: name) })
-        XCTAssertEqual(calls, 1)
+        #expect(state.confirm { _, name in calls += 1; return .added(name: name) } == nil)
+        #expect(calls == 1)
     }
 
-    func testRetryIgnoredForUnavailable() {
+    @Test func retryIgnoredForUnavailable() {
         var state = WatchAddConfirmation()
         state.request(target)
         state.confirm { _, name in .unavailable(name: name) }
         state.retry()
-        XCTAssertNil(state.pending)
+        #expect(state.pending == nil)
     }
 }
+#endif

@@ -1,7 +1,10 @@
-import XCTest
+import Foundation
+import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchHRLivePromotionTests: XCTestCase {
+struct WatchHRLivePromotionTests {
     private let session = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
     private let request = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
@@ -27,30 +30,30 @@ final class WatchHRLivePromotionTests: XCTestCase {
                                                     activeRequestID: request, now: now)
     }
 
-    func testPromotesNewestFreshObservationForMatchingCapture() {
+    @Test func promotesNewestFreshObservationForMatchingCapture() {
         let t = now.timeIntervalSince1970
         let m = message(observations: [obs(1, end: t - 5, bpm: 150), obs(2, end: t - 20, bpm: 120),
                                        obs(3, end: t - 10, bpm: 140)])
-        XCTAssertEqual(select(m, session: session, request: request)?.bpm, 150)
+        #expect(select(m, session: session, request: request)?.bpm == 150)
     }
 
-    func testRejectsDifferentSessionOrRequest() {
+    @Test func rejectsDifferentSessionOrRequest() {
         let m = message(observations: [obs(1, end: now.timeIntervalSince1970 - 1, bpm: 130)])
-        XCTAssertNil(select(m, session: UUID(), request: request))
-        XCTAssertNil(select(m, session: session, request: UUID()))
-        XCTAssertNil(select(m, session: nil, request: nil))
+        #expect(select(m, session: UUID(), request: request) == nil)
+        #expect(select(m, session: session, request: UUID()) == nil)
+        #expect(select(m, session: nil, request: nil) == nil)
     }
 
-    func testRejectsObservationOlderThanStaleWindow() {
+    @Test func rejectsObservationOlderThanStaleWindow() {
         let old = now.timeIntervalSince1970 - WatchHRRelay.staleAfter - 1
         let m = message(observations: [obs(1, end: old, bpm: 130)])
-        XCTAssertNil(select(m, session: session, request: request))
+        #expect(select(m, session: session, request: request) == nil)
     }
 
-    func testRejectsFinalizeAndEmptyObservationMessages() {
+    @Test func rejectsFinalizeAndEmptyObservationMessages() {
         let o = [obs(1, end: now.timeIntervalSince1970 - 1, bpm: 130)]
-        XCTAssertNil(select(message(kind: .finalizeRequest, observations: o), session: session, request: request))
-        XCTAssertNil(select(message(kind: .finalizeAcknowledgement, observations: o), session: session, request: request))
-        XCTAssertNil(select(message(observations: []), session: session, request: request))
+        #expect(select(message(kind: .finalizeRequest, observations: o), session: session, request: request) == nil)
+        #expect(select(message(kind: .finalizeAcknowledgement, observations: o), session: session, request: request) == nil)
+        #expect(select(message(observations: []), session: session, request: request) == nil)
     }
 }

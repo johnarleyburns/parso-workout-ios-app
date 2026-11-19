@@ -2,6 +2,7 @@ import SwiftUI
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 /// Keeps the inline editor's generic view tree out of SessionView's already
 /// large result builder. This is intentionally a presentation-only wrapper;
 /// all workout mutations remain owned by SessionView.

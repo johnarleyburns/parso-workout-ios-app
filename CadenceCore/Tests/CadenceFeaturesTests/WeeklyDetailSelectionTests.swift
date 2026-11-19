@@ -1,53 +1,56 @@
-import XCTest
+import Foundation
+import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WeeklyDetailSelectionTests: XCTestCase {
-    func testWeeklyDetailsCanBeExpandedIndependently() {
+struct WeeklyDetailSelectionTests {
+    @Test func weeklyDetailsCanBeExpandedIndependently() {
         var selection = WeeklyDetailSelection()
 
         selection.toggle(.strength)
-        XCTAssertTrue(selection.isExpanded(.muscleMap))
-        XCTAssertTrue(selection.isExpanded(.strength))
+        #expect(selection.isExpanded(.muscleMap))
+        #expect(selection.isExpanded(.strength))
 
         selection.toggle(.cardio)
-        XCTAssertTrue(selection.isExpanded(.cardio))
-        XCTAssertTrue(selection.isExpanded(.strength))
+        #expect(selection.isExpanded(.cardio))
+        #expect(selection.isExpanded(.strength))
 
         selection.toggle(.muscleMap)
-        XCTAssertFalse(selection.isExpanded(.muscleMap))
-        XCTAssertTrue(selection.isExpanded(.muscleGroupVolume) == false)
+        #expect(!selection.isExpanded(.muscleMap))
+        #expect(selection.isExpanded(.muscleGroupVolume) == false)
     }
 
-    func testSelectingAWeeklyDetailDoesNotCollapseOtherDetails() {
+    @Test func selectingAWeeklyDetailDoesNotCollapseOtherDetails() {
         var selection = WeeklyDetailSelection(expanded: [.muscleGroupVolume])
 
         selection.select(.cardio)
-        XCTAssertTrue(selection.isExpanded(.muscleGroupVolume))
-        XCTAssertTrue(selection.isExpanded(.cardio))
+        #expect(selection.isExpanded(.muscleGroupVolume))
+        #expect(selection.isExpanded(.cardio))
 
         selection.select(.cardio)
-        XCTAssertTrue(selection.isExpanded(.cardio))
+        #expect(selection.isExpanded(.cardio))
     }
 
-    func testTogglingExpandedWeeklyDetailCollapsesOnlyThatDetail() {
+    @Test func togglingExpandedWeeklyDetailCollapsesOnlyThatDetail() {
         var selection = WeeklyDetailSelection(expanded: [.muscleMap, .strength])
 
         selection.toggle(.muscleMap)
 
-        XCTAssertFalse(selection.isExpanded(.muscleMap))
-        XCTAssertTrue(selection.isExpanded(.strength))
+        #expect(!selection.isExpanded(.muscleMap))
+        #expect(selection.isExpanded(.strength))
     }
 
-    func testFreshSelectionExpandsTheMuscleMapOnly() {
+    @Test func freshSelectionExpandsTheMuscleMapOnly() {
         let selection = WeeklyDetailSelection()
 
-        XCTAssertTrue(selection.isExpanded(.muscleMap))
-        XCTAssertFalse(selection.isExpanded(.muscleGroupVolume))
-        XCTAssertFalse(selection.isExpanded(.strength))
-        XCTAssertFalse(selection.isExpanded(.cardio))
+        #expect(selection.isExpanded(.muscleMap))
+        #expect(!selection.isExpanded(.muscleGroupVolume))
+        #expect(!selection.isExpanded(.strength))
+        #expect(!selection.isExpanded(.cardio))
     }
 
-    func testPersistedSelectionRoundTripsIndependentExpansion() {
+    @Test func persistedSelectionRoundTripsIndependentExpansion() {
         let suiteName = "WeeklyDetailSelectionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -55,30 +58,30 @@ final class WeeklyDetailSelectionTests: XCTestCase {
         let original = WeeklyDetailSelection(expanded: [.muscleGroupVolume, .cardio])
         original.persist(defaults: defaults)
 
-        XCTAssertEqual(WeeklyDetailSelection.persisted(defaults: defaults), original)
+        #expect(WeeklyDetailSelection.persisted(defaults: defaults) == original)
     }
 
-    func testRingTapsMapToTheMatchingThisWeekSection() {
-        XCTAssertEqual(ThisWeekDestination.forRing(.sets), .muscleCoverage)
-        XCTAssertEqual(ThisWeekDestination.forRing(.cardioMinutes), .cardio)
+    @Test func ringTapsMapToTheMatchingThisWeekSection() {
+        #expect(ThisWeekDestination.forRing(.sets) == .muscleCoverage)
+        #expect(ThisWeekDestination.forRing(.cardioMinutes) == .cardio)
 
-        XCTAssertEqual(ThisWeekDestination.muscleCoverage.detailMode, .muscleMap)
-        XCTAssertEqual(ThisWeekDestination.strength.detailMode, .strength)
-        XCTAssertEqual(ThisWeekDestination.cardio.detailMode, .cardio)
+        #expect(ThisWeekDestination.muscleCoverage.detailMode == .muscleMap)
+        #expect(ThisWeekDestination.strength.detailMode == .strength)
+        #expect(ThisWeekDestination.cardio.detailMode == .cardio)
     }
 
-    func testThisWeekSectionRequestRoundTripsAndClears() {
+    @Test func thisWeekSectionRequestRoundTripsAndClears() {
         let suiteName = "ThisWeekDestinationTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
 
-        XCTAssertNil(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults))
+        #expect(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults) == nil)
         CadencePlatformRequestStore.requestThisWeekSection(.cardio, defaults: defaults)
-        XCTAssertEqual(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults), .cardio)
-        XCTAssertNil(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults))
+        #expect(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults) == .cardio)
+        #expect(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults) == nil)
     }
 
-    func testPersistedSelectionIgnoresUnknownModes() {
+    @Test func persistedSelectionIgnoresUnknownModes() {
         let suiteName = "WeeklyDetailSelectionTests.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suiteName)!
         defer { defaults.removePersistentDomain(forName: suiteName) }
@@ -86,7 +89,6 @@ final class WeeklyDetailSelectionTests: XCTestCase {
         defaults.set(["muscleMap", "not-a-real-section"],
                      forKey: WeeklyDetailSelection.persistenceKey)
 
-        XCTAssertEqual(WeeklyDetailSelection.persisted(defaults: defaults).expanded,
-                       [.muscleMap])
+        #expect(WeeklyDetailSelection.persisted(defaults: defaults).expanded == [.muscleMap])
     }
 }

@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Gathers one performer's logged history for one movement so
 /// `PartnerPlanResolver` (pure, in `CadenceFeatures`) can fill their plan.

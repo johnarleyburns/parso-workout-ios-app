@@ -5,6 +5,7 @@ import WatchConnectivity
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 @Observable
 @MainActor
@@ -172,15 +173,15 @@ final class WatchWorkoutManager: NSObject {
     @ObservationIgnored var durableCommitEnvelopeID: UUID?
     @ObservationIgnored var syncModelContainer: ModelContainer?
 
-    let uiTestMode: Bool
+    let simulatesHealthKit: Bool
 
     @ObservationIgnored let coachSuggestionCoordinator = WatchCoachSuggestionCoordinator(store: UserDefaultsWatchCoachSuggestionStore())
     var coachSuggestionEnvelope: WatchCoachSuggestionEnvelope?; var coachHistoryState = WatchCoachHistoryState()
     var cardioSuggestionEnvelope: WatchCardioSuggestionEnvelope?
     @ObservationIgnored var coachClock: @Sendable () -> Date = { Date() }; @ObservationIgnored var localHistoryObserver: NSObjectProtocol?
 
-    init(uiTestMode: Bool = false) {
-        self.uiTestMode = uiTestMode
+    init(simulatesHealthKit: Bool = false) {
+        self.simulatesHealthKit = simulatesHealthKit
         self.healthAuthorizationGateActive = WatchHealthAuthorizationGate.initialGateActive()
         super.init()
         pendingCardioCompletions = Self.loadPendingCardioCompletions(); refreshWeekLocalOverlays()
@@ -215,7 +216,7 @@ final class WatchWorkoutManager: NSObject {
         persistWorkoutMetadata(type: rawType, monitoring: false)
         publishComplicationState()
         let activity = Self.activityType(for: rawType)
-        if uiTestMode { sessionStart = Date(); beginSession(activity: activity, spec: resolvedSpec); return true }
+        if simulatesHealthKit { sessionStart = Date(); beginSession(activity: activity, spec: resolvedSpec); return true }
         startGeneration &+= 1
         let generation = startGeneration
         Task {
@@ -248,7 +249,7 @@ final class WatchWorkoutManager: NSObject {
         phoneLaunchPendingSince = nil
         isMonitoring = true; workoutType = "monitoring"
         persistWorkoutMetadata(type: "monitoring", monitoring: true)
-        if uiTestMode { sessionStart = Date(); beginSession(activity: .other); return }
+        if simulatesHealthKit { sessionStart = Date(); beginSession(activity: .other); return }
         startGeneration &+= 1
         let generation = startGeneration
         Task {
@@ -394,7 +395,6 @@ final class WatchWorkoutManager: NSObject {
         }
         if let sessionStart { elapsed = Date().timeIntervalSince(sessionStart) }
     }
-
     /// The workout session failed; tear everything down (main actor).
     func handleSessionFailure() { stopWorkout(save: false) }
 }

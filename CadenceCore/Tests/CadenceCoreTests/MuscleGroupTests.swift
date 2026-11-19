@@ -1,48 +1,49 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class MuscleGroupTests: XCTestCase {
+struct MuscleGroupTests {
 
     /// The whole point of the type: it mirrors the DB++ ontology exactly, so a
     /// data refresh that adds or renames a muscle fails here instead of silently
     /// producing an unreachable dimension.
-    func testRawValuesMatchDatabaseOntology() {
-        XCTAssertEqual(Set(MuscleGroup.allCases.map(\.rawValue)),
+    @Test func rawValuesMatchDatabaseOntology() {
+        #expect(Set(MuscleGroup.allCases.map(\.rawValue)) ==
                        Set(MuscleGroup.canonicalOrder.map(\.rawValue)))
-        XCTAssertEqual(MuscleGroup.allCases.count, 20)
+        #expect(MuscleGroup.allCases.count == 20)
     }
 
-    func testAllCasesHaveDistinctDisplayNames() {
+    @Test func allCasesHaveDistinctDisplayNames() {
         let names = MuscleGroup.allCases.map(\.displayName)
-        XCTAssertEqual(Set(names).count, names.count)
+        #expect(Set(names).count == names.count)
         for name in names {
-            XCTAssertFalse(name.isEmpty)
-            XCTAssertEqual(String(name.prefix(1)), String(name.prefix(1)).uppercased())
-            XCTAssertFalse(name.contains("_"), "\(name) leaks a raw value")
+            #expect(!name.isEmpty)
+            #expect(String(name.prefix(1)) == String(name.prefix(1)).uppercased())
+            #expect(!name.contains("_"), "\(name) leaks a raw value")
         }
     }
 
-    func testEveryCaseHasScientificNameAndSynonyms() {
+    @Test func everyCaseHasScientificNameAndSynonyms() {
         for group in MuscleGroup.allCases {
-            XCTAssertFalse(group.scientificName.isEmpty, "\(group) has no scientific name")
-            XCTAssertFalse(group.synonyms.isEmpty, "\(group) has no synonyms")
+            #expect(!group.scientificName.isEmpty, "\(group) has no scientific name")
+            #expect(!group.synonyms.isEmpty, "\(group) has no synonyms")
         }
     }
 
-    func testSearchTermsAreLowercasedAndUnique() {
+    @Test func searchTermsAreLowercasedAndUnique() {
         for group in MuscleGroup.allCases {
             let terms = group.searchTerms
-            XCTAssertEqual(Set(terms).count, terms.count, "\(group) repeats a search term")
+            #expect(Set(terms).count == terms.count, "\(group) repeats a search term")
             for term in terms {
-                XCTAssertEqual(term, term.lowercased(), "\(group) has an uppercased term \(term)")
+                #expect(term == term.lowercased(), "\(group) has an uppercased term \(term)")
             }
-            XCTAssertTrue(terms.contains(group.displayName.lowercased()))
+            #expect(terms.contains(group.displayName.lowercased()))
         }
     }
 
     /// Every id the old `MuscleCatalog` could have written into a stored exercise
     /// must still resolve, or a user's logged history silently stops counting.
-    func testRetiredMuscleIdsCanonicalize() {
+    @Test func retiredMuscleIdsCanonicalize() {
         let expected: [String: MuscleGroup] = [
             "abs": .abdominals,
             "obliques": .abdominals,
@@ -67,61 +68,61 @@ final class MuscleGroupTests: XCTestCase {
             "abductors": .abductors,
         ]
         for (legacy, group) in expected {
-            XCTAssertEqual(MuscleGroup.canonical(legacy), group, "\(legacy) did not canonicalize")
+            #expect(MuscleGroup.canonical(legacy) == group, "\(legacy) did not canonicalize")
         }
     }
 
-    func testUpstreamSpellingsCanonicalize() {
-        XCTAssertEqual(MuscleGroup.canonical("lower back"), .lowerBack)
-        XCTAssertEqual(MuscleGroup.canonical("middle back"), .middleBack)
-        XCTAssertEqual(MuscleGroup.canonical("Middle Back"), .middleBack)
-        XCTAssertEqual(MuscleGroup.canonical("  LATS  "), .lats)
-        XCTAssertEqual(MuscleGroup.canonical("rotator cuff"), .rotatorCuff)
-        XCTAssertEqual(MuscleGroup.canonical("hip flexors"), .hipFlexors)
+    @Test func upstreamSpellingsCanonicalize() {
+        #expect(MuscleGroup.canonical("lower back") == .lowerBack)
+        #expect(MuscleGroup.canonical("middle back") == .middleBack)
+        #expect(MuscleGroup.canonical("Middle Back") == .middleBack)
+        #expect(MuscleGroup.canonical("  LATS  ") == .lats)
+        #expect(MuscleGroup.canonical("rotator cuff") == .rotatorCuff)
+        #expect(MuscleGroup.canonical("hip flexors") == .hipFlexors)
     }
 
     /// The pre-DB++ import folded upstream `neck` into traps. DB++ has a real neck
     /// group, and that mis-mapping must not survive.
-    func testNeckIsItsOwnGroup() {
-        XCTAssertEqual(MuscleGroup.canonical("neck"), .neck)
+    @Test func neckIsItsOwnGroup() {
+        #expect(MuscleGroup.canonical("neck") == .neck)
     }
 
-    func testUnknownReturnsNil() {
-        XCTAssertNil(MuscleGroup.canonical(""))
-        XCTAssertNil(MuscleGroup.canonical("   "))
-        XCTAssertNil(MuscleGroup.canonical("unicorn"))
-        XCTAssertNil(MuscleGroup.canonical("pecs deck"))
+    @Test func unknownReturnsNil() {
+        #expect(MuscleGroup.canonical("") == nil)
+        #expect(MuscleGroup.canonical("   ") == nil)
+        #expect(MuscleGroup.canonical("unicorn") == nil)
+        #expect(MuscleGroup.canonical("pecs deck") == nil)
     }
 
-    func testCanonicalizePreservesOrderAndDeduplicates() {
-        XCTAssertEqual(MuscleGroup.canonicalize(["quads", "abs", "quadriceps"]),
+    @Test func canonicalizePreservesOrderAndDeduplicates() {
+        #expect(MuscleGroup.canonicalize(["quads", "abs", "quadriceps"]) ==
                        [.quadriceps, .abdominals])
-        XCTAssertEqual(MuscleGroup.canonicalize(["front-delts", "rear-delts", "delts"]),
+        #expect(MuscleGroup.canonicalize(["front-delts", "rear-delts", "delts"]) ==
                        [.shoulders])
-        XCTAssertEqual(MuscleGroup.canonicalize(["unicorn", "lats"]), [.lats])
-        XCTAssertEqual(MuscleGroup.canonicalize([]), [])
+        #expect(MuscleGroup.canonicalize(["unicorn", "lats"]) == [.lats])
+        #expect(MuscleGroup.canonicalize([]) == [])
     }
 
-    func testDescendingMassOrderCoversEveryCase() {
-        XCTAssertEqual(Set(MuscleGroup.descendingMassOrder), Set(MuscleGroup.allCases))
-        XCTAssertEqual(MuscleGroup.descendingMassOrder.count, MuscleGroup.allCases.count)
+    @Test func descendingMassOrderCoversEveryCase() {
+        #expect(Set(MuscleGroup.descendingMassOrder) == Set(MuscleGroup.allCases))
+        #expect(MuscleGroup.descendingMassOrder.count == MuscleGroup.allCases.count)
         let priorities = MuscleGroup.descendingMassOrder.map(MuscleGroup.massPriority(for:))
-        XCTAssertEqual(priorities, Array(0..<MuscleGroup.allCases.count))
+        #expect(priorities == Array(0..<MuscleGroup.allCases.count))
     }
 
-    func testDefaultTrackedMatchesDBPlusPlusPlanningGroups() {
-        XCTAssertEqual(MuscleGroup.defaultTracked, [
+    @Test func defaultTrackedMatchesDBPlusPlusPlanningGroups() {
+        #expect(MuscleGroup.defaultTracked == [
             .abdominals, .abductors, .adductors, .biceps, .calves, .chest, .forearms,
             .glutes, .hamstrings, .lats, .lowerBack, .middleBack, .quadriceps,
             .shoulders, .traps, .triceps, .hipFlexors, .tibialis, .neck, .rotatorCuff
         ])
-        XCTAssertEqual(MuscleGroup.defaultTracked.count, 20)
+        #expect(MuscleGroup.defaultTracked.count == 20)
     }
 
     /// The test that would have caught `tibialis`: a group the coach targets must
     /// have at least one volume-eligible movement that trains it directly, or its
     /// weekly deficit can never be closed.
-    func testDefaultTrackedGroupsAllHaveDirectExercises() {
+    @Test func defaultTrackedGroupsAllHaveDirectExercises() {
         var directCounts: [MuscleGroup: Int] = [:]
         for record in TrainingEngineBridge.exerciseRecords where record.volumeEligible {
             for group in MuscleGroup.canonicalize(record.direct) {
@@ -129,43 +130,43 @@ final class MuscleGroupTests: XCTestCase {
             }
         }
         for group in MuscleGroup.defaultTracked {
-            XCTAssertGreaterThan(directCounts[group] ?? 0, 0,
+            #expect((directCounts[group] ?? 0) > 0,
                                  "\(group) is tracked but no movement trains it directly")
         }
-        XCTAssertTrue(MuscleGroup.defaultTracked.contains(.tibialis))
+        #expect(MuscleGroup.defaultTracked.contains(.tibialis))
     }
 
-    func testCanonicalOrderIsAPermutationWithTrackedFirst() {
-        XCTAssertEqual(Set(MuscleGroup.canonicalOrder), Set(MuscleGroup.allCases))
-        XCTAssertEqual(MuscleGroup.canonicalOrder.count, MuscleGroup.allCases.count)
+    @Test func canonicalOrderIsAPermutationWithTrackedFirst() {
+        #expect(Set(MuscleGroup.canonicalOrder) == Set(MuscleGroup.allCases))
+        #expect(MuscleGroup.canonicalOrder.count == MuscleGroup.allCases.count)
         let trackedPrefix = MuscleGroup.canonicalOrder.prefix(MuscleGroup.defaultTracked.count)
-        XCTAssertEqual(Set(trackedPrefix), MuscleGroup.defaultTracked)
+        #expect(Set(trackedPrefix) == MuscleGroup.defaultTracked)
     }
 
-    func testRegionIsGroupingOnlyAndCoversEveryCase() {
+    @Test func regionIsGroupingOnlyAndCoversEveryCase() {
         // Every group has a region, and no region is used as a volume dimension —
         // several groups deliberately share one.
         var byRegion: [BodyRegion: [MuscleGroup]] = [:]
         for group in MuscleGroup.allCases { byRegion[group.region, default: []].append(group) }
-        XCTAssertEqual(byRegion[.back]?.count, 5)
-        XCTAssertEqual(byRegion[.legs]?.count, 7)
-        XCTAssertEqual(byRegion[.chest], [.chest])
-        XCTAssertNil(byRegion[.fullBody])
+        #expect(byRegion[.back]?.count == 5)
+        #expect(byRegion[.legs]?.count == 7)
+        #expect(byRegion[.chest] == [.chest])
+        #expect(byRegion[.fullBody] == nil)
     }
 
-    func testDefaultsForCategory() {
-        XCTAssertEqual(MuscleGroup.defaults(forCategory: .push), [.chest, .shoulders, .triceps])
-        XCTAssertEqual(MuscleGroup.defaults(forCategory: .pull), [.lats, .biceps])
-        XCTAssertEqual(MuscleGroup.defaults(forCategory: .legs), [.quadriceps, .hamstrings, .glutes])
-        XCTAssertEqual(MuscleGroup.defaults(forCategory: .core), [.abdominals])
-        XCTAssertEqual(MuscleGroup.defaults(forCategory: .cardio), [])
+    @Test func defaultsForCategory() {
+        #expect(MuscleGroup.defaults(forCategory: .push) == [.chest, .shoulders, .triceps])
+        #expect(MuscleGroup.defaults(forCategory: .pull) == [.lats, .biceps])
+        #expect(MuscleGroup.defaults(forCategory: .legs) == [.quadriceps, .hamstrings, .glutes])
+        #expect(MuscleGroup.defaults(forCategory: .core) == [.abdominals])
+        #expect(MuscleGroup.defaults(forCategory: .cardio) == [])
     }
 
-    func testCodableRoundTripsRawValues() throws {
+    @Test func codableRoundTripsRawValues() throws {
         let data = try JSONEncoder().encode([MuscleGroup.lowerBack, .middleBack, .hipFlexors])
-        XCTAssertEqual(String(data: data, encoding: .utf8),
+        #expect(String(data: data, encoding: .utf8) ==
                        #"["lower_back","middle_back","hip_flexors"]"#)
-        XCTAssertEqual(try JSONDecoder().decode([MuscleGroup].self, from: data),
+        #expect(try JSONDecoder().decode([MuscleGroup].self, from: data) ==
                        [.lowerBack, .middleBack, .hipFlexors])
     }
 }

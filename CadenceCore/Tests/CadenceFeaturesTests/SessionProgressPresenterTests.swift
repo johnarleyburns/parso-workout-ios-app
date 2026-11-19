@@ -1,5 +1,7 @@
 import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @Suite struct SessionProgressPresenterTests {
     @Test func spokenLabelAndCountsAreUnchanged() {

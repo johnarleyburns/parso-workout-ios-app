@@ -1,10 +1,14 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @MainActor
-final class SessionViewModelTests: XCTestCase {
+struct SessionViewModelTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
@@ -13,46 +17,46 @@ final class SessionViewModelTests: XCTestCase {
 
     // MARK: Pure (no store)
 
-    func testPlannedRepsUsesLadderRung() {
-        XCTAssertEqual(SessionViewModel.plannedReps(ladder: [5, 4, 3], setIndex: 1,
+    @Test func plannedRepsUsesLadderRung() {
+        #expect(SessionViewModel.plannedReps(ladder: [5, 4, 3], setIndex: 1,
                                                     currentSessionReps: [], priorSessionLadders: [],
-                                                    lastLoggedReps: nil), 4)
+                                                    lastLoggedReps: nil) == 4)
     }
 
-    func testPlannedRepsFallsBackToLastLogged() {
-        XCTAssertEqual(SessionViewModel.plannedReps(ladder: nil, setIndex: 0,
+    @Test func plannedRepsFallsBackToLastLogged() {
+        #expect(SessionViewModel.plannedReps(ladder: nil, setIndex: 0,
                                                     currentSessionReps: [], priorSessionLadders: [],
-                                                    lastLoggedReps: 8), 8)
+                                                    lastLoggedReps: 8) == 8)
     }
 
-    func testPlannedRepsDefaultsToFive() {
-        XCTAssertEqual(SessionViewModel.plannedReps(ladder: nil, setIndex: 0,
+    @Test func plannedRepsDefaultsToFive() {
+        #expect(SessionViewModel.plannedReps(ladder: nil, setIndex: 0,
                                                     currentSessionReps: [], priorSessionLadders: [],
-                                                    lastLoggedReps: nil), 5)
+                                                    lastLoggedReps: nil) == 5)
     }
 
-    func testPlannedRepsPatternGuess() {
+    @Test func plannedRepsPatternGuess() {
         // 12-10-8 pattern; two logged this session → set 3 (index 2) guesses 8.
-        XCTAssertEqual(SessionViewModel.plannedReps(ladder: nil, setIndex: 2,
+        #expect(SessionViewModel.plannedReps(ladder: nil, setIndex: 2,
                                                     currentSessionReps: [12, 10],
                                                     priorSessionLadders: [[12, 10, 8]],
-                                                    lastLoggedReps: 10), 8)
+                                                    lastLoggedReps: 10) == 8)
     }
 
-    func testCanonicalKgKilograms() {
-        XCTAssertEqual(SessionViewModel.canonicalKg(input: "100", unit: .kilograms, plateRounding: false), 100, accuracy: 0.001)
+    @Test func canonicalKgKilograms() {
+        #expect(abs(SessionViewModel.canonicalKg(input: "100", unit: .kilograms, plateRounding: false) - 100) <= 0.001)
     }
 
-    func testCanonicalKgPounds() {
+    @Test func canonicalKgPounds() {
         let kg = SessionViewModel.canonicalKg(input: "100", unit: .pounds, plateRounding: false)
-        XCTAssertEqual(kg, WorkoutMath.canonical(100, from: .pounds), accuracy: 0.001)
+        #expect(abs(kg - WorkoutMath.canonical(100, from: .pounds)) <= 0.001)
     }
 
-    func testCanonicalKgBadInputIsZero() {
-        XCTAssertEqual(SessionViewModel.canonicalKg(input: "abc", unit: .kilograms, plateRounding: false), 0)
+    @Test func canonicalKgBadInputIsZero() {
+        #expect(SessionViewModel.canonicalKg(input: "abc", unit: .kilograms, plateRounding: false) == 0)
     }
 
-    func testExactHistoricalWeightUsesMostRecentSameRepLoadWithoutRounding() {
+    @Test func exactHistoricalWeightUsesMostRecentSameRepLoadWithoutRounding() {
         let old = SetSample(weight: 77.1107, reps: 6,
                             date: Date(timeIntervalSince1970: 100))
         let latest = SetSample(weight: WorkoutMath.lbToKg(172), reps: 6,
@@ -60,40 +64,34 @@ final class SessionViewModelTests: XCTestCase {
         let otherReps = SetSample(weight: WorkoutMath.lbToKg(180), reps: 5,
                                   date: Date(timeIntervalSince1970: 300))
 
-        XCTAssertEqual(
-            SessionViewModel.exactHistoricalWeight(targetReps: 6,
-                                                   history: [old, latest, otherReps]) ?? 0,
-            latest.weight,
-            accuracy: 0.0001)
-        XCTAssertEqual(
-            SessionViewModel.roundedInferredWeightKg(
-                latest.weight, unit: .pounds, basis: .exactHistory),
-            latest.weight,
-            accuracy: 0.0001)
+        #expect(abs((SessionViewModel.exactHistoricalWeight(targetReps: 6,
+                                                   history: [old, latest, otherReps]) ?? 0) - latest.weight) <= 0.0001)
+        #expect(abs(SessionViewModel.roundedInferredWeightKg(
+                latest.weight, unit: .pounds, basis: .exactHistory) - latest.weight) <= 0.0001)
     }
 
     // MARK: Store-backed
 
-    func testIsBodyweight() throws {
+    @Test func isBodyweight() throws {
         let ctx = try makeContext()
         let bw = Exercise(name: "Pull-up"); bw.equipment = Equipment.bodyweight.rawValue
         let bb = Exercise(name: "Bench"); bb.equipment = Equipment.barbell.rawValue
         ctx.insert(bw); ctx.insert(bb)
-        XCTAssertTrue(SessionViewModel.isBodyweight(bw))
-        XCTAssertFalse(SessionViewModel.isBodyweight(bb))
+        #expect(SessionViewModel.isBodyweight(bw))
+        #expect(!SessionViewModel.isBodyweight(bb))
     }
 
-    func testEffectiveLadderAndPlannedSetCount() throws {
+    @Test func effectiveLadderAndPlannedSetCount() throws {
         let ctx = try makeContext()
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
-        XCTAssertNil(SessionViewModel.effectiveLadder(session: s))
-        XCTAssertEqual(SessionViewModel.plannedSetCount(session: s), 0)
+        #expect(SessionViewModel.effectiveLadder(session: s) == nil)
+        #expect(SessionViewModel.plannedSetCount(session: s) == 0)
         s.plannedRepLadder = [12, 10, 8]
-        XCTAssertEqual(SessionViewModel.effectiveLadder(session: s), [12, 10, 8])
-        XCTAssertEqual(SessionViewModel.plannedSetCount(session: s), 3)
+        #expect(SessionViewModel.effectiveLadder(session: s) == [12, 10, 8])
+        #expect(SessionViewModel.plannedSetCount(session: s) == 3)
     }
 
-    func testOwnerPlanContextDoesNotLeakLadderToUnplannedExercise() throws {
+    @Test func ownerPlanContextDoesNotLeakLadderToUnplannedExercise() throws {
         let ctx = try makeContext()
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         // A planned workout whose legacy ladder reflects only the first planned
@@ -110,63 +108,63 @@ final class SessionViewModelTests: XCTestCase {
         // An ad-hoc "Add Exercise" movement has no explicit plan entry, so it
         // must fall through to its own history instead of inheriting the ladder.
         let unplanned = SessionViewModel.ownerPlanContext(session: s, exerciseName: "Snatch")
-        XCTAssertTrue(unplanned.ownerPlan.isEmpty)
-        XCTAssertNil(unplanned.ownerLadder)
+        #expect(unplanned.ownerPlan.isEmpty)
+        #expect(unplanned.ownerLadder == nil)
 
         // A genuinely planned movement keeps both its explicit plan and ladder.
         let planned = SessionViewModel.ownerPlanContext(session: s, exerciseName: "Back Squat")
-        XCTAssertEqual(planned.ownerPlan.count, 3)
-        XCTAssertEqual(planned.ownerLadder, [6, 6, 6])
+        #expect(planned.ownerPlan.count == 3)
+        #expect(planned.ownerLadder == [6, 6, 6])
     }
 
-    func testPlannedOnlyNamesExcludesLogged() throws {
+    @Test func plannedOnlyNamesExcludesLogged() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         s.plannedExerciseNames = ["Bench Press", "Back Squat"]
         ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: s.date, session: s, exercise: bench))
         try ctx.save()
-        XCTAssertEqual(SessionViewModel.plannedOnlyNames(session: s), ["Back Squat"])
+        #expect(SessionViewModel.plannedOnlyNames(session: s) == ["Back Squat"])
     }
 
-    func testLastSessionWeight() throws {
+    @Test func lastSessionWeight() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", category: .push, in: ctx)
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         ctx.insert(SetEntry(weight: 80, reps: 5, order: 0, completedAt: s.date, session: s, exercise: bench))
         ctx.insert(SetEntry(weight: 85, reps: 5, order: 1, completedAt: s.date, session: s, exercise: bench))
         try ctx.save()
-        XCTAssertEqual(SessionViewModel.lastSessionWeight(session: s, exercise: bench, performerID: nil), 85)
+        #expect(SessionViewModel.lastSessionWeight(session: s, exercise: bench, performerID: nil) == 85)
     }
 
-    func testIsPrescribedMovement() throws {
+    @Test func isPrescribedMovement() throws {
         let ctx = try makeContext()
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         s.plannedExerciseNames = ["Back Squat"]
         s.prescribedLoadKg = 100
-        XCTAssertTrue(SessionViewModel.isPrescribedMovement("Back Squat", session: s))
-        XCTAssertFalse(SessionViewModel.isPrescribedMovement("Bench Press", session: s))
+        #expect(SessionViewModel.isPrescribedMovement("Back Squat", session: s))
+        #expect(!SessionViewModel.isPrescribedMovement("Bench Press", session: s))
     }
 
-    func testPrescriptionNoPlanUsesChosenLadderAndLoad() throws {
+    @Test func prescriptionNoPlanUsesChosenLadderAndLoad() throws {
         let ctx = try makeContext()
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         s.plannedRepLadder = [5, 5, 5]
         s.plannedExerciseNames = ["Back Squat"]
         s.prescribedLoadKg = 100
         let line = SessionViewModel.prescription(for: "Back Squat", session: s, plan: nil, unit: .kilograms)
-        XCTAssertNotNil(line)
-        XCTAssertTrue(line!.contains("5-5-5 reps"))
-        XCTAssertTrue(line!.contains("100"))
+        #expect(line != nil)
+        #expect(line!.contains("5-5-5 reps"))
+        #expect(line!.contains("100"))
     }
 
-    func testPrescriptionNilWhenNothingPlanned() throws {
+    @Test func prescriptionNilWhenNothingPlanned() throws {
         let ctx = try makeContext()
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
-        XCTAssertNil(SessionViewModel.prescription(for: "Anything", session: s, plan: nil, unit: .kilograms))
+        #expect(SessionViewModel.prescription(for: "Anything", session: s, plan: nil, unit: .kilograms) == nil)
     }
 
-    func testNormalizedSetEntryTable() {
+    @Test func normalizedSetEntryTable() {
         let ropes = Exercise(name: "Battling Ropes")
         let pull = Exercise(name: "Pull-Up"); pull.equipment = Equipment.bodyweight.rawValue
         let bench = Exercise(name: "Bench"); bench.equipment = Equipment.barbell.rawValue
@@ -179,12 +177,12 @@ final class SessionViewModelTests: XCTestCase {
         for (ex, kg, bw, wantKg, wantBW) in cases {
             let r = SessionViewModel.normalizedSetEntry(exercise: ex, requestedWeightKg: kg,
                                                         requestedUsesBodyweight: bw)
-            XCTAssertEqual(r.weightKg, wantKg, ex.name)
-            XCTAssertEqual(r.usesBodyweight, wantBW, ex.name)
+            #expect(r.weightKg == wantKg, "\(ex.name)")
+            #expect(r.usesBodyweight == wantBW, "\(ex.name)")
         }
     }
 
-    func testNormalizedBattlingRopeSetsPersistZeroLoad() throws {
+    @Test func normalizedBattlingRopeSetsPersistZeroLoad() throws {
         let ctx = try makeContext()
         let s = WorkoutSession(title: "X", date: Date()); ctx.insert(s)
         let ropes = try WorkoutRepository.findOrCreateExercise(named: "Battling Ropes", category: .cardio, in: ctx)
@@ -194,8 +192,9 @@ final class SessionViewModelTests: XCTestCase {
             let set = try WorkoutRepository.addSet(to: s, exercise: ropes, weightKg: n.weightKg, reps: 20,
                                                    rpe: nil, isWarmup: false, usesBodyweight: n.usesBodyweight,
                                                    note: nil, completedAt: Date(), performedBy: nil, in: ctx)
-            XCTAssertEqual(set.weight, 0)
-            XCTAssertFalse(set.usesBodyweight)
+            #expect(set.weight == 0)
+            #expect(!set.usesBodyweight)
         }
     }
 }
+#endif

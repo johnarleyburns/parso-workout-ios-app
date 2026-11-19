@@ -2,7 +2,9 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import os
+import CadencePhoneFeatures
 /// Home dashboard.
 struct HomeView: View {
     enum Surface: Equatable {

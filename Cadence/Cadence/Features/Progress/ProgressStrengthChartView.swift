@@ -3,6 +3,8 @@ import Charts
 import Accessibility
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Fast, local-only controls for the Strength over time chart. The expensive
 /// history projection is prepared by TrainingProgressView; changing this menu

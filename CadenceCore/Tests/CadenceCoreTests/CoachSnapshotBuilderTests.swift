@@ -1,4 +1,6 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -6,7 +8,7 @@ import SwiftData
 /// computes once — off the render path — instead of ~8–10× per body evaluation,
 /// which was stalling set logging by 1–2s. These lock in that the builder produces
 /// the same coach outputs as the underlying engines, and is deterministic.
-final class CoachSnapshotBuilderTests: XCTestCase {
+struct CoachSnapshotBuilderTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -35,19 +37,19 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         return (ctx, [s])
     }
 
-    func testColdStartSnapshotIsSafeAndCited() {
+    @Test func coldStartSnapshotIsSafeAndCited() {
         let snap = CoachSnapshotBuilder.build(
             sessions: [], cardio: [], assessments: [], hasPainToday: false,
             goal: .strength, experience: .intermediate, formula: .epley,
             schedulePreferences: CoachSchedulePreferences(), profile: .empty)
         // Cold start still yields a usable, cited recommendation and a plan — no crash.
-        XCTAssertFalse(snap.recommendation.title.isEmpty)
-        XCTAssertFalse(snap.plan.days.isEmpty)
+        #expect(!snap.recommendation.title.isEmpty)
+        #expect(!snap.plan.days.isEmpty)
         let known = Set(CitationRegistry.all.map(\.id))
-        for i in snap.insights { XCTAssertTrue(known.contains(i.citation.id)) }
+        for i in snap.insights { #expect(known.contains(i.citation.id)) }
     }
 
-    func testSnapshotInsightsMatchDirectEngine() throws {
+    @Test func snapshotInsightsMatchDirectEngine() throws {
         let now = testNow
         let (_, sessions) = try seededSession(chestSets: 8, now: now)
         let snap = CoachSnapshotBuilder.build(
@@ -56,15 +58,15 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
 
         // Facts reflect the logged chest volume (the builder wired TrainingFacts).
-        XCTAssertEqual(snap.facts.weeklySetsByGroup[.chest], 8)
+        #expect(snap.facts.weeklySetsByGroup[.chest] == 8)
         // A weekly plan + a decision were produced, and every insight is cited.
-        XCTAssertFalse(snap.plan.days.isEmpty)
-        XCTAssertFalse(snap.decision.primary.id.isEmpty)
+        #expect(!snap.plan.days.isEmpty)
+        #expect(!snap.decision.primary.id.isEmpty)
         let known = Set(CitationRegistry.all.map(\.id))
-        for i in snap.insights { XCTAssertTrue(known.contains(i.citation.id)) }
+        for i in snap.insights { #expect(known.contains(i.citation.id)) }
     }
 
-    func testDeterministicForIdenticalInputs() throws {
+    @Test func deterministicForIdenticalInputs() throws {
         let now = Date()
         let (_, sessions) = try seededSession(chestSets: 6, now: now)
         func build() -> CoachSnapshot {
@@ -74,13 +76,13 @@ final class CoachSnapshotBuilderTests: XCTestCase {
                 schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
         }
         let a = build(); let b = build()
-        XCTAssertEqual(a.insights.map(\.id), b.insights.map(\.id))
-        XCTAssertEqual(a.decision.primary.id, b.decision.primary.id)
-        XCTAssertEqual(a.recommendation.id, b.recommendation.id)
-        XCTAssertEqual(a.plan.days.count, b.plan.days.count)
+        #expect(a.insights.map(\.id) == b.insights.map(\.id))
+        #expect(a.decision.primary.id == b.decision.primary.id)
+        #expect(a.recommendation.id == b.recommendation.id)
+        #expect(a.plan.days.count == b.plan.days.count)
     }
 
-    func testMondayWorkoutThenTuesdayDoesNotNagUntrainedAbsCalves() throws {
+    @Test func mondayWorkoutThenTuesdayDoesNotNagUntrainedAbsCalves() throws {
         let cal = Calendar(identifier: .gregorian)
         var mondayComps = DateComponents()
         mondayComps.calendar = cal
@@ -129,8 +131,8 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             $0.group == .calves && $0.kind == .volume && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
         }
-        XCTAssertNil(absNag, "Abs should not read 'low' when coach never planned them")
-        XCTAssertNil(calvesNag, "Calves should not read 'low' when coach never planned them")
+        #expect(absNag == nil, "Abs should not read 'low' when coach never planned them")
+        #expect(calvesNag == nil, "Calves should not read 'low' when coach never planned them")
 
         // The coach's primary launched workout should carry abs + calves.
         // Check the primary if it's strength, otherwise check the first
@@ -154,12 +156,12 @@ final class CoachSnapshotBuilderTests: XCTestCase {
         // whole-body coverage. A non-strength primary is fine — the planner
         // covers abs/calves later in the week.
         if primary.kind == .strength {
-            XCTAssertTrue(hasAbWork, "Launched strength should include an ab movement")
-            XCTAssertTrue(hasCalfWork, "Launched strength should include a calf movement")
+            #expect(hasAbWork, "Launched strength should include an ab movement")
+            #expect(hasCalfWork, "Launched strength should include a calf movement")
         }
     }
 
-    func testDeletedSessionsAreIgnored() throws {
+    @Test func deletedSessionsAreIgnored() throws {
         let now = testNow
         let (ctx, sessions) = try seededSession(chestSets: 8, now: now)
 
@@ -167,7 +169,7 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             sessions: sessions, cardio: [], assessments: [], hasPainToday: false,
             goal: .hypertrophy, experience: .intermediate, formula: .epley,
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
-        XCTAssertEqual(before.facts.weeklySetsByGroup[.chest], 8)
+        #expect(before.facts.weeklySetsByGroup[.chest] == 8)
 
         sessions[0].deletedAt = Date()
         try ctx.save()
@@ -176,12 +178,12 @@ final class CoachSnapshotBuilderTests: XCTestCase {
             goal: .hypertrophy, experience: .intermediate, formula: .epley,
             schedulePreferences: CoachSchedulePreferences(), profile: .empty, now: now)
         // Soft-deleted sessions are excluded from the facts the coach reasons over.
-        XCTAssertEqual(after.facts.weeklySetsByGroup[.chest] ?? 0, 0)
+        #expect((after.facts.weeklySetsByGroup[.chest] ?? 0) == 0)
     }
 
     // MARK: - Phase F (field-test-fixes): coachFacts exposed
 
-    func testCoachFactsExposedAndConsistent() throws {
+    @Test func coachFactsExposedAndConsistent() throws {
         let now = testNow
         let snap = CoachSnapshotBuilder.build(sessions: [], cardio: [], assessments: [],
                                               hasPainToday: false, goal: .strength,
@@ -190,8 +192,9 @@ final class CoachSnapshotBuilderTests: XCTestCase {
                                               profile: .empty, now: now)
 
         // coachFacts.events should be empty (no sessions).
-        XCTAssertTrue(snap.coachFacts.events.isEmpty)
+        #expect(snap.coachFacts.events.isEmpty)
         // coachFacts and snapshot readiness should be the same (even if nil).
-        XCTAssertEqual(snap.coachFacts.readiness, snap.readiness)
+        #expect(snap.coachFacts.readiness == snap.readiness)
     }
 }
+#endif

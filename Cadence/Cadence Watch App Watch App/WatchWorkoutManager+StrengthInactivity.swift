@@ -3,6 +3,7 @@ import SwiftData
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// 10-minute inactivity watchdog for Watch-started/resumed STRENGTH workouts. Cardio, swim,
 /// interval and monitoring never create a record. The durable record (not the task) is the source
@@ -15,7 +16,7 @@ extension WatchWorkoutManager {
 
     /// Called once the local strength `WorkoutSession` exists (start, or user-chosen resume).
     func beginStrengthInactivityTracking(sessionID: UUID, explicitResume: Bool, now: Date = Date()) {
-        guard !uiTestMode else { return }
+        guard !simulatesHealthKit else { return }
         reconcileWatchStrengthInactivity(now: now)
         guard let record = strengthInactivity.begin(
             sessionID: sessionID, now: now, timeoutMinutes: inactivityTimeoutMinutes,
@@ -27,7 +28,7 @@ extension WatchWorkoutManager {
     /// delete, add/remove exercise or partner, pause/resume/finish). Never HR, appearance,
     /// WatchConnectivity, HealthKit or recovery paths.
     func recordStrengthMeaningfulActivity(_ event: StrengthActivityEvent, now: Date = Date()) {
-        guard !uiTestMode, strengthInactivity.record != nil else { return }
+        guard !simulatesHealthKit, strengthInactivity.record != nil else { return }
         if let record = strengthInactivity.recordActivity(event, now: now) {
             armStrengthInactivityDeadline(record)
         } else {
@@ -48,7 +49,7 @@ extension WatchWorkoutManager {
     /// Not activity. Safe from launch, recovery, HK callbacks, HR wakeups and screen wake; it only
     /// compares `now` with the STORED deadline.
     func reconcileWatchStrengthInactivity(now: Date = Date()) {
-        guard !uiTestMode else { return }
+        guard !simulatesHealthKit else { return }
         switch strengthInactivity.evaluate(now: now, enabled: inactivityEnabled) {
         case .finalize(let record, let endedAt):
             Task { await autoFinishStrengthForInactivity(sessionID: record.sessionID, endedAt: endedAt) }

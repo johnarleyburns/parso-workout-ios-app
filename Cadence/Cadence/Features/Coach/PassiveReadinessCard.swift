@@ -1,6 +1,8 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Home Coach-card line surfacing the passive-readiness signal (HRV/sleep/RHR) with
 /// tappable citations. The copy + citation IDs come from `PassiveReadinessPresenter`

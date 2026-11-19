@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchIntervalView: View {
     let plan: IntervalPlan
@@ -210,12 +211,13 @@ struct WatchIntervalView: View {
             .tint(.green)
             .accessibilityLabel("Save workout")
 
-            Button("Discard") {
+            Button(role: .destructive) {
                 watchManager.finishCardioSession(save: false)
                 onDone()
+            } label: {
+                Label("Discard", systemImage: "trash")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
             .accessibilityLabel("Discard workout")
           }
           .padding(.vertical, 8)

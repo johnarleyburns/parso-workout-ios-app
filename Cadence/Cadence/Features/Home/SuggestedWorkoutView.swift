@@ -1,6 +1,7 @@
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import os
 
 /// Immutable request snapshot used while Home computes one direct Personalized

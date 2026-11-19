@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
-    func testEmptyStrengthPreviewGetsLaunchableFallbackItems() throws {
+struct WeeklyPlanUnifiedBridgeTests {
+    @Test func emptyStrengthPreviewGetsLaunchableFallbackItems() throws {
         let monday = WeeklyStats.weekStart(now: Date(timeIntervalSince1970: 1_000_000))
         let emptyStrength = PlannedSession(
             id: "empty-strength", kind: .strength, label: "Strength",
@@ -16,17 +17,17 @@ final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
 
         let plan = WeeklyPlanUnifiedBridge.plan(
             from: WeeklyPlan(days: outlines, generatedAt: monday))
-        let session = try XCTUnwrap(plan.weeks.first?.days.first?.sessions.first)
+        let session = try #require(plan.weeks.first?.days.first?.sessions.first)
         let strengthItems = session.items.compactMap { item -> StrengthItem? in
             if case let .strength(value) = item { return value }
             return nil
         }
 
-        XCTAssertFalse(strengthItems.isEmpty)
-        XCTAssertFalse(strengthItems.flatMap(\.sets).isEmpty)
+        #expect(!strengthItems.isEmpty)
+        #expect(!strengthItems.flatMap(\.sets).isEmpty)
     }
 
-    func testBridgeProducesValidatedSevenDayPlanWithRichStrengthAndCardio() throws {
+    @Test func bridgeProducesValidatedSevenDayPlanWithRichStrengthAndCardio() throws {
         let calendar = Calendar.current
         let monday = WeeklyStats.weekStart(now: Date(timeIntervalSince1970: 1_000_000))
         let strength = PlannedSession(
@@ -56,26 +57,27 @@ final class WeeklyPlanUnifiedBridgeTests: XCTestCase {
         let second = WeeklyPlanUnifiedBridge.plan(from: weekly)
         try first.validate()
 
-        XCTAssertEqual(first, second, "IDs must not change when the same coach plan is rebuilt")
-        XCTAssertEqual(first.provenance, .coachGenerated)
-        XCTAssertTrue(first.isCoachGenerated)
-        XCTAssertEqual(first.weeks.first?.days.count, 7)
-        XCTAssertEqual(first.weeks.first?.days.first?.sessions.count, 2)
+        #expect(first == second, "IDs must not change when the same coach plan is rebuilt")
+        #expect(first.provenance == .coachGenerated)
+        #expect(first.isCoachGenerated)
+        #expect(first.weeks.first?.days.count == 7)
+        #expect(first.weeks.first?.days.first?.sessions.count == 2)
         let sessions = first.weeks.first?.days.first?.sessions ?? []
-        let strengthSession = try XCTUnwrap(sessions.first { $0.items.contains { if case .strength = $0 { return true }; return false } })
+        let strengthSession = try #require(sessions.first { $0.items.contains { if case .strength = $0 { return true }; return false } })
         guard case let .strength(item) = strengthSession.items.first else {
-            return XCTFail("strength item should be present")
+            Issue.record("strength item should be present")
+            return
         }
-        XCTAssertEqual(item.sets.map(\.repTarget), [.exact(10), .exact(9), .exact(8)])
-        XCTAssertEqual(item.sets.first?.load, .absoluteWeight(value: 60, unit: .kg))
-        XCTAssertEqual(item.sets.first?.targetRIR, 2)
+        #expect(item.sets.map(\.repTarget) == [.exact(10), .exact(9), .exact(8)])
+        #expect(item.sets.first?.load == .absoluteWeight(value: 60, unit: .kg))
+        #expect(item.sets.first?.targetRIR == 2)
         let allStrengthSetIDs = sessions.flatMap { session in
             session.items.compactMap { item -> [UUID]? in
                 if case let .strength(value) = item { return value.sets.map(\.id) }
                 return nil
             }.flatMap { $0 }
         }
-        XCTAssertEqual(allStrengthSetIDs.count, Set(allStrengthSetIDs).count)
-        XCTAssertTrue(sessions.contains { $0.items.contains { if case .cardio = $0 { return true }; return false } })
+        #expect(allStrengthSetIDs.count == Set(allStrengthSetIDs).count)
+        #expect(sessions.contains { $0.items.contains { if case .cardio = $0 { return true }; return false } })
     }
 }

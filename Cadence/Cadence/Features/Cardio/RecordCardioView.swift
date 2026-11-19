@@ -3,6 +3,8 @@ import Combine
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Live iPhone workout recording (FR-2.2–2.5).
 ///

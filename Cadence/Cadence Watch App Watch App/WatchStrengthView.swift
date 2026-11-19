@@ -5,6 +5,7 @@ import WatchConnectivity
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 P1–P4 (decision D-W1) — the workout pager, Apple Workout's grammar applied to
 /// lifting: Controls ◂ Set Card ▸ Plan ▸ Heart. It always returns to the Set Card. Pausing never
@@ -48,7 +49,11 @@ struct WatchStrengthView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchSettings
-    @Environment(\.dismiss) private var dismiss
+    /// Every completion/discard/auto-end path below uses this instead of
+    /// `@Environment(\.dismiss)` so finishing a strength workout always lands
+    /// on Home, regardless of how deep this screen was pushed (see
+    /// WatchHomeResetSignal.swift).
+    @Environment(\.watchReturnToHome) private var returnToHome
 
     var body: some View {
         Group {
@@ -74,7 +79,7 @@ struct WatchStrengthView: View {
                 shouldStopWorkoutOnDisappear = true
                 watchManager.stopWorkout(save: false)
                 watchManager.resetFinalizedStrengthCapture()
-                dismiss()
+                returnToHome()
             case .summary:
                 // A zero-cooldown finish reaches here directly. Capture before
                 // stopWorkout clears hrRecorder/sessionStart. Idempotent for
@@ -115,7 +120,7 @@ struct WatchStrengthView: View {
             // Auto-end finished the session underneath this screen; leave without re-stopping.
             guard id != nil, id == flowModel?.session?.id || flowModel?.session == nil else { return }
             shouldStopWorkoutOnDisappear = false
-            dismiss()
+            returnToHome()
         }
         .onChange(of: flowModel?.lastLoggedSetID) { _, id in
             guard id != nil, let model = flowModel else { return }
@@ -143,7 +148,7 @@ struct WatchStrengthView: View {
             WatchStrengthSummaryView(model: model, onDismiss: {
                 shouldStopWorkoutOnDisappear = true
                 if watchManager.isActive { watchManager.stopWorkout(save: false) }
-                dismiss()
+                returnToHome()
             })
         case .discarded, .idle:
             EmptyView()

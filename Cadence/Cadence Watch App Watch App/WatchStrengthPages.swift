@@ -2,6 +2,7 @@ import SwiftUI
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// P1 — Controls (swipe right): Pause/Resume, Finish (→ review), Water Lock, Partners; Discard.
 struct WatchStrengthControlsPage: View {
@@ -10,21 +11,29 @@ struct WatchStrengthControlsPage: View {
     let onPartners: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
     @State private var confirmDiscard = false
+    /// Self-tracked feedback only: WatchKit exposes no reactive notification for
+    /// the water-lock toggle, so this reflects "we just asked the system to
+    /// engage it," not a live readback of the actual lock state.
+    @State private var waterLockEngaged = false
 
     var body: some View {
         ScrollView {
             VStack(spacing: 6) {
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    Text(Duration.seconds(watchManager.elapsed).formatted(.time(pattern: .hourMinuteSecond)))
+                    Text(Duration.seconds(watchManager.effectiveElapsed).formatted(.time(pattern: .hourMinuteSecond)))
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(WatchTone.accent)
                 }
-                if watchManager.isPaused, let copy = watchManager.strengthPause.statusCopy {
-                    Text(copy)
-                        .font(.caption2)
-                        .multilineTextAlignment(.center)
-                        .accessibilityIdentifier("watchStrength.pauseReason")
-                }
+                // Fixed-height reservation: this row was being inserted/removed as
+                // the pause-reason text appeared/disappeared, shifting the tile
+                // grid below it. Always occupy the space; only the text itself is
+                // conditional.
+                Text(watchManager.isPaused ? (watchManager.strengthPause.statusCopy ?? "") : "")
+                    .font(.caption2)
+                    .multilineTextAlignment(.center)
+                    .frame(minHeight: 28)
+                    .accessibilityIdentifier("watchStrength.pauseReason")
+                    .accessibilityHidden(!watchManager.isPaused || watchManager.strengthPause.statusCopy == nil)
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     tile(watchManager.isPaused ? "Resume" : "Pause",
                          systemImage: watchManager.isPaused ? "play.fill" : "pause.fill",
@@ -34,8 +43,13 @@ struct WatchStrengthControlsPage: View {
                         watchManager.userToggleStrengthPause(origin: .userControl)
                     }
                     tile("Finish", systemImage: "checkmark", tint: .red, identifier: "watchStrength.finish", action: onFinish)
-                    tile("Water Lock", systemImage: "drop.fill", identifier: "watchStrength.waterLock") {
-                        WKInterfaceDevice.current().enableWaterLock()
+                    tile(waterLockEngaged ? "Locked" : "Water Lock",
+                         systemImage: waterLockEngaged ? "drop.fill" : "drop",
+                         identifier: "watchStrength.waterLock") {
+                        if watchManager.enableWaterLock() {
+                            WatchHaptics.tap()
+                            waterLockEngaged = true
+                        }
                     }
                     tile("Partners", systemImage: "person.2.fill", identifier: "watchStrength.partners", action: onPartners)
                 }
@@ -88,8 +102,10 @@ struct WatchHeartPage: View {
                 .accessibilityLabel(Text("Heart rate \(LiveHeartRateDisplay(bpm: watchManager.currentBPM).valueText) beats per minute"))
             Text("BPM").font(.caption2).foregroundStyle(.secondary)
             if !isLuminanceReduced {
-                Text(Duration.seconds(watchManager.elapsed).formatted(.time(pattern: .hourMinuteSecond)))
-                    .font(.footnote.monospacedDigit())
+                TimelineView(.periodic(from: .now, by: 1)) { _ in
+                    Text(Duration.seconds(watchManager.effectiveElapsed).formatted(.time(pattern: .hourMinuteSecond)))
+                        .font(.footnote.monospacedDigit())
+                }
                 (watchManager.hrSource == .bluetooth ? Text("Chest strap") : Text("Wrist sensor"))
                     .font(.caption2).foregroundStyle(.secondary)
             }

@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The small semantic palette shared by the iPhone surfaces. Keeping roles
 /// here makes it difficult for a screen to invent a one-off card or action

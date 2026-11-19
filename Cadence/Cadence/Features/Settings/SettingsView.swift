@@ -1,6 +1,8 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct SettingsView: View {
     @Environment(AppModel.self) private var model

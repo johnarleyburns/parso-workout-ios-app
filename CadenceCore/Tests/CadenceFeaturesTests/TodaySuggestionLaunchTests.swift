@@ -1,10 +1,13 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Launch-order proof: the durable Today plan is restored before candidate
 /// loading or generation; only a genuine miss loads candidates and generates.
-final class TodaySuggestionLaunchTests: XCTestCase {
+struct TodaySuggestionLaunchTests {
     private final class Counter: @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0
@@ -56,74 +59,74 @@ final class TodaySuggestionLaunchTests: XCTestCase {
         }
     }
 
-    func testRestartRestoresBeforeCatalogAndGenerator() async {
+    @Test func restartRestoresBeforeCatalogAndGenerator() async {
         let u = url(); defer { try? FileManager.default.removeItem(at: u) }
         let now = day(10)
         let first = TodaySuggestedWorkoutCacheStore(fileURL: u, calendar: cal, now: { now })
         let catalog = Counter(), gen = Counter()
         let cold = await launch(first, key: "k", catalog: catalog, generator: gen)
-        XCTAssertEqual(cold?.title, "Generated")
-        XCTAssertEqual(catalog.value, 1); XCTAssertEqual(gen.value, 1)
+        #expect(cold?.title == "Generated")
+        #expect(catalog.value == 1); #expect(gen.value == 1)
 
         // Fresh process / recreated view: a new store over the same file.
         let second = TodaySuggestedWorkoutCacheStore(fileURL: u, calendar: cal, now: { now })
         let warm = await launch(second, key: "k", catalog: catalog, generator: gen)
-        XCTAssertEqual(catalog.value, 1, "no catalog load on valid restore")
-        XCTAssertEqual(gen.value, 1, "no generation on valid restore")
-        XCTAssertEqual(warm?.title, "Generated")
-        XCTAssertEqual(warm?.exercises.first?.name, "Bench Press")
-        XCTAssertEqual(warm?.exercises.first?.sets.map(\.targetReps), [8, 6])
-        XCTAssertEqual(warm?.recommendationRationale?.whyWorkout, "why")
+        #expect(catalog.value == 1, "no catalog load on valid restore")
+        #expect(gen.value == 1, "no generation on valid restore")
+        #expect(warm?.title == "Generated")
+        #expect(warm?.exercises.first?.name == "Bench Press")
+        #expect(warm?.exercises.first?.sets.map(\.targetReps) == [8, 6])
+        #expect(warm?.recommendationRationale?.whyWorkout == "why")
     }
 
-    func testChangedInputsDiscardAndRegenerateOnce() async {
+    @Test func changedInputsDiscardAndRegenerateOnce() async {
         let d10 = day(10)
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { d10 })
         let catalog = Counter(), gen = Counter()
         _ = await launch(store, key: "k1", catalog: catalog, generator: gen)
         _ = await launch(store, key: "k2", catalog: catalog, generator: gen)
-        XCTAssertEqual(catalog.value, 2); XCTAssertEqual(gen.value, 2)
+        #expect(catalog.value == 2); #expect(gen.value == 2)
         let restored = await store.restoreEarly(earlyKey: "k2")
-        XCTAssertNotNil(restored)
+        #expect(restored != nil)
         let stale = await store.restoreEarly(earlyKey: "k1")
-        XCTAssertNil(stale)
+        #expect(stale == nil)
     }
 
-    func testNewDayAndCorruptAndOldSchemaMiss() async throws {
+    @Test func newDayAndCorruptAndOldSchemaMiss() async throws {
         let u = url(); defer { try? FileManager.default.removeItem(at: u) }
         let clock = Clock(day(10))
         let store = TodaySuggestedWorkoutCacheStore(fileURL: u, calendar: cal, now: { clock.date })
         await store.save(payload(), fingerprint: "f", earlyKey: "k")
         clock.date = day(11)
         let nextDay = await store.restoreEarly(earlyKey: "k")
-        XCTAssertNil(nextDay)
+        #expect(nextDay == nil)
 
         try Data("not json".utf8).write(to: u)
         let corrupt = TodaySuggestedWorkoutCacheStore(fileURL: u, calendar: cal, now: { clock.date })
         let c = await corrupt.restoreEarly(earlyKey: "k")
-        XCTAssertNil(c)
+        #expect(c == nil)
 
         let old = #"{"schemaVersion":0,"dayKey":"x","fingerprint":"f","updatedAt":0,"plan":{}}"#
         try Data(old.utf8).write(to: u)
         let oldStore = TodaySuggestedWorkoutCacheStore(fileURL: u, calendar: cal, now: { clock.date })
         let o = await oldStore.restoreEarly(earlyKey: "k")
-        XCTAssertNil(o)
+        #expect(o == nil)
     }
 
-    func testRecordWithoutEarlyKeyFallsThroughToFullPathAndUpgrades() async {
+    @Test func recordWithoutEarlyKeyFallsThroughToFullPathAndUpgrades() async {
         let d10 = day(10)
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { d10 })
         await store.save(payload(), fingerprint: "full-k")  // legacy record
         let early = await store.restoreEarly(earlyKey: "k")
-        XCTAssertNil(early)
+        #expect(early == nil)
         let gen = Counter()
         let hit = await store.resolve(fingerprint: "full-k", earlyKey: "k") { gen.bump(); return nil }
-        XCTAssertNotNil(hit); XCTAssertEqual(gen.value, 0)
+        #expect(hit != nil); #expect(gen.value == 0)
         let upgraded = await store.restoreEarly(earlyKey: "k")
-        XCTAssertNotNil(upgraded)
+        #expect(upgraded != nil)
     }
 
-    func testThisWeekDoesNotTouchTodayRecord() async {
+    @Test func thisWeekDoesNotTouchTodayRecord() async {
         let d10 = day(10)
         // This Week uses its own store; Today's record survives Today → Week → Today.
         let today = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { d10 })
@@ -132,11 +135,11 @@ final class TodaySuggestionLaunchTests: XCTestCase {
         await week.save(payload("Week"), fingerprint: "w", earlyKey: "wk")
         await week.invalidate()
         let back = await today.restoreEarly(earlyKey: "k")
-        XCTAssertEqual(back?.title, "Push")
+        #expect(back?.title == "Push")
     }
 
-    func testEarlyKeyIsStableAndSensitive() {
-        XCTAssertEqual(TodaySuggestedWorkoutEarlyKey.make(["a", "b"]), TodaySuggestedWorkoutEarlyKey.make(["a", "b"]))
-        XCTAssertNotEqual(TodaySuggestedWorkoutEarlyKey.make(["a", "b"]), TodaySuggestedWorkoutEarlyKey.make(["ab"]))
+    @Test func earlyKeyIsStableAndSensitive() {
+        #expect(TodaySuggestedWorkoutEarlyKey.make(["a", "b"]) == TodaySuggestedWorkoutEarlyKey.make(["a", "b"]))
+        #expect(TodaySuggestedWorkoutEarlyKey.make(["a", "b"]) != TodaySuggestedWorkoutEarlyKey.make(["ab"]))
     }
 }

@@ -1,55 +1,57 @@
-import XCTest
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class WatchSwimmingTests: XCTestCase {
-    func testMutuallyExclusiveSwimConfigurations() {
+struct WatchSwimmingTests {
+    @Test func mutuallyExclusiveSwimConfigurations() {
         for length in [25.0, 50.0] {
             let pool = WatchSwimSetup.configuration(mode: .lapPool, poolLength: length)
-            XCTAssertEqual(pool.poolLengthMeters, length)
-            XCTAssertFalse(pool.usesGPS)
+            #expect(pool.poolLengthMeters == length)
+            #expect(!pool.usesGPS)
             let open = WatchSwimSetup.configuration(mode: .openWater, poolLength: length)
-            XCTAssertTrue(open.usesGPS)
-            XCTAssertNil(open.poolLengthMeters)
+            #expect(open.usesGPS)
+            #expect(open.poolLengthMeters == nil)
         }
-        XCTAssertEqual(WatchSwimSetup.configuration(mode: .lapPool, poolLength: .nan).poolLengthMeters, 25)
+        #expect(WatchSwimSetup.configuration(mode: .lapPool, poolLength: .nan).poolLengthMeters == 25)
     }
 
-    func testNativeDistanceCountsPoolLengthsWithoutDuplicateEvents() {
+    @Test func nativeDistanceCountsPoolLengthsWithoutDuplicateEvents() {
         var progress = WatchSwimProgress(poolLengthMeters: 25)
         for (distance, laps) in [(0.0, 0), (24.9, 0), (25, 1), (25, 1), (50, 2), (100, 4)] {
             progress.update(distanceMeters: distance)
-            XCTAssertEqual(progress.lapCount, laps)
+            #expect(progress.lapCount == laps)
         }
         progress.update(distanceMeters: 50) // late callback cannot undo completed lengths
-        XCTAssertEqual(progress.distanceMeters, 100)
-        XCTAssertEqual(progress.lapCount, 4)
+        #expect(progress.distanceMeters == 100)
+        #expect(progress.lapCount == 4)
     }
 
-    func testFiftyMeterPoolAndOpenWater() {
+    @Test func fiftyMeterPoolAndOpenWater() {
         var pool = WatchSwimProgress(poolLengthMeters: 50)
         pool.update(distanceMeters: 200)
-        XCTAssertEqual(pool.lapCount, 4)
+        #expect(pool.lapCount == 4)
         var open = WatchSwimProgress(poolLengthMeters: nil)
         open.update(distanceMeters: 200)
-        XCTAssertEqual(open.distanceMeters, 200)
-        XCTAssertNil(open.lapCount)
+        #expect(open.distanceMeters == 200)
+        #expect(open.lapCount == nil)
     }
 
-    func testInvalidMeasurementsDoNotInventLapsOrCrash() {
+    @Test func invalidMeasurementsDoNotInventLapsOrCrash() {
         var pool = WatchSwimProgress(poolLengthMeters: 25)
         for value in [Double.nan, .infinity, -1, Double.greatestFiniteMagnitude] {
             pool.update(distanceMeters: value)
         }
-        XCTAssertEqual(pool.distanceMeters, 0)
-        XCTAssertEqual(pool.lapCount, 0)
-        XCTAssertNil(WatchSwimProgress(poolLengthMeters: 0).lapCount)
+        #expect(pool.distanceMeters == 0)
+        #expect(pool.lapCount == 0)
+        #expect(WatchSwimProgress(poolLengthMeters: 0).lapCount == nil)
     }
 
-    func testWaterLockWaitsForRunningForegroundAndOnlyPendingRequest() {
-        XCTAssertTrue(WatchSwimSetup.shouldWaterLock(pending: true, running: true, foreground: true, supported: true))
-        XCTAssertFalse(WatchSwimSetup.shouldWaterLock(pending: true, running: false, foreground: true, supported: true))
-        XCTAssertFalse(WatchSwimSetup.shouldWaterLock(pending: true, running: true, foreground: false, supported: true))
-        XCTAssertFalse(WatchSwimSetup.shouldWaterLock(pending: false, running: true, foreground: true, supported: true))
-        XCTAssertFalse(WatchSwimSetup.shouldWaterLock(pending: true, running: true, foreground: true, supported: false))
+    @Test func waterLockWaitsForRunningForegroundAndOnlyPendingRequest() {
+        #expect(WatchSwimSetup.shouldWaterLock(pending: true, running: true, foreground: true, supported: true))
+        #expect(!WatchSwimSetup.shouldWaterLock(pending: true, running: false, foreground: true, supported: true))
+        #expect(!WatchSwimSetup.shouldWaterLock(pending: true, running: true, foreground: false, supported: true))
+        #expect(!WatchSwimSetup.shouldWaterLock(pending: false, running: true, foreground: true, supported: true))
+        #expect(!WatchSwimSetup.shouldWaterLock(pending: true, running: true, foreground: true, supported: false))
     }
 }

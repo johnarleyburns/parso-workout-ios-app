@@ -1,5 +1,8 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 private final class MemoryLedgerStore: WatchSyncLedgerStore {
     var ledger: WatchSyncLedger?
@@ -9,7 +12,7 @@ private final class MemoryLedgerStore: WatchSyncLedgerStore {
 
 private final class Clock { var now = Date(timeIntervalSince1970: 1_000_000) }
 
-final class WatchSyncHandshakeTests: XCTestCase {
+struct WatchSyncHandshakeTests {
     private let a = WatchSyncHandshake.Components(preferences: "p1", customExercises: "c1", todayPlan: "t1", weekSummary: "w1")
     private var b: WatchSyncHandshake.Components { var c = a; c.preferences = "p2"; return c }
 
@@ -22,180 +25,183 @@ final class WatchSyncHandshakeTests: XCTestCase {
         .init(revision: e.revision, snapshotID: e.snapshotID, components: e.components)
     }
 
-    func testLocalWriteWithoutAckIsAwaitingNotUpToDate() {
+    @Test func localWriteWithoutAckIsAwaitingNotUpToDate() {
         let t = make()
         let e = t.prepare(components: a, trigger: .contentChanged)!
-        XCTAssertEqual(t.state(installed: true, activated: true), .queued(revision: 1, since: Date(timeIntervalSince1970: 1_000_000)))
+        #expect(t.state(installed: true, activated: true) == .queued(revision: 1, since: Date(timeIntervalSince1970: 1_000_000)))
         t.markWritten(revision: e.revision)
-        guard case .awaitingWatch = t.state(installed: true, activated: true) else { return XCTFail() }
-        XCTAssertNil(t.lastConfirmedAt)
+        guard case .awaitingWatch = t.state(installed: true, activated: true) else {
+            Issue.record()
+            return
+        }
+        #expect(t.lastConfirmedAt == nil)
     }
 
-    func testMatchingAckConfirmsAndPersistsAcrossRecreation() {
+    @Test func matchingAckConfirmsAndPersistsAcrossRecreation() {
         let store = MemoryLedgerStore(), clock = Clock()
         let t = make(store, clock)
         let e = t.prepare(components: a, trigger: .contentChanged)!
         clock.now += 5
-        XCTAssertEqual(t.receive(ack: ack(e)), .confirmed)
+        #expect(t.receive(ack: ack(e)) == .confirmed)
         let t2 = make(store, clock)
-        XCTAssertEqual(t2.state(installed: true, activated: true), .upToDate(confirmedAt: clock.now))
-        XCTAssertEqual(t2.ledger.lastConfirmedRevision, 1)
+        #expect(t2.state(installed: true, activated: true) == .upToDate(confirmedAt: clock.now))
+        #expect(t2.ledger.lastConfirmedRevision == 1)
     }
 
-    func testDuplicateAndWrongAcksCannotConfirm() {
+    @Test func duplicateAndWrongAcksCannotConfirm() {
         let t = make()
         let e1 = t.prepare(components: a, trigger: .contentChanged)!
-        XCTAssertEqual(t.receive(ack: ack(e1)), .confirmed)
-        XCTAssertEqual(t.receive(ack: ack(e1)), .duplicate)
+        #expect(t.receive(ack: ack(e1)) == .confirmed)
+        #expect(t.receive(ack: ack(e1)) == .duplicate)
         let e2 = t.prepare(components: b, trigger: .contentChanged)!
-        XCTAssertEqual(t.receive(ack: ack(e1)), .duplicate)
+        #expect(t.receive(ack: ack(e1)) == .duplicate)
         var wrongID = ack(e2); wrongID.snapshotID = UUID()
-        XCTAssertEqual(t.receive(ack: wrongID), .ignored)
+        #expect(t.receive(ack: wrongID) == .ignored)
         var wrongVersion = ack(e2); wrongVersion.protocolVersion = 99
-        XCTAssertEqual(t.receive(ack: wrongVersion), .incompatible)
-        XCTAssertEqual(t.state(installed: true, activated: true),
+        #expect(t.receive(ack: wrongVersion) == .incompatible)
+        #expect(t.state(installed: true, activated: true) ==
                        .failedRecoverably(reason: .incompatibleVersion, lastConfirmedAt: t.lastConfirmedAt))
-        XCTAssertEqual(t.ledger.pending?.revision, 2)
+        #expect(t.ledger.pending?.revision == 2)
     }
 
-    func testDurableAckArrivingLaterConfirmsOnce() {
+    @Test func durableAckArrivingLaterConfirmsOnce() {
         let t = make()
         let e = t.prepare(components: a, trigger: .contentChanged)!
         let receiverDecision = WatchSyncReceiveDecision.decide(context: e.contextEntries, applied: nil)
-        XCTAssertEqual(receiverDecision, .apply)
+        #expect(receiverDecision == .apply)
         let record = WatchSyncAppliedRecord(revision: e.revision, snapshotID: e.snapshotID, components: e.components)
-        XCTAssertEqual(WatchSyncReceiveDecision.decide(context: e.contextEntries, applied: record), .duplicate)
+        #expect(WatchSyncReceiveDecision.decide(context: e.contextEntries, applied: record) == .duplicate)
         let roundTrip = WatchSyncHandshake.Ack(message: record.ack.message)!
-        XCTAssertEqual(t.receive(ack: roundTrip), .confirmed)
-        XCTAssertEqual(t.receive(ack: roundTrip), .duplicate)
+        #expect(t.receive(ack: roundTrip) == .confirmed)
+        #expect(t.receive(ack: roundTrip) == .duplicate)
     }
 
-    func testTimeoutBecomesStaleThenRetryGetsNewRevisionAndConfirms() {
+    @Test func timeoutBecomesStaleThenRetryGetsNewRevisionAndConfirms() {
         let clock = Clock(); let t = make(MemoryLedgerStore(), clock)
         let e1 = t.prepare(components: a, trigger: .contentChanged)!
         t.markWritten(revision: 1)
         clock.now += WatchSyncHandshake.ackTimeout + 1
-        XCTAssertEqual(t.state(installed: true, activated: true), .stale(lastConfirmedAt: nil))
-        XCTAssertTrue(t.mayReconcile(.periodic))
+        #expect(t.state(installed: true, activated: true) == .stale(lastConfirmedAt: nil))
+        #expect(t.mayReconcile(.periodic))
         let e2 = t.prepare(components: a, trigger: .periodic)!
-        XCTAssertEqual(e2.revision, 2)
-        XCTAssertNotEqual(e1.snapshotID, e2.snapshotID)
-        XCTAssertEqual(t.receive(ack: ack(e1)), .ignored)
-        XCTAssertEqual(t.receive(ack: ack(e2)), .confirmed)
+        #expect(e2.revision == 2)
+        #expect(e1.snapshotID != e2.snapshotID)
+        #expect(t.receive(ack: ack(e1)) == .ignored)
+        #expect(t.receive(ack: ack(e2)) == .confirmed)
     }
 
-    func testBackoffGrowsAndIsCapped() {
+    @Test func backoffGrowsAndIsCapped() {
         let clock = Clock(); let t = make(MemoryLedgerStore(), clock)
         _ = t.prepare(components: a, trigger: .contentChanged)
         clock.now += 121
         _ = t.prepare(components: a, trigger: .periodic)      // attempt 2: next delay 240
         clock.now += 121
-        XCTAssertFalse(t.mayReconcile(.periodic))
+        #expect(!t.mayReconcile(.periodic))
         clock.now += 120
-        XCTAssertTrue(t.mayReconcile(.periodic))
+        #expect(t.mayReconcile(.periodic))
         for _ in 0..<10 { clock.now += 2000; _ = t.prepare(components: a, trigger: .periodic) }
         clock.now += WatchSyncHandshake.maximumBackoff - 1
-        XCTAssertFalse(t.mayReconcile(.periodic))
+        #expect(!t.mayReconcile(.periodic))
     }
 
-    func testChangesDuringUnackedWriteCoalesceToLatest() {
+    @Test func changesDuringUnackedWriteCoalesceToLatest() {
         let t = make()
         let e1 = t.prepare(components: a, trigger: .contentChanged)!
         let e2 = t.prepare(components: b, trigger: .contentChanged)!
-        XCTAssertEqual(t.ledger.pending, e2)
-        XCTAssertEqual(t.receive(ack: ack(e1)), .ignored)
-        XCTAssertNil(t.lastConfirmedAt)
-        XCTAssertEqual(t.receive(ack: ack(e2)), .confirmed)
-        XCTAssertNil(t.prepare(components: b, trigger: .contentChanged))
+        #expect(t.ledger.pending == e2)
+        #expect(t.receive(ack: ack(e1)) == .ignored)
+        #expect(t.lastConfirmedAt == nil)
+        #expect(t.receive(ack: ack(e2)) == .confirmed)
+        #expect(t.prepare(components: b, trigger: .contentChanged) == nil)
     }
 
-    func testLifecycleTriggersReconcileWithUnchangedFingerprintOnlyWhenNeeded() {
+    @Test func lifecycleTriggersReconcileWithUnchangedFingerprintOnlyWhenNeeded() {
         let clock = Clock(); let t = make(MemoryLedgerStore(), clock)
         let e = t.prepare(components: a, trigger: .contentChanged)!
         // Unacknowledged: activation right away is bounded, later is allowed.
-        XCTAssertNil(t.prepare(components: a, trigger: .activation))
+        #expect(t.prepare(components: a, trigger: .activation) == nil)
         clock.now += 31
-        XCTAssertNotNil(t.prepare(components: a, trigger: .reachability))
+        #expect(t.prepare(components: a, trigger: .reachability) != nil)
         let e2 = t.ledger.pending!
         _ = e
         t.receive(ack: ack(e2))
         // Fresh confirmation: no write; stale confirmation: reconcile.
         clock.now += 10
-        XCTAssertNil(t.prepare(components: a, trigger: .activation))
+        #expect(t.prepare(components: a, trigger: .activation) == nil)
         clock.now += WatchSyncHandshake.reconcileInterval
-        XCTAssertNotNil(t.prepare(components: a, trigger: .activation))
+        #expect(t.prepare(components: a, trigger: .activation) != nil)
     }
 
-    func testRapidEventsAreBounded() {
+    @Test func rapidEventsAreBounded() {
         let t = make()
         var writes = 0
         for _ in 0..<50 {
             if t.prepare(components: a, trigger: .activation) != nil { writes += 1 }
             if t.prepare(components: a, trigger: .contentChanged) != nil { writes += 1 }
         }
-        XCTAssertEqual(writes, 1)
+        #expect(writes == 1)
     }
 
-    func testWatchBehindOrAheadOrIncompatibleStatus() {
+    @Test func watchBehindOrAheadOrIncompatibleStatus() {
         let t = make()
         let e = t.prepare(components: a, trigger: .contentChanged)!
         t.receive(ack: ack(e))
         let e2 = t.prepare(components: b, trigger: .contentChanged)!
         t.receive(ack: ack(e2))
-        XCTAssertEqual(t.receive(ack: .init(revision: 1, snapshotID: nil, components: nil)), .watchBehind)
-        XCTAssertTrue(t.mayReconcile(.watchRequest))
-        XCTAssertEqual(t.receive(ack: .init(revision: 40, snapshotID: UUID(), components: nil)), .watchAhead)
-        XCTAssertEqual(t.prepare(components: b, trigger: .watchRequest)!.revision, 41)
-        XCTAssertEqual(t.receiveWatchRequest(appliedRevision: 1, protocolVersion: 7), .incompatible)
+        #expect(t.receive(ack: .init(revision: 1, snapshotID: nil, components: nil)) == .watchBehind)
+        #expect(t.mayReconcile(.watchRequest))
+        #expect(t.receive(ack: .init(revision: 40, snapshotID: UUID(), components: nil)) == .watchAhead)
+        #expect(t.prepare(components: b, trigger: .watchRequest)!.revision == 41)
+        #expect(t.receiveWatchRequest(appliedRevision: 1, protocolVersion: 7) == .incompatible)
         let state = t.state(installed: true, activated: true)
-        XCTAssertEqual(state, .failedRecoverably(reason: .incompatibleVersion, lastConfirmedAt: t.lastConfirmedAt))
-        XCTAssertNotNil(t.lastConfirmedAt, "existing confirmation retained")
+        #expect(state == .failedRecoverably(reason: .incompatibleVersion, lastConfirmedAt: t.lastConfirmedAt))
+        #expect(t.lastConfirmedAt != nil, "existing confirmation retained")
     }
 
-    func testWatchRequestForcesRevisionWithoutManualAction() {
+    @Test func watchRequestForcesRevisionWithoutManualAction() {
         let clock = Clock(); let t = make(MemoryLedgerStore(), clock)
         let e = t.prepare(components: a, trigger: .contentChanged)!
         t.receive(ack: ack(e))
         clock.now += 1
-        XCTAssertNotNil(t.prepare(components: a, trigger: .watchRequest))
+        #expect(t.prepare(components: a, trigger: .watchRequest) != nil)
     }
 
-    func testLegacyStateIsUnconfirmedUntilHandshake() {
+    @Test func legacyStateIsUnconfirmedUntilHandshake() {
         let t = make(legacy: Date(timeIntervalSince1970: 5))
-        XCTAssertNil(t.lastConfirmedAt)
-        XCTAssertEqual(t.state(installed: true, activated: true), .stale(lastConfirmedAt: nil))
+        #expect(t.lastConfirmedAt == nil)
+        #expect(t.state(installed: true, activated: true) == .stale(lastConfirmedAt: nil))
         let legacyContext: [String: Any] = ["settings.unit": "kg"]
-        XCTAssertEqual(WatchSyncReceiveDecision.decide(context: legacyContext, applied: nil), .legacy)
+        #expect(WatchSyncReceiveDecision.decide(context: legacyContext, applied: nil) == .legacy)
         let e = t.prepare(components: .init(context: legacyContext), trigger: .activation)!
-        XCTAssertEqual(t.receive(ack: ack(e)), .confirmed)
+        #expect(t.receive(ack: ack(e)) == .confirmed)
     }
 
-    func testReceiverRejectsStaleAndIncompatible() {
+    @Test func receiverRejectsStaleAndIncompatible() {
         let e = WatchSyncHandshake.Envelope(revision: 5, createdAt: Date(), components: a)
         let applied = WatchSyncAppliedRecord(revision: 7, snapshotID: UUID(), components: a)
-        XCTAssertEqual(WatchSyncReceiveDecision.decide(context: e.contextEntries, applied: applied), .stale)
+        #expect(WatchSyncReceiveDecision.decide(context: e.contextEntries, applied: applied) == .stale)
         var ctx = e.contextEntries; ctx[WatchSyncHandshake.Key.protocolVersion] = 2
-        XCTAssertEqual(WatchSyncReceiveDecision.decide(context: ctx, applied: nil), .incompatible)
+        #expect(WatchSyncReceiveDecision.decide(context: ctx, applied: nil) == .incompatible)
     }
 
-    func testFingerprintsAreStableAndIgnoreUpdatedAt() {
+    @Test func fingerprintsAreStableAndIgnoreUpdatedAt() {
         let c1: [String: Any] = ["settings.unit": "kg", "week.sets": 3, "week.updatedAt": Date(timeIntervalSince1970: 1)]
         let c2: [String: Any] = ["settings.unit": "kg", "week.sets": 3, "week.updatedAt": Date(timeIntervalSince1970: 99)]
-        XCTAssertEqual(WatchSyncHandshake.Components(context: c1), WatchSyncHandshake.Components(context: c2))
+        #expect(WatchSyncHandshake.Components(context: c1) == WatchSyncHandshake.Components(context: c2))
         let c3: [String: Any] = ["settings.unit": "lb", "week.sets": 3]
-        XCTAssertNotEqual(WatchSyncHandshake.Components(context: c1).preferences, WatchSyncHandshake.Components(context: c3).preferences)
-        XCTAssertEqual(WatchSyncHandshake.Components(context: c1).weekSummary, WatchSyncHandshake.Components(context: c3).weekSummary)
+        #expect(WatchSyncHandshake.Components(context: c1).preferences != WatchSyncHandshake.Components(context: c3).preferences)
+        #expect(WatchSyncHandshake.Components(context: c1).weekSummary == WatchSyncHandshake.Components(context: c3).weekSummary)
     }
 
-    func testStateTextNeverLeaksIdentifiersAndCoversStates() {
+    @Test func stateTextNeverLeaksIdentifiersAndCoversStates() {
         let states: [WatchSyncState] = [.notInstalled, .activating, .upToDate(confirmedAt: Date()),
             .queued(revision: 4242, since: Date()), .awaitingWatch(revision: 4242, since: Date()), .reconciling,
             .stale(lastConfirmedAt: nil), .failedRecoverably(reason: .writeFailed, lastConfirmedAt: nil)]
         for s in states {
-            XCTAssertFalse(s.summaryText.isEmpty)
-            XCTAssertFalse(s.accessibilityText(lastConfirmedAt: nil).contains("4242"))
+            #expect(!s.summaryText.isEmpty)
+            #expect(!s.accessibilityText(lastConfirmedAt: nil).contains("4242"))
         }
-        XCTAssertEqual(WatchSyncState.queued(revision: 1, since: Date()).summaryText, "Pending")
-        XCTAssertEqual(WatchSyncState.awaitingWatch(revision: 1, since: Date()).summaryText, "Waiting for Apple Watch")
+        #expect(WatchSyncState.queued(revision: 1, since: Date()).summaryText == "Pending")
+        #expect(WatchSyncState.awaitingWatch(revision: 1, since: Date()).summaryText == "Waiting for Apple Watch")
     }
 }

@@ -1,6 +1,8 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Full-screen add/edit set entry. The filename is retained to avoid changing
 /// the Xcode project graph; the old inline implementation is no longer used.

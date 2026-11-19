@@ -1,5 +1,6 @@
 import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @Suite struct WatchRecoveredSessionPlanTests {
     let id = "7C9E6679-7425-40DE-944B-E07FC1F90AE7"

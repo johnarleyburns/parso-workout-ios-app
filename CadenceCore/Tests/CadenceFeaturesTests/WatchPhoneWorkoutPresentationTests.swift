@@ -1,10 +1,11 @@
-import XCTest
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchPhoneWorkoutPresentationTests: XCTestCase {
-    func testPhoneWorkoutScreenShowsOnlyForActivePhoneOwnedWorkout() {
-        XCTAssertTrue(WatchPhoneWorkoutPresentation.shouldShow(isActive: true, phoneRequestID: "request"))
-        XCTAssertFalse(WatchPhoneWorkoutPresentation.shouldShow(isActive: false, phoneRequestID: "request"))
-        XCTAssertFalse(WatchPhoneWorkoutPresentation.shouldShow(isActive: true, phoneRequestID: nil))
+struct WatchPhoneWorkoutPresentationTests {
+    @Test func phoneWorkoutScreenShowsOnlyForActivePhoneOwnedWorkout() {
+        #expect(WatchPhoneWorkoutPresentation.shouldShow(isActive: true, phoneRequestID: "request"))
+        #expect(!WatchPhoneWorkoutPresentation.shouldShow(isActive: false, phoneRequestID: "request"))
+        #expect(!WatchPhoneWorkoutPresentation.shouldShow(isActive: true, phoneRequestID: nil))
     }
 }

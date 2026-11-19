@@ -1,92 +1,97 @@
-import XCTest
+import Foundation
+import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchHRConnectionTests: XCTestCase {
+struct WatchHRConnectionTests {
     private let t0 = Date(timeIntervalSince1970: 1_000)
     private func ids() -> WatchHRConnectionIdentity { .init(phoneSessionID: UUID(), requestID: UUID()) }
     private func started(_ id: WatchHRConnectionIdentity) -> WatchHRConnection {
         var c = WatchHRConnection(); c.start(id, now: t0); return c
     }
 
-    func testFreshSampleMovesWatchdogDeadlineAndHeartbeatDoesNotRefreshSample() {
+    @Test func freshSampleMovesWatchdogDeadlineAndHeartbeatDoesNotRefreshSample() {
         let id = ids(); var c = started(id)
         _ = c.receiveSample(requestID: id.requestID, at: t0)
-        XCTAssertTrue(c.isTransportLive(now: t0.addingTimeInterval(14)))
-        XCTAssertTrue(c.isSampleFresh(now: t0.addingTimeInterval(14)))
+        #expect(c.isTransportLive(now: t0.addingTimeInterval(14)))
+        #expect(c.isSampleFresh(now: t0.addingTimeInterval(14)))
         _ = c.receiveTransportHeartbeat(requestID: id.requestID, at: t0.addingTimeInterval(14))
-        XCTAssertTrue(c.isTransportLive(now: t0.addingTimeInterval(28)))
-        XCTAssertFalse(c.isSampleFresh(now: t0.addingTimeInterval(28)))
+        #expect(c.isTransportLive(now: t0.addingTimeInterval(28)))
+        #expect(!c.isSampleFresh(now: t0.addingTimeInterval(28)))
     }
 
-    func testHealthyFirstWatchdogDoesNotDisableLaterStaleRecovery() {
+    @Test func healthyFirstWatchdogDoesNotDisableLaterStaleRecovery() {
         let id = ids(); var c = started(id)
         _ = c.receiveSample(requestID: id.requestID, at: t0)
-        XCTAssertEqual(c.tick(now: t0.addingTimeInterval(16)), .initialWaitElapsed)
-        XCTAssertEqual(c.state, .reconciling(.initialWaitElapsed))
+        #expect(c.tick(now: t0.addingTimeInterval(16)) == .initialWaitElapsed)
+        #expect(c.state == .reconciling(.initialWaitElapsed))
     }
 
-    func testHeartbeatForOtherRequestIsRejectedAndCannotKeepLinkLive() {
+    @Test func heartbeatForOtherRequestIsRejectedAndCannotKeepLinkLive() {
         let id = ids(); var c = started(id)
-        XCTAssertEqual(c.receiveTransportHeartbeat(requestID: UUID(), at: t0), .rejectedMismatch)
-        XCTAssertFalse(c.isTransportLive(now: t0))
+        #expect(c.receiveTransportHeartbeat(requestID: UUID(), at: t0) == .rejectedMismatch)
+        #expect(!c.isTransportLive(now: t0))
     }
 
-    func testNextWakeDelayNilAfterEndAndNonNilWhileAwaitingSample() {
+    @Test func nextWakeDelayNilAfterEndAndNonNilWhileAwaitingSample() {
         let id = ids(); var c = started(id)
-        XCTAssertNotNil(c.nextWakeDelay(now: t0))
+        #expect(c.nextWakeDelay(now: t0) != nil)
         c.end()
-        XCTAssertNil(c.nextWakeDelay(now: t0))
+        #expect(c.nextWakeDelay(now: t0) == nil)
     }
 
-    func testLaunchFirstThenDurableCommandAdoptsAndBufferedHRGoesLiveOnce() {
+    @Test func launchFirstThenDurableCommandAdoptsAndBufferedHRGoesLiveOnce() {
         let id = ids()
         var c = started(id)
         c.watchLaunched()
-        XCTAssertEqual(c.state, .awaitingWatchAdoption)
+        #expect(c.state == .awaitingWatchAdoption)
         var buffer = WatchHRUnclaimedBuffer()
         buffer.append(bpm: 120, sampleEnd: t0.addingTimeInterval(2), isHealthKit: true)
         buffer.append(bpm: 120, sampleEnd: t0.addingTimeInterval(2), isHealthKit: true)
         buffer.append(bpm: 90, sampleEnd: t0.addingTimeInterval(-500), isHealthKit: true)
-        XCTAssertTrue(c.adopted(id))
+        let didAdopt = c.adopted(id)
+        #expect(didAdopt)
         let claimed = buffer.claim(from: t0, through: t0.addingTimeInterval(10))
-        XCTAssertEqual(claimed.count, 1)
-        XCTAssertTrue(buffer.isEmpty)
-        XCTAssertEqual(c.receiveSample(requestID: id.requestID, at: t0.addingTimeInterval(3)), .accepted)
-        XCTAssertTrue(c.isLive(now: t0.addingTimeInterval(4)))
+        #expect(claimed.count == 1)
+        #expect(buffer.isEmpty)
+        #expect(c.receiveSample(requestID: id.requestID, at: t0.addingTimeInterval(3)) == .accepted)
+        #expect(c.isLive(now: t0.addingTimeInterval(4)))
     }
 
-    func testBufferIsBounded() {
+    @Test func bufferIsBounded() {
         var buffer = WatchHRUnclaimedBuffer()
         for i in 0..<(WatchHRUnclaimedBuffer.capacity + 20) {
             buffer.append(bpm: 100, sampleEnd: t0.addingTimeInterval(Double(i)), isHealthKit: true)
         }
-        XCTAssertEqual(buffer.readings.count, WatchHRUnclaimedBuffer.capacity)
-        XCTAssertEqual(buffer.droppedCount, 20)
+        #expect(buffer.readings.count == WatchHRUnclaimedBuffer.capacity)
+        #expect(buffer.droppedCount == 20)
     }
 
-    func testAdoptionOfAnotherWorkoutsIdentityIsRefused() {
+    @Test func adoptionOfAnotherWorkoutsIdentityIsRefused() {
         let a = ids(), b = ids()
         var c = started(b)
-        XCTAssertFalse(c.adopted(a))
-        XCTAssertEqual(c.state, .startingWatchWorkout(b))
+        let didAdopt = c.adopted(a)
+        #expect(!didAdopt)
+        #expect(c.state == .startingWatchWorkout(b))
     }
 
-    func testForegroundWaitTriggersReconcileNotSilence() {
+    @Test func foregroundWaitTriggersReconcileNotSilence() {
         var c = started(ids())
-        XCTAssertNil(c.tick(now: t0.addingTimeInterval(WatchHRConnection.initialWait - 1)))
-        XCTAssertEqual(c.tick(now: t0.addingTimeInterval(WatchHRConnection.initialWait)), .initialWaitElapsed)
-        XCTAssertEqual(c.state, .reconciling(.initialWaitElapsed))
+        #expect(c.tick(now: t0.addingTimeInterval(WatchHRConnection.initialWait - 1)) == nil)
+        #expect(c.tick(now: t0.addingTimeInterval(WatchHRConnection.initialWait)) == .initialWaitElapsed)
+        #expect(c.state == .reconciling(.initialWaitElapsed))
     }
 
-    func testStaleRequestMismatchIsExplicitAndNeverLive() {
+    @Test func staleRequestMismatchIsExplicitAndNeverLive() {
         let id = ids()
         var c = started(id)
-        XCTAssertEqual(c.receiveSample(requestID: UUID(), at: t0), .rejectedMismatch)
-        XCTAssertFalse(c.isLive(now: t0))
-        XCTAssertEqual(c.diagnostics(now: t0).lastFailure, .requestMismatch)
+        #expect(c.receiveSample(requestID: UUID(), at: t0) == .rejectedMismatch)
+        #expect(!c.isLive(now: t0))
+        #expect(c.diagnostics(now: t0).lastFailure == .requestMismatch)
     }
 
-    func testReportDecisions() {
+    @Test func reportDecisions() {
         let id = ids()
         let stale = UUID()
         func report(active: Bool = true, req: UUID? = nil, session: UUID? = nil, pending: Bool = false,
@@ -94,97 +99,100 @@ final class WatchHRConnectionTests: XCTestCase {
             .init(protocolVersion: v, isWorkoutActive: active, healthKitRunning: true, workoutType: type,
                   adoptedRequestID: req, adoptedPhoneSessionID: session, awaitingAdoption: pending)
         }
-        XCTAssertEqual(WatchHRConnection.decide(report: report(req: id.requestID, session: id.phoneSessionID), expecting: id), .accept)
-        XCTAssertEqual(WatchHRConnection.decide(report: report(active: false), expecting: id), .redeliverStart)
-        XCTAssertEqual(WatchHRConnection.decide(report: report(pending: true), expecting: id), .redeliverStart)
-        XCTAssertEqual(WatchHRConnection.decide(report: report(req: stale), expecting: id), .stopOrphan(requestID: stale))
-        XCTAssertEqual(WatchHRConnection.decide(report: report(), expecting: id), .conflict(.watchOnlyWorkoutActive))
-        XCTAssertEqual(WatchHRConnection.decide(report: report(req: id.requestID, session: UUID()), expecting: id), .conflict(.requestMismatch))
-        XCTAssertEqual(WatchHRConnection.decide(report: report(v: 1), expecting: id), .conflict(.protocolMismatch))
+        #expect(WatchHRConnection.decide(report: report(req: id.requestID, session: id.phoneSessionID), expecting: id) == .accept)
+        #expect(WatchHRConnection.decide(report: report(active: false), expecting: id) == .redeliverStart)
+        #expect(WatchHRConnection.decide(report: report(pending: true), expecting: id) == .redeliverStart)
+        #expect(WatchHRConnection.decide(report: report(req: stale), expecting: id) == .stopOrphan(requestID: stale))
+        #expect(WatchHRConnection.decide(report: report(), expecting: id) == .conflict(.watchOnlyWorkoutActive))
+        #expect(WatchHRConnection.decide(report: report(req: id.requestID, session: UUID()), expecting: id) == .conflict(.requestMismatch))
+        #expect(WatchHRConnection.decide(report: report(v: 1), expecting: id) == .conflict(.protocolMismatch))
     }
 
-    func testWatchOnlyConflictOffersNoAutomaticRetry() {
+    @Test func watchOnlyConflictOffersNoAutomaticRetry() {
         var c = started(ids())
         c.apply(.conflict(.watchOnlyWorkoutActive))
-        XCTAssertEqual(c.state, .recoverableFailure(.watchOnlyWorkoutActive, retryAvailable: false))
+        #expect(c.state == .recoverableFailure(.watchOnlyWorkoutActive, retryAvailable: false))
     }
 
-    func testReachabilityFlapsAreBoundedAndRecoverOnValidReport() {
+    @Test func reachabilityFlapsAreBoundedAndRecoverOnValidReport() {
         let id = ids()
         var c = started(id)
         var sent = 0
         for i in 0..<20 {
             if c.reachabilityOrActivation(.reachabilityChanged, now: t0.addingTimeInterval(Double(i))) != nil { sent += 1 }
         }
-        XCTAssertEqual(sent, WatchHRConnection.maxAttempts)
-        guard case .recoverableFailure(.retriesExhausted, true) = c.state else { return XCTFail("\(c.state)") }
-        XCTAssertNotNil(c.userReconnect(now: t0.addingTimeInterval(30)))
+        #expect(sent == WatchHRConnection.maxAttempts)
+        guard case .recoverableFailure(.retriesExhausted, true) = c.state else {
+            Issue.record("\(c.state)")
+            return
+        }
+        #expect(c.userReconnect(now: t0.addingTimeInterval(30)) != nil)
         c.apply(.accept)
-        XCTAssertEqual(c.state, .awaitingFirstSample)
-        XCTAssertEqual(c.receiveSample(requestID: id.requestID, at: t0.addingTimeInterval(31)), .accepted)
+        #expect(c.state == .awaitingFirstSample)
+        #expect(c.receiveSample(requestID: id.requestID, at: t0.addingTimeInterval(31)) == .accepted)
     }
 
-    func testStateReportRoundTripsAndOmitsBPM() {
+    @Test func stateReportRoundTripsAndOmitsBPM() {
         let r = WatchHRStateReport(isWorkoutActive: true, healthKitRunning: true, workoutType: "strength",
                                    adoptedRequestID: UUID(), adoptedPhoneSessionID: UUID(),
                                    lastRealSampleAt: t0, queryIssuedAt: 5)
-        XCTAssertEqual(WatchHRStateReport(payload: r.payload), r)
-        XCTAssertNil(r.payload["bpm"])
+        #expect(WatchHRStateReport(payload: r.payload) == r)
+        #expect(r.payload["bpm"] == nil)
     }
 
-    func testStaleLiveExpiresAndNewConnectionDoesNotInherit() {
+    @Test func staleLiveExpiresAndNewConnectionDoesNotInherit() {
         let id = ids()
         var c = started(id)
         _ = c.receiveSample(requestID: id.requestID, at: t0)
-        XCTAssertFalse(c.isLive(now: t0.addingTimeInterval(WatchHRRelay.staleAfter + 1)))
+        #expect(!c.isLive(now: t0.addingTimeInterval(WatchHRRelay.staleAfter + 1)))
         c.end()
         let next = ids()
         c.start(next, now: t0.addingTimeInterval(100))
-        XCTAssertNil(c.displayedSampleAge(now: t0.addingTimeInterval(101)))
-        XCTAssertEqual(c.receiveSample(requestID: id.requestID, at: t0.addingTimeInterval(102)), .rejectedMismatch)
+        #expect(c.displayedSampleAge(now: t0.addingTimeInterval(101)) == nil)
+        #expect(c.receiveSample(requestID: id.requestID, at: t0.addingTimeInterval(102)) == .rejectedMismatch)
     }
 
-    func testEndedConnectionRejectsDelayedSamples() {
+    @Test func endedConnectionRejectsDelayedSamples() {
         let id = ids()
         var c = started(id)
         c.end()
-        XCTAssertEqual(c.receiveSample(requestID: id.requestID, at: t0), .rejectedInactive)
+        #expect(c.receiveSample(requestID: id.requestID, at: t0) == .rejectedInactive)
     }
 
-    func testQueryCommandRoundTrips() {
+    @Test func queryCommandRoundTrips() {
         let q = WatchHRCommand(action: .query, requestID: nil, issuedAt: 9)
-        XCTAssertEqual(WatchHRCommand(payload: q.payload), q)
+        #expect(WatchHRCommand(payload: q.payload) == q)
     }
 
-    func testIsCapturingReturnsTrueForSameSessionWhileAwaitingFirstSample() {
+    @Test func isCapturingReturnsTrueForSameSessionWhileAwaitingFirstSample() {
         let identity = ids()
         var connection = WatchHRConnection()
         connection.start(identity, now: t0)
-        XCTAssertTrue(connection.isCapturing(sessionID: identity.phoneSessionID))
+        #expect(connection.isCapturing(sessionID: identity.phoneSessionID))
     }
 
-    func testIsCapturingReturnsFalseForDifferentOrTerminalSession() {
+    @Test func isCapturingReturnsFalseForDifferentOrTerminalSession() {
         let identity = ids()
         var connection = WatchHRConnection()
         connection.start(identity, now: t0)
-        XCTAssertFalse(connection.isCapturing(sessionID: UUID()))
+        #expect(!connection.isCapturing(sessionID: UUID()))
         connection.end()
-        XCTAssertFalse(connection.isCapturing(sessionID: identity.phoneSessionID))
+        #expect(!connection.isCapturing(sessionID: identity.phoneSessionID))
     }
 
-    func testReconcileStepIsReachableFromPacketArrivalWithoutTimer() {
+    @Test func reconcileStepIsReachableFromPacketArrivalWithoutTimer() {
         let id = ids(); var c = started(id)
         _ = c.receiveSample(requestID: id.requestID, at: t0)
         // Timer never fired (phone locked); a later packet triggers the pass.
         let late = t0.addingTimeInterval(60)
         let step = c.reconcileStep(now: late, externalBPMVisible: true)
-        XCTAssertEqual(step.query, .initialWaitElapsed)
-        XCTAssertTrue(step.clearStaleBPM)
+        #expect(step.query == .initialWaitElapsed)
+        #expect(step.clearStaleBPM)
         // Nothing visible -> nothing to clear; not yet due -> no query.
         var d = started(id)
         _ = d.receiveSample(requestID: id.requestID, at: t0)
         let early = d.reconcileStep(now: t0.addingTimeInterval(1), externalBPMVisible: false)
-        XCTAssertNil(early.query)
-        XCTAssertFalse(early.clearStaleBPM)
+        #expect(early.query == nil)
+        #expect(!early.clearStaleBPM)
     }
 }

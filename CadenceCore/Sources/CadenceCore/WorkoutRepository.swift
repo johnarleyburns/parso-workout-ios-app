@@ -1,10 +1,148 @@
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 
 /// High-level data operations over the SwiftData store. Written once here so
 /// both app targets (and tests) share identical logging/PR/import behavior.
 /// Operations are synchronous and run on the context's actor (typically main).
 public enum WorkoutRepository {
+
+    /// The most recent prior session's working sets for an exercise (FR-1.3),
+    /// excluding the given session. Returns sets in logged order. Pure
+    /// (in-memory) lookups kept outside the SwiftData guard below so
+    /// `WatchStrengthFlowModel` (CadenceWorkoutFeatures) can call them without
+    /// requiring a ModelContext, on any platform.
+    public static func lastTimeSets(for exercise: Exercise,
+                                    excluding session: WorkoutSession?) -> [SetEntry] {
+        lastTimeSets(for: exercise, performedBy: nil, excluding: session)
+    }
+
+    /// The most recent prior session's working sets for an exercise by performer,
+    /// excluding the given session. nil / an owner `Person` means the device owner.
+    public static func lastTimeSets(for exercise: Exercise,
+                                    performedBy person: Person?,
+                                    excluding session: WorkoutSession?) -> [SetEntry] {
+        let sets = (exercise.sets ?? []).filter {
+            $0.session?.id != session?.id && set($0, wasPerformedBy: person)
+        }
+        // Group by session, pick the most recent session by date.
+        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
+        let mostRecent = grouped.values.max { a, b in
+            (a.first?.session?.date ?? .distantPast) < (b.first?.session?.date ?? .distantPast)
+        }
+        return (mostRecent ?? []).sorted { $0.order < $1.order }
+    }
+
+    /// The literal last completed non-warmup set of the performer's most recent
+    /// prior session for the exercise, with exact canonical reps and load.
+    public static func lastWorkingSet(for exercise: Exercise,
+                                      performedBy person: Person?,
+                                      excluding session: WorkoutSession?) -> SetSample? {
+        lastTimeSets(for: exercise, performedBy: person, excluding: session)
+            .last { !$0.isWarmup && $0.reps > 0 }
+            .map { SetSample.from($0) }
+    }
+
+    private static func set(_ set: SetEntry, wasPerformedBy person: Person?) -> Bool {
+        guard let person, !person.isMe else { return set.isOwnerSet }
+        return set.performedBy?.id == person.id
+    }
+
+    /// First prior working weight for the performer, mirroring the owner-only
+    /// default used by the logger while allowing partner-attributed history.
+    public static func firstWorkingSetWeight(for exercise: Exercise,
+                                             performedBy person: Person?,
+                                             excluding session: WorkoutSession?) -> Double? {
+        lastTimeSets(for: exercise, performedBy: person, excluding: session)
+            .first { !$0.isWarmup && $0.weight > 0 }?
+            .weight
+    }
+
+    /// Working-set rep ladders (one `[Int]` per prior session) for an exercise,
+    /// scoped to a performer. Ordered oldest first so the last element is the most
+    /// recent.
+    public static func repLadderHistory(for exercise: Exercise,
+                                        performedBy person: Person?,
+                                        excluding session: WorkoutSession?) -> [[Int]] {
+        let sets = (exercise.sets ?? []).filter {
+            $0.session?.id != session?.id && !$0.isWarmup && set($0, wasPerformedBy: person)
+        }
+        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
+        let sessions = Array(grouped.values)
+            .sorted { ($0.first?.session?.date ?? .distantPast) < ($1.first?.session?.date ?? .distantPast) }
+        return sessions.map { sessionSets in
+            sessionSets.sorted { $0.order < $1.order }.map { $0.reps }
+        }
+    }
+
+    /// Current PR value for an exercise under the rule, optionally excluding a
+    /// session (so we can ask "is this set a PR vs everything before it").
+    /// Uses effective load for calculations.
+    public static func currentPR(for exercise: Exercise,
+                                 rule: PRRule,
+                                 formula: OneRepMaxFormula,
+                                 excluding session: WorkoutSession? = nil) -> Double? {
+        let samples = (exercise.sets ?? [])
+            .filter { (session == nil || $0.session?.id != session?.id) && $0.isOwnerSet }
+            .map { SetSample.from($0) }
+        return PRCalculator.best(samples, rule: rule, formula: formula)
+    }
+
+    public struct TrendPoint: Identifiable, Sendable, Equatable {
+        public var date: Date
+        public var value: Double
+        public var id: Date { date }
+
+        public init(date: Date, value: Double) {
+            self.date = date
+            self.value = value
+        }
+    }
+
+    /// Best metric per training day for an exercise, ascending by date (FR-5.1).
+    /// Each point is the best working-set value that day under the rule.
+    /// Uses effective load for calculations.
+    public static func trendSeries(for exercise: Exercise,
+                                   rule: PRRule,
+                                   formula: OneRepMaxFormula,
+                                   calendar: Calendar = .current) -> [TrendPoint] {
+        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.effectiveLoadKg > 0 && $0.isOwnerSet }
+        let byDay = Dictionary(grouping: sets) { calendar.startOfDay(for: $0.completedAt) }
+        return byDay.map { day, daySets in
+            let samples = daySets.map { SetSample.from($0) }
+            let best = PRCalculator.best(samples, rule: rule, formula: formula) ?? 0
+            return TrendPoint(date: day, value: best)
+        }
+        .sorted { $0.date < $1.date }
+    }
+
+    /// The progressive PR history for an exercise: each point that set a new
+    /// all-time record under the rule, ascending by date (FR-5.2).
+    /// Uses effective load for calculations.
+    public static func prTimeline(for exercise: Exercise,
+                                  rule: PRRule,
+                                  formula: OneRepMaxFormula) -> [TrendPoint] {
+        let samples = (exercise.sets ?? [])
+            .filter { $0.isOwnerSet }
+            .map { SetSample.from($0) }
+            .filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
+            .sorted { $0.date < $1.date }
+        var result: [TrendPoint] = []
+        var best = -Double.greatestFiniteMagnitude
+        for s in samples {
+            let v = PRCalculator.metric(s, rule: rule, formula: formula)
+            if v > best + 1e-9 {
+                best = v
+                result.append(TrendPoint(date: s.date, value: v))
+            }
+        }
+        return result
+    }
+}
+
+#if canImport(SwiftData)
+extension WorkoutRepository {
 
     // MARK: Seeding (FR-1.1)
 
@@ -131,7 +269,9 @@ public enum WorkoutRepository {
             ex.searchKeywords = ExerciseSearch.keywords(
                 name: ex.name, equipment: ex.equipmentValue, isLateral: ex.isLateral,
                 force: ex.forceValue, mechanics: ex.mechanicsValue,
-                primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles)
+                primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles,
+                trainingTypes: ex.trainingTypes, sportContexts: ex.sportContexts,
+                category: ex.categoryValue)
             ex.updatedAt = Date()
             changed = true
         }
@@ -168,7 +308,9 @@ public enum WorkoutRepository {
             ex.searchKeywords = ExerciseSearch.keywords(
                 name: ex.name, equipment: ex.equipmentValue, isLateral: ex.isLateral,
                 force: ex.forceValue, mechanics: ex.mechanicsValue,
-                primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles)
+                primaryMuscles: ex.primaryMuscles, secondaryMuscles: ex.secondaryMuscles,
+                trainingTypes: ex.trainingTypes, sportContexts: ex.sportContexts,
+                category: ex.categoryValue)
         }
         if changed { ex.updatedAt = Date() }
         return changed
@@ -369,7 +511,10 @@ public enum WorkoutRepository {
         let resolvedName = template?.name ?? trimmed
         let keywords = ExerciseSearch.keywords(name: resolvedName, equipment: resolvedEquipment, isLateral: resolvedLateral,
                                                force: resolvedForce, mechanics: resolvedMechanics,
-                                               primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary)
+                                               primaryMuscles: resolvedPrimary, secondaryMuscles: resolvedSecondary,
+                                               trainingTypes: template?.trainingTypes ?? [],
+                                               sportContexts: template?.sportContexts ?? [],
+                                               category: resolvedCategory)
         let ex = Exercise(name: resolvedName, category: resolvedCategory, muscleGroups: resolvedPrimary + resolvedSecondary,
                           isCustom: template == nil, equipment: resolvedEquipment, isLateral: resolvedLateral,
                           mechanics: resolvedMechanics, force: resolvedForce,
@@ -403,7 +548,9 @@ public enum WorkoutRepository {
         exercise.searchKeywords = ExerciseSearch.keywords(
             name: exercise.name, equipment: equipment, isLateral: exercise.isLateral,
             force: force, mechanics: mechanics,
-            primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles)
+            primaryMuscles: primaryMuscles, secondaryMuscles: secondaryMuscles,
+            trainingTypes: exercise.trainingTypes, sportContexts: exercise.sportContexts,
+            category: exercise.categoryValue)
         exercise.updatedAt = Date()
         try context.save()
         return exercise
@@ -883,39 +1030,6 @@ public enum WorkoutRepository {
             .sorted { $0.date > $1.date }
     }
 
-    /// The most recent prior session's working sets for an exercise (FR-1.3),
-    /// excluding the given session. Returns sets in logged order.
-    public static func lastTimeSets(for exercise: Exercise,
-                                    excluding session: WorkoutSession?) -> [SetEntry] {
-        lastTimeSets(for: exercise, performedBy: nil, excluding: session)
-    }
-
-    /// The most recent prior session's working sets for an exercise by performer,
-    /// excluding the given session. nil / an owner `Person` means the device owner.
-    public static func lastTimeSets(for exercise: Exercise,
-                                    performedBy person: Person?,
-                                    excluding session: WorkoutSession?) -> [SetEntry] {
-        let sets = (exercise.sets ?? []).filter {
-            $0.session?.id != session?.id && set($0, wasPerformedBy: person)
-        }
-        // Group by session, pick the most recent session by date.
-        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
-        let mostRecent = grouped.values.max { a, b in
-            (a.first?.session?.date ?? .distantPast) < (b.first?.session?.date ?? .distantPast)
-        }
-        return (mostRecent ?? []).sorted { $0.order < $1.order }
-    }
-
-    /// The literal last completed non-warmup set of the performer's most recent
-    /// prior session for the exercise, with exact canonical reps and load.
-    public static func lastWorkingSet(for exercise: Exercise,
-                                      performedBy person: Person?,
-                                      excluding session: WorkoutSession?) -> SetSample? {
-        lastTimeSets(for: exercise, performedBy: person, excluding: session)
-            .last { !$0.isWarmup && $0.reps > 0 }
-            .map { SetSample.from($0) }
-    }
-
     /// Adds a visible, ad-hoc movement to a live session without making it an
     /// explicit plan movement. Legacy sessions synthesize a prescription for every
     /// planned name from the session-wide ladder/load, so the existing projection
@@ -934,51 +1048,6 @@ public enum WorkoutRepository {
         session.plannedExerciseNames.append(exercise.name)
         try context.save()
         return true
-    }
-
-    /// First prior working weight for the performer, mirroring the owner-only
-    /// default used by the logger while allowing partner-attributed history.
-    public static func firstWorkingSetWeight(for exercise: Exercise,
-                                             performedBy person: Person?,
-                                             excluding session: WorkoutSession?) -> Double? {
-        lastTimeSets(for: exercise, performedBy: person, excluding: session)
-            .first { !$0.isWarmup && $0.weight > 0 }?
-            .weight
-    }
-
-    private static func set(_ set: SetEntry, wasPerformedBy person: Person?) -> Bool {
-        guard let person, !person.isMe else { return set.isOwnerSet }
-        return set.performedBy?.id == person.id
-    }
-
-    /// Working-set rep ladders (one `[Int]` per prior session) for an exercise,
-    /// scoped to a performer. Ordered oldest first so the last element is the most
-    /// recent.
-    public static func repLadderHistory(for exercise: Exercise,
-                                        performedBy person: Person?,
-                                        excluding session: WorkoutSession?) -> [[Int]] {
-        let sets = (exercise.sets ?? []).filter {
-            $0.session?.id != session?.id && !$0.isWarmup && set($0, wasPerformedBy: person)
-        }
-        let grouped = Dictionary(grouping: sets) { $0.session?.id ?? UUID() }
-        let sessions = Array(grouped.values)
-            .sorted { ($0.first?.session?.date ?? .distantPast) < ($1.first?.session?.date ?? .distantPast) }
-        return sessions.map { sessionSets in
-            sessionSets.sorted { $0.order < $1.order }.map { $0.reps }
-        }
-    }
-
-    /// Current PR value for an exercise under the rule, optionally excluding a
-    /// session (so we can ask "is this set a PR vs everything before it").
-    /// Uses effective load for calculations.
-    public static func currentPR(for exercise: Exercise,
-                                 rule: PRRule,
-                                 formula: OneRepMaxFormula,
-                                 excluding session: WorkoutSession? = nil) -> Double? {
-        let samples = (exercise.sets ?? [])
-            .filter { (session == nil || $0.session?.id != session?.id) && $0.isOwnerSet }
-            .map { SetSample.from($0) }
-        return PRCalculator.best(samples, rule: rule, formula: formula)
     }
 
     /// Whether a prospective set would be a new PR for the exercise.
@@ -1022,57 +1091,6 @@ public enum WorkoutRepository {
     }
 
     // MARK: Trends (FR-5.1)
-
-    public struct TrendPoint: Identifiable, Sendable, Equatable {
-        public var date: Date
-        public var value: Double
-        public var id: Date { date }
-
-        public init(date: Date, value: Double) {
-            self.date = date
-            self.value = value
-        }
-    }
-
-    /// Best metric per training day for an exercise, ascending by date (FR-5.1).
-    /// Each point is the best working-set value that day under the rule.
-    /// Uses effective load for calculations.
-    public static func trendSeries(for exercise: Exercise,
-                                   rule: PRRule,
-                                   formula: OneRepMaxFormula,
-                                   calendar: Calendar = .current) -> [TrendPoint] {
-        let sets = (exercise.sets ?? []).filter { !$0.isWarmup && $0.reps > 0 && $0.effectiveLoadKg > 0 && $0.isOwnerSet }
-        let byDay = Dictionary(grouping: sets) { calendar.startOfDay(for: $0.completedAt) }
-        return byDay.map { day, daySets in
-            let samples = daySets.map { SetSample.from($0) }
-            let best = PRCalculator.best(samples, rule: rule, formula: formula) ?? 0
-            return TrendPoint(date: day, value: best)
-        }
-        .sorted { $0.date < $1.date }
-    }
-
-    /// The progressive PR history for an exercise: each point that set a new
-    /// all-time record under the rule, ascending by date (FR-5.2).
-    /// Uses effective load for calculations.
-    public static func prTimeline(for exercise: Exercise,
-                                  rule: PRRule,
-                                  formula: OneRepMaxFormula) -> [TrendPoint] {
-        let samples = (exercise.sets ?? [])
-            .filter { $0.isOwnerSet }
-            .map { SetSample.from($0) }
-            .filter { !$0.isWarmup && $0.reps > 0 && $0.weight > 0 }
-            .sorted { $0.date < $1.date }
-        var result: [TrendPoint] = []
-        var best = -Double.greatestFiniteMagnitude
-        for s in samples {
-            let v = PRCalculator.metric(s, rule: rule, formula: formula)
-            if v > best + 1e-9 {
-                best = v
-                result.append(TrendPoint(date: s.date, value: v))
-            }
-        }
-        return result
-    }
 
     /// Distinct training days (start-of-day) across all sessions (FR-5.4 heatmap).
     public static func trainingDays(_ context: ModelContext, calendar: Calendar = .current) throws -> Set<Date> {
@@ -1438,7 +1456,13 @@ public enum WorkoutRepository {
         if completion.type == .swim {
             saved.laps = completion.swimmingLapCount
             if let length = completion.poolLengthMeters, length.isFinite, length > 0 {
-                saved.notes = String(localized: "Lap Pool · \(length.formatted()) m per lap", bundle: .module)
+                saved.notes = {
+                    #if os(Linux)
+                    "Lap Pool · \(length.formatted()) m per lap"
+                    #else
+                    String(localized: "Lap Pool · \(length.formatted()) m per lap", bundle: .module)
+                    #endif
+                }()
             }
             try context.save()
         }
@@ -1824,7 +1848,8 @@ public enum WorkoutRepository {
             let keywords = ExerciseSearch.keywords(
                 name: trimmed, equipment: nil, isLateral: false,
                 force: nil, mechanics: nil,
-                primaryMuscles: [], secondaryMuscles: [])
+                primaryMuscles: [], secondaryMuscles: [],
+                category: resolvedCategory)
             let ex = Exercise(name: trimmed, category: resolvedCategory,
                               muscleGroups: [], isCustom: true, searchKeywords: keywords)
             context.insert(ex)
@@ -2002,3 +2027,4 @@ public enum WorkoutRepository {
         return added
     }
 }
+#endif

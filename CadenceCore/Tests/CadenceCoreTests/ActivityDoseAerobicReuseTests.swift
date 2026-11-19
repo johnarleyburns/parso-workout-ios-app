@@ -1,7 +1,9 @@
-import XCTest
+#if canImport(os)
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class ActivityDoseAerobicReuseTests: XCTestCase {
+struct ActivityDoseAerobicReuseTests {
     private let since = Date(timeIntervalSince1970: 1_000_000)
     private let profile = CardioIntensityProfile(maximumHR: 200, maximumHRSource: .userEntered)
 
@@ -35,25 +37,25 @@ final class ActivityDoseAerobicReuseTests: XCTestCase {
                 [strength(offset: 5_000, minutes: 50), strength(offset: 100_000, minutes: 40)])
     }
 
-    func testPrecomputedAerobicMatchesStandalone() {
+    @Test func precomputedAerobicMatchesStandalone() {
         let (c, s) = fixture()
         let aerobic = WeeklyCardioAggregator.summarize(c, since: since, profile: profile, sessions: s)
-        XCTAssertEqual(
+        #expect(
             WeeklyActivityDoseAggregator.summarize(cardio: c, sessions: s, since: since,
-                                                   profile: profile, aerobic: aerobic),
+                                                   profile: profile, aerobic: aerobic) ==
             WeeklyActivityDoseAggregator.summarize(cardio: c, sessions: s, since: since, profile: profile))
     }
 
-    func testSuppliedAerobicIsPreservedAndActualMinutesFromDurations() {
+    @Test func suppliedAerobicIsPreservedAndActualMinutesFromDurations() {
         let (c, s) = fixture()
         let custom = WeeklyCardioSummary.empty
         let r = WeeklyActivityDoseAggregator.summarize(cardio: c, sessions: s, since: since,
                                                        profile: profile, aerobic: custom)
-        XCTAssertEqual(r.aerobic, custom)
-        XCTAssertEqual(r.actualActivityMinutes, 30 + 45 + 20 + 50 + 40, accuracy: 0.001)
+        #expect(r.aerobic == custom)
+        #expect(abs(r.actualActivityMinutes - (30 + 45 + 20 + 50 + 40)) <= 0.001)
     }
 
-    func testIneligibleRecordsDoNotContribute() {
+    @Test func ineligibleRecordsDoNotContribute() {
         let deleted = cardio(.run, offset: 100, minutes: 10); deleted.deletedAt = since
         let old = cardio(.run, offset: -5_000, minutes: 10)
         let negative = cardio(.run, offset: 200, minutes: -10)
@@ -62,21 +64,22 @@ final class ActivityDoseAerobicReuseTests: XCTestCase {
         let r = WeeklyActivityDoseAggregator.summarize(
             cardio: [deleted, old, negative], sessions: [deletedSession, oldSession],
             since: since, aerobic: .empty)
-        XCTAssertEqual(r.actualActivityMinutes, 0, accuracy: 0.0001)
-        XCTAssertEqual(r.strengthDays, 0)
+        #expect(abs(r.actualActivityMinutes - 0) <= 0.0001)
+        #expect(r.strengthDays == 0)
     }
 
-    func testPrecomputedPathMakesNoAdditionalAggregatorCalls() {
+    @Test func precomputedPathMakesNoAdditionalAggregatorCalls() {
         let (c, s) = fixture()
         let probe = WeeklyCardioAggregator.InvocationProbe()
         WeeklyCardioAggregator.$invocationProbe.withValue(probe) {
             let aerobic = WeeklyCardioAggregator.summarize(c, since: since, profile: profile, sessions: s)
-            XCTAssertEqual(probe.count, 1)
+            #expect(probe.count == 1)
             _ = WeeklyActivityDoseAggregator.summarize(cardio: c, sessions: s, since: since,
                                                        profile: profile, aerobic: aerobic)
-            XCTAssertEqual(probe.count, 1, "supplied aerobic must not trigger another HR pass")
+            #expect(probe.count == 1, "supplied aerobic must not trigger another HR pass")
             _ = WeeklyActivityDoseAggregator.summarize(cardio: c, sessions: s, since: since, profile: profile)
-            XCTAssertEqual(probe.count, 2, "standalone path computes aerobic exactly once")
+            #expect(probe.count == 2, "standalone path computes aerobic exactly once")
         }
     }
 }
+#endif

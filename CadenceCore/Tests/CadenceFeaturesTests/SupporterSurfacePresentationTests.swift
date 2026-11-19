@@ -1,72 +1,77 @@
-import XCTest
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class SupporterSurfacePresentationTests: XCTestCase {
-    func testTrailingItemsOnlyIncludeBadgeBeforeSettingsForSupporter() {
-        XCTAssertEqual(HomeHeaderPresentation(isSupporter: false).trailingItems, [.settings])
-        XCTAssertEqual(HomeHeaderPresentation(isSupporter: true).trailingItems, [.supporterBadge, .settings])
+struct SupporterSurfacePresentationTests {
+    @Test func trailingItemsOnlyIncludeBadgeBeforeSettingsForSupporter() {
+        #expect(HomeHeaderPresentation(isSupporter: false).trailingItems == [.settings])
+        #expect(HomeHeaderPresentation(isSupporter: true).trailingItems == [.supporterBadge, .settings])
     }
 
-    func testBadgeMetrics() throws {
-        let badge = try XCTUnwrap(HomeHeaderPresentation(isSupporter: true).supporterBadge)
-        XCTAssertEqual(badge.horizontalPadding, 10)
-        XCTAssertEqual(badge.verticalPadding, 6)
+    @Test func badgeMetrics() throws {
+        let badge = try #require(HomeHeaderPresentation(isSupporter: true).supporterBadge)
+        #expect(badge.horizontalPadding == 10)
+        #expect(badge.verticalPadding == 6)
     }
 
-    func testCardCopy() {
+    @Test func cardCopy() {
         let a = SupporterSurfacePresentation(isSupporter: false, result: .idle, productName: "App")
-        XCTAssertEqual(a.settingsTitle, "Contribute to Development")
-        XCTAssertEqual(a.settingsDetail, "A one-time, optional $9.99 — every feature is already free")
-        XCTAssertFalse(a.showsTodayBadge)
+        #expect(a.settingsTitle == "Contribute to Development")
+        #expect(a.settingsDetail == "A one-time, optional $9.99 — every feature is already free")
+        #expect(!a.showsTodayBadge)
         let b = SupporterSurfacePresentation(isSupporter: true, result: .idle, productName: "App")
-        XCTAssertEqual(b.settingsTitle, "Thanks for supporting App")
-        XCTAssertEqual(b.settingsDetail, "You have the Supporter badge")
-        XCTAssertTrue(b.showsTodayBadge)
+        #expect(b.settingsTitle == "Thanks for supporting App")
+        #expect(b.settingsDetail == "You have the Supporter badge")
+        #expect(b.showsTodayBadge)
     }
 
-    func testReducerPreventsDuplicatesAndRestores() {
+    @Test func reducerPreventsDuplicatesAndRestores() {
         var s = SupporterPurchaseState()
-        XCTAssertTrue(SupporterSurfacePresentation(isSupporter: false, result: s.result, productName: "A").isPurchaseEnabled)
-        XCTAssertTrue(s.begin())
-        XCTAssertFalse(s.begin())
-        XCTAssertFalse(SupporterSurfacePresentation(isSupporter: false, result: s.result, productName: "A").isPurchaseEnabled)
+        #expect(SupporterSurfacePresentation(isSupporter: false, result: s.result, productName: "A").isPurchaseEnabled)
+        let first = s.begin()
+        #expect(first)
+        let second = s.begin()
+        #expect(!second)
+        #expect(!SupporterSurfacePresentation(isSupporter: false, result: s.result, productName: "A").isPurchaseEnabled)
         s.finish(.cancelledOrPending)
-        XCTAssertEqual(s.result, .idle)
-        XCTAssertTrue(s.begin())
+        #expect(s.result == .idle)
+        let third = s.begin()
+        #expect(third)
     }
 
-    func testSuccessAndFailureResults() {
+    @Test func successAndFailureResults() {
         var s = SupporterPurchaseState()
         _ = s.begin(); s.finish(.verifiedSuccess)
         let ok = SupporterSurfacePresentation(isSupporter: true, result: s.result, productName: "App")
-        XCTAssertEqual(ok.resultMessage, "Thank you for supporting App!")
-        XCTAssertTrue(ok.showsTodayBadge)
+        #expect(ok.resultMessage == "Thank you for supporting App!")
+        #expect(ok.showsTodayBadge)
         _ = s.begin(); s.finish(.failure(message: "boom"))
         let bad = SupporterSurfacePresentation(isSupporter: false, result: s.result, productName: "App")
-        XCTAssertEqual(bad.resultMessage, "Purchase failed: boom")
-        XCTAssertFalse(bad.showsTodayBadge)
-        XCTAssertTrue(bad.isPurchaseEnabled)
+        #expect(bad.resultMessage == "Purchase failed: boom")
+        #expect(!bad.showsTodayBadge)
+        #expect(bad.isPurchaseEnabled)
     }
 
-    func testCancelKeepsPriorSuccessMessage() {
+    @Test func cancelKeepsPriorSuccessMessage() {
         var s = SupporterPurchaseState()
         _ = s.begin(); s.finish(.verifiedSuccess)
         _ = s.begin(); s.finish(.cancelledOrPending)
-        XCTAssertEqual(s.result, .succeeded)
+        #expect(s.result == .succeeded)
     }
 
-    func testBothSurfacesObserveSameFlag() {
+    @Test func bothSurfacesObserveSameFlag() {
         for flag in [false, true] {
-            XCTAssertEqual(SupporterSurfacePresentation(isSupporter: flag, result: .idle, productName: "A").showsTodayBadge,
-                           HomeHeaderPresentation(isSupporter: flag).supporterBadge != nil)
+            #expect(SupporterSurfacePresentation(isSupporter: flag, result: .idle, productName: "A").showsTodayBadge ==
+                           (HomeHeaderPresentation(isSupporter: flag).supporterBadge != nil))
         }
     }
 
-    func testAccessibilityIdentifiers() {
-        XCTAssertEqual(SupporterAccessibility.section, "settings.section.support")
-        XCTAssertEqual(SupporterAccessibility.card, "settings.support")
-        XCTAssertEqual(SupporterAccessibility.badge, "home.supporterBadge")
-        XCTAssertTrue(SupporterAccessibility.cardCombinesTitleAndDetail)
-        XCTAssertFalse(SupporterAccessibility.resultCombinedWithCard)
+    @Test func accessibilityIdentifiers() {
+        #expect(SupporterAccessibility.section == "settings.section.support")
+        #expect(SupporterAccessibility.card == "settings.support")
+        #expect(SupporterAccessibility.badge == "home.supporterBadge")
+        #expect(SupporterAccessibility.cardCombinesTitleAndDetail)
+        #expect(!SupporterAccessibility.resultCombinedWithCard)
     }
 }

@@ -2,6 +2,7 @@ import Testing
 import Foundation
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// The Watch Set Card metric text must reach the view complete. The metric
 /// layout is shared with the Watch view so its scale and accessibility layout
@@ -15,6 +16,16 @@ import CadenceCore
     @Test func weightCrownLocksToAHalfUnitDecimalStepNotAPlateJump() {
         #expect(WatchSetCardMetricLayout.weightStep == 0.5)
         #expect(WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: false) == 0.5)
+    }
+
+    @Test func buttonWeightStepIsACoarserPlateJumpThanTheCrown() {
+        #expect(WatchSetCardMetricLayout.buttonWeightStep(unit: .pounds) == 5)
+        #expect(WatchSetCardMetricLayout.buttonWeightStep(unit: .kilograms) == 2.5)
+        // Different controls, different behavior: buttons never equal the Crown's step.
+        #expect(WatchSetCardMetricLayout.buttonWeightStep(unit: .pounds)
+                != WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: false))
+        #expect(WatchSetCardMetricLayout.buttonWeightStep(unit: .kilograms)
+                != WatchSetCardMetricLayout.crownStep(weightFocused: true, nonWeighted: false))
     }
     private func card(lbs: Double, reps: Int) -> WatchSetCardState {
         WatchSetCardBuilder.make(

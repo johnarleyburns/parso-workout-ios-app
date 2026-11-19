@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Optional warm-up countdown shown before the first set of a strength workout.
 /// Skip (or the timer reaching zero) moves on to the first set.
@@ -14,7 +15,10 @@ struct WatchWarmUpView: View {
             Color.orange.ignoresSafeArea(.all)
 
             VStack(spacing: 8) {
-                Spacer()
+                // `minLength` (not a plain Spacer) guarantees this never
+                // shrinks to zero and lets the caption sit under the system
+                // clock/status area at the top of the screen.
+                Spacer(minLength: 20)
                 Text("WARM-UP").font(.caption2.bold()).foregroundStyle(.white.opacity(0.8))
                 Text(formatTime(model.warmupTimerModel.remaining))
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))

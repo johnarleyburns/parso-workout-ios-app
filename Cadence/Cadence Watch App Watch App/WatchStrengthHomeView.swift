@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 P3 — the Plan page (swipe left): today's exercises with their progress, tap to
 /// jump to one, and Add exercise. Removing an exercise: long-press a row (or Set Card's More); row swipe
@@ -17,6 +18,7 @@ struct WatchStrengthHomeView: View {
     @State private var showingSuggestion = false
     /// Set when a long-press fires so the button's tap on finger-lift doesn't also navigate away.
     @State private var longPressHandled = false
+    @State private var toastAddedName: String?
 
     var body: some View {
         Group {
@@ -47,24 +49,41 @@ struct WatchStrengthHomeView: View {
             planItems
         }
         .navigationBarHidden(true)
+        // Transient toast instead of a List row: a conditionally-inserted row
+        // shifted the whole exercise list up/down whenever an exercise was
+        // added, which read as a layout "flash." Mirrors the Set Card's
+        // "last time" toast (WatchSetKeypadView.swift).
+        .overlay(alignment: .top) {
+            if let toastAddedName {
+                Button {
+                    model.lastAddedExerciseName = nil
+                    withAnimation { self.toastAddedName = nil }
+                } label: {
+                    Label("Added \(toastAddedName)", systemImage: "checkmark.circle.fill")
+                        .font(.caption.bold())
+                        .foregroundStyle(.green)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(Capsule().fill(.regularMaterial))
+                }
+                .buttonStyle(.plain)
+                .transition(.opacity)
+                .accessibilityIdentifier("watchStrength.exerciseAdded")
+                .accessibilityHint("Double tap to dismiss")
+            }
+        }
+        .task(id: model.lastAddedExerciseName) {
+            guard let added = model.lastAddedExerciseName else { toastAddedName = nil; return }
+            withAnimation { toastAddedName = added }
+            AccessibilityNotification.Announcement("Added \(added)").post()
+            try? await Task.sleep(for: .seconds(3))
+            guard !Task.isCancelled else { return }
+            model.lastAddedExerciseName = nil
+            withAnimation { toastAddedName = nil }
+        }
     }
 
     private var planItems: some View {
         List {
-            if let added = model.lastAddedExerciseName {
-                Button {
-                    model.lastAddedExerciseName = nil
-                } label: {
-                    Label("Added \(added)", systemImage: "checkmark.circle.fill")
-                        .font(.caption.bold())
-                        .foregroundStyle(.green)
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("watchStrength.exerciseAdded")
-                .accessibilityHint("Double tap to dismiss")
-                .id(added)
-                .onAppear { AccessibilityNotification.Announcement("Added \(added)").post() }
-            }
             ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
                 Button {
                     if longPressHandled { longPressHandled = false; return }
@@ -93,31 +112,29 @@ struct WatchStrengthHomeView: View {
 
             Button {
                 WatchHaptics.tap()
-                showingSuggestion = true
-            } label: {
-                Label("Suggest", systemImage: "wand.and.stars")
-            }
-            .accessibilityIdentifier("watchStrength.suggestExercise")
-            .accessibilityHint("Finds an exercise suited to this workout")
-
-            Button {
-                WatchHaptics.tap()
                 model.goToAddExercise()
                 onSelect()
             } label: {
                 Label("Add exercise", systemImage: "plus")
             }
             .accessibilityIdentifier("watchStrength.addExercise")
+
+            Button {
+                WatchHaptics.tap()
+                showingSuggestion = true
+            } label: {
+                Label("Suggest", systemImage: "wand.and.stars")
+            }
+            .accessibilityIdentifier("watchStrength.suggestExercise")
+            .accessibilityHint("Finds an exercise suited to this workout")
         }
         .alert("Remove \(exerciseToRemove?.name ?? "")?", isPresented: removeAlertBinding, presenting: exerciseToRemove) { exercise in
-            Button("Remove", role: .destructive) {
+            Button("Remove exercise and its sets", role: .destructive) {
                 WatchHaptics.delete()
                 if let payload = model.deleteExercise(exercise) { WatchSyncSender.send(payload) }
                 exerciseToRemove = nil
             }
             Button("Keep", role: .cancel) { exerciseToRemove = nil }
-        } message: { _ in
-            Text("Its sets in this workout are removed too.")
         }
     }
 

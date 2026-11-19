@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension HomeView {
     var dashboardContent: some View {
@@ -66,7 +68,8 @@ extension HomeView {
                         onCustomCardio: { description, gps in
                             workoutControlsPresented = false
                             startOtherCardio(description: description, gps: gps)
-                        })
+                        },
+                        onSuggestedCardio: { workoutControlsPresented = false; requestSuggestedCardio() })
                     .padding()
                 }
             }

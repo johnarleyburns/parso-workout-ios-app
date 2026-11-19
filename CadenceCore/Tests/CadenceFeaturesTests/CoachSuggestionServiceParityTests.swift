@@ -1,31 +1,33 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
-final class CoachSuggestionServiceParityTests: XCTestCase {
+struct CoachSuggestionServiceParityTests {
     private typealias F = CoachSuggestionFixtures
 
     private func assertParity(_ request: CoachSuggestionRequest,
-                              file: StaticString = #filePath, line: UInt = #line) throws
+                              sourceLocation: SourceLocation = #_sourceLocation) throws
         -> SuggestedWorkoutOption {
         let snapshot = F.snapshot(request)
         // Watch receives the snapshot over a value transport.
         let wire = try PropertyListEncoder().encode(snapshot)
         guard case .success(let watchSnapshot) = CoachSuggestionSnapshot.decode(wire) else {
-            XCTFail("decode", file: file, line: line); throw CancellationError()
+            Issue.record("decode", sourceLocation: sourceLocation); throw CancellationError()
         }
-        let phone = try XCTUnwrap(CoachSuggestionService.generate(from: snapshot), file: file, line: line)
-        let watch = try XCTUnwrap(CoachSuggestionService.generate(from: watchSnapshot), file: file, line: line)
-        XCTAssertEqual(phone, watch, file: file, line: line)
+        let phone = try #require(CoachSuggestionService.generate(from: snapshot), sourceLocation: sourceLocation)
+        let watch = try #require(CoachSuggestionService.generate(from: watchSnapshot), sourceLocation: sourceLocation)
+        #expect(phone == watch, sourceLocation: sourceLocation)
         let direct = SuggestedWorkoutGenerator.generatePersonalized(input: request.input)
-        XCTAssertEqual(phone, direct, file: file, line: line)
+        #expect(phone == direct, sourceLocation: sourceLocation)
 
         func plan(_ o: SuggestedWorkoutOption) -> EditablePlan {
             SuggestedWorkoutPresenter.editablePlan(for: o, unit: request.unit,
                 warmupMinutes: request.warmupMinutes, cooldownMinutes: request.cooldownMinutes)
         }
         let p = plan(phone), w = plan(watch)
-        XCTAssertEqual(project(p), project(w), file: file, line: line)
+        #expect(project(p) == project(w), sourceLocation: sourceLocation)
         return phone
     }
 
@@ -40,44 +42,44 @@ final class CoachSuggestionServiceParityTests: XCTestCase {
         return "\(p.title)|\(p.warmupMinutes)|\(p.cooldownMinutes)|\(exercises)|\(String(describing: p.recommendationRationale))"
     }
 
-    func testPersonalizedHistoryFixture() throws {
+    @Test func personalizedHistoryFixture() throws {
         let option = try assertParity(F.request(candidates: F.catalog))
-        XCTAssertFalse(option.exercises.isEmpty)
+        #expect(!option.exercises.isEmpty)
     }
 
-    func testRecentExclusionRemovesRecentCandidates() throws {
+    @Test func recentExclusionRemovesRecentCandidates() throws {
         let option = try assertParity(F.request(candidates: F.catalog, recent: ["bench", "row"]))
         let ids = Set(option.exercises.map(\.candidateID))
-        XCTAssertFalse(ids.contains("bench"))
-        XCTAssertFalse(ids.contains("row"))
+        #expect(!ids.contains("bench"))
+        #expect(!ids.contains("row"))
     }
 
-    func testCustomLimitedCatalog() throws {
+    @Test func customLimitedCatalog() throws {
         let option = try assertParity(F.request(
             candidates: [F.candidate("custom-press", "Custom Press", "chest", personalized: true),
                          F.candidate("custom-row", "Custom Row", "lats")],
             tracked: [.chest, .lats]))
-        XCTAssertTrue(Set(option.exercises.map(\.candidateID)).isSubset(of: ["custom-press", "custom-row"]))
+        #expect(Set(option.exercises.map(\.candidateID)).isSubset(of: ["custom-press", "custom-row"]))
     }
 
-    func testYesterdaysWorkoutIsNotRepeatedOnBothHosts() throws {
+    @Test func yesterdaysWorkoutIsNotRepeatedOnBothHosts() throws {
         // Yesterday's strength workout used bench + row; older history exists.
         let option = try assertParity(F.request(candidates: F.catalog, recent: ["bench", "row"]))
-        XCTAssertTrue(option.exercises.contains { !["bench", "row"].contains($0.candidateID) })
-        XCTAssertTrue(option.exercises.allSatisfy { !["bench", "row"].contains($0.candidateID) })
+        #expect(option.exercises.contains { !["bench", "row"].contains($0.candidateID) })
+        #expect(option.exercises.allSatisfy { !["bench", "row"].contains($0.candidateID) })
     }
 
-    func testResultIsIndependentOfWallClock() {
+    @Test func resultIsIndependentOfWallClock() {
         let snapshot = F.snapshot(F.request(candidates: F.catalog, recent: ["bench"]))
         let first = CoachSuggestionService.generate(from: snapshot)
         Thread.sleep(forTimeInterval: 0.05)
-        XCTAssertEqual(first, CoachSuggestionService.generate(from: snapshot))
+        #expect(first == CoachSuggestionService.generate(from: snapshot))
     }
 
-    func testFailureMessageProducesNoSuggestion() {
+    @Test func failureMessageProducesNoSuggestion() {
         var r = F.request(candidates: F.catalog)
         r = CoachSuggestionRequest(input: r.input, unit: r.unit, warmupMinutes: 5,
                                    cooldownMinutes: 5, failureMessage: "x")
-        XCTAssertNil(CoachSuggestionService.generate(from: F.snapshot(r)))
+        #expect(CoachSuggestionService.generate(from: F.snapshot(r)) == nil)
     }
 }

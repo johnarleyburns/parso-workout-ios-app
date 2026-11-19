@@ -1,17 +1,20 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 import CadenceCore
 
-final class WatchSingleExerciseSuggestionContextStoreTests: XCTestCase {
+@Suite(.serialized)
+final class WatchSingleExerciseSuggestionContextStoreTests {
     private var suite = ""
-    private var defaults: UserDefaults!
+    private nonisolated(unsafe) var defaults: UserDefaults!
 
-    override func setUp() {
+    init() {
         suite = "suggestion-store-\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suite)
     }
 
-    override func tearDown() {
+    deinit {
         defaults.removePersistentDomain(forName: suite)
     }
 
@@ -33,23 +36,23 @@ final class WatchSingleExerciseSuggestionContextStoreTests: XCTestCase {
                                      environment: "commercial_gym", asOf: when)))
     }
 
-    func testRoundTripAndPersistsAcrossReload() throws {
-        XCTAssertTrue(WatchSingleExerciseSuggestionContextStore(defaults: defaults).replaceIfNewer(make(at: 100)))
+    @Test func roundTripAndPersistsAcrossReload() throws {
+        #expect(WatchSingleExerciseSuggestionContextStore(defaults: defaults).replaceIfNewer(make(at: 100)))
         let reloaded = WatchSingleExerciseSuggestionContextStore(defaults: UserDefaults(suiteName: suite)!)
-        XCTAssertEqual(reloaded.load(), make(at: 100))
+        #expect(reloaded.load() == make(at: 100))
     }
 
-    func testOlderEqualAndFutureCannotReplace() {
+    @Test func olderEqualAndFutureCannotReplace() {
         let store = WatchSingleExerciseSuggestionContextStore(defaults: defaults)
-        XCTAssertTrue(store.replaceIfNewer(make(at: 200)))
-        XCTAssertFalse(store.replaceIfNewer(make(at: 100, sets: 4)))
-        XCTAssertFalse(store.replaceIfNewer(make(at: 200, sets: 4)))
-        XCTAssertEqual(store.replace(make(at: 900, version: 99)), .keptExisting)
-        XCTAssertEqual(store.load(), make(at: 200))
-        XCTAssertTrue(store.replaceIfNewer(make(at: 300)))
+        #expect(store.replaceIfNewer(make(at: 200)))
+        #expect(!store.replaceIfNewer(make(at: 100, sets: 4)))
+        #expect(!store.replaceIfNewer(make(at: 200, sets: 4)))
+        #expect(store.replace(make(at: 900, version: 99)) == .keptExisting)
+        #expect(store.load() == make(at: 200))
+        #expect(store.replaceIfNewer(make(at: 300)))
     }
 
-    func testCorruptPayloadAfterValidKeepsRetainedContext() throws {
+    @Test func corruptPayloadAfterValidKeepsRetainedContext() throws {
         let store = WatchSingleExerciseSuggestionContextStore(defaults: defaults)
         store.replaceIfNewer(make(at: 100))
         let key = WatchSync.Key.singleExerciseSuggestionContext
@@ -58,34 +61,34 @@ final class WatchSingleExerciseSuggestionContextStoreTests: XCTestCase {
             applyingTo: WatchSync.Preferences(unit: .kilograms, intervalColorBlind: false, restSeconds: 90,
                                               warmupMinutes: 5, cooldownMinutes: 5, workoutSounds: true,
                                               spokenCues: true, recentPartnerNames: []))
-        XCTAssertNil(incoming.singleExerciseSuggestionContext)
-        let future = try XCTUnwrap(make(at: 500, version: 2).propertyListValue)
-        XCTAssertNil(WatchSingleExerciseSuggestionContext.decodePayload(future))
-        XCTAssertEqual(store.load(), make(at: 100))
+        #expect(incoming.singleExerciseSuggestionContext == nil)
+        let future = try #require(make(at: 500, version: 2).propertyListValue)
+        #expect(WatchSingleExerciseSuggestionContext.decodePayload(future) == nil)
+        #expect(store.load() == make(at: 100))
     }
 
-    func testCorruptStoredDataIsDiscarded() {
+    @Test func corruptStoredDataIsDiscarded() {
         defaults.set(Data("junk".utf8), forKey: WatchSingleExerciseSuggestionContextStore.defaultsKey)
         let store = WatchSingleExerciseSuggestionContextStore(defaults: defaults)
-        XCTAssertNil(store.load())
-        XCTAssertTrue(store.replaceIfNewer(make(at: 1)))
+        #expect(store.load() == nil)
+        #expect(store.replaceIfNewer(make(at: 1)))
     }
 
-    func testContextParsingAndFingerprintChangesOnlyWithSnapshot() throws {
+    @Test func contextParsingAndFingerprintChangesOnlyWithSnapshot() throws {
         let key = WatchSync.Key.singleExerciseSuggestionContext
-        let a = try XCTUnwrap(make(at: 100).propertyListValue)
-        let b = try XCTUnwrap(make(at: 200).propertyListValue)
+        let a = try #require(make(at: 100).propertyListValue)
+        let b = try #require(make(at: 200).propertyListValue)
         let parsed = WatchSync.IncomingContext.from(
             context: [key: a],
             applyingTo: WatchSync.Preferences(unit: .kilograms, intervalColorBlind: false, restSeconds: 90,
                                               warmupMinutes: 5, cooldownMinutes: 5, workoutSounds: true,
                                               spokenCues: true, recentPartnerNames: []))
-        XCTAssertEqual(parsed.singleExerciseSuggestionContext, make(at: 100))
+        #expect(parsed.singleExerciseSuggestionContext == make(at: 100))
         let none = WatchSyncHandshake.Components(context: [:])
         let withA = WatchSyncHandshake.Components(context: [key: a])
         let withB = WatchSyncHandshake.Components(context: [key: b])
-        XCTAssertNotEqual(none, withA)
-        XCTAssertNotEqual(withA, withB)
-        XCTAssertEqual(withA, WatchSyncHandshake.Components(context: [key: a]))
+        #expect(none != withA)
+        #expect(withA != withB)
+        #expect(withA == WatchSyncHandshake.Components(context: [key: a]))
     }
 }

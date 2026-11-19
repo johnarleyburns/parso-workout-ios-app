@@ -1,5 +1,6 @@
 import AVFoundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 protocol WatchAudioSessioning: AnyObject {
     func setCategory(_ category: AVAudioSession.Category,

@@ -1,62 +1,70 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchCardioSuggestionTests: XCTestCase {
+struct WatchCardioSuggestionTests {
     private func suggestion() -> CardioSuggestion {
         CardioSuggestion(type: .run, durationMinutes: 30, intensity: .easy,
                          rationale: "test", citationIDs: [])
     }
 
-    func testEnvelopeRoundTripsThroughEncodeDecode() throws {
+    @Test func envelopeRoundTripsThroughEncodeDecode() throws {
         let envelope = WatchCardioSuggestionEnvelope.make(suggestion: suggestion(), issuedAt: Date())
         let data = try envelope.encoded()
         guard case .success(let decoded) = WatchCardioSuggestionEnvelope.decode(data) else {
-            return XCTFail("expected successful decode")
+            Issue.record("expected successful decode")
+            return
         }
-        XCTAssertEqual(decoded, envelope)
+        #expect(decoded == envelope)
     }
 
-    func testExpiredEnvelopeIsNotStartable() {
+    @Test func expiredEnvelopeIsNotStartable() {
         let issuedAt = Date(timeIntervalSince1970: 1000)
         let envelope = WatchCardioSuggestionEnvelope.make(suggestion: suggestion(), issuedAt: issuedAt)
-        XCTAssertFalse(envelope.isStartable(now: issuedAt.addingTimeInterval(WatchCardioSuggestionEnvelope.maximumLifetime + 1)))
+        #expect(!envelope.isStartable(now: issuedAt.addingTimeInterval(WatchCardioSuggestionEnvelope.maximumLifetime + 1)))
     }
 
-    func testResolveWithNoEnvelopeNeedsSyncWithNoSnapshotReason() {
+    @Test func resolveWithNoEnvelopeNeedsSyncWithNoSnapshotReason() {
         let result = WatchCardioSuggestResolver.resolve(envelope: nil, now: Date())
         guard case .needsSync(let reason, let lastSyncedAt) = result else {
-            return XCTFail("expected .needsSync")
+            Issue.record("expected .needsSync")
+            return
         }
-        XCTAssertEqual(reason, .noSnapshot)
-        XCTAssertNil(lastSyncedAt)
+        #expect(reason == .noSnapshot)
+        #expect(lastSyncedAt == nil)
     }
 
-    func testResolveWithFreshEnvelopeIsReady() {
+    @Test func resolveWithFreshEnvelopeIsReady() {
         let now = Date()
         let envelope = WatchCardioSuggestionEnvelope.make(suggestion: suggestion(), issuedAt: now)
         let result = WatchCardioSuggestResolver.resolve(envelope: envelope, now: now)
         guard case .ready(let ready, _, let syncedAt) = result else {
-            return XCTFail("expected .ready")
+            Issue.record("expected .ready")
+            return
         }
-        XCTAssertEqual(ready, suggestion())
-        XCTAssertEqual(syncedAt, now)
+        #expect(ready == suggestion())
+        #expect(syncedAt == now)
     }
 
-    func testResolveWithExpiredEnvelopeNeedsSyncWithExpiredReason() {
+    @Test func resolveWithExpiredEnvelopeNeedsSyncWithExpiredReason() {
         let issuedAt = Date(timeIntervalSince1970: 1000)
         let envelope = WatchCardioSuggestionEnvelope.make(suggestion: suggestion(), issuedAt: issuedAt)
         let result = WatchCardioSuggestResolver.resolve(
             envelope: envelope, now: issuedAt.addingTimeInterval(WatchCardioSuggestionEnvelope.maximumLifetime + 1))
-        guard case .needsSync(let reason, _) = result else { return XCTFail("expected .needsSync") }
-        XCTAssertEqual(reason, .expired)
+        guard case .needsSync(let reason, _) = result else {
+            Issue.record("expected .needsSync")
+            return
+        }
+        #expect(reason == .expired)
     }
 
-    func testContextPayloadRoundTripAndAbsent() throws {
+    @Test func contextPayloadRoundTripAndAbsent() throws {
         let envelope = WatchCardioSuggestionEnvelope.make(suggestion: suggestion(), issuedAt: Date())
         let context = try WatchSync.contextDict(envelope)
-        XCTAssertEqual(WatchCardioSuggestionPayload(context: context), .envelope(envelope))
-        XCTAssertEqual(WatchCardioSuggestionPayload(context: [:]), .absent)
-        XCTAssertEqual(WatchCardioSuggestionPayload(context: [WatchSync.Key.cardioSuggestionSnapshot: Data([1])]), .invalid)
+        #expect(WatchCardioSuggestionPayload(context: context) == .envelope(envelope))
+        #expect(WatchCardioSuggestionPayload(context: [:]) == .absent)
+        #expect(WatchCardioSuggestionPayload(context: [WatchSync.Key.cardioSuggestionSnapshot: Data([1])]) == .invalid)
     }
 }

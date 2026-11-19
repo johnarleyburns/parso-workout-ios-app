@@ -1,8 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class SuggestedStrengthPreviewTests: XCTestCase {
+struct SuggestedStrengthPreviewTests {
     private typealias F = CoachSuggestionFixtures
 
     private func plan(_ names: [String], title: String = "Suggested") -> EditablePlan {
@@ -10,105 +13,105 @@ final class SuggestedStrengthPreviewTests: XCTestCase {
                      exercises: names.map { EditableExercise(name: $0, sets: [EditableSet(targetReps: 8, targetWeight: nil)], notes: "") })
     }
 
-    func testActionsAreExposedInRequiredOrder() {
+    @Test func actionsAreExposedInRequiredOrder() {
         let c = SuggestedStrengthActionContract.ordered
-        XCTAssertEqual(c.map(\.title), ["Start this Workout", "Suggest another", "Cancel"])
-        XCTAssertEqual(c.map(\.action), [.start, .suggestAnother, .cancel])
+        #expect(c.map(\.title) == ["Start this Workout", "Suggest another", "Cancel"])
+        #expect(c.map(\.action) == [.start, .suggestAnother, .cancel])
     }
 
-    func testAccessibilityIdentifiersAreStable() {
-        XCTAssertEqual(SuggestedStrengthActionContract.ordered.map(\.accessibilityIdentifier),
+    @Test func accessibilityIdentifiersAreStable() {
+        #expect(SuggestedStrengthActionContract.ordered.map(\.accessibilityIdentifier) ==
                        ["suggestedStrength.start",
                         "suggestedStrength.another", "suggestedStrength.cancel"])
     }
 
-    func testCancelAndInteractiveDismissClearAndOnlyCancel() {
+    @Test func cancelAndInteractiveDismissClearAndOnlyCancel() {
         for action in [SuggestedStrengthAction.cancel, .interactiveDismiss] {
             var s = SuggestedStrengthPreviewState(plan: plan(["Bench Press"]))
-            XCTAssertEqual(s.reduce(action), .cancelPresentation)
-            XCTAssertNil(s.plan)
-            XCTAssertFalse(s.isRegenerating)
+            #expect(s.reduce(action) == .cancelPresentation)
+            #expect(s.plan == nil)
+            #expect(!s.isRegenerating)
         }
     }
 
-    func testStartEmitsDismissThenStartOnce() {
+    @Test func startEmitsDismissThenStartOnce() {
         let p = plan(["Bench Press"])
         var s = SuggestedStrengthPreviewState(plan: p)
-        XCTAssertEqual(s.reduce(.start), .dismissThenStart(p))
-        XCTAssertEqual(s.reduce(.start), .none)
-        XCTAssertNil(s.plan)
+        #expect(s.reduce(.start) == .dismissThenStart(p))
+        #expect(s.reduce(.start) == .none)
+        #expect(s.plan == nil)
     }
 
-    func testStartUsesEditedPlan() {
+    @Test func startUsesEditedPlan() {
         var s = SuggestedStrengthPreviewState(plan: plan(["Bench Press"]))
         let edited = plan(["Bench Press", "Barbell Row"], title: "Edited")
         s.editedPlan = edited
-        XCTAssertEqual(s.reduce(.start), .dismissThenStart(edited))
+        #expect(s.reduce(.start) == .dismissThenStart(edited))
     }
 
 
-    func testSuggestAnotherRetainsPlanAndRequestsExclusion() {
+    @Test func suggestAnotherRetainsPlanAndRequestsExclusion() {
         let token = UUID()
         let p = plan(["Bench Press", "Barbell Row"])
         var s = SuggestedStrengthPreviewState(plan: p)
         let effect = s.reduce(.suggestAnother, newToken: token)
-        XCTAssertEqual(effect, .requestAlternative(
+        #expect(effect == .requestAlternative(
             excluding: [ExerciseSuggestionExclusionKey.forName("Bench Press"),
                         ExerciseSuggestionExclusionKey.forName("Barbell Row")], token: token))
-        XCTAssertTrue(s.isRegenerating)
-        XCTAssertEqual(s.plan, p)
-        XCTAssertEqual(s.reduce(.suggestAnother), .none, "disabled while loading")
+        #expect(s.isRegenerating)
+        #expect(s.plan == p)
+        #expect(s.reduce(.suggestAnother) == .none, "disabled while loading")
     }
 
-    func testReplacementSucceededReplacesAtomically() {
+    @Test func replacementSucceededReplacesAtomically() {
         let token = UUID()
         var s = SuggestedStrengthPreviewState(plan: plan(["Bench Press"]))
         _ = s.reduce(.suggestAnother, newToken: token)
         let next = plan(["Back Squat"])
-        XCTAssertEqual(s.reduce(.replacementSucceeded(next, token: token)), .none)
-        XCTAssertEqual(s.plan, next)
-        XCTAssertEqual(s.editedPlan, next)
-        XCTAssertFalse(s.isRegenerating)
+        #expect(s.reduce(.replacementSucceeded(next, token: token)) == .none)
+        #expect(s.plan == next)
+        #expect(s.editedPlan == next)
+        #expect(!s.isRegenerating)
     }
 
-    func testReplacementUnavailableKeepsPlanWithMessage() {
+    @Test func replacementUnavailableKeepsPlanWithMessage() {
         let token = UUID()
         let p = plan(["Bench Press"])
         var s = SuggestedStrengthPreviewState(plan: p)
         _ = s.reduce(.suggestAnother, newToken: token)
         _ = s.reduce(.replacementUnavailable(token: token))
-        XCTAssertEqual(s.plan, p)
-        XCTAssertFalse(s.isRegenerating)
-        XCTAssertEqual(s.unavailableMessage, SuggestedStrengthPreviewState.noAlternativeMessage)
+        #expect(s.plan == p)
+        #expect(!s.isRegenerating)
+        #expect(s.unavailableMessage == SuggestedStrengthPreviewState.noAlternativeMessage)
     }
 
-    func testLateOrCancelledResultIsIgnored() {
+    @Test func lateOrCancelledResultIsIgnored() {
         let token = UUID()
         let p = plan(["Bench Press"])
         var s = SuggestedStrengthPreviewState(plan: p)
         _ = s.reduce(.suggestAnother, newToken: token)
-        XCTAssertEqual(s.reduce(.replacementSucceeded(plan(["X"]), token: UUID())), .none)
-        XCTAssertEqual(s.plan, p)
+        #expect(s.reduce(.replacementSucceeded(plan(["X"]), token: UUID())) == .none)
+        #expect(s.plan == p)
         _ = s.reduce(.cancel)
-        XCTAssertEqual(s.reduce(.replacementSucceeded(plan(["X"]), token: token)), .none)
-        XCTAssertNil(s.plan)
+        #expect(s.reduce(.replacementSucceeded(plan(["X"]), token: token)) == .none)
+        #expect(s.plan == nil)
     }
 
-    func testOnlySuggestedStrengthGetsPreviewActions() {
+    @Test func onlySuggestedStrengthGetsPreviewActions() {
         for p in [WorkoutPlanEditorPresentation.manual, .library, .previousWorkout] {
-            XCTAssertFalse(p.showsSuggestedPreviewActions)
+            #expect(!p.showsSuggestedPreviewActions)
         }
-        XCTAssertTrue(WorkoutPlanEditorPresentation.suggestedStrength.showsSuggestedPreviewActions)
+        #expect(WorkoutPlanEditorPresentation.suggestedStrength.showsSuggestedPreviewActions)
     }
 
-    func testAlternativeRequestYieldsDistinctOptionWithoutMutatingBase() throws {
+    @Test func alternativeRequestYieldsDistinctOptionWithoutMutatingBase() throws {
         let base = F.request(candidates: F.catalog)
-        let first = try XCTUnwrap(CoachSuggestionService.generate(from: F.snapshot(base)))
+        let first = try #require(CoachSuggestionService.generate(from: F.snapshot(base)))
         let keys = Set(first.exercises.map { ExerciseSuggestionExclusionKey.forName($0.name) })
         let alt = SuggestedStrengthAlternative.request(from: base, excludingKeys: keys)
-        XCTAssertEqual(base.input.candidates.count, F.catalog.count)
-        let second = try XCTUnwrap(CoachSuggestionService.generate(from: F.snapshot(alt)))
+        #expect(base.input.candidates.count == F.catalog.count)
+        let second = try #require(CoachSuggestionService.generate(from: F.snapshot(alt)))
         let firstIDs = Set(first.exercises.map(\.candidateID))
-        XCTAssertTrue(firstIDs.isDisjoint(with: Set(second.exercises.map(\.candidateID))))
+        #expect(firstIDs.isDisjoint(with: Set(second.exercises.map(\.candidateID))))
     }
 }

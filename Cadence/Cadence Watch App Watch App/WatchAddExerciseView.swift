@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchAddExerciseView: View {
     let model: WatchStrengthFlowModel
@@ -12,11 +13,8 @@ struct WatchAddExerciseView: View {
     @Query(ExerciseCatalogSnapshot.changeSignalDescriptor) private var newestExercise: [Exercise]
     /// Built on a background context; see `ExerciseCatalogSnapshot`.
     @State private var catalog = ExerciseCatalogSnapshot.empty
-    @State private var selectedGroup: MuscleGroup?
-    @State private var filter = WatchExerciseFilter()
-    @State private var selectedEntry: ExerciseCatalogEntry?
-    @State private var showingDetail = false
     @State private var query = ""
+    @FocusState private var isSearchFocused: Bool
     @State private var searchResults: [ExerciseCatalogEntry] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
@@ -27,8 +25,6 @@ struct WatchAddExerciseView: View {
     @State private var searchGeneration = 0
     /// Duplicate / failure feedback shown while the user stays in Add Exercise.
     @State private var feedback: String?
-    /// Pending confirmation + failure outcome; the workout changes only on Add.
-    @State private var confirmation = WatchAddConfirmation()
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -41,11 +37,6 @@ struct WatchAddExerciseView: View {
                                         feedback: feedback,
                                         onCreate: { report(model.createAndAddExercise(named: customName, attribution: customAttribution)) },
                                         onBack: { showingCustomExercise = false })
-            } else if let selectedEntry {
-                WatchAddExercisePreview(entry: selectedEntry, feedback: feedback,
-                                        showingDetail: $showingDetail,
-                                        onBack: { self.selectedEntry = nil },
-                                        onAdd: { requestAdd(selectedEntry) })
             } else {
                 picker
             }
@@ -61,11 +52,14 @@ struct WatchAddExerciseView: View {
         .onChange(of: query) { _, _ in
             scheduleSearch()
         }
-        .modifier(WatchAddConfirmationModifier(
-            confirmation: $confirmation,
-            onAdd: performConfirmedAdd,
-            onViewWorkout: { model.goBackToHome() },
-            onRefresh: refreshResults))
+        .onAppear {
+            // Search-first entry (field-testing batch): raise focus immediately
+            // so the system keyboard/dictation affordance is one tap away
+            // instead of landing on a category-browse screen first. watchOS
+            // still requires the user's own tap to actually present the
+            // keyboard sheet — focus alone can't force it open.
+            isSearchFocused = true
+        }
         .onDisappear {
             searchTask?.cancel()
         }
@@ -79,13 +73,21 @@ struct WatchAddExerciseView: View {
                     .foregroundStyle(.orange)
                     .accessibilityIdentifier("watchAddExercise.feedback")
             }
+            HStack(spacing: 6) {
+                TextField("Search", text: $query)
+                    .focused($isSearchFocused)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .accessibilityIdentifier("watchAddExercise.search")
+                customExerciseButton
+            }
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Section {
                     Button {
                         WatchHaptics.tap()
-                        query = ""
-                    } label: { Label("Back", systemImage: "chevron.left") }
+                        model.goBackToHome()
+                    } label: { Label("Cancel", systemImage: "xmark") }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("watchAddExercise.cancel")
                 }
                 Section("Matches") {
                     switch WatchExerciseSearchPresenter.phase(query: query,
@@ -113,79 +115,13 @@ struct WatchAddExerciseView: View {
                         EmptyView()
                     }
                 }
-                Section {
-                    customExerciseButton
-                }
-            } else if let selectedGroup {
-                Section {
-                    Button {
-                        WatchHaptics.tap()
-                        self.selectedGroup = nil
-                        filter = WatchExerciseFilter()
-                    } label: {
-                        Label("Back", systemImage: "chevron.left")
-                    }
-                    .buttonStyle(.plain)
-                }
-                if catalog.isLoaded {
-                    let groupEntries = catalog.entries(in: selectedGroup)
-                    WatchExerciseFilterSection(filter: $filter, entries: groupEntries)
-                    let shown = filter.apply(to: groupEntries)
-                    Section(selectedGroup.displayName) {
-                        if shown.isEmpty {
-                            Text("No matches").font(.caption).foregroundStyle(.secondary)
-                        }
-                        ForEach(shown) { exercise in
-                            exerciseButton(exercise)
-                        }
-                    }
-                } else {
-                    Section(selectedGroup.displayName) {
-                        loadingRow
-                    }
-                }
-            } else {
-                HStack(spacing: 6) {
-                    TextField("Search", text: $query)
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                        .accessibilityIdentifier("watchAddExercise.search")
-                    customExerciseButton
-                }
-                Section(WatchAddExercisePresentation.muscleGroupSectionTitle) {
-                    ForEach(WatchAddExercisePresentation.visibleMuscleGroups) { group in
-                        Button {
-                            WatchHaptics.tap()
-                            selectedGroup = group
-                        } label: {
-                            Text(group.displayName)
-                                .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier("watchAddExercise.category.\(group.rawValue)")
-                    }
-                }
             }
         }
         .id(pickerBranchIdentity)
     }
 
     private var pickerBranchIdentity: String {
-        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "search" }
-        if let selectedGroup { return "group.\(selectedGroup.rawValue)" }
-        return "categories"
-    }
-
-    private var loadingRow: some View {
-        HStack {
-            ProgressView()
-                .controlSize(.mini)
-            Text("Loading exercises")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
-        .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("watchAddExercise.loading")
+        query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "idle" : "search"
     }
 
     private var customExerciseButton: some View {
@@ -212,12 +148,13 @@ struct WatchAddExerciseView: View {
         return trimmed.isEmpty ? String(localized: "Add Custom Exercise") : String(localized: "Add Custom “\(trimmed)”")
     }
 
-    /// One full-width plain button that opens the preview; adding happens only there.
+    /// Tapping a result adds it immediately — no preview screen, no confirm
+    /// dialog (field-testing batch: "I can always easily remove an added
+    /// exercise", so a confirm step here is friction, not safety).
     private func exerciseButton(_ exercise: ExerciseCatalogEntry) -> some View {
         Button {
             WatchHaptics.tap()
-            feedback = nil
-            selectedEntry = exercise
+            report(model.addExercise(id: exercise.id, named: exercise.name))
         } label: {
             Text(WatchAddExercisePresentation.rowTitle(for: exercise.name.localizedExerciseName))
                 .lineLimit(WatchAddExercisePresentation.exerciseNameMaxLines, reservesSpace: true)
@@ -231,36 +168,6 @@ struct WatchAddExerciseView: View {
         .accessibilityLabel(WatchAddExercisePresentation.rowAccessibilityLabel(for: exercise.name))
         .accessibilityHint(WatchAddExercisePresentation.rowAccessibilityHint)
         .accessibilityIdentifier("watchAddExercise.row.\(exercise.id.uuidString)")
-    }
-
-    private func requestAdd(_ entry: ExerciseCatalogEntry) {
-        feedback = nil
-        confirmation.request(.init(id: entry.id, name: entry.name))
-        WatchHaptics.tap()
-    }
-
-    /// The only caller of `model.addExercise`; reached from the dialog's Add.
-    private func performConfirmedAdd() {
-        guard let result = confirmation.confirm(add: { model.addExercise(id: $0, named: $1) }) else { return }
-        let outcome = WatchExerciseAddPresenter.outcome(for: result)
-        switch outcome.feedback {
-        case .success: WatchHaptics.success()
-        case .failure:
-            WatchHaptics.failure()
-            AccessibilityNotification.Announcement(outcome.message).post()
-        }
-        feedback = nil
-    }
-
-    /// Reloads the catalog, then reruns the current query.
-    private func refreshResults() {
-        confirmation.dismissOutcome()
-        Task { @MainActor in
-            catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 0)
-            if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                scheduleSearch(immediate: true)
-            }
-        }
     }
 
     /// Success hands off to the Plan page (the model's stage change), which

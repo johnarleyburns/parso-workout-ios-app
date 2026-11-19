@@ -1,9 +1,9 @@
-import XCTest
+import Testing
 @testable import CadenceCore
 
 /// Proves the defined objective only: the fewest exercises that touch every
 /// coverable required group at least once. Not a physiological-optimality claim.
-final class SuggestedWorkoutMinimumCoverageTests: XCTestCase {
+struct SuggestedWorkoutMinimumCoverageTests {
     private struct RNG: RandomNumberGenerator {
         var state: UInt64
         mutating func next() -> UInt64 {
@@ -25,7 +25,7 @@ final class SuggestedWorkoutMinimumCoverageTests: XCTestCase {
         return best
     }
 
-    func testSolverMatchesExhaustiveOracleOnGeneratedMatrices() {
+    @Test func solverMatchesExhaustiveOracleOnGeneratedMatrices() {
         var rng = RNG(state: 303)
         for _ in 0..<300 {
             let groups = Int.random(in: 1...8, using: &rng)
@@ -33,14 +33,14 @@ final class SuggestedWorkoutMinimumCoverageTests: XCTestCase {
             let masks = (0..<count).map { _ in UInt32.random(in: 0..<(1 << UInt32(groups)), using: &rng) }
             let required = UInt32((1 << groups) - 1)
             let picks = SuggestedWorkoutGenerator.minimumCoverIndices(masks: masks, required: required)
-            XCTAssertEqual(picks.count, oracleMinimum(masks, required: required), "\(masks)")
-            XCTAssertEqual(Set(picks).count, picks.count)
+            #expect(picks.count == oracleMinimum(masks, required: required), "\(masks)")
+            #expect(Set(picks).count == picks.count)
             let union = picks.reduce(UInt32(0)) { $0 | masks[$1] }
-            XCTAssertEqual(union & masks.reduce(0, |), masks.reduce(0, |) & required)
+            #expect(union & masks.reduce(0, |) == masks.reduce(0, |) & required)
         }
     }
 
-    func testGreedyCounterexampleUsesTwoExercisesNotThree() {
+    @Test func greedyCounterexampleUsesTwoExercisesNotThree() {
         // Greedy takes the broad exercise first and needs three; two suffice.
         let candidates = [
             c("wide", "A Wide", ["chest", "lats", "quadriceps"]),
@@ -50,11 +50,11 @@ final class SuggestedWorkoutMinimumCoverageTests: XCTestCase {
         let option = generate(candidates, tracked: [.chest, .lats, .quadriceps, .hamstrings, .biceps])
             .option(.fitness)
         let ids = Set(option.exercises.map(\.candidateID))
-        XCTAssertEqual(option.exercises.count, 2, "\(ids)")
-        XCTAssertTrue(option.unsupportedCoverage.isEmpty)
+        #expect(option.exercises.count == 2, "\(ids)")
+        #expect(option.unsupportedCoverage.isEmpty)
     }
 
-    func testProductionMatchesOracleOnRandomFixtures() {
+    @Test func productionMatchesOracleOnRandomFixtures() {
         var rng = RNG(state: 77)
         let groups: [MuscleGroup] = [.chest, .lats, .quadriceps, .hamstrings, .biceps, .triceps]
         for round in 0..<60 {
@@ -72,38 +72,38 @@ final class SuggestedWorkoutMinimumCoverageTests: XCTestCase {
             let expected = oracleMinimum(masks, required: required)
             // Candidates with no tracked muscle never enter the plan; a plan with
             // nothing coverable falls back to one maintenance movement.
-            XCTAssertEqual(option.exercises.count, max(expected, expected == 0 ? 1 : 0), "round \(round)")
-            XCTAssertFalse(option.capTrimmingOccurred)
-            XCTAssertEqual(option.plannedSetTotal, option.exercises.count * 3)
+            #expect(option.exercises.count == max(expected, expected == 0 ? 1 : 0), "round \(round)")
+            #expect(!option.capTrimmingOccurred)
+            #expect(option.plannedSetTotal == option.exercises.count * 3)
         }
     }
 
-    func testDuplicateMappingsTieBreakDeterministicallyAndUnsatisfiedGroupsAreExplained() {
+    @Test func duplicateMappingsTieBreakDeterministicallyAndUnsatisfiedGroupsAreExplained() {
         let candidates = [
             c("b", "Same", ["chest"]), c("a", "Same", ["chest"]), c("z", "Zed", ["chest"]),
         ]
         let first = generate(candidates, tracked: [.chest, .lats]).option(.fitness)
         let second = generate(candidates.reversed(), tracked: [.chest, .lats]).option(.fitness)
-        XCTAssertEqual(first.exercises.map(\.candidateID), second.exercises.map(\.candidateID))
-        XCTAssertEqual(first.exercises.count, 1)
-        XCTAssertEqual(first.unsupportedCoverage.map(\.muscleID), ["lats"])
-        XCTAssertTrue(first.rationale?.whyWorkout.contains("Not covered: ") == true)
+        #expect(first.exercises.map(\.candidateID) == second.exercises.map(\.candidateID))
+        #expect(first.exercises.count == 1)
+        #expect(first.unsupportedCoverage.map(\.muscleID) == ["lats"])
+        #expect(first.rationale?.whyWorkout.contains("Not covered: ") == true)
     }
 
-    func testGoalDefaultsAndHistorySetsApplyAfterSelectionWithoutCap() {
+    @Test func goalDefaultsAndHistorySetsApplyAfterSelectionWithoutCap() {
         let groups = MuscleGroup.allCases
         let candidates = groups.enumerated().map { c("g\($0.offset)", "Ex \($0.offset)", [$0.element.rawValue]) }
         for (goal, reps) in [(TrainingGoal.strength, 3), (.hypertrophy, 8), (.endurance, 20)] {
             let option = generate(candidates, goal: goal).option(.fitness)
-            XCTAssertTrue(option.exercises.allSatisfy { $0.repRange == reps...reps && $0.plannedSets == 3 })
-            XCTAssertEqual(option.plannedSetTotal, option.exercises.count * 3)
-            XCTAssertGreaterThan(option.plannedSetTotal, 20)
-            XCTAssertFalse(option.capTrimmingOccurred)
+            #expect(option.exercises.allSatisfy { $0.repRange == reps...reps && $0.plannedSets == 3 })
+            #expect(option.plannedSetTotal == option.exercises.count * 3)
+            #expect(option.plannedSetTotal > 20)
+            #expect(!option.capTrimmingOccurred)
         }
         let withHistory = generate(candidates, sets: 5, historyWorkoutCount: 4).option(.fitness)
-        XCTAssertTrue(withHistory.exercises.allSatisfy { $0.plannedSets == 5 })
-        XCTAssertEqual(withHistory.plan.items.count, withHistory.exercises.count)
-        XCTAssertEqual(withHistory.plan.items.map(\.targetSets), withHistory.exercises.map(\.plannedSets))
+        #expect(withHistory.exercises.allSatisfy { $0.plannedSets == 5 })
+        #expect(withHistory.plan.items.count == withHistory.exercises.count)
+        #expect(withHistory.plan.items.map(\.targetSets) == withHistory.exercises.map(\.plannedSets))
     }
 
     private func c(_ id: String, _ name: String, _ primary: [String]) -> SuggestedExerciseCandidate {

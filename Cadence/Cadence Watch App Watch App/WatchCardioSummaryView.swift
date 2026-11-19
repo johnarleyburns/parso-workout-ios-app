@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchCardioSummaryView: View {
     let summary: WatchWorkoutManager.SavedWorkoutSummary
@@ -40,8 +41,10 @@ struct WatchCardioSummaryView: View {
                 Text("Will sync when iPhone is available").font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            Button("Discard") { onDiscard() }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
+            Button(role: .destructive) { onDiscard() } label: {
+                Label("Discard", systemImage: "trash")
+            }
+            .buttonStyle(.plain)
 
             Spacer(minLength: 8)
           }

@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Immutable input for the single-exercise chooser. SwiftData objects stop at
 /// this boundary; the generator can therefore run away from the main actor.

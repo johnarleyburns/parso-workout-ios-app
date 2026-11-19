@@ -3,6 +3,8 @@ import SwiftData
 import AVFoundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @main
 @MainActor
@@ -12,71 +14,68 @@ struct CadenceApp: App {
     @State private var active = ActiveWorkoutModel()
     @State private var contributions = ContributionCoordinator()
     @Environment(\.scenePhase) private var scenePhase
-    private let uiTestMode: Bool
     let container: ModelContainer
+    /// Non-`.ready` when the on-disk store couldn't be opened and had to be
+    /// quarantined and/or replaced with an in-memory container (issue #779).
+    /// Surfaced as a small banner in `body`; never a blocking screen.
+    @State private var storeRecoveryState: WatchStoreBootstrapPolicy<ModelContainer>.State
     /// Store preparation is per process, not per foreground. It used to rerun
     /// the whole catalog reconciliation and a full-history index check every
     /// time the app became active.
     @State private var persistentStorePrepared = false
 
     init() {
-        let args = ProcessInfo.processInfo.arguments
-        let uiTest = args.contains("-uiTest")
-        self.uiTestMode = uiTest
-        let persistentUITest = args.contains("-uiTestPersistentStore")
-        let uiTestStoreURL: URL? = {
-            guard persistentUITest,
-                  let idIndex = args.firstIndex(of: "-uiTestStoreID"),
-                  args.indices.contains(idIndex + 1) else { return nil }
-            let storeID = args[idIndex + 1].filter { $0.isNumber || $0 == "-" }
-            guard !storeID.isEmpty,
-                  let applicationSupport = FileManager.default.urls(for: .applicationSupportDirectory,
-                                                                     in: .userDomainMask).first else {
-                return nil
-            }
-            try? FileManager.default.createDirectory(at: applicationSupport,
-                                                     withIntermediateDirectories: true)
-            return applicationSupport.appendingPathComponent("ui-test-\(storeID).store")
-        }()
-
         // Put the audio session in non-interrupting mix mode before any audio
         // object initializes, so workout cues never pause the user's background
         // music/podcast (field-testing: warm-up silenced background audio).
         try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default,
                                                          options: [.mixWithOthers])
 
-        do {
-            if !uiTest && !persistentUITest {
-                // New installs and completed H5 migrations use the split
-                // local/Sync container. Existing legacy installs stay on the
-                // old container until the user explicitly starts migration
-                // from Backup & Restore, preserving an upgrade-safe path.
-                container = try CadenceStore.makeApplicationModelContainer()
-            } else {
-                container = try CadenceStore.makeModelContainer(
-                    inMemory: uiTest && !persistentUITest,
-                    cloudKitEnabled: !persistentUITest,
-                    storeURL: uiTestStoreURL)
-            }
-        } catch {
-            // Never delete or replace an on-disk store on a model-container
-            // error. The store contains irreplaceable workout history and may
-            // still be recoverable through SwiftData migration, CloudKit, or a
-            // user export. Fail closed so a schema bug cannot become data loss.
-            fatalError("Failed to create ModelContainer without altering stored workout history: \(error)")
+        // issue #779: a corrupted/incompatible on-disk store previously
+        // propagated out of `makeApplicationModelContainer()` straight to an
+        // unconditional `fatalError`, with no recovery path — unlike the
+        // Watch app, which already quarantines, retries, and falls back to
+        // an in-memory container. Reuse that exact combinator here instead of
+        // inventing new recovery logic. Quarantine only ever moves files
+        // aside into a timestamped recovery directory; it never deletes an
+        // on-disk store, so the "never delete or replace stored workout
+        // history" guarantee still holds even after this change.
+        let policy = WatchStoreBootstrapPolicy<ModelContainer>(
+            createPersistent: { try CadenceStore.makeApplicationModelContainer() },
+            createInMemory: { try CadenceStore.makeModelContainer(inMemory: true) },
+            quarantine: { try Self.quarantinePhoneStore() },
+            seed: { _ in })
+        let outcome = policy.open()
+        guard let resolvedContainer = outcome.container else {
+            // Only reachable if even an in-memory container can't be created —
+            // there is no store left to fail closed over at that point.
+            fatalError("Failed to create any ModelContainer, including in-memory, without altering stored workout history")
         }
+        container = resolvedContainer
+        _storeRecoveryState = State(initialValue: outcome.state)
         // Attach before the first scene task so an import that starts during
         // ModelContainer setup can still surface its restore state in the UI.
         model.startCloudKitHistoryMonitoring()
-        // UI tests need deterministic fixtures before their first assertion. In
-        // production this work is deferred until after the first frame so a
-        // CloudKit restore and a large exercise-library seed cannot monopolize
-        // app launch.
-        if uiTest {
-            let ctx = ModelContext(container)
-            _ = try? WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
-            UITestSeed.apply(args: args, context: ctx)
+    }
+
+    /// Moves aside (never deletes) whichever on-disk store files exist —
+    /// legacy single-store or split Local/Sync — into a timestamped recovery
+    /// directory, mirroring the Watch app's own `quarantineStore()`.
+    private static func quarantinePhoneStore() throws -> URL? {
+        let fm = FileManager.default
+        let directory = CadenceStore.applicationSupportDirectory()
+        let baseNames = [CadenceStore.legacyStoreFileName, CadenceStore.localStoreFileName,
+                         CadenceStore.syncStoreFileName]
+        let names = baseNames.flatMap { [$0, $0 + "-shm", $0 + "-wal"] }
+        let existing = names.map { directory.appendingPathComponent($0) }
+            .filter { fm.fileExists(atPath: $0.path) }
+        guard !existing.isEmpty else { return nil }
+        let recovery = WatchStoreFiles.recoveryDirectory(in: directory)
+        try fm.createDirectory(at: recovery, withIntermediateDirectories: true)
+        for file in existing {
+            try fm.moveItem(at: file, to: recovery.appendingPathComponent(file.lastPathComponent))
         }
+        return recovery
     }
 
     var body: some Scene {
@@ -87,6 +86,7 @@ struct CadenceApp: App {
                 .environment(active)
                 .environment(contributions)
                 .environment(\.cadenceModelContainer, container)
+                .overlay(alignment: .top) { storeRecoveryBanner }
                 .task { model.activateWCSession() }
                 .task { model.refreshCloudKitAccountStatus() }
                 .task { _ = await model.healthBackup.drain() }
@@ -105,8 +105,27 @@ struct CadenceApp: App {
         .modelContainer(container)
     }
 
+    /// issue #779: a non-blocking, dismissible notice — never a full-screen
+    /// takeover — shown only when `init()` had to quarantine and/or fall back
+    /// to an in-memory store. Transparency over silence: the user is told
+    /// what happened and how to export their data rather than the app just
+    /// silently running in a degraded state.
+    @ViewBuilder private var storeRecoveryBanner: some View {
+        switch storeRecoveryState {
+        case .ready:
+            EmptyView()
+        case .recovered:
+            StoreRecoveryBanner(
+                message: String(localized: "A local data issue was found and recovered automatically. Your previous store was kept, not deleted — open Settings → Backup & Restore to export a copy."),
+                dismiss: { storeRecoveryState = .ready })
+        case .degraded, .opening, .quarantining, .retrying, .idle:
+            StoreRecoveryBanner(
+                message: String(localized: "Cladiron is running with a temporary store after a local data issue. Restart the app, and open Settings → Backup & Restore to export or restore your data."),
+                dismiss: { storeRecoveryState = .ready })
+        }
+    }
+
     private func preparePersistentStore() async -> Bool {
-        guard !uiTestMode else { return true }
         // Give SwiftUI a frame for the launch surface before doing synchronous
         // SwiftData seeding. The seed can touch hundreds of exercises during a
         // catalog upgrade, so it must also run in a detached context; a single
@@ -156,5 +175,36 @@ struct CadenceApp: App {
             model.hrm.restoreDefaultDevice(defaultDeviceID)
         }
         return true
+    }
+}
+
+/// Minimal non-blocking banner for the store-recovery notice (issue #779).
+/// Deliberately not a full-screen flow — the app keeps working underneath.
+private struct StoreRecoveryBanner: View {
+    let message: String
+    let dismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+            Text(message)
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(String(localized: "Dismiss"))
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+        .padding(.top, 8)
+        .accessibilityElement(children: .combine)
     }
 }

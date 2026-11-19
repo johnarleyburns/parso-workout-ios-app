@@ -1,11 +1,15 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class SessionRenderModelTests: XCTestCase {
+struct SessionRenderModelTests {
 
-    func testCollapsedSummaryIncludesPrescriptionDimensionsAndPartners() {
+    @Test func collapsedSummaryIncludesPrescriptionDimensionsAndPartners() {
         let partner = UUID()
         let context = SessionRenderModel.ExerciseContext(
             exerciseID: UUID(), name: "Bench Press", sets: [], pendingCount: 2,
@@ -19,15 +23,15 @@ final class SessionRenderModelTests: XCTestCase {
                 .init(performerID: partner, performerName: "Sam", setIndex: 0, targetReps: 6, targetWeightKg: 60)
             ])
         let summary = SessionRenderModel.compactSummary(context: context, unit: .kilograms)
-        XCTAssertTrue(summary.contains("sets"))
-        XCTAssertTrue(summary.contains("reps"))
-        XCTAssertTrue(summary.contains("60"))
-        XCTAssertTrue(summary.contains("Sam"))
+        #expect(summary.contains("sets"))
+        #expect(summary.contains("reps"))
+        #expect(summary.contains("60"))
+        #expect(summary.contains("Sam"))
     }
 
     // MARK: - Signature ignores keystroke state
 
-    func testSignatureIgnoresKeystrokeState() {
+    @Test func signatureIgnoresKeystrokeState() {
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 5, latestSetUpdate: Date(),
             exerciseIDs: [UUID()], plannedNames: ["Bench"], rosterIDs: [],
@@ -37,10 +41,10 @@ final class SessionRenderModelTests: XCTestCase {
             exerciseIDs: sig1.exerciseIDs, plannedNames: sig1.plannedNames, rosterIDs: [],
             prRule: .estimated1RM, formula: .epley)
 
-        XCTAssertEqual(sig1, sig2, "Same structural state → equal signature")
+        #expect(sig1 == sig2, "Same structural state → equal signature")
     }
 
-    func testSignatureChangesOnSetCountChange() {
+    @Test func signatureChangesOnSetCountChange() {
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 5, latestSetUpdate: nil,
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
@@ -50,10 +54,10 @@ final class SessionRenderModelTests: XCTestCase {
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
             prRule: .topWeight, formula: .epley)
 
-        XCTAssertNotEqual(sig1, sig2)
+        #expect(sig1 != sig2)
     }
 
-    func testSignatureChangesOnExerciseOrderChange() {
+    @Test func signatureChangesOnExerciseOrderChange() {
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 0, latestSetUpdate: nil,
             exerciseIDs: [UUID()], plannedNames: [], rosterIDs: [],
@@ -63,10 +67,10 @@ final class SessionRenderModelTests: XCTestCase {
             exerciseIDs: [UUID()], plannedNames: [], rosterIDs: [],
             prRule: .topWeight, formula: .epley)
 
-        XCTAssertNotEqual(sig1, sig2, "Different exercise ID lists → different signatures")
+        #expect(sig1 != sig2, "Different exercise ID lists → different signatures")
     }
 
-    func testSignatureChangesOnPRRuleChange() {
+    @Test func signatureChangesOnPRRuleChange() {
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 0, latestSetUpdate: nil,
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
@@ -76,10 +80,10 @@ final class SessionRenderModelTests: XCTestCase {
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
             prRule: .estimated1RM, formula: .epley)
 
-        XCTAssertNotEqual(sig1, sig2)
+        #expect(sig1 != sig2)
     }
 
-    func testSignatureChangesOnFormulaChange() {
+    @Test func signatureChangesOnFormulaChange() {
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 0, latestSetUpdate: nil,
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
@@ -89,10 +93,10 @@ final class SessionRenderModelTests: XCTestCase {
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
             prRule: .estimated1RM, formula: .brzycki)
 
-        XCTAssertNotEqual(sig1, sig2)
+        #expect(sig1 != sig2)
     }
 
-    func testSignatureChangesOnLatestSetUpdate() {
+    @Test func signatureChangesOnLatestSetUpdate() {
         let now = Date()
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 5, latestSetUpdate: now,
@@ -103,12 +107,12 @@ final class SessionRenderModelTests: XCTestCase {
             exerciseIDs: [], plannedNames: [], rosterIDs: [],
             prRule: .topWeight, formula: .epley)
 
-        XCTAssertNotEqual(sig1, sig2)
+        #expect(sig1 != sig2)
     }
 
     // MARK: - Cache rebuild count proofs
 
-    func testEqualSignatureNeverRebuilds() {
+    @Test func equalSignatureNeverRebuilds() {
         let cache = SessionHistoryCache()
         let sig = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 0, latestSetUpdate: nil,
@@ -119,7 +123,7 @@ final class SessionRenderModelTests: XCTestCase {
         cache.refresh(signature: sig) {
             SessionRenderModel.State(contexts: [], prSetIDs: [])
         }
-        XCTAssertEqual(cache.rebuildCount, 1)
+        #expect(cache.rebuildCount == 1)
 
         // 50 more calls with same signature → no rebuilds
         for _ in 0..<50 {
@@ -127,10 +131,10 @@ final class SessionRenderModelTests: XCTestCase {
                 SessionRenderModel.State(contexts: [], prSetIDs: [])
             }
         }
-        XCTAssertEqual(cache.rebuildCount, 1, "50 equal signatures should produce 0 additional rebuilds")
+        #expect(cache.rebuildCount == 1, "50 equal signatures should produce 0 additional rebuilds")
     }
 
-    func testChangedSignatureRebuildsOnce() {
+    @Test func changedSignatureRebuildsOnce() {
         let cache = SessionHistoryCache()
         let sig1 = SessionRenderModel.Signature(
             sessionID: UUID(), setCount: 0, latestSetUpdate: nil,
@@ -144,31 +148,31 @@ final class SessionRenderModelTests: XCTestCase {
         cache.refresh(signature: sig1) {
             SessionRenderModel.State(contexts: [], prSetIDs: [])
         }
-        XCTAssertEqual(cache.rebuildCount, 1)
+        #expect(cache.rebuildCount == 1)
 
         cache.refresh(signature: sig2) {
             SessionRenderModel.State(contexts: [], prSetIDs: [])
         }
-        XCTAssertEqual(cache.rebuildCount, 2, "Different signature should rebuild exactly once")
+        #expect(cache.rebuildCount == 2, "Different signature should rebuild exactly once")
 
         // Repeated same signature → no further rebuilds
         cache.refresh(signature: sig2) {
             SessionRenderModel.State(contexts: [], prSetIDs: [])
         }
-        XCTAssertEqual(cache.rebuildCount, 2)
+        #expect(cache.rebuildCount == 2)
     }
 
     // MARK: - wouldBePR parity
 
-    func testWouldBePRWithNoPriorSamplesReturnsFalse() {
+    @Test func wouldBePRWithNoPriorSamplesReturnsFalse() {
         let state = SessionRenderModel.State(contexts: [], prSetIDs: [])
         let result = state.wouldBePR(weightKg: 100, reps: 5, isWarmup: false,
                                       rule: .topWeight, formula: .epley,
                                       for: UUID())
-        XCTAssertFalse(result, "No matching context → can't be a PR")
+        #expect(!result, "No matching context → can't be a PR")
     }
 
-    func testWouldBePRAgainstCachedSamples() {
+    @Test func wouldBePRAgainstCachedSamples() {
         let sample = SetSample(weight: 80, reps: 5, isWarmup: false)
         let pc = SessionRenderModel.PerformerContext(
             performerID: nil, label: "Me", isMe: true,
@@ -182,17 +186,17 @@ final class SessionRenderModelTests: XCTestCase {
         let state = SessionRenderModel.State(contexts: [ctx], prSetIDs: [])
 
         // Same weight → not a PR
-        XCTAssertFalse(state.wouldBePR(weightKg: 80, reps: 5, isWarmup: false,
+        #expect(!state.wouldBePR(weightKg: 80, reps: 5, isWarmup: false,
                                         rule: .topWeight, formula: .epley,
                                         for: exerciseID))
 
         // Higher weight → PR
-        XCTAssertTrue(state.wouldBePR(weightKg: 100, reps: 5, isWarmup: false,
+        #expect(state.wouldBePR(weightKg: 100, reps: 5, isWarmup: false,
                                        rule: .topWeight, formula: .epley,
                                        for: exerciseID))
 
         // Warmup → never a PR
-        XCTAssertFalse(state.wouldBePR(weightKg: 100, reps: 5, isWarmup: true,
+        #expect(!state.wouldBePR(weightKg: 100, reps: 5, isWarmup: true,
                                         rule: .topWeight, formula: .epley,
                                         for: exerciseID))
     }
@@ -203,7 +207,7 @@ final class SessionRenderModelTests: XCTestCase {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
     }
 
-    func testBuildCreatesContextsForLoggedExercises() throws {
+    @Test func buildCreatesContextsForLoggedExercises() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(title: "Test", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -213,14 +217,14 @@ final class SessionRenderModelTests: XCTestCase {
             session: session, prRule: .topWeight, formula: .epley,
             allPeople: try WorkoutRepository.allPeople(ctx))
 
-        XCTAssertEqual(state.contexts.count, 1, "One logged exercise → one context")
-        XCTAssertEqual(state.contexts[0].name, "Bench Press")
-        XCTAssertEqual(state.contexts[0].sets.count, 1)
-        XCTAssertEqual(state.contexts[0].sets[0].weight, 80)
-        XCTAssertEqual(state.contexts[0].sets[0].reps, 5)
+        #expect(state.contexts.count == 1, "One logged exercise → one context")
+        #expect(state.contexts[0].name == "Bench Press")
+        #expect(state.contexts[0].sets.count == 1)
+        #expect(state.contexts[0].sets[0].weight == 80)
+        #expect(state.contexts[0].sets[0].reps == 5)
     }
 
-    func testPRSetIDsContainsPRSet() throws {
+    @Test func prSetIDsContainsPRSet() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(title: "Test", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -231,10 +235,10 @@ final class SessionRenderModelTests: XCTestCase {
             allPeople: try WorkoutRepository.allPeople(ctx))
 
         // First set ever is a PR
-        XCTAssertTrue(state.prSetIDs.contains(set.id))
+        #expect(state.prSetIDs.contains(set.id))
     }
 
-    func testBuildEmptySessionReturnsNoContexts() throws {
+    @Test func buildEmptySessionReturnsNoContexts() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
 
@@ -242,11 +246,11 @@ final class SessionRenderModelTests: XCTestCase {
             session: session, prRule: .topWeight, formula: .epley,
             allPeople: try WorkoutRepository.allPeople(ctx))
 
-        XCTAssertTrue(state.contexts.isEmpty)
-        XCTAssertTrue(state.prSetIDs.isEmpty)
+        #expect(state.contexts.isEmpty)
+        #expect(state.prSetIDs.isEmpty)
     }
 
-    func testPartnerContextsSeparated() throws {
+    @Test func partnerContextsSeparated() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let session = try WorkoutRepository.createSession(title: "Test", partnerIDs: [partner.id.uuidString], in: ctx)
@@ -262,25 +266,25 @@ final class SessionRenderModelTests: XCTestCase {
             session: session, prRule: .topWeight, formula: .epley,
             allPeople: try WorkoutRepository.allPeople(ctx))
 
-        XCTAssertEqual(state.contexts.count, 1)
+        #expect(state.contexts.count == 1)
         let card = state.contexts[0]
 
         // Owner sets should include weight 80
         let ownerSets = card.sets.filter { $0.isOwnerSet }
-        XCTAssertEqual(ownerSets.count, 1)
-        XCTAssertEqual(ownerSets[0].weight, 80)
+        #expect(ownerSets.count == 1)
+        #expect(ownerSets[0].weight == 80)
 
         // Partner sets should include weight 60
         let partnerSets = card.sets.filter { !$0.isOwnerSet }
-        XCTAssertEqual(partnerSets.count, 1)
-        XCTAssertEqual(partnerSets[0].weight, 60)
+        #expect(partnerSets.count == 1)
+        #expect(partnerSets[0].weight == 60)
 
         // Partner attribution is preserved in SetDisplay
-        XCTAssertNotNil(partnerSets[0].performedBy)
-        XCTAssertEqual(partnerSets[0].performedBy?.name, "Alice")
+        #expect(partnerSets[0].performedBy != nil)
+        #expect(partnerSets[0].performedBy?.name == "Alice")
     }
 
-    func testExerciseContextHasPRInfo() throws {
+    @Test func exerciseContextHasPRInfo() throws {
         let ctx = try makeContext()
         // Session 1: baseline at 50 kg
         let s1 = try WorkoutRepository.createSession(in: ctx)
@@ -296,14 +300,14 @@ final class SessionRenderModelTests: XCTestCase {
             allPeople: try WorkoutRepository.allPeople(ctx))
 
         let card = state.contexts[0]
-        XCTAssertEqual(card.performerContexts.count, 1)
-        XCTAssertEqual(card.performerContexts[0].label, "Me")
-        XCTAssertEqual(card.performerContexts[0].isMe, true)
+        #expect(card.performerContexts.count == 1)
+        #expect(card.performerContexts[0].label == "Me")
+        #expect(card.performerContexts[0].isMe == true)
         // Top weight PR from prior session = 50 kg
-        XCTAssertEqual(card.performerContexts[0].pr, 50)
+        #expect(card.performerContexts[0].pr == 50)
     }
 
-    func testExcludingCurrentSessionFromPR() throws {
+    @Test func excludingCurrentSessionFromPR() throws {
         let ctx = try makeContext()
 
         // Session 1: set a baseline PR at 80 kg
@@ -321,29 +325,29 @@ final class SessionRenderModelTests: XCTestCase {
 
         // PR info should exclude current session, so PR = 80 (from s1)
         let card = state.contexts[0]
-        XCTAssertEqual(card.performerContexts[0].pr, 80, "PR should exclude current session sets")
+        #expect(card.performerContexts[0].pr == 80, "PR should exclude current session sets")
 
         // But the current session's set of 100 IS still counted as a PR against previous history
-        XCTAssertTrue(state.prSetIDs.contains(set100.id), "100 kg should be all-time PR v/s session 1's 80")
+        #expect(state.prSetIDs.contains(set100.id), "100 kg should be all-time PR v/s session 1's 80")
     }
 
     // MARK: - signature computed from session
 
-    func testSignatureComputedFromSessionMatchesStructuralState() throws {
+    @Test func signatureComputedFromSessionMatchesStructuralState() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(in: ctx)
 
         let sig = SessionRenderModel.signature(session: session, prRule: .topWeight, formula: OneRepMaxFormula.epley)
-        XCTAssertEqual(sig.setCount, 0)
-        XCTAssertEqual(sig.exerciseIDs, [UUID]())
-        XCTAssertEqual(sig.prRule, PRRule.topWeight)
+        #expect(sig.setCount == 0)
+        #expect(sig.exerciseIDs == [UUID]())
+        #expect(sig.prRule == PRRule.topWeight)
     }
 
     // MARK: - Stored partner plans (field test 2026-08-18 #4, decision D11)
 
     /// A partner with no history of their own: the pending set must come from
     /// the plan the editor stored for THEM, not from the owner's prescription.
-    func testPendingSetsUseThePerformersStoredPrescriptionWhenPresent() throws {
+    @Test func pendingSetsUseThePerformersStoredPrescriptionWhenPresent() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let session = try WorkoutRepository.createSession(title: "Test",
@@ -365,13 +369,13 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let partnerPending = state.contexts[0].pendingSets.filter { $0.performerID == partner.id }
-        XCTAssertEqual(partnerPending.map(\.targetReps), [12],
+        #expect(partnerPending.map(\.targetReps) == [12],
                        "The partner's pending set ignored their own stored plan")
-        XCTAssertEqual(partnerPending.map(\.targetWeightKg), [40],
+        #expect(partnerPending.map(\.targetWeightKg) == [40],
                        "The partner's pending set took the owner's weight")
     }
 
-    func testPendingSetsFallBackToTheOwnerPrescriptionWhenAbsent() throws {
+    @Test func pendingSetsFallBackToTheOwnerPrescriptionWhenAbsent() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let session = try WorkoutRepository.createSession(title: "Test",
@@ -386,7 +390,7 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let partnerPending = state.contexts[0].pendingSets.filter { $0.performerID == partner.id }
-        XCTAssertEqual(partnerPending.map(\.targetReps), [7],
+        #expect(partnerPending.map(\.targetReps) == [7],
                        "A legacy session (no performer data) must behave exactly as before")
     }
 
@@ -394,7 +398,7 @@ final class SessionRenderModelTests: XCTestCase {
     /// is the prescription, not merely a starting hint. Every set index the plan
     /// covers uses the planned reps AND the planned load; history only fills what
     /// the plan leaves unsaid.
-    func testStoredPlanOutranksThePartnersOwnHistory() throws {
+    @Test func storedPlanOutranksThePartnersOwnHistory() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -422,17 +426,18 @@ final class SessionRenderModelTests: XCTestCase {
         let partnerPending = state.contexts[0].pendingSets
             .filter { $0.performerID == partner.id }
             .sorted { $0.setIndex < $1.setIndex }
-        XCTAssertEqual(partnerPending.count, 2,
+        #expect(partnerPending.count == 2,
                        "The stored plan decides how many sets the partner has left")
-        XCTAssertEqual(partnerPending.map(\.targetReps), [12, 12],
+        #expect(partnerPending.map(\.targetReps) == [12, 12],
                        "Every planned set must honour the plan the user entered")
-        XCTAssertTrue(partnerPending.allSatisfy { $0.targetWeightKg == 40 },
+        let allFortyKg = partnerPending.allSatisfy { $0.targetWeightKg == 40 }
+        #expect(allFortyKg,
                       "The entered plan's load was discarded in favour of history")
     }
 
     /// Where the plan says nothing — a set index it does not cover — the
     /// performer's own history still fills in.
-    func testHistoryFillsSetsThePlanDoesNotCover() throws {
+    @Test func historyFillsSetsThePlanDoesNotCover() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -463,14 +468,14 @@ final class SessionRenderModelTests: XCTestCase {
         let partnerPending = state.contexts[0].pendingSets
             .filter { $0.performerID == partner.id }
             .sorted { $0.setIndex < $1.setIndex }
-        XCTAssertEqual(partnerPending[0].targetReps, 12, "Planned reps must win at index 0")
-        XCTAssertEqual(partnerPending[0].targetWeightKg, 45,
+        #expect(partnerPending[0].targetReps == 12, "Planned reps must win at index 0")
+        #expect(partnerPending[0].targetWeightKg == 45,
                        "A plan with no load falls through to the partner's own working weight")
     }
 
     /// Field test 2026-08-19 #3: a partner who has never done THIS lift still has
     /// hundreds of sets on others. Their habitual rep count beats the generic 5.
-    func testPartnerWithoutMovementHistoryUsesTheirHabitualReps() throws {
+    @Test func partnerWithoutMovementHistoryUsesTheirHabitualReps() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Back Squat", in: ctx)
@@ -492,7 +497,7 @@ final class SessionRenderModelTests: XCTestCase {
                                              recentSessions: try WorkoutRepository.allSessions(ctx))
 
         let partnerPending = state.contexts[0].pendingSets.filter { $0.performerID == partner.id }
-        XCTAssertEqual(partnerPending.map(\.targetReps), [20, 20],
+        #expect(partnerPending.map(\.targetReps) == [20, 20],
                        "The partner defaulted to the owner's ladder instead of their own usual reps")
     }
 
@@ -501,7 +506,7 @@ final class SessionRenderModelTests: XCTestCase {
     /// Field test 2026-08-20 #1 (decision D2): the alternation is a fair queue —
     /// never two consecutive rows from one performer while the other still owes
     /// rows. The old column round-robin emitted the buggy `Me,P,Me,P,P` tail.
-    func testPendingSetsAlternateBetweenPerformers() throws {
+    @Test func pendingSetsAlternateBetweenPerformers() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let session = try WorkoutRepository.createSession(title: "Test",
@@ -517,13 +522,13 @@ final class SessionRenderModelTests: XCTestCase {
         // owes 0, 1 and 2. The card must read partner-0, me-1, partner-1, me-2,
         // partner-2 — strict alternation, no same-name-twice.
         let order = state.contexts[0].pendingSets.map { ($0.performerID == nil, $0.setIndex) }
-        XCTAssertEqual(order.map(\.1), [0, 1, 1, 2, 2],
+        #expect(order.map(\.1) == [0, 1, 1, 2, 2],
                        "Pending rows are not fairly spread across performers")
-        XCTAssertEqual(order.map(\.0), [false, true, false, true, false],
+        #expect(order.map(\.0) == [false, true, false, true, false],
                        "Pending rows repeat a performer while the other still owes rows")
     }
 
-    func testPendingRowsRespectAnExplicitPartnerFirstRoster() throws {
+    @Test func pendingRowsRespectAnExplicitPartnerFirstRoster() throws {
         let ctx = try makeContext()
         let me = try WorkoutRepository.me(in: ctx)
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
@@ -541,14 +546,14 @@ final class SessionRenderModelTests: XCTestCase {
             session: session, prRule: .topWeight, formula: .epley,
             allPeople: try WorkoutRepository.allPeople(ctx))
 
-        XCTAssertEqual(state.contexts.first?.pendingSets.map(\.performerID),
+        #expect(state.contexts.first?.pendingSets.map(\.performerID) ==
                        [nil, partner.id, nil],
                        "After a partner starts, the owner must be next and rows must alternate")
     }
 
     /// Field test 2026-08-20 #1: the pending alternation is stable — rebuilding
     /// the same session twice yields identical pending rows.
-    func testPendingAlternationIsDeterministicAcrossRebuilds() throws {
+    @Test func pendingAlternationIsDeterministicAcrossRebuilds() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let session = try WorkoutRepository.createSession(title: "Test",
@@ -563,14 +568,14 @@ final class SessionRenderModelTests: XCTestCase {
         let second = SessionRenderModel.build(session: session, prRule: .topWeight, formula: .epley,
                                               allPeople: people)
 
-        XCTAssertEqual(first.contexts[0].pendingSets, second.contexts[0].pendingSets,
+        #expect(first.contexts[0].pendingSets == second.contexts[0].pendingSets,
                        "Identical sessions must produce identical pending rows")
     }
 
     /// Field test 2026-08-20 #1: as the user logs the field sequence (Me, Me, P …)
     /// every intermediate pending list stays alternating, and its first row is the
     /// performer who is genuinely next.
-    func testPendingAlternationIsStableAsSetsAreLogged() throws {
+    @Test func pendingAlternationIsStableAsSetsAreLogged() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Alice", in: ctx)
         let session = try WorkoutRepository.createSession(title: "Test",
@@ -604,16 +609,16 @@ final class SessionRenderModelTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
         var rows = pending(SessionRenderModel.build(session: session, prRule: .topWeight,
                                                     formula: .epley, allPeople: people))
-        XCTAssertTrue(isFair(rows), "Pending rows repeat a performer after the first owner set")
-        XCTAssertEqual(rows.first?.performerID, partner.id,
+        #expect(isFair(rows), "Pending rows repeat a performer after the first owner set")
+        #expect(rows.first?.performerID == partner.id,
                        "The partner is genuinely next after an owner-led start")
 
         // The user logs a second owner set anyway.
         _ = try WorkoutRepository.addSet(to: session, exercise: bench, weightKg: 100, reps: 5, in: ctx)
         rows = pending(SessionRenderModel.build(session: session, prRule: .topWeight,
                                                 formula: .epley, allPeople: people))
-        XCTAssertTrue(isFair(rows), "Pending rows repeat a performer after two owner sets")
-        XCTAssertEqual(rows.first?.performerID, partner.id,
+        #expect(isFair(rows), "Pending rows repeat a performer after two owner sets")
+        #expect(rows.first?.performerID == partner.id,
                        "The partner must be next — the card cannot demand the owner again")
 
         // The user logs the partner's set; alternation continues.
@@ -621,8 +626,8 @@ final class SessionRenderModelTests: XCTestCase {
                                          performedBy: partner, in: ctx)
         rows = pending(SessionRenderModel.build(session: session, prRule: .topWeight,
                                                 formula: .epley, allPeople: people))
-        XCTAssertTrue(isFair(rows), "Pending rows repeat a performer after the partner set")
-        XCTAssertEqual(rows.first?.performerID, partner.id,
+        #expect(isFair(rows), "Pending rows repeat a performer after the partner set")
+        #expect(rows.first?.performerID == partner.id,
                        "The partner still leads after logging their first set")
     }
 
@@ -637,7 +642,7 @@ final class SessionRenderModelTests: XCTestCase {
     /// Two prior sessions — the owner and the partner each logged Bench Press —
     /// then a fresh partner session. The collapsed summary must show one segment
     /// per performer, owner first, in roster order, with NO combined `x/y sets`.
-    func testCompactSummaryWithPartnersShowsPerPerformerLastTime() throws {
+    @Test func compactSummaryWithPartnersShowsPerPerformerLastTime() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -657,11 +662,11 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
-        XCTAssertEqual(summary, "Me: 80 kg × 5, 90 kg × 6; Sam: 55 kg × 20, 60 kg × 15",
+        #expect(summary == "Me: 80 kg × 5, 90 kg × 6; Sam: 55 kg × 20, 60 kg × 15",
                        "The collapsed card must show per-performer prior sets, owner first")
     }
 
-    func testCompactSummaryWithPartnersNeverCombinesSetCounts() throws {
+    @Test func compactSummaryWithPartnersNeverCombinesSetCounts() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -678,13 +683,13 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
-        XCTAssertFalse(summary.contains("sets"),
+        #expect(!summary.contains("sets"),
                        "The combined `6/6 sets` count must not appear when partners have history")
-        XCTAssertTrue(summary.contains("; "),
+        #expect(summary.contains("; "),
                        "Partner segments must be joined, not combined")
     }
 
-    func testCompactSummaryOmitsPartnerWithNoHistory() throws {
+    @Test func compactSummaryOmitsPartnerWithNoHistory() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -700,11 +705,11 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
-        XCTAssertEqual(summary, "Me: 80 kg × 5, 90 kg × 6",
+        #expect(summary == "Me: 80 kg × 5, 90 kg × 6",
                        "A partner with no prior sets contributes no segment")
     }
 
-    func testCompactSummaryFallsBackWhenNobodyHasHistory() throws {
+    @Test func compactSummaryFallsBackWhenNobodyHasHistory() throws {
         let ctx = try makeContext()
         let partner = try WorkoutRepository.findOrCreatePerson(named: "Sam", in: ctx)
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
@@ -718,13 +723,13 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
-        XCTAssertTrue(summary.contains("sets"),
+        #expect(summary.contains("sets"),
                        "With no prior history the card must fall back to the counts summary, never blank")
-        XCTAssertTrue(summary.contains("Sam"),
+        #expect(summary.contains("Sam"),
                        "The fallback keeps the partner label, as the old summary did")
     }
 
-    func testCompactSummarySoloUnchanged() throws {
+    @Test func compactSummarySoloUnchanged() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "Bench Press", in: ctx)
 
@@ -736,39 +741,40 @@ final class SessionRenderModelTests: XCTestCase {
                                              allPeople: try WorkoutRepository.allPeople(ctx))
 
         let summary = SessionRenderModel.compactSummary(context: state.contexts[0], unit: .kilograms)
-        XCTAssertEqual(summary, "2/2 sets · 5–6 reps · 80 kg–90 kg",
+        #expect(summary == "2/2 sets · 5–6 reps · 80 kg–90 kg",
                        "Solo sessions must keep the exact existing combined summary")
     }
 
-    func testLastTimeSegmentBodyweightFormat() {
-        XCTAssertEqual(SessionRenderModel.lastTimeSegment(
-            label: "Me", sets: [display(0, 12, bodyweight: true)], unit: .kilograms),
+    @Test func lastTimeSegmentBodyweightFormat() {
+        #expect(SessionRenderModel.lastTimeSegment(
+            label: "Me", sets: [display(0, 12, bodyweight: true)], unit: .kilograms) ==
             "Me: BW × 12")
-        XCTAssertEqual(SessionRenderModel.lastTimeSegment(
-            label: "Me", sets: [display(10, 12, bodyweight: true)], unit: .kilograms),
+        #expect(SessionRenderModel.lastTimeSegment(
+            label: "Me", sets: [display(10, 12, bodyweight: true)], unit: .kilograms) ==
             "Me: BW + 10 kg × 12")
-        XCTAssertNil(SessionRenderModel.lastTimeSegment(label: "Me", sets: [], unit: .kilograms),
+        #expect(SessionRenderModel.lastTimeSegment(label: "Me", sets: [], unit: .kilograms) == nil,
                      "No prior sets → no segment, never a fake 0")
     }
 
-    func testLastTimeSegmentPerSelectedPerformer() {
+    @Test func lastTimeSegmentPerSelectedPerformer() {
         // The set editor's History card builds one "Last time" line from the
         // SELECTED performer's own prior sets (field test 2026-08-20 issue 3).
         let me = SessionRenderModel.lastTimeSegment(
             label: "Me", sets: [display(80, 5), display(90, 6)], unit: .kilograms)
         let sam = SessionRenderModel.lastTimeSegment(
             label: "Sam", sets: [display(55, 20), display(60, 15)], unit: .kilograms)
-        XCTAssertEqual(me, "Me: 80 kg × 5, 90 kg × 6")
-        XCTAssertEqual(sam, "Sam: 55 kg × 20, 60 kg × 15")
-        XCTAssertNil(SessionRenderModel.lastTimeSegment(label: "Sam", sets: [], unit: .kilograms),
+        #expect(me == "Me: 80 kg × 5, 90 kg × 6")
+        #expect(sam == "Sam: 55 kg × 20, 60 kg × 15")
+        #expect(SessionRenderModel.lastTimeSegment(label: "Sam", sets: [], unit: .kilograms) == nil,
                      "A performer with no prior sets on the movement gets no segment")
     }
 
-    func testSetLineTextUnitAndRoundtrip() {
-        XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5), unit: .kilograms), "100 kg × 5")
-        XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5), unit: .pounds), "220.5 lb × 5")
-        XCTAssertEqual(SessionRenderModel.setLineText(display(90.7185, 8), unit: .kilograms), "90.7 kg × 8")
-        XCTAssertEqual(SessionRenderModel.setLineText(display(100, 5, bodyweight: true), unit: .pounds),
+    @Test func setLineTextUnitAndRoundtrip() {
+        #expect(SessionRenderModel.setLineText(display(100, 5), unit: .kilograms) == "100 kg × 5")
+        #expect(SessionRenderModel.setLineText(display(100, 5), unit: .pounds) == "220.5 lb × 5")
+        #expect(SessionRenderModel.setLineText(display(90.7185, 8), unit: .kilograms) == "90.7 kg × 8")
+        #expect(SessionRenderModel.setLineText(display(100, 5, bodyweight: true), unit: .pounds) ==
                        "BW + 220.5 lb × 5")
     }
 }
+#endif

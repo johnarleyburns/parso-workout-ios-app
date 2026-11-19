@@ -1,8 +1,10 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class RecencyTests: XCTestCase {
+struct RecencyTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -17,7 +19,7 @@ final class RecencyTests: XCTestCase {
 
     // MARK: - Soft penalty
 
-    func testSoftPenaltyNonNullForRecentWorkWithoutRPE() throws {
+    @Test func softPenaltyNonNullForRecentWorkWithoutRPE() throws {
         let ctx = try makeContext()
         let now = testNow
         let today6am = now.addingTimeInterval(-12 * 3600)
@@ -32,11 +34,11 @@ final class RecencyTests: XCTestCase {
         let dlPenalty = facts.recovery.softPenalty(forExerciseNamed: "Deadlift",
                                                     primaryMuscles: ["hamstrings", "lower-back"])
 
-        XCTAssertGreaterThan(kbPenalty, 0, "KB snatch 12h ago (no RPE) should have soft penalty")
-        XCTAssertGreaterThan(dlPenalty, 0, "Deadlift 12h ago (no RPE) should have soft penalty")
+        #expect(kbPenalty > 0, "KB snatch 12h ago (no RPE) should have soft penalty")
+        #expect(dlPenalty > 0, "Deadlift 12h ago (no RPE) should have soft penalty")
     }
 
-    func testSoftPenaltyZeroForOldWork() throws {
+    @Test func softPenaltyZeroForOldWork() throws {
         let ctx = try makeContext()
         let now = testNow
         let fourDaysAgo = now.addingTimeInterval(-96 * 3600)
@@ -47,10 +49,10 @@ final class RecencyTests: XCTestCase {
                                      now: now, recoveryAwareCoachV2: true)
         let penalty = facts.recovery.softPenalty(forExerciseNamed: "Deadlift",
                                                   primaryMuscles: ["hamstrings", "lower-back"])
-        XCTAssertEqual(penalty, 0, "Deadlift 96h ago should have zero soft penalty")
+        #expect(penalty == 0, "Deadlift 96h ago should have zero soft penalty")
     }
 
-    func testSoftPenaltyUsesCanonicalName() throws {
+    @Test func softPenaltyUsesCanonicalName() throws {
         let ctx = try makeContext()
         let now = testNow
         let today6am = now.addingTimeInterval(-12 * 3600)
@@ -61,13 +63,13 @@ final class RecencyTests: XCTestCase {
                                      now: now, recoveryAwareCoachV2: true)
         let penalty = facts.recovery.softPenalty(forExerciseNamed: "Snatch",
                                                   primaryMuscles: ["delts", "traps"])
-        XCTAssertGreaterThan(penalty, 0,
+        #expect(penalty > 0,
                              "Plain 'Snatch' matches canonical form of 'Double Kettlebell Snatch'")
     }
 
     // MARK: - mostTrainedExercises rotates by recency
 
-    func testMostTrainedExercisesRotatesByRecency() throws {
+    @Test func mostTrainedExercisesRotatesByRecency() throws {
         let ctx = try makeContext()
         let now = testNow
         let today = now.addingTimeInterval(-6 * 3600)
@@ -80,13 +82,13 @@ final class RecencyTests: XCTestCase {
                                      now: now, recoveryAwareCoachV2: true)
         let preferred = CoachSession.mostTrainedExercises(facts: facts)
         let hingeName = preferred[.hinge]
-        XCTAssertEqual(hingeName, "Romanian Deadlift",
+        #expect(hingeName == "Romanian Deadlift",
                        "With DL recently done but RDL older, should prefer RDL for hinge")
     }
 
     // MARK: - Hard-block remains intact
 
-    func testHardBlockStillPreventsRepeatedLift() throws {
+    @Test func hardBlockStillPreventsRepeatedLift() throws {
         let ctx = try makeContext()
         let now = testNow
         let recent = now.addingTimeInterval(-1 * 3600)
@@ -101,12 +103,12 @@ final class RecencyTests: XCTestCase {
                                                 primaryMuscles: ["hamstrings", "lower-back"]),
             muscleGroups: Set(MuscleGroup.canonicalize(["hamstrings", "lower-back"])),
             now: now)
-        XCTAssertFalse(eligible, "Hard block prevents Deadlift re-selection 1h after RPE 9 work")
+        #expect(!eligible, "Hard block prevents Deadlift re-selection 1h after RPE 9 work")
     }
 
     // MARK: - End-to-end: optimizer prefers non-recent option
 
-    func testOptimizerPrefersNonRecentExercise() throws {
+    @Test func optimizerPrefersNonRecentExercise() throws {
         let ctx = try makeContext()
         let now = testNow
         let today10am = now.addingTimeInterval(-8 * 3600)
@@ -148,7 +150,7 @@ final class RecencyTests: XCTestCase {
 
         let exercises = result.plannedStrengthSessions.flatMap { $0.exercises ?? [] }
         let names = Set(exercises.map { $0.name })
-        XCTAssertFalse(names.contains("Deadlift"),
+        #expect(!names.contains("Deadlift"),
                        "Optimizer should not pick Deadlift when it was trained 8h ago and RDL was in the template")
     }
 
@@ -199,3 +201,4 @@ final class RecencyTests: XCTestCase {
         return session
     }
 }
+#endif

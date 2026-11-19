@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct HomeWorkoutStartControls: View {
     let onQuickStart: () -> Void
@@ -9,6 +11,7 @@ struct HomeWorkoutStartControls: View {
     let onPreviousStart: (EditablePlan) -> Void
     let onCardio: (WorkoutType) -> Void
     let onCustomCardio: (String, Bool) -> Void
+    let onSuggestedCardio: () -> Void
     @AppStorage(HomeWorkoutStartChoice.selectionStorageKey)
     private var selectedChoiceID = HomeWorkoutStartChoice.defaultChoice.id
 
@@ -43,6 +46,7 @@ struct HomeWorkoutStartControls: View {
                 case .strength(.quickStart): onQuickStart()
                 case .cardio(.other): showingCustomCardio = true
                 case .cardio(let type): onCardio(type)
+                case .suggestedCardio: onSuggestedCardio()
                 }
             } label: {
                 Label("Start Workout", systemImage: "activity.exercise")

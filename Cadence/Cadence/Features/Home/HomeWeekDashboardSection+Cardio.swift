@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension HomeWeekDashboardSection {
     var cardioOverview: some View {

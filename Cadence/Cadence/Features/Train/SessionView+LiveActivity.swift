@@ -3,6 +3,7 @@ import SwiftData
 import UIKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension SessionView {
     func updateLiveActivityNextSet() {

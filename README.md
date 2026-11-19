@@ -46,7 +46,6 @@ Requires Xcode 16+, Swift 6. Real-device testing needed for HealthKit/CoreBlueto
 swift build --package-path CadenceCore
 bash scripts/ci-test.sh              # full CadenceCore + CadenceFeatures host tests
 make test                            # same package test suite
-make all-tests                       # package tests + iPhone/watch simulator smoke tests
 open Cadence/Cadence.xcodeproj       # iOS app + embedded watchOS app
 # CLI build:
 bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
@@ -63,9 +62,8 @@ in plans or CI; use `swift test --package-path CadenceCore` instead. See
 Local git hooks are versioned in `scripts/git-hooks`. Install them with
 `bash scripts/install-git-hooks.sh`: pre-commit runs only
 `bash scripts/ci-test.sh` and never boots a simulator. Pre-push
-runs no tests. Run the simulator smoke suite explicitly with `make all-tests`
-before a release, TestFlight submission, or field-testing build; the smoke
-suite remains a release gate rather than a commit-time action.
+runs no tests. There is no simulator-based UI test suite in this repo — all
+behavioral coverage is the headless `swift test` suite above.
 
 **Build/test turnaround:** PR validation overlaps the host suite and the optimized
 iPhone/Watch build in separate runners; `validate` succeeds only when both pass.

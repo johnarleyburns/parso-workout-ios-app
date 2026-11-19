@@ -1,5 +1,7 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// A regular-width dashboard gets a useful two-column canvas on iPad. At AX5
 /// the cards return to one column so localized, enlarged text never has to

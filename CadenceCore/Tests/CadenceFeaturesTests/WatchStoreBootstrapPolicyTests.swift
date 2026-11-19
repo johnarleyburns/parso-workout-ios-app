@@ -1,26 +1,28 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchStoreBootstrapPolicyTests: XCTestCase {
-    func testFirstOpenSeedsAndIsReady() {
+struct WatchStoreBootstrapPolicyTests {
+    @Test func firstOpenSeedsAndIsReady() {
         var seeded = false
         let policy = WatchStoreBootstrapPolicy<Int>(createPersistent: { 1 }, createInMemory: { 2 }, quarantine: { nil }, seed: { _ in seeded = true })
         let result = policy.open()
-        XCTAssertEqual(result.container, 1); XCTAssertEqual(result.state, .ready); XCTAssertTrue(seeded)
+        #expect(result.container == 1); #expect(result.state == .ready); #expect(seeded)
     }
 
-    func testFailureQuarantinesThenRecovers() {
+    @Test func failureQuarantinesThenRecovers() {
         var opens = 0
         let url = URL(fileURLWithPath: "/tmp/recovery")
         let policy = WatchStoreBootstrapPolicy<Int>(createPersistent: { opens += 1; if opens == 1 { throw NSError(domain: "test", code: 1) }; return 3 }, createInMemory: { 4 }, quarantine: { url }, seed: { _ in })
         let result = policy.open()
-        XCTAssertEqual(result.container, 3); XCTAssertEqual(result.state, .recovered); XCTAssertEqual(result.quarantinedAt, url)
+        #expect(result.container == 3); #expect(result.state == .recovered); #expect(result.quarantinedAt == url)
     }
 
-    func testFailureTwiceFallsBackToMemoryWithoutClaimingRecovery() {
+    @Test func failureTwiceFallsBackToMemoryWithoutClaimingRecovery() {
         let policy = WatchStoreBootstrapPolicy<Int>(createPersistent: { throw NSError(domain: "test", code: 1) }, createInMemory: { 9 }, quarantine: { throw NSError(domain: "move", code: 2) }, seed: { _ in })
         let result = policy.open()
-        XCTAssertEqual(result.container, 9); XCTAssertEqual(result.state, .degraded); XCTAssertNil(result.quarantinedAt)
+        #expect(result.container == 9); #expect(result.state == .degraded); #expect(result.quarantinedAt == nil)
     }
 
     /// Pins the chosen semantic for when `quarantine()` itself throws: the
@@ -31,7 +33,7 @@ final class WatchStoreBootstrapPolicyTests: XCTestCase {
     /// second persistent-store open in this exact situation); the simpler,
     /// already-tested policy semantic was chosen deliberately over
     /// preserving that extra retry.
-    func testQuarantineFailureGoesStraightToDegradedWithoutRetryingCreatePersistent() {
+    @Test func quarantineFailureGoesStraightToDegradedWithoutRetryingCreatePersistent() {
         var opens = 0
         let policy = WatchStoreBootstrapPolicy<Int>(
             createPersistent: {
@@ -44,9 +46,9 @@ final class WatchStoreBootstrapPolicyTests: XCTestCase {
             seed: { _ in }
         )
         let result = policy.open()
-        XCTAssertEqual(result.state, .degraded)
-        XCTAssertEqual(result.container, 9)
-        XCTAssertNil(result.quarantinedAt)
-        XCTAssertEqual(opens, 1, "createPersistent must not be retried when quarantine() itself throws")
+        #expect(result.state == .degraded)
+        #expect(result.container == 9)
+        #expect(result.quarantinedAt == nil)
+        #expect(opens == 1, "createPersistent must not be retried when quarantine() itself throws")
     }
 }

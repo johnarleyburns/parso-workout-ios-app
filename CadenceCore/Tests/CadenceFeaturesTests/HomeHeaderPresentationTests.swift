@@ -1,17 +1,19 @@
-import XCTest
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class HomeHeaderPresentationTests: XCTestCase {
-    func testSupporterProducesAchievementBadge() throws {
-        let badge = try XCTUnwrap(HomeHeaderPresentation(isSupporter: true).supporterBadge)
-        XCTAssertEqual(badge.text, "Supporter")
-        XCTAssertEqual(badge.accessibilityLabel, "Supporter")
-        XCTAssertEqual(badge.systemImage, "heart.fill")
-        XCTAssertEqual(badge.tint, .achievement)
-        XCTAssertEqual(badge.accessibilityIdentifier, "home.supporterBadge")
+struct HomeHeaderPresentationTests {
+    @Test func supporterProducesAchievementBadge() throws {
+        let badge = try #require(HomeHeaderPresentation(isSupporter: true).supporterBadge)
+        #expect(badge.text == "Supporter")
+        #expect(badge.accessibilityLabel == "Supporter")
+        #expect(badge.systemImage == "heart.fill")
+        #expect(badge.tint == .achievement)
+        #expect(badge.accessibilityIdentifier == "home.supporterBadge")
     }
 
-    func testNonSupporterHasNoBadge() {
-        XCTAssertNil(HomeHeaderPresentation(isSupporter: false).supporterBadge)
+    @Test func nonSupporterHasNoBadge() {
+        #expect(HomeHeaderPresentation(isSupporter: false).supporterBadge == nil)
     }
 }

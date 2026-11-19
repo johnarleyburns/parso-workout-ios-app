@@ -2,6 +2,7 @@ import Foundation
 import HealthKit
 import WatchKit
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     static func swimSpec(from config: HKWorkoutConfiguration) -> WorkoutConfigurationSpec? {
@@ -15,7 +16,7 @@ extension WatchWorkoutManager {
     /// background. Do not re-lock every wrist raise after the user unlocks.
     func enablePendingSwimWaterLock() {
         let device = WKInterfaceDevice.current()
-        guard !uiTestMode, WatchSwimSetup.shouldWaterLock(
+        guard !simulatesHealthKit, WatchSwimSetup.shouldWaterLock(
             pending: swimWaterLockPending, running: session?.state == .running,
             foreground: WKApplication.shared().applicationState == .active,
             supported: device.waterResistanceRating == .wr50) else { return }
@@ -23,13 +24,15 @@ extension WatchWorkoutManager {
         if !device.isWaterLockEnabled { device.enableWaterLock() }
     }
 
-    func enableWaterLock() {
+    @discardableResult
+    func enableWaterLock() -> Bool {
         let device = WKInterfaceDevice.current()
-        guard !uiTestMode, session?.state == .running || session?.state == .paused,
+        guard !simulatesHealthKit, session?.state == .running || session?.state == .paused,
               WKApplication.shared().applicationState == .active,
-              device.waterResistanceRating == .wr50 else { return }
+              device.waterResistanceRating == .wr50 else { return false }
         swimWaterLockPending = false
         device.enableWaterLock()
+        return true
     }
 
     func applyLapEvent(builderID: ObjectIdentifier) {

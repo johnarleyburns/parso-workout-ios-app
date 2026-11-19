@@ -1,5 +1,7 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Explicit, accessible minimize control shown only while a cardio workout is
 /// paused. Dismissing minimizes — it never ends or discards the workout.

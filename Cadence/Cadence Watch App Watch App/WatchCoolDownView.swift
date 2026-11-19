@@ -2,6 +2,7 @@ import SwiftUI
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchCoolDownView: View {
     let model: WatchStrengthFlowModel
@@ -13,7 +14,10 @@ struct WatchCoolDownView: View {
             Color.blue.ignoresSafeArea(.all)
 
             VStack(spacing: 8) {
-                Spacer()
+                // `minLength` (not a plain Spacer) guarantees this never
+                // shrinks to zero and lets the caption sit under the system
+                // clock/status area at the top of the screen.
+                Spacer(minLength: 20)
                 Text("COOL-DOWN").font(.caption2.bold()).foregroundStyle(.white.opacity(0.8))
                 Text(formatTime(TimeInterval(model.cooldownTimerModel.remaining)))
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))

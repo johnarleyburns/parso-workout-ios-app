@@ -1,9 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class ExerciseRepeatDefaultsTests: XCTestCase {
+struct ExerciseRepeatDefaultsTests {
     private let lastKg = WorkoutMath.canonical(205, from: .pounds)
     private let olderKg = WorkoutMath.canonical(250, from: .pounds)
 
@@ -18,7 +22,7 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
         return exercise
     }
 
-    func testWatchLocalHistoryRepeats205For8InsteadOf250For6() throws {
+    @Test func watchLocalHistoryRepeats205For8InsteadOf250For6() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         let exercise = try history(in: context)
@@ -26,18 +30,18 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
         model.start(createSession: true)
         _ = model.addExercise(named: exercise.name)
         model.startLogSet(for: exercise)
-        XCTAssertEqual(model.currentWeightDisplay, 205, accuracy: 0.0001)
-        XCTAssertEqual(model.currentReps, 8)
+        #expect(abs(model.currentWeightDisplay - 205) <= 0.0001)
+        #expect(model.currentReps == 8)
     }
 
     private struct SyncedHistory: WatchSetDefaultHistoryProviding {
         let snapshot: WatchSetDefaultSnapshot
-        func history(exerciseKey: String, performerID: String) -> PerformerSetPlanner.History {
-            snapshot.history(exerciseKey: exerciseKey, performerID: performerID)
+        func history(exerciseKey: String, performerID: String, performerName: String?) -> PerformerSetPlanner.History {
+            snapshot.history(exerciseKey: exerciseKey, performerID: performerID, performerName: performerName)
         }
     }
 
-    func testWatchSyncedHistoryRepeats205For8WithoutPhoneReachability() throws {
+    @Test func watchSyncedHistoryRepeats205For8WithoutPhoneReachability() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         let snapshot = WatchSetDefaultSnapshot(generatedAt: Date(), performers: [
@@ -50,13 +54,13 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
             setDefaultHistory: SyncedHistory(snapshot: snapshot))
         model.start(createSession: true)
         _ = model.addExercise(named: "Back Squat")
-        let exercise = try XCTUnwrap(model.exerciseList.first?.exercise)
+        let exercise = try #require(model.exerciseList.first?.exercise)
         model.startLogSet(for: exercise)
-        XCTAssertEqual(model.currentWeightDisplay, 205, accuracy: 0.0001)
-        XCTAssertEqual(model.currentReps, 8)
+        #expect(abs(model.currentWeightDisplay - 205) <= 0.0001)
+        #expect(model.currentReps == 8)
     }
 
-    func testNewerWatchHistoryBeatsAnOlderSyncedSetEvenInANewSnapshot() throws {
+    @Test func newerWatchHistoryBeatsAnOlderSyncedSetEvenInANewSnapshot() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         let exercise = try history(in: context)
@@ -71,11 +75,11 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
         model.start(createSession: true)
         _ = model.addExercise(named: exercise.name)
         model.startLogSet(for: exercise)
-        XCTAssertEqual(model.currentWeightDisplay, 205, accuracy: 0.0001)
-        XCTAssertEqual(model.currentReps, 8)
+        #expect(abs(model.currentWeightDisplay - 205) <= 0.0001)
+        #expect(model.currentReps == 8)
     }
 
-    func testPhoneRenderHistoryAlreadyRepeatsTheExactLastWorkingSet() throws {
+    @Test func phoneRenderHistoryAlreadyRepeatsTheExactLastWorkingSet() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         let exercise = try history(in: context)
@@ -87,7 +91,8 @@ final class ExerciseRepeatDefaultsTests: XCTestCase {
         let resolved = PerformerSetPlanner.resolve(setIndex: 0, performerPlan: nil, ownerPlan: [],
             ownerLadder: nil, isOwner: true,
             history: state.performerHistory(forExerciseID: exercise.id, performerID: nil))
-        XCTAssertEqual(resolved.weightKg ?? 0, lastKg, accuracy: 0.0001)
-        XCTAssertEqual(resolved.reps, 8)
+        #expect(abs((resolved.weightKg ?? 0) - lastKg) <= 0.0001)
+        #expect(resolved.reps == 8)
     }
 }
+#endif

@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension HomeView {
     /// Prepares a value-only Today preview from the existing personalized
@@ -37,7 +39,7 @@ extension HomeView {
         guard let container = cadenceModelContainer else { return nil }
         let settingsSnapshot = TodaySuggestionSettingsSnapshot(
             settings,
-            historyIndexStorageURL: model.isUITestMode ? nil : ExerciseHistoryIndexStore.defaultStorageURL())
+            historyIndexStorageURL: ExerciseHistoryIndexStore.defaultStorageURL())
         let activeID = active.strengthSession?.id
         return await Task.detached(priority: .utility) {
             let context = ModelContext(container)

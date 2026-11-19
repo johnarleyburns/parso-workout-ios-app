@@ -1,0 +1,304 @@
+import CadenceFeatures
+import Foundation
+import CadenceWorkoutFeatures
+
+/// One phone-owned Watch-HR connection. Identified by an immutable
+/// (`phoneSessionID`, `requestID`) pair, never by mutable UI state.
+public struct WatchHRConnectionIdentity: Equatable, Codable, Sendable {
+    public let phoneSessionID: UUID
+    public let requestID: UUID
+    public init(phoneSessionID: UUID, requestID: UUID) {
+        self.phoneSessionID = phoneSessionID
+        self.requestID = requestID
+    }
+    /// Opaque, redacted form for diagnostics and UI.
+    public var redacted: String { "\(phoneSessionID.uuidString.prefix(4))/\(requestID.uuidString.prefix(4))" }
+}
+
+public enum WatchHRReconcileReason: String, Equatable, Sendable {
+    case initialWaitElapsed, reachabilityChanged, appActivated, userRequested, requestMismatch
+}
+
+public enum WatchHRFailureReason: String, Equatable, Sendable {
+    case noResponse, requestMismatch, watchOnlyWorkoutActive, watchNotRunningWorkout
+    case orphanedWatchSession, protocolMismatch, retriesExhausted
+}
+
+public enum WatchHRLinkState: Equatable, Sendable {
+    case notRequested
+    case startingWatchWorkout(WatchHRConnectionIdentity)
+    case awaitingWatchAdoption
+    case awaitingFirstSample
+    case live(lastSampleAt: Date)
+    case reconciling(WatchHRReconcileReason)
+    case recoverableFailure(WatchHRFailureReason, retryAvailable: Bool)
+    case ending
+    case ended
+}
+
+extension WatchHRLinkState {
+    /// Identifier-free name for logs and diagnostics.
+    public var label: String {
+        switch self {
+        case .notRequested: "notRequested"
+        case .startingWatchWorkout: "startingWatchWorkout"
+        case .awaitingWatchAdoption: "awaitingWatchAdoption"
+        case .awaitingFirstSample: "awaitingFirstSample"
+        case .live: "live"
+        case .reconciling(let r): "reconciling(\(r.rawValue))"
+        case .recoverableFailure(let r, _): "recoverableFailure(\(r.rawValue))"
+        case .ending: "ending"
+        case .ended: "ended"
+        }
+    }
+}
+
+/// The single safe action a state report resolves to.
+public enum WatchHRReconcileDecision: Equatable, Sendable {
+    case accept                       // Watch owns the matching session
+    case redeliverStart               // Watch has nothing adopted yet; resend idempotently
+    case stopOrphan(requestID: UUID)  // Watch holds an older phone-owned session
+    case conflict(WatchHRFailureReason)
+}
+
+public struct WatchHRDiagnostics: Equatable, Sendable {
+    public let state: WatchHRLinkState
+    public let attemptCount: Int
+    public let redactedIdentity: String?
+    public let lastTransition: String
+    public let lastRealSampleAge: TimeInterval?
+    public let lastFailure: WatchHRFailureReason?
+}
+
+/// Deterministic (clock passed in) state machine for the handshake.
+public struct WatchHRConnection: Sendable {
+    public static let initialWait: TimeInterval = 15
+    public static let maxAttempts = 5
+    public static let maxBackoff: TimeInterval = 120
+
+    public private(set) var identity: WatchHRConnectionIdentity?
+    public private(set) var state: WatchHRLinkState = .notRequested
+    public private(set) var attempts = 0
+    public private(set) var lastFailure: WatchHRFailureReason?
+    public private(set) var lastTransition = "notRequested"
+    private var lastSampleAt: Date?
+    /// Last accepted immediate WatchConnectivity liveness message. This is
+    /// transport evidence, not evidence of a fresh physiological measurement.
+    private var lastTransportAt: Date?
+    private var nextQueryAt: Date?
+
+    public static let transportStaleAfter: TimeInterval = 3 * WatchHRRelaySchedule.heartbeatInterval
+
+    public init() {}
+
+    /// True when this nonterminal connection already owns the given phone workout.
+    /// A second start would replace the request identity and disrupt the Watch session.
+    public func isCapturing(sessionID: UUID) -> Bool {
+        guard identity?.phoneSessionID == sessionID else { return false }
+        switch state {
+        case .notRequested, .ending, .ended:
+            return false
+        default:
+            return true
+        }
+    }
+
+    public mutating func start(_ identity: WatchHRConnectionIdentity, now: Date) {
+        self.identity = identity
+        attempts = 0; lastFailure = nil; lastSampleAt = nil; lastTransportAt = nil
+        nextQueryAt = now.addingTimeInterval(Self.initialWait)
+        move(.startingWatchWorkout(identity))
+    }
+
+    public mutating func watchLaunched() {
+        if case .startingWatchWorkout = state { move(.awaitingWatchAdoption) }
+    }
+
+    /// Watch acknowledged adopting exactly these identifiers.
+    @discardableResult
+    public mutating func adopted(_ adopted: WatchHRConnectionIdentity) -> Bool {
+        guard adopted == identity else { return false }
+        switch state {
+        case .startingWatchWorkout, .awaitingWatchAdoption, .reconciling, .recoverableFailure:
+            move(.awaitingFirstSample)
+        default: break
+        }
+        return true
+    }
+
+    /// Accepts a sample only for the current identity; a mismatch is explicit.
+    public enum SampleOutcome: Equatable, Sendable { case accepted, rejectedMismatch, rejectedInactive }
+
+    public mutating func receiveSample(requestID: UUID, at: Date) -> SampleOutcome {
+        guard let identity else { return .rejectedInactive }
+        switch state {
+        case .notRequested, .ending, .ended: return .rejectedInactive
+        default: break
+        }
+        guard requestID == identity.requestID else {
+            lastFailure = .requestMismatch
+            return .rejectedMismatch
+        }
+        lastSampleAt = at
+        lastTransportAt = at
+        attempts = 0
+        // Every real sample moves the watchdog deadline forward; the caller
+        // re-arms its one-shot timer from `nextWakeDelay`.
+        nextQueryAt = at.addingTimeInterval(Self.transportStaleAfter)
+        move(.live(lastSampleAt: at))
+        return .accepted
+    }
+
+    /// Accepts a Watch heartbeat/status packet for the active request. It
+    /// proves the interactive route is alive but never revives a stale BPM
+    /// or overwrites `lastSampleAt`.
+    @discardableResult
+    public mutating func receiveTransportHeartbeat(requestID: UUID, at: Date) -> SampleOutcome {
+        guard let identity else { return .rejectedInactive }
+        guard requestID == identity.requestID else {
+            lastFailure = .requestMismatch
+            return .rejectedMismatch
+        }
+        guard state != .notRequested, state != .ending, state != .ended else { return .rejectedInactive }
+        lastTransportAt = at
+        attempts = 0
+        nextQueryAt = at.addingTimeInterval(Self.transportStaleAfter)
+        return .accepted
+    }
+
+    public func isTransportLive(now: Date) -> Bool {
+        guard let lastTransportAt else { return false }
+        return now.timeIntervalSince(lastTransportAt) <= Self.transportStaleAfter
+    }
+
+    public func isSampleFresh(now: Date) -> Bool {
+        guard let lastSampleAt else { return false }
+        return now.timeIntervalSince(lastSampleAt) <= WatchHRRelay.staleAfter
+    }
+
+    /// The timer scheduling API: lets the owner keep exactly one one-shot
+    /// timer armed while a capture is active.
+    public func nextWakeDelay(now: Date) -> TimeInterval? {
+        guard identity != nil, state != .ending, state != .ended else { return nil }
+        guard let nextQueryAt else { return nil }
+        // `isLive` uses <=, so avoid waking at an equality boundary.
+        return max(0.25, nextQueryAt.timeIntervalSince(now) + 0.25)
+    }
+
+    public func displayedSampleAge(now: Date) -> TimeInterval? {
+        lastSampleAt.map { now.timeIntervalSince($0) }
+    }
+
+    /// A live state older than the stale window is not "live".
+    public func isLive(now: Date) -> Bool {
+        guard case .live(let at) = state else { return false }
+        return now.timeIntervalSince(at) <= WatchHRRelay.staleAfter
+    }
+
+    /// Time-driven: returns a reason when a state query should be sent now.
+    /// Exponential backoff, bounded attempts; never continuous polling.
+    public mutating func tick(now: Date) -> WatchHRReconcileReason? {
+        switch state {
+        case .startingWatchWorkout, .awaitingWatchAdoption, .awaitingFirstSample, .reconciling: break
+        case .live where !isLive(now: now): break
+        default: return nil
+        }
+        guard let due = nextQueryAt, now >= due else { return nil }
+        return beginAttempt(.initialWaitElapsed, now: now)
+    }
+
+    /// Outcome of one reconciliation pass.
+    public struct ReconcileStep: Equatable, Sendable {
+        public let query: WatchHRReconcileReason?
+        public let clearStaleBPM: Bool
+    }
+
+    /// Trigger-agnostic reconciliation pass. The wall-clock `Timer` is
+    /// suspended while the phone is locked, so this same pass is also driven
+    /// by the arrival of any background-delivered Watch packet (mirrored HR,
+    /// heartbeat, status). Whoever calls it just applies the result.
+    public mutating func reconcileStep(now: Date, externalBPMVisible: Bool) -> ReconcileStep {
+        let reason = tick(now: now)
+        return ReconcileStep(query: reason, clearStaleBPM: externalBPMVisible && !isSampleFresh(now: now))
+    }
+
+    /// Reachability / activation: prompt attempt, still bounded.
+    public mutating func reachabilityOrActivation(_ reason: WatchHRReconcileReason, now: Date) -> WatchHRReconcileReason? {
+        switch state {
+        case .startingWatchWorkout, .awaitingWatchAdoption, .awaitingFirstSample, .reconciling, .recoverableFailure:
+            return beginAttempt(reason, now: now)
+        case .live where !isLive(now: now):
+            return beginAttempt(reason, now: now)
+        default: return nil
+        }
+    }
+
+    /// The explicit user "Reconnect Apple Watch HR" action resets the budget.
+    public mutating func userReconnect(now: Date) -> WatchHRReconcileReason? {
+        guard identity != nil, state != .ended, state != .ending else { return nil }
+        attempts = 0
+        return beginAttempt(.userRequested, now: now)
+    }
+
+    private mutating func beginAttempt(_ reason: WatchHRReconcileReason, now: Date) -> WatchHRReconcileReason? {
+        guard attempts < Self.maxAttempts else {
+            nextQueryAt = nil
+            fail(.retriesExhausted, retry: true)
+            return nil
+        }
+        attempts += 1
+        let backoff = min(Self.initialWait * pow(2, Double(attempts)), Self.maxBackoff)
+        nextQueryAt = now.addingTimeInterval(backoff)
+        move(.reconciling(reason))
+        return reason
+    }
+
+    /// Pure comparison of the Watch's report with the phone's expectation.
+    public static func decide(report: WatchHRStateReport, expecting identity: WatchHRConnectionIdentity,
+                              expectedType: String = "strength") -> WatchHRReconcileDecision {
+        guard report.protocolVersion >= 2 else { return .conflict(.protocolMismatch) }
+        guard report.isWorkoutActive else { return .redeliverStart }
+        if report.adoptedRequestID == identity.requestID {
+            guard report.adoptedPhoneSessionID == nil || report.adoptedPhoneSessionID == identity.phoneSessionID,
+                  report.workoutType == nil || report.workoutType == expectedType else {
+                return .conflict(.requestMismatch)
+            }
+            return report.healthKitRunning ? .accept : .conflict(.watchNotRunningWorkout)
+        }
+        if let other = report.adoptedRequestID { return .stopOrphan(requestID: other) }
+        // Active, nothing adopted: ours only if it is a phone launch awaiting its command.
+        if report.awaitingAdoption, report.workoutType == nil || report.workoutType == expectedType {
+            return .redeliverStart
+        }
+        return .conflict(.watchOnlyWorkoutActive)
+    }
+
+    public mutating func apply(_ decision: WatchHRReconcileDecision) {
+        switch decision {
+        case .accept:
+            if case .live = state { break }
+            move(.awaitingFirstSample)
+        case .redeliverStart: move(.awaitingWatchAdoption)
+        case .stopOrphan: fail(.orphanedWatchSession, retry: true)
+        case .conflict(let reason): fail(reason, retry: reason != .watchOnlyWorkoutActive)
+        }
+    }
+
+    public mutating func end() { move(.ending); move(.ended); nextQueryAt = nil }
+
+    public func diagnostics(now: Date) -> WatchHRDiagnostics {
+        WatchHRDiagnostics(state: state, attemptCount: attempts, redactedIdentity: identity?.redacted,
+                           lastTransition: lastTransition, lastRealSampleAge: displayedSampleAge(now: now),
+                           lastFailure: lastFailure)
+    }
+
+    private mutating func fail(_ reason: WatchHRFailureReason, retry: Bool) {
+        lastFailure = reason
+        move(.recoverableFailure(reason, retryAvailable: retry))
+    }
+
+    private mutating func move(_ new: WatchHRLinkState) {
+        lastTransition = "\(state.label) -> \(new.label)"
+        state = new
+    }
+}

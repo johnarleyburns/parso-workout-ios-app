@@ -1,6 +1,8 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// The "Suggest a workout" shortcut (Start Workout → Strength → Pick Workout)
 /// reuses the muscle-coverage Fill the Gaps flow, so the shortcut and the

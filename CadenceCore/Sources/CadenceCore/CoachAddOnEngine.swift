@@ -36,12 +36,24 @@ public enum CoachAddOnEngine {
                         id: "addon.postPainWarn",
                         session: CoachSession(
                             id: "addon.easyWalk", kind: .easyAerobic,
-                            title: String(localized: "Easy walk", bundle: .module), subtitle: "20–30 min · conversational pace",
+                            title: {
+                                #if os(Linux)
+                                "Easy walk"
+                                #else
+                                String(localized: "Easy walk", bundle: .module)
+                                #endif
+                            }(), subtitle: "20–30 min · conversational pace",
                             durationMinutes: 25, modality: .walk, intensity: .easy,
                             launchPayload: .cardio(type: "walk", durationMinutes: 25)
                         ),
                         status: .warn,
-                        message: String(localized: "Pain or illness was reported. Keep any extra movement easy and stop if symptoms worsen.", bundle: .module),
+                        message: {
+                            #if os(Linux)
+                            "Pain or illness was reported. Keep any extra movement easy and stop if symptoms worsen."
+                            #else
+                            String(localized: "Pain or illness was reported. Keep any extra movement easy and stop if symptoms worsen.", bundle: .module)
+                            #endif
+                        }(),
                         citationIds: ["meeusenOvertraining2013"]
                     )
                 ],
@@ -55,7 +67,13 @@ public enum CoachAddOnEngine {
             let session = CoachSession(
                 id: "addon.easyCardioEncouraged",
                 kind: .easyAerobic,
-                title: String(localized: "Add easy cardio", bundle: .module),
+                title: {
+                    #if os(Linux)
+                    "Add easy cardio"
+                    #else
+                    String(localized: "Add easy cardio", bundle: .module)
+                    #endif
+                }(),
                 subtitle: "20–30 min · walk, cycle, swim, or row",
                 durationMinutes: 25,
                 modality: .walk,
@@ -68,7 +86,13 @@ public enum CoachAddOnEngine {
                 status: .encouraged,
                 message: {
                     let gap = max(0, Int(aerobicTarget - balance.moderateEquivalentMinutes))
-                    return String(localized: "\(gap) min to go on this week's aerobic target (\(Int(balance.moderateEquivalentMinutes))/150). Easy movement closes the gap.", bundle: .module)
+                    return {
+                        #if os(Linux)
+                        "\(gap) min to go on this week's aerobic target (\(Int(balance.moderateEquivalentMinutes))/150). Easy movement closes the gap."
+                        #else
+                        String(localized: "\(gap) min to go on this week's aerobic target (\(Int(balance.moderateEquivalentMinutes))/150). Easy movement closes the gap.", bundle: .module)
+                        #endif
+                    }()
                 }(),
                 citationIds: ["ekelundActivityMortality2016"]
             )
@@ -79,7 +103,13 @@ public enum CoachAddOnEngine {
             let session = CoachSession(
                 id: "addon.easyMoveNeutral",
                 kind: .easyAerobic,
-                title: String(localized: "Easy movement", bundle: .module),
+                title: {
+                    #if os(Linux)
+                    "Easy movement"
+                    #else
+                    String(localized: "Easy movement", bundle: .module)
+                    #endif
+                }(),
                 subtitle: "15–20 min · walk or mobility",
                 durationMinutes: 20,
                 modality: .walk,
@@ -90,7 +120,13 @@ public enum CoachAddOnEngine {
                 id: "addon.neutralMovement",
                 session: session,
                 status: .neutral,
-                message: String(localized: "All done for today — light movement is still fair game.", bundle: .module),
+                message: {
+                    #if os(Linux)
+                    "All done for today — light movement is still fair game."
+                    #else
+                    String(localized: "All done for today — light movement is still fair game.", bundle: .module)
+                    #endif
+                }(),
                 citationIds: ["ekelundActivityMortality2016"]
             ))
         }
@@ -100,8 +136,20 @@ public enum CoachAddOnEngine {
             let session = CoachSession(
                 id: "addon.hardStrengthWarn",
                 kind: .strength,
-                title: String(localized: "Additional strength", bundle: .module),
-                subtitle: String(localized: "This is more load than planned today.", bundle: .module),
+                title: {
+                    #if os(Linux)
+                    "Additional strength"
+                    #else
+                    String(localized: "Additional strength", bundle: .module)
+                    #endif
+                }(),
+                subtitle: {
+                    #if os(Linux)
+                    "This is more load than planned today."
+                    #else
+                    String(localized: "This is more load than planned today.", bundle: .module)
+                    #endif
+                }(),
                 exercises: CoachSession.fullBodyStrengthExercises(
                     facts: facts,
                     desiredSetsPerExercise: schedulePreferences.desiredSetsPerExercise
@@ -112,7 +160,13 @@ public enum CoachAddOnEngine {
                 id: "addon.warnStrength",
                 session: session,
                 status: .warn,
-                message: String(localized: "You already lifted today. Another session means recovery, not more strength, will be the limiting factor.", bundle: .module),
+                message: {
+                    #if os(Linux)
+                    "You already lifted today. Another session means recovery, not more strength, will be the limiting factor."
+                    #else
+                    String(localized: "You already lifted today. Another session means recovery, not more strength, will be the limiting factor.", bundle: .module)
+                    #endif
+                }(),
                 citationIds: ["meeusenOvertraining2013", "schoenfeld2021"]
             ))
         }
@@ -123,12 +177,30 @@ public enum CoachAddOnEngine {
                 id: "addon.poorReadiness",
                 session: CoachSession(
                     id: "addon.restWarn", kind: .rest,
-                    title: String(localized: "Rest or recovery", bundle: .module),
-                    subtitle: String(localized: "Readiness is low — recovery may be the limiting factor.", bundle: .module),
+                    title: {
+                        #if os(Linux)
+                        "Rest or recovery"
+                        #else
+                        String(localized: "Rest or recovery", bundle: .module)
+                        #endif
+                    }(),
+                    subtitle: {
+                        #if os(Linux)
+                        "Readiness is low — recovery may be the limiting factor."
+                        #else
+                        String(localized: "Readiness is low — recovery may be the limiting factor.", bundle: .module)
+                        #endif
+                    }(),
                     launchPayload: .rest
                 ),
                 status: .warn,
-                message: String(localized: "Readiness is low. Extra work may set back adaptation.", bundle: .module),
+                message: {
+                    #if os(Linux)
+                    "Readiness is low. Extra work may set back adaptation."
+                    #else
+                    String(localized: "Readiness is low. Extra work may set back adaptation.", bundle: .module)
+                    #endif
+                }(),
                 citationIds: ["sawMonitoring2016"]
             ))
         }
@@ -139,12 +211,30 @@ public enum CoachAddOnEngine {
                 id: "addon.hardStreak",
                 session: CoachSession(
                     id: "addon.restHardStreak", kind: .rest,
-                    title: String(localized: "Rest day", bundle: .module),
-                    subtitle: String(localized: "\(hardStreak) consecutive hard days — recovery is the limiting factor.", bundle: .module),
+                    title: {
+                        #if os(Linux)
+                        "Rest day"
+                        #else
+                        String(localized: "Rest day", bundle: .module)
+                        #endif
+                    }(),
+                    subtitle: {
+                        #if os(Linux)
+                        "\(hardStreak) consecutive hard days — recovery is the limiting factor."
+                        #else
+                        String(localized: "\(hardStreak) consecutive hard days — recovery is the limiting factor.", bundle: .module)
+                        #endif
+                    }(),
                     launchPayload: .rest
                 ),
                 status: .warn,
-                message: String(localized: "You've trained hard \(hardStreak) days in a row. You can continue, but keep it easy if performance drops.", bundle: .module),
+                message: {
+                    #if os(Linux)
+                    "You've trained hard \(hardStreak) days in a row. You can continue, but keep it easy if performance drops."
+                    #else
+                    String(localized: "You've trained hard \(hardStreak) days in a row. You can continue, but keep it easy if performance drops.", bundle: .module)
+                    #endif
+                }(),
                 citationIds: ["meeusenOvertraining2013", "drewFinchInjury2016"]
             ))
         }
@@ -155,7 +245,13 @@ public enum CoachAddOnEngine {
                 id: "addon.hiitWarn",
                 kind: .moderateAerobic,
                 title: "HIIT or boxing",
-                subtitle: String(localized: "Vigorous intervals after a completed plan", bundle: .module),
+                subtitle: {
+                    #if os(Linux)
+                    "Vigorous intervals after a completed plan"
+                    #else
+                    String(localized: "Vigorous intervals after a completed plan", bundle: .module)
+                    #endif
+                }(),
                 durationMinutes: 25,
                 modality: .boxing,
                 intensity: .vigorous,
@@ -165,7 +261,13 @@ public enum CoachAddOnEngine {
                 id: "addon.warnVigorous",
                 session: hiitSession,
                 status: .warn,
-                message: String(localized: "This is more load than planned today. You can continue, but keep it easy if performance drops.", bundle: .module),
+                message: {
+                    #if os(Linux)
+                    "This is more load than planned today. You can continue, but keep it easy if performance drops."
+                    #else
+                    String(localized: "This is more load than planned today. You can continue, but keep it easy if performance drops.", bundle: .module)
+                    #endif
+                }(),
                 citationIds: ["meeusenOvertraining2013"]
             ))
         }

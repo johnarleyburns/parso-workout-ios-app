@@ -1,4 +1,5 @@
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import Foundation
 
 /// Bell cues for one view/workout owner. Playback lifetime is driven by completion

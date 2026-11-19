@@ -1,6 +1,8 @@
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Content key for the Home activity/muscle-coverage projection. Unlike
 /// `HomeActivityTaskIdentity` (which exists only to decide when a single

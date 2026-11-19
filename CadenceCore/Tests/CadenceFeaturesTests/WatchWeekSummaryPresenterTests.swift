@@ -1,13 +1,16 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Regression for the reported defect: a successful WatchConnectivity handshake
 /// rendered "0 sets / 0 min" on the Watch although iPhone This Week showed 111
 /// sets and 76 cardio minutes. `WatchWeekSummaryPresenter` is the sole
 /// constructor of the published `WatchSync.WeekSummary`, so this pins its exact
 /// numeric mapping independent of when/why a publish is triggered.
-final class WatchWeekSummaryPresenterTests: XCTestCase {
+struct WatchWeekSummaryPresenterTests {
     private func row(_ sets: Double, isTracked: Bool) -> HomeDashboardState.VolumeRow {
         .init(group: .chest, displayName: "Chest", scientificName: "Pectoralis Major",
               sets: sets, zone: .productive, rangeText: "", normalized: 0,
@@ -26,7 +29,7 @@ final class WatchWeekSummaryPresenterTests: XCTestCase {
             volume: rows, cardioDetail: cardioDetail, activityDose: nil, suggestions: [])
     }
 
-    func testExactSetsAndCardioMinutesMapThrough() {
+    @Test func exactSetsAndCardioMinutesMapThrough() {
         // Three tracked muscle rows totalling 111 sets, 76 cardio minutes.
         let state = dashboard(
             rows: [row(50, isTracked: true), row(40, isTracked: true), row(21, isTracked: true)],
@@ -34,12 +37,12 @@ final class WatchWeekSummaryPresenterTests: XCTestCase {
 
         let summary = WatchWeekSummaryPresenter.make(dashboard: state, updatedAt: Date(timeIntervalSince1970: 1_700_000_000))
 
-        XCTAssertEqual(summary.sets, 111)
-        XCTAssertEqual(summary.cardioMinutes, 76)
-        XCTAssertEqual(summary.updatedAt, Date(timeIntervalSince1970: 1_700_000_000))
+        #expect(summary.sets == 111)
+        #expect(summary.cardioMinutes == 76)
+        #expect(summary.updatedAt == Date(timeIntervalSince1970: 1_700_000_000))
     }
 
-    func testSetsTargetAndMinimumUseOnlyTrackedRowsButTotalSetsIncludeEveryRow() {
+    @Test func setsTargetAndMinimumUseOnlyTrackedRowsButTotalSetsIncludeEveryRow() {
         // Two tracked rows (target 24) plus one untracked row that still
         // contributes to the total-sets sum (existing all-row semantics).
         let state = dashboard(
@@ -48,19 +51,19 @@ final class WatchWeekSummaryPresenterTests: XCTestCase {
 
         let summary = WatchWeekSummaryPresenter.make(dashboard: state)
 
-        XCTAssertEqual(summary.sets, 25)
-        XCTAssertEqual(summary.setsTarget, 24)
-        XCTAssertEqual(summary.setsMinimum, 24 / WeeklySetProgress.maximum * WeeklySetProgress.minimum)
+        #expect(summary.sets == 25)
+        #expect(summary.setsTarget == 24)
+        #expect(summary.setsMinimum == 24 / WeeklySetProgress.maximum * WeeklySetProgress.minimum)
     }
 
-    func testUpdatedAtPassesThroughWithoutAlteringTotals() {
+    @Test func updatedAtPassesThroughWithoutAlteringTotals() {
         let state = dashboard(rows: [row(12, isTracked: true)], cardioMinutes: 30)
         let stamp = Date(timeIntervalSince1970: 42)
 
         let summary = WatchWeekSummaryPresenter.make(dashboard: state, updatedAt: stamp)
 
-        XCTAssertEqual(summary.updatedAt, stamp)
-        XCTAssertEqual(summary.sets, 12)
-        XCTAssertEqual(summary.cardioMinutes, 30)
+        #expect(summary.updatedAt == stamp)
+        #expect(summary.sets == 12)
+        #expect(summary.cardioMinutes == 30)
     }
 }

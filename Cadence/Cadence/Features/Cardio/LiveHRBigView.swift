@@ -2,6 +2,7 @@ import SwiftUI
 import Charts
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The Apple-Watch-style zone palette for live HR (Z1 cyan → Z5 red, neutral =
 /// secondary). Lives in the app target because CadenceFeatures cannot depend on

@@ -1,5 +1,6 @@
 import AVFoundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// AVSpeechSynthesizer adapter. Speech uses the app session so the coordinator's lease
 /// is the only thing keeping it active. Delegate callbacks carry only an object identity,

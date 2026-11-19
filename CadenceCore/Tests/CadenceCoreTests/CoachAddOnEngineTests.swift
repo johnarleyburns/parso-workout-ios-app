@@ -1,4 +1,6 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -6,7 +8,7 @@ import SwiftData
 /// coach-built session, not dead-end to Home. The addon's `.hardStrengthWarn`
 /// session must carry a non-empty `exercises` array so `EditablePlan.from(coach:)`
 /// yields a plan.
-final class CoachAddOnEngineTests: XCTestCase {
+struct CoachAddOnEngineTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -31,7 +33,7 @@ final class CoachAddOnEngineTests: XCTestCase {
         return TrainingEvent.from(session: session)!
     }
 
-    func testAdditionalStrengthAddOnHasExercises() throws {
+    @Test func additionalStrengthAddOnHasExercises() throws {
         let ctx = try makeContext()
         let now = testNow
         let event = try strengthEventToday(ctx, now: now)
@@ -41,24 +43,24 @@ final class CoachAddOnEngineTests: XCTestCase {
         let addOn = CoachAddOnEngine.run(facts: facts)
         let warn = (addOn.primaryOption.map { [$0] } ?? []) + addOn.secondaryOptions
         let strengthWarn = warn.first { $0.session.id == "addon.hardStrengthWarn" }
-        XCTAssertNotNil(strengthWarn, "After lifting today, the coach should offer an 'Additional strength' add-on")
+        #expect(strengthWarn != nil, "After lifting today, the coach should offer an 'Additional strength' add-on")
         let exercises = strengthWarn?.session.exercises ?? []
-        XCTAssertFalse(exercises.isEmpty,
+        #expect(!exercises.isEmpty,
                        "The additional-strength add-on session must carry exercises so 'Start anyway' opens a real session")
         // The exercises should carry the goal's rep ladders (P1 reuse).
-        XCTAssertTrue(exercises.contains { ($0.repLadder?.isEmpty == false) },
+        #expect(exercises.contains { ($0.repLadder?.isEmpty == false) },
                       "Add-on strength exercises should carry rep ladders")
     }
 
-    func testFullBodyStrengthExercisesAreNonEmptyAndCited() throws {
+    @Test func fullBodyStrengthExercisesAreNonEmptyAndCited() throws {
         let ctx = try makeContext()
         let now = testNow
         let event = try strengthEventToday(ctx, now: now)
         let facts = CoachFacts.make(from: [event], goal: .strength,
                                     experience: .intermediate, now: now)
         let exercises = CoachSession.fullBodyStrengthExercises(facts: facts)
-        XCTAssertFalse(exercises.isEmpty, "A coach-built full-body session names movements")
-        XCTAssertGreaterThanOrEqual(exercises.count, 4, "Full-body should cover several patterns")
+        #expect(!exercises.isEmpty, "A coach-built full-body session names movements")
+        #expect(exercises.count >= 4, "Full-body should cover several patterns")
     }
 
     // MARK: - Same-day load awareness (coach-user-control Phase 2)
@@ -78,7 +80,7 @@ final class CoachAddOnEngineTests: XCTestCase {
 
     /// After HIIT + boxing today, "Add easy cardio" must not be pushed — the
     /// intense load is already banked (user decision: notice it, stop nagging).
-    func testNoEasyCardioAddOnAfterIntenseCardioToday() throws {
+    @Test func noEasyCardioAddOnAfterIntenseCardioToday() throws {
         let ctx = try makeContext()
         let now = testNow
         let hiit = try cardioEventToday(ctx, type: .hiit, now: now, hoursAgo: 6)
@@ -88,16 +90,16 @@ final class CoachAddOnEngineTests: XCTestCase {
                                     experience: .intermediate, now: now)
 
         let addOn = CoachAddOnEngine.run(facts: facts)
-        XCTAssertNil(addOn.primaryOption,
+        #expect(addOn.primaryOption == nil,
                      "No encouraged easy-cardio add-on after intense same-day cardio")
         let all = (addOn.primaryOption.map { [$0] } ?? []) + addOn.secondaryOptions
-        XCTAssertFalse(all.contains { $0.id == "addon.encouragedCardio" })
-        XCTAssertFalse(all.contains { $0.id == "addon.neutralMovement" })
+        #expect(!all.contains { $0.id == "addon.encouragedCardio" })
+        #expect(!all.contains { $0.id == "addon.neutralMovement" })
     }
 
     /// Two easier cardio sessions on the same day also stop the easy-cardio push
     /// even when neither classifies vigorous.
-    func testNoEasyCardioAddOnAfterTwoCardioSessionsToday() throws {
+    @Test func noEasyCardioAddOnAfterTwoCardioSessionsToday() throws {
         let ctx = try makeContext()
         let now = testNow
         let walk1 = try cardioEventToday(ctx, type: .walk, now: now, hoursAgo: 8, avgHR: 95, maxHR: 105)
@@ -107,6 +109,7 @@ final class CoachAddOnEngineTests: XCTestCase {
 
         let addOn = CoachAddOnEngine.run(facts: facts)
         let all = (addOn.primaryOption.map { [$0] } ?? []) + addOn.secondaryOptions
-        XCTAssertFalse(all.contains { $0.id == "addon.encouragedCardio" })
+        #expect(!all.contains { $0.id == "addon.encouragedCardio" })
     }
 }
+#endif

@@ -2,7 +2,9 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import os
+import CadencePhoneFeatures
 
 extension HomeView {
     private static let healthIngestLog = OSLog(subsystem: "guru.parso.cladiron", category: "HealthIngestion")

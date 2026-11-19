@@ -1,6 +1,7 @@
 import Foundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
     func switchToSource(_ source: HRSource) {

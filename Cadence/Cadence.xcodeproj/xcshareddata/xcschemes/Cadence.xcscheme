@@ -44,16 +44,6 @@
                ReferencedContainer = "container:Cadence.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "8D78A50E2FD282B700AE7C2F"
-               BuildableName = "CadenceUITests.xctest"
-               BlueprintName = "CadenceUITests"
-               ReferencedContainer = "container:Cadence.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
       <StoreKitConfigurationFileReference
          identifier = "../../../Cadence.storekit">

@@ -2,6 +2,7 @@ import Foundation
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Everything the exercise picker derives from a query, computed ONCE per
 /// debounced keystroke instead of once per SwiftUI body evaluation.

@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Shared completion content for every Watch cardio workout (steady, HIIT, boxing): duration plus
 /// the heart-rate chart and intensity minute rows built from the finalized `SavedWorkoutSummary`

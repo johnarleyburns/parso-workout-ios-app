@@ -1,8 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class TodaySuggestedWorkoutCacheTests: XCTestCase {
+struct TodaySuggestedWorkoutCacheTests {
     private final class Counter: @unchecked Sendable {
         private let lock = NSLock()
         private var n = 0
@@ -63,7 +66,7 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
                                               cooldownMinutes: 3, extras: extras)
     }
 
-    func testRestartHitInvokesGeneratorZeroTimes() async {
+    @Test func restartHitInvokesGeneratorZeroTimes() async {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         let now = date(2026, 3, 10, 9, 0, 0)
         let counter = Counter()
@@ -71,54 +74,54 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
         _ = await a.resolve(fingerprint: "f") { counter.bump(); return Self.payload() }
         let b = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { now })
         let hit = await b.resolve(fingerprint: "f") { counter.bump(); return Self.payload() }
-        XCTAssertEqual(counter.value, 1)
-        XCTAssertEqual(hit, Self.payload())
+        #expect(counter.value == 1)
+        #expect(hit == Self.payload())
     }
 
-    func testFingerprintIgnoresNothingButRealInputs() {
-        XCTAssertEqual(fp(input()), fp(input()))
-        XCTAssertNotEqual(fp(input()), fp(input(goal: .hypertrophy)))
-        XCTAssertNotEqual(fp(input()), fp(input(ids: ["a", "b"])))
-        XCTAssertNotEqual(fp(input()), fp(input(), extras: ["scheduled"]))
+    @Test func fingerprintIgnoresNothingButRealInputs() {
+        #expect(fp(input()) == fp(input()))
+        #expect(fp(input()) != fp(input(goal: .hypertrophy)))
+        #expect(fp(input()) != fp(input(ids: ["a", "b"])))
+        #expect(fp(input()) != fp(input(), extras: ["scheduled"]))
     }
 
-    func testLocalDayBoundary() async {
+    @Test func localDayBoundary() async {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         let clock = Clock(date(2026, 3, 7, 0, 0, 0))
         let store = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { clock.date })
         await store.save(Self.payload(), fingerprint: "f")
         clock.date = date(2026, 3, 7, 23, 59, 59)
         var hit = await store.restore(fingerprint: "f")
-        XCTAssertNotNil(hit)
+        #expect(hit != nil)
         clock.date = date(2026, 3, 8, 0, 0, 0)  // DST spring-forward day
         hit = await store.restore(fingerprint: "f")
-        XCTAssertNil(hit)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        #expect(hit == nil)
+        #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 
-    func testSuggestedPickerDisplayLookupRejectsYesterday() async {
+    @Test func suggestedPickerDisplayLookupRejectsYesterday() async {
         let clock = Clock(date(2026, 3, 7, 23, 59, 59))
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { clock.date })
         await store.save(Self.payload(), fingerprint: "same-inputs")
         let today = await store.peekDisplayable()
-        XCTAssertNotNil(today)
+        #expect(today != nil)
         clock.date = date(2026, 3, 8, 0, 0, 0)
         let yesterday = await store.peekDisplayable()
-        XCTAssertNil(yesterday)
+        #expect(yesterday == nil)
     }
 
-    func testInvalidateAndFingerprintChangeMiss() async {
+    @Test func invalidateAndFingerprintChangeMiss() async {
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { Date() })
         await store.save(Self.payload(), fingerprint: "f")
         var miss = await store.restore(fingerprint: "g")
-        XCTAssertNil(miss)
+        #expect(miss == nil)
         await store.save(Self.payload(), fingerprint: "f")
         await store.invalidate()
         miss = await store.restore(fingerprint: "f")
-        XCTAssertNil(miss)
+        #expect(miss == nil)
     }
 
-    func testConcurrentResolvesCoalesce() async {
+    @Test func concurrentResolvesCoalesce() async {
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { Date() })
         let counter = Counter()
         let p = Self.payload()
@@ -127,10 +130,10 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
         }
         async let y = store.resolve(fingerprint: "f") { counter.bump(); return p }
         _ = await (x, y)
-        XCTAssertEqual(counter.value, 1)
+        #expect(counter.value == 1)
     }
 
-    func testInvalidatedInFlightGenerationDoesNotWrite() async {
+    @Test func invalidatedInFlightGenerationDoesNotWrite() async {
         let store = TodaySuggestedWorkoutCacheStore(fileURL: nil, calendar: cal, now: { Date() })
         let p = Self.payload()
         async let r = store.resolve(fingerprint: "old") {
@@ -140,27 +143,27 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
         await store.invalidate()
         _ = await r
         let hit = await store.restore(fingerprint: "old")
-        XCTAssertNil(hit)
+        #expect(hit == nil)
     }
 
-    func testPayloadRoundTripPreservesProvenanceAndRationale() throws {
+    @Test func payloadRoundTripPreservesProvenanceAndRationale() throws {
         let data = try JSONEncoder().encode(Self.payload())
         let plan = try JSONDecoder().decode(TodaySuggestedPlanPayload.self, from: data).makePlan()
-        XCTAssertEqual(plan.title, "Push")
-        XCTAssertEqual(plan.enginePlanId, "plan")
-        XCTAssertEqual(plan.enginePlanJSON, Data([1, 2]))
-        XCTAssertEqual(plan.suggestedWorkoutStyle, .fitness)
-        XCTAssertEqual(plan.recommendationRationale?.whyWorkout, "why")
-        XCTAssertEqual(plan.exercises.first?.sets.first?.loadMode, .percentageOfOneRepMax)
+        #expect(plan.title == "Push")
+        #expect(plan.enginePlanId == "plan")
+        #expect(plan.enginePlanJSON == Data([1, 2]))
+        #expect(plan.suggestedWorkoutStyle == .fitness)
+        #expect(plan.recommendationRationale?.whyWorkout == "why")
+        #expect(plan.exercises.first?.sets.first?.loadMode == .percentageOfOneRepMax)
     }
 
-    func testCorruptAndWrongVersionRecover() async throws {
+    @Test func corruptAndWrongVersionRecover() async throws {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         try Data("garbage".utf8).write(to: url)
         let store = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { Date() })
         let miss = await store.restore(fingerprint: "f")
-        XCTAssertNil(miss)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        #expect(miss == nil)
+        #expect(!FileManager.default.fileExists(atPath: url.path))
 
         let writer = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { Date() })
         await writer.save(Self.payload(), fingerprint: "f")
@@ -171,12 +174,12 @@ final class TodaySuggestedWorkoutCacheTests: XCTestCase {
         try json.write(to: url, atomically: true, encoding: .utf8)
         let reader = TodaySuggestedWorkoutCacheStore(fileURL: url, calendar: cal, now: { Date() })
         let old = await reader.restore(fingerprint: "f")
-        XCTAssertNil(old)
-        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        #expect(old == nil)
+        #expect(!FileManager.default.fileExists(atPath: url.path))
     }
 }
 
-final class TodaySuggestionCacheOutcomeTests: XCTestCase {
+struct TodaySuggestionCacheOutcomeTests {
     private final class Sink: @unchecked Sendable {
         private let lock = NSLock()
         private var items: [TodaySuggestionCacheOutcome] = []
@@ -212,27 +215,27 @@ final class TodaySuggestionCacheOutcomeTests: XCTestCase {
         return d.appendingPathComponent("missing/sub/file.json")
     }
 
-    func testFreshProcessRestoresValidFile() async {
+    @Test func freshProcessRestoresValidFile() async {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         let clock = Clock()
         let w = await store(url, clock).resolveWithOutcome(fingerprint: "f", earlyKey: "k") { Self.payload() }
-        XCTAssertEqual(w.outcome, .writeSaved); XCTAssertTrue(w.persisted)
+        #expect(w.outcome == .writeSaved); #expect(w.persisted)
         let peek = await store(url, clock).inspectDisplayable()
-        XCTAssertEqual(peek.resolution.outcome, .displayRestored)
-        XCTAssertTrue(peek.resolution.persisted)
+        #expect(peek.resolution.outcome == .displayRestored)
+        #expect(peek.resolution.persisted)
         let early = await store(url, clock).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(early.outcome, .earlyKeyMatch); XCTAssertTrue(early.persisted)
+        #expect(early.outcome == .earlyKeyMatch); #expect(early.persisted)
     }
 
-    func testDistinctMissOutcomes() async throws {
+    @Test func distinctMissOutcomes() async throws {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         let clock = Clock()
         let none = await store(url, clock).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(none.outcome, .noFile)
+        #expect(none.outcome == .noFile)
 
         try Data("garbage".utf8).write(to: url)
         let corrupt = await store(url, clock).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(corrupt.outcome, .corrupt)
+        #expect(corrupt.outcome == .corrupt)
 
         await store(url, clock).save(Self.payload(), fingerprint: "f", earlyKey: "k")
         let json = try String(contentsOf: url, encoding: .utf8)
@@ -241,24 +244,24 @@ final class TodaySuggestionCacheOutcomeTests: XCTestCase {
                 with: "\"schemaVersion\":99")
         try json.write(to: url, atomically: true, encoding: .utf8)
         let schema = await store(url, clock).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(schema.outcome, .schemaRejected)
+        #expect(schema.outcome == .schemaRejected)
 
         await store(url, clock).save(Self.payload(), fingerprint: "f", earlyKey: "k")
         let tomorrow = Clock(); tomorrow.date = clock.date.addingTimeInterval(86_400 * 2)
         let day = await store(url, tomorrow).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(day.outcome, .dayRejected)
+        #expect(day.outcome == .dayRejected)
 
         await store(url, clock).save(Self.payload(), fingerprint: "f", earlyKey: "k")
         let early = await store(url, clock).restoreEarlyResolution(earlyKey: "other")
-        XCTAssertEqual(early.outcome, .earlyKeyRejected)
+        #expect(early.outcome == .earlyKeyRejected)
 
         await store(url, clock).save(Self.payload(), fingerprint: "f", earlyKey: "k")
         let s = store(url, clock)
         let full = await s.resolveWithOutcome(fingerprint: "g") { nil }
-        XCTAssertEqual(full.outcome, .fullKeyRejected); XCTAssertNil(full.payload)
+        #expect(full.outcome == .fullKeyRejected); #expect(full.payload == nil)
     }
 
-    func testWriteFailureKeepsPreviousValidFile() async throws {
+    @Test func writeFailureKeepsPreviousValidFile() async throws {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         let clock = Clock()
         await store(url, clock).save(Self.payload(), fingerprint: "f", earlyKey: "k")
@@ -267,27 +270,27 @@ final class TodaySuggestionCacheOutcomeTests: XCTestCase {
         let bad = try unwritable()
         let failing = store(bad, clock)
         let r = await failing.resolveWithOutcome(fingerprint: "f") { Self.payload() }
-        XCTAssertEqual(r.outcome, .writeFailed)
-        XCTAssertFalse(r.persisted)
-        XCTAssertNotNil(r.payload)
-        XCTAssertEqual(try Data(contentsOf: url), before)
+        #expect(r.outcome == .writeFailed)
+        #expect(!r.persisted)
+        #expect(r.payload != nil)
+        #expect(try Data(contentsOf: url) == before)
         let fresh = await store(url, clock).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(fresh.outcome, .earlyKeyMatch)
+        #expect(fresh.outcome == .earlyKeyMatch)
     }
 
-    func testUnavailableStorageNeverClaimsPersistence() async {
+    @Test func unavailableStorageNeverClaimsPersistence() async {
         let s = store(nil)
         let r = await s.resolveWithOutcome(fingerprint: "f") { Self.payload() }
-        XCTAssertEqual(r.outcome, .storageUnavailable)
-        XCTAssertFalse(r.persisted)
-        XCTAssertNotNil(r.payload)
+        #expect(r.outcome == .storageUnavailable)
+        #expect(!r.persisted)
+        #expect(r.payload != nil)
         let again = await s.inspectDisplayable()
-        XCTAssertFalse(again.resolution.persisted)
+        #expect(!again.resolution.persisted)
         let empty = await store(nil).inspectDisplayable()
-        XCTAssertEqual(empty.resolution.outcome, .storageUnavailable)
+        #expect(empty.resolution.outcome == .storageUnavailable)
     }
 
-    func testInvalidatedDuringGenerationDoesNotWriteOrCorruptValidSave() async throws {
+    @Test func invalidatedDuringGenerationDoesNotWriteOrCorruptValidSave() async throws {
         let url = tempURL(); defer { try? FileManager.default.removeItem(at: url) }
         let s = store(url)
         let p = Self.payload()
@@ -298,17 +301,17 @@ final class TodaySuggestionCacheOutcomeTests: XCTestCase {
         await s.invalidate()
         await s.save(p, fingerprint: "new", earlyKey: "k")
         let res = await r
-        XCTAssertEqual(res.outcome, .invalidated); XCTAssertFalse(res.persisted)
+        #expect(res.outcome == .invalidated); #expect(!res.persisted)
         let hit = await store(url).restoreEarlyResolution(earlyKey: "k")
-        XCTAssertEqual(hit.outcome, .earlyKeyMatch)
+        #expect(hit.outcome == .earlyKeyMatch)
     }
 
-    func testObserverReceivesOutcomeNamesOnly() async {
+    @Test func observerReceivesOutcomeNamesOnly() async {
         let sink = Sink()
         let s = store(nil, sink: sink)
         _ = await s.resolveWithOutcome(fingerprint: "f") { Self.payload() }
         let names = sink.all.map(\.rawValue)
-        XCTAssertEqual(names, ["storageUnavailable"])
-        XCTAssertFalse(names.joined().contains("Secret"))
+        #expect(names == ["storageUnavailable"])
+        #expect(!names.joined().contains("Secret"))
     }
 }

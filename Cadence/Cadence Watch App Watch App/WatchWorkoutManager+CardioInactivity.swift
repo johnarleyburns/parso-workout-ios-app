@@ -3,6 +3,7 @@ import HealthKit
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Inactivity policy for Watch-owned CARDIO sessions (not strength, not interval runner, not swim).
 /// The durable `WatchCardioInactivityRecord` is the truth; the deadline task is best-effort and
@@ -21,7 +22,7 @@ extension WatchWorkoutManager {
     }
 
     func beginCardioInactivityTracking(type: CardioType, isSwim: Bool, ownsSession: Bool, now: Date = Date()) {
-        guard !uiTestMode else { return }
+        guard !simulatesHealthKit else { return }
         let profile = WatchCardioInactivityTracker.profile(type: type, isSwim: isSwim,
                                                            gps: gpsEnabled, heartRate: heartRateEnabled)
         cardioAutoPaused = false
@@ -107,7 +108,7 @@ extension WatchWorkoutManager {
 
     /// Not activity. Compares `now` with stored evidence/deadlines; safe from any lifecycle hook.
     func reconcileCardioInactivity(now: Date = Date()) {
-        guard !uiTestMode, cardioInactivity.record != nil else { return }
+        guard !simulatesHealthKit, cardioInactivity.record != nil else { return }
         switch cardioInactivity.evaluate(now: now, enabled: cardioAutoPauseEnabled) {
         case .autoPause(let at):
             pauseCardioForInactivity(at: at)

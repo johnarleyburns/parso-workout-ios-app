@@ -2,6 +2,7 @@ import Foundation
 import OSLog
 import WatchConnectivity
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 // MARK: - Durable heart-rate delivery
 //

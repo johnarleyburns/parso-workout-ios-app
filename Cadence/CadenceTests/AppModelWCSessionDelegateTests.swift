@@ -1,6 +1,7 @@
 import XCTest
 @preconcurrency import WatchConnectivity
 import CadenceFeatures
+import CadenceWorkoutFeatures
 @testable import Cadence
 
 final class AppModelWCSessionDelegateTests: XCTestCase {

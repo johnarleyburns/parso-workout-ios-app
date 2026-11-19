@@ -1,4 +1,5 @@
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import Foundation
 
 /// Short, interruptible workout announcements spoken by the Watch.

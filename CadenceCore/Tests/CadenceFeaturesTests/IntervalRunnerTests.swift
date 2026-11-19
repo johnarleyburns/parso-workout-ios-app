@@ -1,12 +1,13 @@
-import XCTest
 import Foundation
+import Testing
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Moved from Cadence/CadenceTests/IntervalRunnerTests.swift (test-pyramid Phase 2),
 /// converted from swift-testing to XCTest to match CadenceCoreTests. Now runs
 /// headlessly under `swift test` instead of the simulator.
-final class IntervalRunnerTests: XCTestCase {
+struct IntervalRunnerTests {
 
     private func tabataPlan() -> IntervalPlan {
         IntervalPlan.tabata(warmup: 300, rounds: 4, work: 20, rest: 10, cooldown: 300)
@@ -19,133 +20,133 @@ final class IntervalRunnerTests: XCTestCase {
         return r
     }
 
-    func testPhaseRemainingWithoutExtension() {
+    @Test func phaseRemainingWithoutExtension() {
         let plan = tabataPlan()
         let r = runner(for: plan, elapsed: 60)
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 240)
-        XCTAssertEqual(r.overallRemaining, plan.totalDuration - 60)
-        XCTAssertFalse(r.isComplete)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 240)
+        #expect(r.overallRemaining == plan.totalDuration - 60)
+        #expect(!r.isComplete)
     }
 
-    func testWorkPhaseWithoutExtension() {
+    @Test func workPhaseWithoutExtension() {
         let r = runner(for: tabataPlan(), elapsed: 310)
-        XCTAssertEqual(r.phaseKind, .work)
-        XCTAssertEqual(r.phaseRemaining, 10)
+        #expect(r.phaseKind == .work)
+        #expect(r.phaseRemaining == 10)
     }
 
-    func testIsCompleteAfterTotalDuration() {
+    @Test func isCompleteAfterTotalDuration() {
         let plan = tabataPlan()
         let r = runner(for: plan, elapsed: plan.totalDuration)
-        XCTAssertTrue(r.isComplete)
+        #expect(r.isComplete)
     }
 
-    func testWarmupExtensionDelaysPhaseChange() {
+    @Test func warmupExtensionDelaysPhaseChange() {
         let r = runner(for: tabataPlan(), elapsed: 290)
         r.addTime(60)
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 70)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 70)
     }
 
-    func testWarmupExtensionKeepsUserInWarmupPastOriginalBoundary() {
+    @Test func warmupExtensionKeepsUserInWarmupPastOriginalBoundary() {
         let r = runner(for: tabataPlan(), elapsed: 310)
-        XCTAssertEqual(r.phaseKind, .work)
-        XCTAssertFalse(r.isComplete)
+        #expect(r.phaseKind == .work)
+        #expect(!r.isComplete)
     }
 
-    func testWarmupExtensionStillInWarmupAtOriginalBoundary() {
+    @Test func warmupExtensionStillInWarmupAtOriginalBoundary() {
         let r = runner(for: tabataPlan(), elapsed: 290)
         r.addTime(60)
         r.now = r.clock.startedAt.addingTimeInterval(305)
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 55)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 55)
     }
 
-    func testWarmupExtensionTransitionsAfterExtensionConsumed() {
+    @Test func warmupExtensionTransitionsAfterExtensionConsumed() {
         let r = runner(for: tabataPlan(), elapsed: 290)
         r.addTime(60)
         r.now = r.clock.startedAt.addingTimeInterval(365)
-        XCTAssertEqual(r.phaseKind, .work)
+        #expect(r.phaseKind == .work)
     }
 
-    func testCooldownExtensionPreventsCompletion() {
+    @Test func cooldownExtensionPreventsCompletion() {
         let r = runner(for: tabataPlan(), elapsed: 710)
         r.addTime(60)
-        XCTAssertEqual(r.phaseKind, .cooldown)
-        XCTAssertFalse(r.isComplete)
-        XCTAssertEqual(r.phaseRemaining, 70)
+        #expect(r.phaseKind == .cooldown)
+        #expect(!r.isComplete)
+        #expect(r.phaseRemaining == 70)
     }
 
-    func testCooldownExtensionCompletesAfterExtendedBoundary() {
+    @Test func cooldownExtensionCompletesAfterExtendedBoundary() {
         let r = runner(for: tabataPlan(), elapsed: 710)
         r.addTime(60)
         r.now = r.clock.startedAt.addingTimeInterval(785)
-        XCTAssertTrue(r.isComplete)
+        #expect(r.isComplete)
     }
 
-    func testDoubleExtensionAddsCorrectly() {
+    @Test func doubleExtensionAddsCorrectly() {
         let r = runner(for: tabataPlan(), elapsed: 290)
         r.addTime(60)
         r.addTime(60)
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 130)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 130)
     }
 
-    func testSkipDuringExtendedWarmupAdvancesToWork() {
+    @Test func skipDuringExtendedWarmupAdvancesToWork() {
         let r = runner(for: tabataPlan(), elapsed: 290)
         r.addTime(60)
         r.skipPhase()
-        XCTAssertEqual(r.phaseKind, .work)
-        XCTAssertEqual(r.phaseRemaining, 20)
+        #expect(r.phaseKind == .work)
+        #expect(r.phaseRemaining == 20)
     }
 
-    func testSkipWithNoExtensionInWarmup() {
+    @Test func skipWithNoExtensionInWarmup() {
         let r = runner(for: tabataPlan(), elapsed: 60)
         r.skipPhase()
-        XCTAssertEqual(r.phaseKind, .work)
-        XCTAssertEqual(r.phaseRemaining, 20)
+        #expect(r.phaseKind == .work)
+        #expect(r.phaseRemaining == 20)
     }
 
-    func testOverallRemainingReflectsExtension() {
+    @Test func overallRemainingReflectsExtension() {
         let plan = tabataPlan()
         let r = runner(for: plan, elapsed: 290)
         r.addTime(60)
-        XCTAssertEqual(r.overallRemaining, plan.totalDuration - 290 + 60)
+        #expect(r.overallRemaining == plan.totalDuration - 290 + 60)
     }
 
-    func testExtensionAppliedToCorrectPhaseAtBoundary() {
+    @Test func extensionAppliedToCorrectPhaseAtBoundary() {
         let r = runner(for: tabataPlan(), elapsed: 300)
-        XCTAssertEqual(r.phaseKind, .work)
+        #expect(r.phaseKind == .work)
         r.addTime(60)
-        XCTAssertEqual(r.phaseKind, .work)
-        XCTAssertEqual(r.phaseRemaining, 80)
+        #expect(r.phaseKind == .work)
+        #expect(r.phaseRemaining == 80)
     }
 
-    func testAddTimeIgnoredWhenComplete() {
+    @Test func addTimeIgnoredWhenComplete() {
         let plan = tabataPlan()
         let r = runner(for: plan, elapsed: plan.totalDuration + 10)
-        XCTAssertTrue(r.isComplete)
+        #expect(r.isComplete)
         r.addTime(60)
-        XCTAssertTrue(r.isComplete)
+        #expect(r.isComplete)
     }
 
-    func testRestartClearsExtensions() {
+    @Test func restartClearsExtensions() {
         let r = runner(for: tabataPlan(), elapsed: 290)
         r.addTime(60)
-        XCTAssertEqual(r.phaseRemaining, 70)
+        #expect(r.phaseRemaining == 70)
         r.restart()
         r.now = r.clock.startedAt
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 300)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 300)
     }
 
-    func testExtensionFromMidWarmupCountsDownCorrectly() {
+    @Test func extensionFromMidWarmupCountsDownCorrectly() {
         let r = runner(for: tabataPlan(), elapsed: 150)
         r.addTime(60)
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 210)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 210)
         r.now = r.clock.startedAt.addingTimeInterval(160)
-        XCTAssertEqual(r.phaseKind, .warmup)
-        XCTAssertEqual(r.phaseRemaining, 200)
+        #expect(r.phaseKind == .warmup)
+        #expect(r.phaseRemaining == 200)
     }
 }

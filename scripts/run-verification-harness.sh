@@ -20,7 +20,7 @@ if [[ "${1:-}" == "--self-test" ]]; then
   tmp="$(mktemp -d "${TMPDIR:-/tmp}/cladiron-harness-mutation.XXXXXX")"
   trap 'rm -rf "$tmp"' EXIT
   rsync -a --exclude .build CadenceCore/ "$tmp/CadenceCore/"
-  target="$tmp/CadenceCore/Sources/CadenceFeatures/WatchHeartRateReceiver.swift"
+  target="$tmp/CadenceCore/Sources/CadencePhoneFeatures/WatchHeartRateReceiver.swift"
   sed -i.bak 's/guard let request = expectedRequestID(message.phoneWorkoutSessionID) else { return reject(.sessionMismatch) }/let request = expectedRequestID(message.phoneWorkoutSessionID) ?? message.watchRequestID/' "$target"
   if cmp -s "$target" "$target.bak"; then echo "self-test: mutation did not apply" >&2; exit 2; fi
   if run "$tmp/CadenceCore" >/dev/null 2>&1; then

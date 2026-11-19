@@ -29,7 +29,7 @@ final class HealthBackupCoordinator {
 
     init(health: HealthDataProviding, fileURL: URL? = nil) {
         self.health = health
-        let url = fileURL ?? Self.defaultFileURL(isUITest: ProcessInfo.processInfo.arguments.contains("-uiTest"))
+        let url = fileURL ?? Self.defaultFileURL()
         self.outbox = HealthOutboxStore(fileURL: url)
     }
 
@@ -136,10 +136,7 @@ final class HealthBackupCoordinator {
         HealthBackupDrainReport(remaining: try await outbox.snapshot().items.count)
     }
 
-    private static func defaultFileURL(isUITest: Bool) -> URL {
-        if isUITest {
-            return FileManager.default.temporaryDirectory.appendingPathComponent("cladiron-health-outbox.json")
-        }
+    private static func defaultFileURL() -> URL {
         let support = FileManager.default.urls(for: .applicationSupportDirectory,
                                                in: .userDomainMask).first
             ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!

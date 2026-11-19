@@ -1,52 +1,62 @@
-import XCTest
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class StrengthPauseProvenanceTests: XCTestCase {
-    func testUserPauseResume() {
+struct StrengthPauseProvenanceTests {
+    @Test func userPauseResume() {
         var p = StrengthPauseProvenance()
-        XCTAssertTrue(p.userPause(.userControl))
-        XCTAssertEqual(p.origin, .userControl)
-        XCTAssertEqual(p.healthKitTransition(to: .paused), .none)   // echo of our own pause
-        XCTAssertEqual(p.origin, .userControl)
-        XCTAssertEqual(p.healthKitTransition(to: .running), .none)  // platform can't resume a user pause
-        XCTAssertEqual(p.origin, .userControl)
+        let paused = p.userPause(.userControl)
+        #expect(paused)
+        #expect(p.origin == .userControl)
+        let echoPause = p.healthKitTransition(to: .paused)
+        #expect(echoPause == .none)   // echo of our own pause
+        #expect(p.origin == .userControl)
+        let cantResume = p.healthKitTransition(to: .running)
+        #expect(cantResume == .none)  // platform can't resume a user pause
+        #expect(p.origin == .userControl)
         p.userResume()
-        XCTAssertNil(p.origin)
+        #expect(p.origin == nil)
     }
 
 
-    func testNonUserOriginCannotBeSetAsUserPause() {
+    @Test func nonUserOriginCannotBeSetAsUserPause() {
         var p = StrengthPauseProvenance()
-        XCTAssertFalse(p.userPause(.healthKitExternal))
-        XCTAssertFalse(p.userPause(.recovery))
-        XCTAssertNil(p.origin)
+        let hkExternal = p.userPause(.healthKitExternal)
+        #expect(!hkExternal)
+        let recovery = p.userPause(.recovery)
+        #expect(!recovery)
+        #expect(p.origin == nil)
     }
 
-    func testExternalPausedIsRecordedOnceAndDistinctCopy() {
+    @Test func externalPausedIsRecordedOnceAndDistinctCopy() {
         var p = StrengthPauseProvenance()
-        XCTAssertEqual(p.healthKitTransition(to: .paused), .pause)
-        XCTAssertEqual(p.healthKitTransition(to: .paused), .none)   // repeated callback
-        XCTAssertEqual(p.origin, .healthKitExternal)
-        XCTAssertTrue(p.statusCopy!.contains("not by you"))
-        XCTAssertEqual(p.healthKitTransition(to: .running), .resume)
-        XCTAssertNil(p.origin)
-        XCTAssertEqual(p.healthKitTransition(to: .running), .none)  // repeated
+        let first = p.healthKitTransition(to: .paused)
+        #expect(first == .pause)
+        let repeated = p.healthKitTransition(to: .paused)
+        #expect(repeated == .none)   // repeated callback
+        #expect(p.origin == .healthKitExternal)
+        #expect(p.statusCopy!.contains("not by you"))
+        let resumed = p.healthKitTransition(to: .running)
+        #expect(resumed == .resume)
+        #expect(p.origin == nil)
+        let repeatedResume = p.healthKitTransition(to: .running)
+        #expect(repeatedResume == .none)  // repeated
     }
 
-    func testRecoveredPausedNeedsExplicitResume() {
+    @Test func recoveredPausedNeedsExplicitResume() {
         var p = StrengthPauseProvenance()
         p.recoveredPaused()
-        XCTAssertEqual(p.origin, .recovery)
-        XCTAssertTrue(p.statusCopy!.contains("Restored"))
+        #expect(p.origin == .recovery)
+        #expect(p.statusCopy!.contains("Restored"))
         p.userResume()
-        XCTAssertNil(p.origin)
+        #expect(p.origin == nil)
     }
 
-    func testTerminalClears() {
+    @Test func terminalClears() {
         var p = StrengthPauseProvenance()
         _ = p.userPause(.userControl)
         _ = p.healthKitTransition(to: .terminal)
-        XCTAssertNil(p.origin)
-        XCTAssertNil(p.statusCopy)
+        #expect(p.origin == nil)
+        #expect(p.statusCopy == nil)
     }
 }

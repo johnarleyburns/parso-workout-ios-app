@@ -1,4 +1,6 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -6,8 +8,8 @@ import SwiftData
 /// leave the store file present and non-empty; a missing-file failure is easier
 /// to diagnose than a later empty-history symptom.
 @MainActor
-final class StoreFilePersistenceSafetyTests: XCTestCase {
-    func testReopeningStoreLeavesPersistentFileIntact() throws {
+struct StoreFilePersistenceSafetyTests {
+    @Test func reopeningStoreLeavesPersistentFileIntact() throws {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("CadenceStoreFileSafety-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -23,18 +25,19 @@ final class StoreFilePersistenceSafetyTests: XCTestCase {
             try context.save()
         }
 
-        let sizeBefore = try XCTUnwrap(
+        let sizeBefore = try #require(
             FileManager.default.attributesOfItem(atPath: storeURL.path)[.size] as? NSNumber).int64Value
-        XCTAssertGreaterThan(sizeBefore, 0)
+        #expect(sizeBefore > 0)
 
         _ = try CadenceStore.makeModelContainer(inMemory: false,
                                                 cloudKitEnabled: false,
                                                 storeURL: storeURL)
 
-        XCTAssertTrue(FileManager.default.fileExists(atPath: storeURL.path),
+        #expect(FileManager.default.fileExists(atPath: storeURL.path),
                       "Opening an existing store must never remove its primary file")
-        let sizeAfter = try XCTUnwrap(
+        let sizeAfter = try #require(
             FileManager.default.attributesOfItem(atPath: storeURL.path)[.size] as? NSNumber).int64Value
-        XCTAssertGreaterThan(sizeAfter, 0)
+        #expect(sizeAfter > 0)
     }
 }
+#endif

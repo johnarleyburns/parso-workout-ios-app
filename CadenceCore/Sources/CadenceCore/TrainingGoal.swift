@@ -13,17 +13,47 @@ public enum TrainingGoal: String, CaseIterable, Codable, Sendable, Identifiable 
     public var displayName: String {
         switch self {
         case .strength:    return "Strength"
-        case .hypertrophy: return String(localized: "Hypertrophy", bundle: .module)
-        case .endurance:   return String(localized: "Endurance", bundle: .module)
+        case .hypertrophy: return {
+            #if os(Linux)
+            "Hypertrophy"
+            #else
+            String(localized: "Hypertrophy", bundle: .module)
+            #endif
+        }()
+        case .endurance:   return {
+            #if os(Linux)
+            "Endurance"
+            #else
+            String(localized: "Endurance", bundle: .module)
+            #endif
+        }()
         }
     }
 
     /// One-line description of what the goal trains for (used in pickers/onboarding).
     public var summary: String {
         switch self {
-        case .strength:    return String(localized: "Lift heavier — maximal force in low reps.", bundle: .module)
-        case .hypertrophy: return String(localized: "Build muscle — moderate reps near failure.", bundle: .module)
-        case .endurance:   return String(localized: "Last longer — higher reps, lighter loads.", bundle: .module)
+        case .strength:    return {
+            #if os(Linux)
+            "Lift heavier — maximal force in low reps."
+            #else
+            String(localized: "Lift heavier — maximal force in low reps.", bundle: .module)
+            #endif
+        }()
+        case .hypertrophy: return {
+            #if os(Linux)
+            "Build muscle — moderate reps near failure."
+            #else
+            String(localized: "Build muscle — moderate reps near failure.", bundle: .module)
+            #endif
+        }()
+        case .endurance:   return {
+            #if os(Linux)
+            "Last longer — higher reps, lighter loads."
+            #else
+            String(localized: "Last longer — higher reps, lighter loads.", bundle: .module)
+            #endif
+        }()
         }
     }
 

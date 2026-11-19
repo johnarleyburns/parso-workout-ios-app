@@ -2,6 +2,7 @@ import SwiftUI
 import WatchKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 // Watch redesign (plans/watch-redesign/2026-09-30/DESIGN.md §3): the Cladiron watch kit — the same
 // component vocabulary as the Platterhead/Voxglass Watch Listening Kit, tuned for training.

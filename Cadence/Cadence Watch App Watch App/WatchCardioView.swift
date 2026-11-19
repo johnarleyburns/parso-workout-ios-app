@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 I2 — steady cardio: a big-number stack (distance and pace when there is GPS,
 /// otherwise time), heart rate with its zone and the elapsed time, and the plan's target

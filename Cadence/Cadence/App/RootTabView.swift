@@ -3,6 +3,8 @@ import Combine
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct RootTabView: View {
     enum Tab: Hashable { case home, strength, cardio, progress, settings, search }
@@ -13,10 +15,6 @@ struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .home
     @State private var watchSyncToast: WatchSyncToast?
-    /// UI-test seam backing the `-uiTestWatchStop` counter: `AppModel` writes
-    /// each `stopWatchWorkout()` call to this UserDefaults key, and the hidden
-    /// element below surfaces the running total to the iPhone smoke test.
-    @AppStorage("uitest.watchStopCount") private var uiTestWatchStopCount = 0
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -46,13 +44,6 @@ struct RootTabView: View {
                 .zIndex(20)
             }
 
-            if model.isUITestMode {
-                Text("\(uiTestWatchStopCount)")
-                    .accessibilityIdentifier("uitest.watchStopCount")
-                    .frame(width: 1, height: 1)
-                    .opacity(0)
-                    .allowsHitTesting(false)
-            }
         }
         .environment(\.rootTabSelection, $selection)
         // The live workout + its finish summary share ONE root-level cover

@@ -2,7 +2,9 @@ import Foundation
 import Testing
 import CadenceCore
 import CadenceFixtures
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 @MainActor
 struct CardioImportCoordinatorTests {

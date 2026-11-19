@@ -1,27 +1,29 @@
-import XCTest
+import Testing
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class PartnerRowAccessibilityTests: XCTestCase {
-    func testUnselectedRowSemantics() {
+struct PartnerRowAccessibilityTests {
+    @Test func unselectedRowSemantics() {
         let row = PartnerRowAccessibility(name: "Alex", isSelected: false)
-        XCTAssertEqual(row.label, "Alex")
-        XCTAssertEqual(row.value, "Not selected")
-        XCTAssertFalse(row.hasSelectedTrait)
-        XCTAssertTrue(row.hint.contains("add Alex"))
+        #expect(row.label == "Alex")
+        #expect(row.value == "Not selected")
+        #expect(!row.hasSelectedTrait)
+        #expect(row.hint.contains("add Alex"))
     }
 
-    func testSelectedRowSemantics() {
+    @Test func selectedRowSemantics() {
         let row = PartnerRowAccessibility(name: "Alex", isSelected: true)
-        XCTAssertEqual(row.value, "Selected")
-        XCTAssertTrue(row.hasSelectedTrait)
-        XCTAssertTrue(row.hint.contains("remove Alex"))
+        #expect(row.value == "Selected")
+        #expect(row.hasSelectedTrait)
+        #expect(row.hint.contains("remove Alex"))
     }
 
-    func testActivationTogglesTwiceAndIdentifierIsStable() {
+    @Test func activationTogglesTwiceAndIdentifierIsStable() {
         let row = PartnerRowAccessibility(name: "Alex", isSelected: false)
-        XCTAssertTrue(row.toggled.isSelected)
-        XCTAssertEqual(row.toggled.toggled, row)
-        XCTAssertEqual(row.identifier, "editor.partner.Alex")
-        XCTAssertEqual(row.toggled.identifier, row.identifier)
+        #expect(row.toggled.isSelected)
+        #expect(row.toggled.toggled == row)
+        #expect(row.identifier == "editor.partner.Alex")
+        #expect(row.toggled.identifier == row.identifier)
     }
 }

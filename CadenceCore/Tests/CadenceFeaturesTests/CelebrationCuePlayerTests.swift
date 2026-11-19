@@ -1,64 +1,66 @@
-import XCTest
+import Testing
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Pins the testable seam that the app's celebration-firing call sites
 /// (SessionView+SetActions, InlineSetEditorView, IntervalCues.completed(),
 /// RecordAssessmentView) are wired through `CuePolicy.cue(for:)` instead of
 /// calling `Haptics` directly. `CelebrationCuePlayer` is the thin wrapper that
 /// makes that policy-consultation step unit-testable without UIKit/AVFoundation.
-final class CelebrationCuePlayerTests: XCTestCase {
-    func testOffSuppressesPersonalBestCelebrationEntirely() {
+struct CelebrationCuePlayerTests {
+    @Test func offSuppressesPersonalBestCelebrationEntirely() {
         let player = CelebrationCuePlayer(celebrationStyle: .off)
-        XCTAssertNil(player.decide(for: .loggedSet(isPersonalBest: true)))
+        #expect(player.decide(for: .loggedSet(isPersonalBest: true)) == nil)
     }
 
-    func testOffSuppressesSetLoggedCelebration() {
+    @Test func offSuppressesSetLoggedCelebration() {
         let player = CelebrationCuePlayer(celebrationStyle: .off)
-        XCTAssertNil(player.decide(for: .loggedSet(isPersonalBest: false)))
+        #expect(player.decide(for: .loggedSet(isPersonalBest: false)) == nil)
     }
 
-    func testOffSuppressesDayCompletedCelebration() {
+    @Test func offSuppressesDayCompletedCelebration() {
         let player = CelebrationCuePlayer(celebrationStyle: .off)
-        XCTAssertNil(player.decide(for: .dayCompleted))
+        #expect(player.decide(for: .dayCompleted) == nil)
     }
 
-    func testOffStillFiresFunctionalRestCue() {
+    @Test func offStillFiresFunctionalRestCue() {
         let player = CelebrationCuePlayer(celebrationStyle: .off)
-        XCTAssertEqual(player.decide(for: .restFinished)?.kind, .restDone)
+        #expect(player.decide(for: .restFinished)?.kind == .restDone)
     }
 
-    func testQuietFiresHapticWithoutSoundForDayCompleted() {
+    @Test func quietFiresHapticWithoutSoundForDayCompleted() {
         let player = CelebrationCuePlayer(celebrationStyle: .quiet)
         let decision = player.decide(for: .dayCompleted)
-        XCTAssertEqual(decision?.kind, .dayClosed)
-        XCTAssertEqual(decision?.playsSound, false, "Quiet should keep the haptic but drop the sound/speech accompaniment")
+        #expect(decision?.kind == .dayClosed)
+        #expect(decision?.playsSound == false, "Quiet should keep the haptic but drop the sound/speech accompaniment")
     }
 
-    func testFullFiresHapticAndSoundForDayCompleted() {
+    @Test func fullFiresHapticAndSoundForDayCompleted() {
         let player = CelebrationCuePlayer(celebrationStyle: .full)
         let decision = player.decide(for: .dayCompleted)
-        XCTAssertEqual(decision?.kind, .dayClosed)
-        XCTAssertEqual(decision?.playsSound, true)
+        #expect(decision?.kind == .dayClosed)
+        #expect(decision?.playsSound == true)
     }
 
-    func testQuietStillFiresPersonalBestHaptic() {
+    @Test func quietStillFiresPersonalBestHaptic() {
         let player = CelebrationCuePlayer(celebrationStyle: .quiet)
-        XCTAssertEqual(player.decide(for: .loggedSet(isPersonalBest: true))?.kind, .personalBest)
+        #expect(player.decide(for: .loggedSet(isPersonalBest: true))?.kind == .personalBest)
     }
 
-    func testFunctionalCuesAlwaysFireRegardlessOfCelebrationStyle() {
+    @Test func functionalCuesAlwaysFireRegardlessOfCelebrationStyle() {
         for style in CelebrationStyle.allCases {
             let player = CelebrationCuePlayer(celebrationStyle: style)
-            XCTAssertEqual(player.decide(for: .restFinished)?.kind, .restDone, "style: \(style)")
-            XCTAssertEqual(player.decide(for: .intervalWork)?.kind, .intervalWork, "style: \(style)")
-            XCTAssertEqual(player.decide(for: .intervalRest)?.kind, .intervalRest, "style: \(style)")
+            #expect(player.decide(for: .restFinished)?.kind == .restDone, "style: \(style)")
+            #expect(player.decide(for: .intervalWork)?.kind == .intervalWork, "style: \(style)")
+            #expect(player.decide(for: .intervalRest)?.kind == .intervalRest, "style: \(style)")
         }
     }
 
-    func testInitFromExistingPolicyMatchesConvenienceInit() {
+    @Test func initFromExistingPolicyMatchesConvenienceInit() {
         let policy = CuePolicy(celebrationStyle: .quiet)
         let fromPolicy = CelebrationCuePlayer(policy: policy)
         let fromStyle = CelebrationCuePlayer(celebrationStyle: .quiet)
-        XCTAssertEqual(fromPolicy.decide(for: .dayCompleted), fromStyle.decide(for: .dayCompleted))
+        #expect(fromPolicy.decide(for: .dayCompleted) == fromStyle.decide(for: .dayCompleted))
     }
 }

@@ -1,4 +1,6 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -7,7 +9,7 @@ import SwiftData
 /// 5 strength + 6 cardio days/week, two-a-days on, fixed Sunday rest. The real
 /// export is personal health data and stays out of the repo (git-ignored); these
 /// fixtures reproduce its sessions synthetically, including real avg/max HR.
-final class SameDayLoadRegressionTests: XCTestCase {
+struct SameDayLoadRegressionTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -52,7 +54,7 @@ final class SameDayLoadRegressionTests: XCTestCase {
 
     /// (a)+(b) After same-day HIIT + boxing, the primary must not be another
     /// aerobic session ("Easy cycle"), and strength must remain selectable.
-    func testHIITPlusBoxingDayDoesNotPrescribeMoreCardio() throws {
+    @Test func hIITPlusBoxingDayDoesNotPrescribeMoreCardio() throws {
         let ctx = try makeContext()
         let events = try todayHIITPlusBoxing(ctx)
         let facts = CoachFacts.make(from: events, goal: .hypertrophy,
@@ -60,40 +62,41 @@ final class SameDayLoadRegressionTests: XCTestCase {
 
         let decision = CoachDecisionEngine.run(facts, schedulePreferences: exportPrefs)
 
-        XCTAssertFalse(decision.primary.isAerobic,
+        #expect(!decision.primary.isAerobic,
                        "After HIIT + boxing today the coach must not rank more cardio first. Got: \(decision.primary.id)")
         // (c) Strength is never suppressed by same-day cardio: with 0/5 strength
         // days this week, strength should be the primary.
-        XCTAssertEqual(decision.primary.kind, .strength,
+        #expect(decision.primary.kind == .strength,
                        "Strength (0/5 this week) should outrank redundant cardio. Got: \(decision.primary.kind)")
     }
 
     /// (d) The free "already trained hard today" insight surfaces with a
     /// resolvable citation (HARD RULE).
-    func testSameDayLoadInsightSurfacesWithCitation() throws {
+    @Test func sameDayLoadInsightSurfacesWithCitation() throws {
         let ctx = try makeContext()
         let events = try todayHIITPlusBoxing(ctx)
         let facts = CoachFacts.make(from: events, goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
 
         let insight = SameDayLoadInsight.insight(facts: facts)
-        XCTAssertNotNil(insight)
-        XCTAssertTrue(insight?.message.contains("HIIT") ?? false, "Names the modalities")
-        XCTAssertTrue(insight?.message.contains("Boxing") ?? false, "Names the modalities")
-        XCTAssertTrue(insight?.message.contains("2 intense sessions") ?? false)
+        #expect(insight != nil)
+        #expect(insight?.message.contains("HIIT") ?? false, "Names the modalities")
+        #expect(insight?.message.contains("Boxing") ?? false, "Names the modalities")
+        #expect(insight?.message.contains("2 intense sessions") ?? false)
         // Citation must resolve through the registry (never a raw id).
         let resolved = CitationRegistry.citation(forId: insight?.citation.id ?? "")
-        XCTAssertNotNil(resolved)
+        #expect(resolved != nil)
     }
 
     /// No intense (or repeated) cardio today → no insight; the coach stays quiet.
-    func testNoInsightWithoutSameDayIntenseLoad() throws {
+    @Test func noInsightWithoutSameDayIntenseLoad() throws {
         let ctx = try makeContext()
         let walk = try cardioEvent(ctx, type: .walk,
                                    start: testNow.addingTimeInterval(-4 * 3600), minutes: 40,
                                    avgHR: 96, maxHR: 104)
         let facts = CoachFacts.make(from: [walk], goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
-        XCTAssertNil(SameDayLoadInsight.insight(facts: facts))
+        #expect(SameDayLoadInsight.insight(facts: facts) == nil)
     }
 }
+#endif

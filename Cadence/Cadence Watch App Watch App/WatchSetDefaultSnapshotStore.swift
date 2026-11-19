@@ -1,5 +1,6 @@
 import Foundation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Most recent valid phone set-default snapshot, kept across relaunch and iPhone absence.
 /// Nothing reads it yet; it is deliberately outside SwiftData and triggers no UI refresh.

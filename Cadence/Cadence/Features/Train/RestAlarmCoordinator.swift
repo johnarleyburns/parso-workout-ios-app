@@ -1,4 +1,5 @@
 import Foundation
+import CadencePhoneFeatures
 
 #if canImport(AlarmKit)
 import AlarmKit

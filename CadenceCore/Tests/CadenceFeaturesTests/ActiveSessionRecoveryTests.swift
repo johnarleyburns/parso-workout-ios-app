@@ -1,7 +1,11 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Launch-blockers Phase 1e: crash/upgrade recovery. A workout is NEVER lost —
 /// the candidate is adopted paused with the dead gap excluded from elapsed,
@@ -9,7 +13,7 @@ import CadenceFeatures
 /// session after this model-level recovery step; adoption itself stays neutral
 /// so Home's explicit Resume action remains safe to use.
 @MainActor
-final class ActiveSessionRecoveryTests: XCTestCase {
+struct ActiveSessionRecoveryTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
@@ -22,15 +26,15 @@ final class ActiveSessionRecoveryTests: XCTestCase {
         return d
     }
 
-    func testPicksMostRecentUnfinished() throws {
+    @Test func picksMostRecentUnfinished() throws {
         let ctx = try makeContext()
         let older = WorkoutSession(title: "A", date: Date(timeIntervalSince1970: 1_000))
         let newer = WorkoutSession(title: "B", date: Date(timeIntervalSince1970: 2_000))
         ctx.insert(older); ctx.insert(newer)
-        XCTAssertEqual(ActiveSessionRecovery.candidate(in: [older, newer])?.id, newer.id)
+        #expect(ActiveSessionRecovery.candidate(in: [older, newer])?.id == newer.id)
     }
 
-    func testIgnoresEndedDeletedAndLogged() throws {
+    @Test func ignoresEndedDeletedAndLogged() throws {
         let ctx = try makeContext()
         let ended = WorkoutSession(title: "Ended", date: Date())
         ended.endedAt = Date()
@@ -38,10 +42,10 @@ final class ActiveSessionRecoveryTests: XCTestCase {
         deleted.deletedAt = Date()
         let logged = WorkoutSession(title: "Logged", date: Date(), isLogged: true)
         ctx.insert(ended); ctx.insert(deleted); ctx.insert(logged)
-        XCTAssertNil(ActiveSessionRecovery.candidate(in: [ended, deleted, logged]))
+        #expect(ActiveSessionRecovery.candidate(in: [ended, deleted, logged]) == nil)
     }
 
-    func testAdoptFoldsDeadGapAsPausedSpan() throws {
+    @Test func adoptFoldsDeadGapAsPausedSpan() throws {
         let ctx = try makeContext()
         let start = Date(timeIntervalSince1970: 1_000_000)
         let session = WorkoutSession(title: "Crash", date: start)
@@ -57,38 +61,38 @@ final class ActiveSessionRecoveryTests: XCTestCase {
         m.adopt(session, heartbeat: heartbeat, now: now)
 
         // Elapsed excludes [lastAlive, now]: still exactly 10 min.
-        XCTAssertEqual(m.clock.elapsed(now: now), 600, accuracy: 0.001)
+        #expect(abs(m.clock.elapsed(now: now) - 600) <= 0.001)
         // And the gap stays excluded while paused.
-        XCTAssertEqual(m.clock.elapsed(now: now.addingTimeInterval(300)), 600, accuracy: 0.001)
+        #expect(abs(m.clock.elapsed(now: now.addingTimeInterval(300)) - 600) <= 0.001)
         // Resuming grows elapsed again from 10 min.
         m.resume(now: now.addingTimeInterval(300))
-        XCTAssertEqual(m.clock.elapsed(now: now.addingTimeInterval(360)), 660, accuracy: 0.001)
+        #expect(abs(m.clock.elapsed(now: now.addingTimeInterval(360)) - 660) <= 0.001)
     }
 
-    func testAdoptStartsPausedNotPresented() throws {
+    @Test func adoptStartsPausedNotPresented() throws {
         let ctx = try makeContext()
         let session = WorkoutSession(title: "Crash", date: Date().addingTimeInterval(-120))
         ctx.insert(session)
         let m = ActiveWorkoutModel(defaults: testDefaults())
         m.adopt(session, heartbeat: nil, now: Date())
-        XCTAssertTrue(m.isActive)
-        XCTAssertTrue(m.isPaused)
-        XCTAssertEqual(m.pauseOrigin, .auto)
-        XCTAssertNil(m.presentedSurface, "recovery must NOT auto-present the workout screen")
+        #expect(m.isActive)
+        #expect(m.isPaused)
+        #expect(m.pauseOrigin == .auto)
+        #expect(m.presentedSurface == nil, "recovery must NOT auto-present the workout screen")
     }
 
-    func testStaleSessionStillRecoverable() throws {
+    @Test func staleSessionStillRecoverable() throws {
         let ctx = try makeContext()
         let weekOld = WorkoutSession(title: "Stale", date: Date().addingTimeInterval(-7 * 86_400))
         ctx.insert(weekOld)
-        XCTAssertEqual(ActiveSessionRecovery.candidate(in: [weekOld])?.id, weekOld.id,
+        #expect(ActiveSessionRecovery.candidate(in: [weekOld])?.id == weekOld.id,
                        "a stale candidate is adopted, never discarded")
         let m = ActiveWorkoutModel(defaults: testDefaults())
         m.adopt(weekOld, heartbeat: nil, now: Date())
-        XCTAssertTrue(m.isActive)
+        #expect(m.isActive)
         // Without a matching heartbeat nothing is credited — the week-long gap
         // never counts as training time.
-        XCTAssertEqual(m.clock.elapsed(now: Date()), 0, accuracy: 1)
+        #expect(abs(m.clock.elapsed(now: Date()) - 0) <= 1)
     }
 
     // MARK: - Phase A (field-test-fixes): isResumable invariant
@@ -98,7 +102,7 @@ final class ActiveSessionRecoveryTests: XCTestCase {
     /// must agree. Prior to Phase A they diverged: a session with `endedAt: nil` but
     /// `isLogged: true` would block the coach (via TrainingEvent.completion == .inProgress)
     /// but produce no resume card because `candidate` filters `isLogged`.
-    func testIsResumableMatchesCoachingInProgress() throws {
+    @Test func isResumableMatchesCoachingInProgress() throws {
         let ctx = try makeContext()
 
         let inProgress = WorkoutSession(title: "In Progress", date: Date())
@@ -123,33 +127,34 @@ final class ActiveSessionRecoveryTests: XCTestCase {
         // But TrainingEvent.from produces .inProgress for ANY endedAt == nil session,
         // including strandedLogged. Post-fix: isResumable is the single predicate.
         let candidate = ActiveSessionRecovery.candidate(in: [inProgress, strandedLogged, endedLogged, completed])
-        XCTAssertEqual(candidate?.id, inProgress.id, "only the truly in-progress session is resumable")
+        #expect(candidate?.id == inProgress.id, "only the truly in-progress session is resumable")
 
         // strandedLogged: TrainingEvent reports .inProgress (endedAt nil), but should be
         // neither resumable nor coaching-relevant after Phase A.
         let strandedEvent = TrainingEvent.from(session: strandedLogged)
-        XCTAssertNotNil(strandedEvent)
-        XCTAssertEqual(strandedEvent?.completion, .inProgress,
+        #expect(strandedEvent != nil)
+        #expect(strandedEvent?.completion == .inProgress,
                        "documenting: endedAt nil → .inProgress regardless of isLogged (legacy bridge)")
 
         // inProgress event: should be recognized as resumable AND coaching in-progress.
         let inProgressEvent = TrainingEvent.from(session: inProgress)
-        XCTAssertNotNil(inProgressEvent)
-        XCTAssertEqual(inProgressEvent?.completion, .inProgress)
+        #expect(inProgressEvent != nil)
+        #expect(inProgressEvent?.completion == .inProgress)
 
         // The invariant: isResumable is the one predicate both systems use.
-        XCTAssertTrue(inProgress.isResumable, "in-progress session is resumable")
-        XCTAssertFalse(strandedLogged.isResumable, "logged session without endedAt is NOT resumable")
-        XCTAssertFalse(endedLogged.isResumable, "ended+logged session is NOT resumable")
-        XCTAssertFalse(completed.isResumable, "completed session is NOT resumable")
+        #expect(inProgress.isResumable, "in-progress session is resumable")
+        #expect(!strandedLogged.isResumable, "logged session without endedAt is NOT resumable")
+        #expect(!endedLogged.isResumable, "ended+logged session is NOT resumable")
+        #expect(!completed.isResumable, "completed session is NOT resumable")
     }
 
-    func testMismatchedHeartbeatCreditsNothing() throws {
+    @Test func mismatchedHeartbeatCreditsNothing() throws {
         let ctx = try makeContext()
         let session = WorkoutSession(title: "Mismatch", date: Date().addingTimeInterval(-1200))
         ctx.insert(session)
         let other = WorkoutHeartbeat(sessionID: UUID(), lastAlive: Date(), elapsed: 900, isPaused: false)
-        XCTAssertEqual(ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: other), 0)
-        XCTAssertEqual(ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: nil), 0)
+        #expect(ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: other) == 0)
+        #expect(ActiveSessionRecovery.adoptedElapsed(sessionID: session.id, heartbeat: nil) == 0)
     }
 }
+#endif

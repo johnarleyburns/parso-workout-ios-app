@@ -1,4 +1,6 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
@@ -6,7 +8,7 @@ import SwiftData
 /// targets. With the 2026-07-14 export's preferences (5 strength + 6 cardio
 /// days/week, two-a-days, fixed Sunday rest) the generated week must contain
 /// exactly what was asked for: recovery is advice, never a silent day-drop.
-final class WeeklyPlanTargetsTests: XCTestCase {
+struct WeeklyPlanTargetsTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -51,7 +53,7 @@ final class WeeklyPlanTargetsTests: XCTestCase {
 
     /// The headline regression: 5 strength + 6 cardio days next week, Sunday is
     /// the only rest day, and no forced Recovery day anywhere.
-    func testWeekIsDrivenByVolumeAndMinutesNotDayCounts() throws {
+    @Test func weekIsDrivenByVolumeAndMinutesNotDayCounts() throws {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: exportPrefs)
@@ -61,25 +63,25 @@ final class WeeklyPlanTargetsTests: XCTestCase {
         let cardioDays = nextWeek.filter { $0.sessions.contains(where: isCardio) }
         // No day quota: strength is planned to reach minimum weekly volume and
         // cardio to reach the actual-minutes guideline.
-        XCTAssertGreaterThanOrEqual(strengthDays.count, 2)
-        XCTAssertLessThan(strengthDays.count, 5)
-        XCTAssertFalse(cardioDays.isEmpty)
-        XCTAssertLessThan(cardioDays.count, 7)
+        #expect(strengthDays.count >= 2)
+        #expect(strengthDays.count < 5)
+        #expect(!cardioDays.isEmpty)
+        #expect(cardioDays.count < 7)
 
         // Sunday is the only rest day; no day is silently converted to Recovery.
         for day in nextWeek {
             if isSunday(day.date) {
-                XCTAssertTrue(day.sessions.allSatisfy { $0.kind == .rest },
+                #expect(day.sessions.allSatisfy { $0.kind == .rest },
                               "Fixed Sunday rest must hold")
             }
         }
-        XCTAssertFalse(plan.futureDays.flatMap(\.sessions).contains { $0.kind == .recovery },
+        #expect(!plan.futureDays.flatMap(\.sessions).contains { $0.kind == .recovery },
                        "The planner never forces a Recovery day")
     }
 
     /// Two-a-days: every non-rest day carries cardio, and the 5 strength days
     /// pair strength AND cardio on the same day.
-    func testTwoADaysPairBothModalitiesWhileNeeded() throws {
+    @Test func twoADaysPairBothModalitiesWhileNeeded() throws {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: exportPrefs)
@@ -87,31 +89,31 @@ final class WeeklyPlanTargetsTests: XCTestCase {
         let twoADayCount = plan.nextWeekDays.filter { day in
             day.sessions.contains { $0.kind == .strength } && day.sessions.contains(where: isCardio)
         }.count
-        XCTAssertGreaterThanOrEqual(twoADayCount, 1, "Strength should pair with cardio while minutes are short")
+        #expect(twoADayCount >= 1, "Strength should pair with cardio while minutes are short")
     }
 
     /// Planned cardio carries a real prescription (duration + target zone).
-    func testPlannedCardioCarriesPrescription() throws {
+    @Test func plannedCardioCarriesPrescription() throws {
         let facts = CoachFacts.make(from: [], goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: exportPrefs)
         let cardio = plan.nextWeekDays.flatMap(\.sessions).filter(isCardio)
-        XCTAssertFalse(cardio.isEmpty)
+        #expect(!cardio.isEmpty)
         for s in cardio {
-            XCTAssertNotNil(s.cardioDurationMinutes, "\(s.id) should carry a duration")
-            XCTAssertNotNil(s.cardioZone, "\(s.id) should carry a target HR zone")
+            #expect(s.cardioDurationMinutes != nil, "\(s.id) should carry a duration")
+            #expect(s.cardioZone != nil, "\(s.id) should carry a target HR zone")
         }
     }
 
     /// A normal athlete week (≤5 consecutive hard days) gets NO lighter-day
     /// nudge; only a genuinely long observed streak (≥6) attaches one — and even
     /// then the day keeps its scheduled sessions.
-    func testLighterRecommendationOnlyAfterLongRealStreak() throws {
+    @Test func lighterRecommendationOnlyAfterLongRealStreak() throws {
         // Normal week: no history → no nudge anywhere.
         let quietFacts = CoachFacts.make(from: [], goal: .hypertrophy,
                                          experience: .intermediate, now: testNow)
         let quietPlan = WeeklyPlan.generate(from: quietFacts, schedulePreferences: exportPrefs)
-        XCTAssertFalse(quietPlan.futureDays.flatMap(\.sessions).contains(where: \.recommendsLighter),
+        #expect(!quietPlan.futureDays.flatMap(\.sessions).contains { $0.recommendsLighter },
                        "A normal week must not be nagged about recovery")
 
         // 6 consecutive genuinely-hard real days ending today → tomorrow carries
@@ -130,14 +132,18 @@ final class WeeklyPlanTargetsTests: XCTestCase {
         let facts = CoachFacts.make(from: events, goal: .hypertrophy,
                                     experience: .intermediate, now: testNow)
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: exportPrefs)
-        guard let tomorrow = plan.tomorrow else { return XCTFail("expected a planned tomorrow") }
+        guard let tomorrow = plan.tomorrow else {
+            Issue.record("expected a planned tomorrow")
+            return
+        }
 
-        XCTAssertTrue(tomorrow.sessions.contains(where: \.recommendsLighter),
+        #expect(tomorrow.sessions.contains { $0.recommendsLighter },
                       "After 6 straight hard days the coach should recommend a lighter day")
-        XCTAssertTrue(tomorrow.sessions.contains { !$0.isRest },
+        #expect(tomorrow.sessions.contains { !$0.isRest },
                       "The recommendation must not replace the scheduled training day")
         let note = tomorrow.sessions.compactMap(\.adviceNote).first
-        XCTAssertNotNil(note)
-        XCTAssertTrue(note?.contains("lighter") ?? false, "Advice should read as a suggestion")
+        #expect(note != nil)
+        #expect(note?.contains("lighter") ?? false, "Advice should read as a suggestion")
     }
 }
+#endif

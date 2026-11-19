@@ -1,11 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Fix 6 (planned strength days expose a concrete exercise list) + Fix 7 (a
 /// high-frequency lifter gets a split week with ~their real number of strength
 /// days on distinct-focus consecutive days). Pure `WeeklyPlan` logic.
-final class WeeklyPlanSplitTests: XCTestCase {
+struct WeeklyPlanSplitTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -35,27 +37,27 @@ final class WeeklyPlanSplitTests: XCTestCase {
 
     // MARK: - Fix 6: concrete exercises on planned strength days
 
-    func testPlannedStrengthDayExposesConcreteExercises() throws {
+    @Test func plannedStrengthDayExposesConcreteExercises() throws {
         let now = testNow
         let facts = CoachFacts.make(from: [], goal: .hypertrophy, experience: .intermediate, now: now)
         let plan = WeeklyPlan.generate(from: facts)
 
         let strengthDays = plan.nextWeekDays.flatMap(\.sessions).filter { $0.kind == .strength }
-        XCTAssertFalse(strengthDays.isEmpty, "next week should plan at least one strength day")
+        #expect(!strengthDays.isEmpty, "next week should plan at least one strength day")
         let withExercises = strengthDays.first { !($0.exercises ?? []).isEmpty }
-        let exercises = try XCTUnwrap(withExercises?.exercises,
+        let exercises = try #require(withExercises?.exercises,
                                       "a planned strength day must carry a concrete exercise list")
-        XCTAssertFalse(exercises.isEmpty)
+        #expect(!exercises.isEmpty)
         for ex in exercises {
-            XCTAssertFalse(ex.name.isEmpty)
-            XCTAssertGreaterThanOrEqual(ex.sets ?? 0, 1, "each exercise should have >= 1 set")
-            XCTAssertNotNil(ex.repLadder, "each exercise should carry a rep ladder")
+            #expect(!ex.name.isEmpty)
+            #expect((ex.sets ?? 0) >= 1, "each exercise should have >= 1 set")
+            #expect(ex.repLadder != nil, "each exercise should carry a rep ladder")
         }
     }
 
     // MARK: - Fix 7: infer frequency from history + split rotation
 
-    func testFiveDayHistoryYieldsAboutFivePlannedStrengthDaysWithSplitFocuses() throws {
+    @Test func fiveDayHistoryYieldsAboutFivePlannedStrengthDaysWithSplitFocuses() throws {
         let ctx = try makeContext()
         let now = testNow
         // 5 strength days in the trailing week, despite the stored preference of 2.
@@ -75,23 +77,23 @@ final class WeeklyPlanSplitTests: XCTestCase {
             day.sessions.contains { $0.kind == .strength }
         }
         // Inferred floor (5) should raise the plan well above the stored preference (2).
-        XCTAssertGreaterThanOrEqual(nextWeekStrengthDays.count, 4,
+        #expect(nextWeekStrengthDays.count >= 4,
             "a 5×/week lifter should get ~5 planned strength days, got \(nextWeekStrengthDays.count)")
 
         // Split focuses should differ across consecutive strength days.
         let focuses = nextWeekStrengthDays
             .sorted { $0.date < $1.date }
             .compactMap { d in d.sessions.first { $0.kind == .strength }?.focus }
-        XCTAssertTrue(focuses.contains(.upper) && focuses.contains(.lower),
+        #expect(focuses.contains(.upper) && focuses.contains(.lower),
                       "a split week should rotate upper/lower focuses, got \(focuses)")
         // No two consecutive strength days share the same focus.
         for i in 1..<focuses.count {
-            XCTAssertNotEqual(focuses[i], focuses[i - 1],
+            #expect(focuses[i] != focuses[i - 1],
                               "consecutive strength days must train different focuses")
         }
     }
 
-    func testConsecutiveSplitStrengthDaysTrainDifferentExercises() throws {
+    @Test func consecutiveSplitStrengthDaysTrainDifferentExercises() throws {
         let ctx = try makeContext()
         let now = testNow
         var events: [TrainingEvent] = []
@@ -109,13 +111,13 @@ final class WeeklyPlanSplitTests: XCTestCase {
         // Upper and lower days should expose different exercise sets.
         let upper = strengthSessions.first { $0.focus == .upper }?.exercises?.map(\.name) ?? []
         let lower = strengthSessions.first { $0.focus == .lower }?.exercises?.map(\.name) ?? []
-        XCTAssertFalse(upper.isEmpty, "upper day should have exercises")
-        XCTAssertFalse(lower.isEmpty, "lower day should have exercises")
-        XCTAssertNotEqual(Set(upper), Set(lower),
+        #expect(!upper.isEmpty, "upper day should have exercises")
+        #expect(!lower.isEmpty, "lower day should have exercises")
+        #expect(Set(upper) != Set(lower),
                           "upper and lower split days must differ in movements")
     }
 
-    func testLowFrequencyHistoryStaysWholeBodyNoSplit() throws {
+    @Test func lowFrequencyHistoryStaysWholeBodyNoSplit() throws {
         let ctx = try makeContext()
         let now = testNow
         // Only 2 strength days in the trailing week → whole-body, no split.
@@ -130,13 +132,13 @@ final class WeeklyPlanSplitTests: XCTestCase {
         let plan = WeeklyPlan.generate(from: facts, schedulePreferences: prefs)
 
         let strengthSessions = plan.nextWeekDays.flatMap(\.sessions).filter { $0.kind == .strength }
-        XCTAssertFalse(strengthSessions.isEmpty)
+        #expect(!strengthSessions.isEmpty)
         // Whole-body plans should not carry upper/lower split focuses.
-        XCTAssertTrue(strengthSessions.allSatisfy { $0.focus == nil || $0.focus == .fullBody },
+        #expect(strengthSessions.allSatisfy { $0.focus == nil || $0.focus == .fullBody },
                       "low-frequency plans should stay whole-body (no split focus)")
     }
 
-    func testWholeBodyModeStillBlocksConsecutiveStrengthDays() throws {
+    @Test func wholeBodyModeStillBlocksConsecutiveStrengthDays() throws {
         let now = testNow
         // Empty history, default prefs → whole-body low-frequency plan.
         let facts = CoachFacts.make(from: [], goal: .strength, experience: .intermediate, now: now)
@@ -151,19 +153,20 @@ final class WeeklyPlanSplitTests: XCTestCase {
         for i in 1..<max(1, strengthDates.count) {
             let gap = Calendar.current.dateComponents([.day],
                         from: strengthDates[i - 1], to: strengthDates[i]).day ?? 0
-            XCTAssertGreaterThanOrEqual(gap, 2,
+            #expect(gap >= 2,
                 "whole-body strength days must not be consecutive, gap was \(gap)")
         }
     }
 
     // MARK: - Fix 7: frequency/split copy resolves its citations (HARD RULE)
 
-    func testSplitScienceCitationsAllResolve() throws {
+    @Test func splitScienceCitationsAllResolve() throws {
         // The planned-day preview cites these IDs for a split strength day; every
         // one must resolve in the registry (no raw/broken IDs shown to the user).
         for id in ["schoenfeld2021", "frequencyMeta", "ramosCampoSplit2024", "parejaBlancoRecovery2020"] {
-            XCTAssertNotNil(CitationRegistry.citation(forId: id),
+            #expect(CitationRegistry.citation(forId: id) != nil,
                             "split-week citation id \(id) must resolve")
         }
     }
 }
+#endif

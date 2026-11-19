@@ -9,6 +9,7 @@ import Testing
 import HealthKit
 import WatchConnectivity
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import CadenceCore
 import SwiftData
 @testable import Cadence_Watch_App_Watch_App
@@ -17,7 +18,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func activationCallbackCanEnterFromWatchConnectivityQueue() async {
         let manager = await MainActor.run {
-            WatchWorkoutManager(uiTestMode: true)
+            WatchWorkoutManager(simulatesHealthKit: true)
         }
         let callbackReturned = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [manager] in
@@ -43,7 +44,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     /// which is what broke Live HR, the phone's HR request, and resuming a
     /// strength workout. Entering from a background queue must simply return.
     @Test func workoutSessionStateChangeCanEnterFromHealthKitQueue() async {
-        let manager = await MainActor.run { WatchWorkoutManager(uiTestMode: true) }
+        let manager = await MainActor.run { WatchWorkoutManager(simulatesHealthKit: true) }
         let callbackReturned = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [manager] in
                 let delegate: any HKWorkoutSessionDelegate = manager
@@ -64,7 +65,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     /// The same boundary for the live builder, which delivers HR and distance.
     @Test func builderEventCallbackCanEnterFromHealthKitQueue() async {
-        let manager = await MainActor.run { WatchWorkoutManager(uiTestMode: true) }
+        let manager = await MainActor.run { WatchWorkoutManager(simulatesHealthKit: true) }
         let callbackReturned = await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async { [manager] in
                 let delegate: any HKLiveWorkoutBuilderDelegate = manager
@@ -85,7 +86,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func pollingRefreshContributesToSavedHeartRateAggregate() async {
         await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "run"))
             manager.handleSessionStateChange(.running)
             #expect(manager.isHeartRatePollingForTesting)
@@ -103,7 +104,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func finalizedStrengthHRCaptureSurvivesTeardown() async {
         await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "strength"))
             manager.recordHeartRateSample(110, sampleEnd: Date())
             manager.recordHeartRateSample(120, sampleEnd: Date().addingTimeInterval(1))
@@ -120,7 +121,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func directSummaryCapturesBeforeManagerTeardown() async throws {
         try await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "strength"))
             manager.recordHeartRateSample(118, sampleEnd: Date())
             manager.recordHeartRateSample(132, sampleEnd: Date().addingTimeInterval(5))
@@ -136,7 +137,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func visibleStopEndsPhoneStartedWorkout() async {
         await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "run", phoneRequestID: UUID()))
             #expect(manager.isActive)
             manager.stopWorkout(save: false)
@@ -148,7 +149,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     @Test func delayedQueuedStopCannotEndNewerPhoneWorkout() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             let firstID = UUID()
             let secondID = UUID()
             let start1 = WatchHRCommand(action: .start, requestID: firstID,
@@ -171,7 +172,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     @Test func duplicateImmediateAndQueuedStartIsIdempotent() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             let requestID = UUID()
             let command = WatchHRCommand(action: .start, requestID: requestID,
                                          workoutType: "other", issuedAt: 300)
@@ -191,7 +192,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     @Test func phoneRequestDoesNotTakeOverWatchOnlyWorkout() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "strength"))
             let requestID = UUID()
             let command = WatchHRCommand(action: .start, requestID: requestID,
@@ -217,7 +218,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     @Test func phoneLaunchStartsTheWorkoutAndTheQueuedCommandAdoptsIt() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             manager.startPhoneLaunchedWorkout(configuration: runConfiguration())
             #expect(manager.isActive, "the launch starts the workout before any command arrives")
             #expect(manager.phoneRequestID == nil)
@@ -242,7 +243,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     @Test func commandFirstThenLaunchKeepsOneWorkout() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             let requestID = UUID()
             let command = WatchHRCommand(action: .start, requestID: requestID,
                                          workoutType: "run", issuedAt: 500)
@@ -258,7 +259,7 @@ struct Cadence_Watch_App_Watch_AppTests {
     @Test func launchDuringAWatchWorkoutIsIgnored() async {
         await MainActor.run {
             UserDefaults.standard.removeObject(forKey: "watchHR.lastAppliedCommandAt")
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "strength"))
             manager.startPhoneLaunchedWorkout(configuration: runConfiguration())
             #expect(manager.workoutType == "strength")
@@ -274,7 +275,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func newReadingArmsOneRelayTimerAndStopDisarmsIt() async {
         await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "run", phoneRequestID: UUID()))
             #expect(!manager.isHeartRateRelayArmedForTesting, "nothing runs before the first reading")
             manager.applyPolledHeartRate(120, sampleEnd: Date())
@@ -286,7 +287,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func watchOnlyWorkoutNeverArmsThePhoneRelay() async {
         await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "run"))
             manager.applyPolledHeartRate(120, sampleEnd: Date())
             #expect(!manager.isHeartRateRelayArmedForTesting)
@@ -296,7 +297,7 @@ struct Cadence_Watch_App_Watch_AppTests {
 
     @Test func screenOffPausesTheDisplayRefreshOnly() async {
         await MainActor.run {
-            let manager = WatchWorkoutManager(uiTestMode: true)
+            let manager = WatchWorkoutManager(simulatesHealthKit: true)
             #expect(manager.startWorkout(type: "run", phoneRequestID: UUID()))
             manager.setDisplayActive(true)
             manager.handleSessionStateChange(.running)

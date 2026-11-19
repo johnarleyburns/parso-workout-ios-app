@@ -1,9 +1,11 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// strength-pivot P3 — the engine's computed snapshot from logged history.
-final class TrainingFactsTests: XCTestCase {
+struct TrainingFactsTests {
 
     /// A known Thursday at noon so session dates fall within the Monday-bounded week
     /// regardless of what real day the test runs.
@@ -23,7 +25,7 @@ final class TrainingFactsTests: XCTestCase {
 
     /// Bench with primary chest + secondary triceps/front-delts: primary counts 1.0,
     /// secondary 0.5 each; warmups and zero-rep sets excluded.
-    func testWeeklySetsCountPrimaryFullSecondaryHalf() throws {
+    @Test func weeklySetsCountPrimaryFullSecondaryHalf() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
@@ -36,15 +38,15 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 40, reps: 5, isWarmup: true, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.weeklySetsByGroup[.chest] ?? -1, 4.0, accuracy: 0.001)      // primary
-        XCTAssertEqual(facts.weeklySetsByGroup[.triceps] ?? -1, 2.0, accuracy: 0.001)    // secondary 0.5×4
-        XCTAssertEqual(facts.weeklySetsByGroup[.shoulders] ?? -1, 2.0, accuracy: 0.001)  // front-delts → shoulders
-        XCTAssertEqual(facts.totalWorkingSets, 4)
+        #expect(abs((facts.weeklySetsByGroup[.chest] ?? -1) - 4.0) <= 0.001)      // primary
+        #expect(abs((facts.weeklySetsByGroup[.triceps] ?? -1) - 2.0) <= 0.001)    // secondary 0.5×4
+        #expect(abs((facts.weeklySetsByGroup[.shoulders] ?? -1) - 2.0) <= 0.001)  // front-delts → shoulders
+        #expect(facts.totalWorkingSets == 4)
     }
 
     /// Field test 2026-08-19 #8: the same tally at muscle resolution, because a
     /// body part hides which of its muscles actually got work.
-    func testWeeklySetsAreAlsoTalliedPerMuscle() throws {
+    @Test func weeklySetsAreAlsoTalliedPerMuscle() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
@@ -57,18 +59,18 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: bench, weightKg: 40, reps: 5, isWarmup: true, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.weeklySetsByMuscle["chest"] ?? -1, 4.0, accuracy: 0.001)
-        XCTAssertEqual(facts.weeklySetsByMuscle["triceps"] ?? -1, 2.0, accuracy: 0.001)
+        #expect(abs((facts.weeklySetsByMuscle["chest"] ?? -1) - 4.0) <= 0.001)
+        #expect(abs((facts.weeklySetsByMuscle["triceps"] ?? -1) - 2.0) <= 0.001)
         // "front-delts" canonicalizes onto shoulders: DB++ has no evidence that
         // separates deltoid heads, so the old split was a phantom dimension.
-        XCTAssertEqual(facts.weeklySetsByMuscle["shoulders"] ?? -1, 2.0, accuracy: 0.001)
-        XCTAssertNil(facts.weeklySetsByMuscle["front-delts"])
-        XCTAssertNil(facts.weeklySetsByMuscle["glutes"], "Untrained muscles stay absent")
+        #expect(abs((facts.weeklySetsByMuscle["shoulders"] ?? -1) - 2.0) <= 0.001)
+        #expect(facts.weeklySetsByMuscle["front-delts"] == nil)
+        #expect(facts.weeklySetsByMuscle["glutes"] == nil, "Untrained muscles stay absent")
     }
 
     /// A muscle that is both primary and secondary for the same lift is counted
     /// once, at full credit — never 1.5 sets.
-    func testAMuscleIsNeverCountedTwiceForOneSet() throws {
+    @Test func aMuscleIsNeverCountedTwiceForOneSet() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-86_400), in: ctx)
@@ -78,11 +80,11 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 60, reps: 10, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.weeklySetsByMuscle["glutes"] ?? -1, 1.0, accuracy: 0.001)
-        XCTAssertEqual(facts.weeklySetsByMuscle["hamstrings"] ?? -1, 0.5, accuracy: 0.001)
+        #expect(abs((facts.weeklySetsByMuscle["glutes"] ?? -1) - 1.0) <= 0.001)
+        #expect(abs((facts.weeklySetsByMuscle["hamstrings"] ?? -1) - 0.5) <= 0.001)
     }
 
-    func testStaleSessionsExcludedFromWeeklyWindow() throws {
+    @Test func staleSessionsExcludedFromWeeklyWindow() throws {
         let ctx = try makeContext()
         let now = testNow
         let old = try WorkoutRepository.createSession(date: now.addingTimeInterval(-10 * 86_400), in: ctx)
@@ -90,12 +92,12 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: old, exercise: squat, weightKg: 100, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [old], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertNil(facts.weeklySetsByGroup[.quadriceps])
-        XCTAssertEqual(facts.totalWorkingSets, 0)
-        XCTAssertEqual(facts.allTimeWorkingSets, 1, "all-time should count sets regardless of week window")
+        #expect(facts.weeklySetsByGroup[.quadriceps] == nil)
+        #expect(facts.totalWorkingSets == 0)
+        #expect(facts.allTimeWorkingSets == 1, "all-time should count sets regardless of week window")
     }
 
-    func testAllTimeWorkingSetsCountsAllHistory() throws {
+    @Test func allTimeWorkingSetsCountsAllHistory() throws {
         let ctx = try makeContext()
         let now = testNow
         // One old session (outside this week) + one recent session (inside this week).
@@ -107,11 +109,11 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: recent, exercise: bench, weightKg: 80, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [old, recent], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.totalWorkingSets, 1, "only the recent set counts for the week")
-        XCTAssertEqual(facts.allTimeWorkingSets, 3, "all three sets count all-time")
+        #expect(facts.totalWorkingSets == 1, "only the recent set counts for the week")
+        #expect(facts.allTimeWorkingSets == 3, "all three sets count all-time")
     }
 
-    func testFrequencyCountsDistinctDays() throws {
+    @Test func frequencyCountsDistinctDays() throws {
         let ctx = try makeContext()
         let now = testNow
         let squat = try WorkoutRepository.findOrCreateExercise(named: "Test Squat 2", primaryMuscles: ["quads"], in: ctx)
@@ -121,10 +123,10 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: day3, exercise: squat, weightKg: 100, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [day1, day3], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.frequencyByGroup[.quadriceps], 2)
+        #expect(facts.frequencyByGroup[.quadriceps] == 2)
     }
 
-    func testE1RMTrendRisingAcrossWindows() throws {
+    @Test func e1RMTrendRisingAcrossWindows() throws {
         let ctx = try makeContext()
         let now = testNow
         let dl = try WorkoutRepository.findOrCreateExercise(named: "Test Deadlift", primaryMuscles: ["hamstrings"], in: ctx)
@@ -134,10 +136,10 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: recent, exercise: dl, weightKg: 115, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [prior, recent], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.e1RMTrendByExercise["Test Deadlift"], .rising)
+        #expect(facts.e1RMTrendByExercise["Test Deadlift"] == .rising)
     }
 
-    func testE1RMTrendFlatWithinNoiseBand() throws {
+    @Test func e1RMTrendFlatWithinNoiseBand() throws {
         let ctx = try makeContext()
         let now = testNow
         let ex = try WorkoutRepository.findOrCreateExercise(named: "Test OHP", primaryMuscles: ["delts"], in: ctx)
@@ -147,10 +149,10 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: recent, exercise: ex, weightKg: 60, reps: 5, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [prior, recent], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.e1RMTrendByExercise["Test OHP"], .flat)
+        #expect(facts.e1RMTrendByExercise["Test OHP"] == .flat)
     }
 
-    func testAvgRPEAndDerivedRIR() throws {
+    @Test func avgRPEAndDerivedRIR() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
@@ -159,11 +161,11 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 80, reps: 8, rpe: 9, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.avgRPE ?? -1, 8.0, accuracy: 0.001)
-        XCTAssertEqual(facts.avgRIR ?? -1, 2.0, accuracy: 0.001)
+        #expect(abs((facts.avgRPE ?? -1) - 8.0) <= 0.001)
+        #expect(abs((facts.avgRIR ?? -1) - 2.0) <= 0.001)
     }
 
-    func testIntensityDistributionRelativeToBest() throws {
+    @Test func intensityDistributionRelativeToBest() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 86_400), in: ctx)
@@ -174,12 +176,12 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 40, reps: 3, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.intensity.sampleCount, 2)
-        XCTAssertGreaterThan(facts.intensity.heavy, 0)
-        XCTAssertGreaterThan(facts.intensity.light, 0)
+        #expect(facts.intensity.sampleCount == 2)
+        #expect(facts.intensity.heavy > 0)
+        #expect(facts.intensity.light > 0)
     }
 
-    func testDaysSinceLastSession() throws {
+    @Test func daysSinceLastSession() throws {
         let ctx = try makeContext()
         let now = testNow
         let s = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3 * 86_400), in: ctx)
@@ -187,7 +189,7 @@ final class TrainingFactsTests: XCTestCase {
         _ = try WorkoutRepository.addSet(to: s, exercise: ex, weightKg: 20, reps: 10, in: ctx)
 
         let facts = TrainingFacts.make(sessions: [s], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.daysSinceLastSession, 3)
+        #expect(facts.daysSinceLastSession == 3)
     }
 
     // MARK: - Phase 2: strength deltas
@@ -200,7 +202,7 @@ final class TrainingFactsTests: XCTestCase {
         return s
     }
 
-    func testVolumeTrendByPartRisesWhenSetsIncrease() throws {
+    @Test func volumeTrendByPartRisesWhenSetsIncrease() throws {
         let ctx = try makeContext()
         let now = testNow
         // Prior week: 1 chest set. This week: 3 chest sets → rising.
@@ -213,10 +215,10 @@ final class TrainingFactsTests: XCTestCase {
         for _ in 0..<3 { _ = try WorkoutRepository.addSet(to: cur, exercise: benchC, weightKg: 60, reps: 5, in: ctx) }
 
         let facts = TrainingFacts.make(sessions: [prior, cur], now: now, goal: .hypertrophy, experience: .intermediate)
-        XCTAssertEqual(facts.volumeTrendByGroup[.chest], .rising)
+        #expect(facts.volumeTrendByGroup[.chest] == .rising)
     }
 
-    func testRepeatedDeclineCountsConsecutiveWeeklyDrops() throws {
+    @Test func repeatedDeclineCountsConsecutiveWeeklyDrops() throws {
         let ctx = try makeContext()
         let now = testNow
         // Three distinct weeks of a single lift, e1RM falling each week (reps=1 → e1RM=weight).
@@ -225,10 +227,10 @@ final class TrainingFactsTests: XCTestCase {
         let w0 = try session(ctx, name: "DLift", muscles: ["hamstrings"], weight: 90, reps: 1, daysAgo: 1, now: now)
 
         let facts = TrainingFacts.make(sessions: [w2, w1, w0], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.repeatedDeclineByExercise["DLift"], 2)
+        #expect(facts.repeatedDeclineByExercise["DLift"] == 2)
     }
 
-    func testSessionsSinceDeloadCountsAfterLoadDrop() throws {
+    @Test func sessionsSinceDeloadCountsAfterLoadDrop() throws {
         let ctx = try makeContext()
         let now = testNow
         // Top weights 100, 100, 80, 85 → deload at the 3rd session; 1 session after it.
@@ -238,11 +240,11 @@ final class TrainingFactsTests: XCTestCase {
         let d = try session(ctx, name: "SLift", muscles: ["quadriceps"], weight: 85, reps: 5, daysAgo: 2, now: now)
 
         let facts = TrainingFacts.make(sessions: [a, b, c, d], now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.sessionsSinceDeloadByExercise["SLift"], 1)
+        #expect(facts.sessionsSinceDeloadByExercise["SLift"] == 1)
     }
 
     /// Golden-output regression for the pass-consolidation refactor.
-    func testAllTimeFactsMatchGoldenOutputAcrossMultipleWeeksAndExercises() throws {
+    @Test func allTimeFactsMatchGoldenOutputAcrossMultipleWeeksAndExercises() throws {
         let ctx = try makeContext()
         let now = testNow
         let squat = try WorkoutRepository.findOrCreateExercise(
@@ -264,10 +266,10 @@ final class TrainingFactsTests: XCTestCase {
 
         let facts = TrainingFacts.make(sessions: sessions, now: now, goal: .strength, experience: .intermediate)
 
-        XCTAssertEqual(facts.allTimeWorkingSets, 5)
-        XCTAssertEqual(facts.incompleteCustomExerciseNames, ["My Custom Move"])
-        XCTAssertEqual(facts.repeatedDeclineByExercise["Consolidation Squat"], 2)
-        XCTAssertEqual(facts.sessionsSinceDeloadByExercise["Consolidation Squat"], 4)
+        #expect(facts.allTimeWorkingSets == 5)
+        #expect(facts.incompleteCustomExerciseNames == ["My Custom Move"])
+        #expect(facts.repeatedDeclineByExercise["Consolidation Squat"] == 2)
+        #expect(facts.sessionsSinceDeloadByExercise["Consolidation Squat"] == 4)
     }
 
     private func windowSession(_ ctx: ModelContext, _ ex: Exercise, weeksAgo: Double, kg: Double, reps: Int) throws -> WorkoutSession {
@@ -276,43 +278,43 @@ final class TrainingFactsTests: XCTestCase {
         return s
     }
 
-    func testAllTimeWorkingSetsExcludesSessionsOlderThan12Weeks() throws {
+    @Test func allTimeWorkingSetsExcludesSessionsOlderThan12Weeks() throws {
         let ctx = try makeContext()
         let squat = try WorkoutRepository.findOrCreateExercise(named: "12wk Squat", primaryMuscles: ["quads"], in: ctx)
         let within = try windowSession(ctx, squat, weeksAgo: 11, kg: 100, reps: 5)
         let beyond = try windowSession(ctx, squat, weeksAgo: 13, kg: 100, reps: 5)
         let facts = TrainingFacts.make(sessions: [within, beyond], now: testNow, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.allTimeWorkingSets, 1)
+        #expect(facts.allTimeWorkingSets == 1)
     }
 
-    func testColdStartGateTriggersAfterTwelveWeeksOfInactivity() throws {
+    @Test func coldStartGateTriggersAfterTwelveWeeksOfInactivity() throws {
         let ctx = try makeContext()
         let bench = try WorkoutRepository.findOrCreateExercise(named: "12wk Bench", primaryMuscles: ["chest"], in: ctx)
         let old = try windowSession(ctx, bench, weeksAgo: 20, kg: 60, reps: 8)
         let facts = TrainingFacts.make(sessions: [old], now: testNow, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(facts.allTimeWorkingSets, 0)
+        #expect(facts.allTimeWorkingSets == 0)
     }
 
-    func testBestAllE1RMIgnoresLiftsPerformedBeyondTwelveWeeks() throws {
+    @Test func bestAllE1RMIgnoresLiftsPerformedBeyondTwelveWeeks() throws {
         let ctx = try makeContext()
         let dl = try WorkoutRepository.findOrCreateExercise(named: "12wk Deadlift", primaryMuscles: ["hamstrings"], in: ctx)
         let old = try windowSession(ctx, dl, weeksAgo: 15, kg: 150, reps: 3)
         let recent = try windowSession(ctx, dl, weeksAgo: 0, kg: 100, reps: 3)
         let facts = TrainingFacts.make(sessions: [old, recent], now: testNow, goal: .strength, experience: .intermediate)
         // Against its own in-window best the set is 100% (heavy); against the stale 150kg it would be moderate.
-        XCTAssertEqual(facts.intensity.sampleCount, 1)
-        XCTAssertEqual(facts.intensity.heavy, 1.0, accuracy: 0.001)
+        #expect(facts.intensity.sampleCount == 1)
+        #expect(abs(facts.intensity.heavy - 1.0) <= 0.001)
     }
 
-    func testIncompleteCustomExerciseNamesExcludesExercisesOnlyLoggedBeyondTwelveWeeks() throws {
+    @Test func incompleteCustomExerciseNamesExcludesExercisesOnlyLoggedBeyondTwelveWeeks() throws {
         let ctx = try makeContext()
         let custom = try WorkoutRepository.findOrCreateExercise(named: "12wk Custom Move", primaryMuscles: [], in: ctx)
         let old = try windowSession(ctx, custom, weeksAgo: 14, kg: 20, reps: 8)
         let facts = TrainingFacts.make(sessions: [old], now: testNow, goal: .strength, experience: .intermediate)
-        XCTAssertTrue(facts.incompleteCustomExerciseNames.isEmpty)
+        #expect(facts.incompleteCustomExerciseNames.isEmpty)
     }
 
-    func testTrainingFactsOutputIsUnaffectedByPrefilteringInputToTwelveWeeks() throws {
+    @Test func trainingFactsOutputIsUnaffectedByPrefilteringInputToTwelveWeeks() throws {
         let ctx = try makeContext()
         let now = testNow
         let ex = try WorkoutRepository.findOrCreateExercise(
@@ -326,8 +328,9 @@ final class TrainingFactsTests: XCTestCase {
 
         let fromAll = TrainingFacts.make(sessions: all, now: now, goal: .strength, experience: .intermediate)
         let fromPrefiltered = TrainingFacts.make(sessions: prefiltered, now: now, goal: .strength, experience: .intermediate)
-        XCTAssertEqual(fromAll.allTimeWorkingSets, fromPrefiltered.allTimeWorkingSets)
-        XCTAssertEqual(fromAll.weeklySetsByMuscle, fromPrefiltered.weeklySetsByMuscle)
-        XCTAssertEqual(fromAll.incompleteCustomExerciseNames, fromPrefiltered.incompleteCustomExerciseNames)
+        #expect(fromAll.allTimeWorkingSets == fromPrefiltered.allTimeWorkingSets)
+        #expect(fromAll.weeklySetsByMuscle == fromPrefiltered.weeklySetsByMuscle)
+        #expect(fromAll.incompleteCustomExerciseNames == fromPrefiltered.incompleteCustomExerciseNames)
     }
 }
+#endif

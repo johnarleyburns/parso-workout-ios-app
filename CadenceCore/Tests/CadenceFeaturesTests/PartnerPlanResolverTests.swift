@@ -1,11 +1,13 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
 /// Field test 2026-08-18 #4 (decisions D12/D13): a training partner is coached
 /// on the OWNER's exercises and set count, personalized only by reps/weights
 /// drawn from that partner's own history — never the owner's weight.
-final class PartnerPlanResolverTests: XCTestCase {
+struct PartnerPlanResolverTests {
 
     private let alex = UUID()
     private let sam = UUID()
@@ -20,7 +22,7 @@ final class PartnerPlanResolverTests: XCTestCase {
 
     // MARK: - sets(forOwnerSets:history:)
 
-    func testPartnerWithExactExerciseHistoryGetsTheirOwnLadderAndWeight() {
+    @Test func partnerWithExactExerciseHistoryGetsTheirOwnLadderAndWeight() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 60, reps: 8),
                        .init(weightKg: 62.5, reps: 6),
@@ -29,112 +31,112 @@ final class PartnerPlanResolverTests: XCTestCase {
 
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([8, 6, 5]), history: history)
 
-        XCTAssertEqual(resolved.map(\.targetReps), [8, 6, 5])
-        XCTAssertEqual(resolved.map(\.targetWeight), [60, 62.5, 65])
+        #expect(resolved.map(\.targetReps) == [8, 6, 5])
+        #expect(resolved.map(\.targetWeight) == [60, 62.5, 65])
     }
 
-    func testPartnerWeightNeverInheritsTheOwnersWeight() {
+    @Test func partnerWeightNeverInheritsTheOwnersWeight() {
         let owner = ownerSets([10, 8, 6], weight: 140)
         let resolved = PartnerPlanResolver.sets(forOwnerSets: owner, history: .empty)
 
-        XCTAssertEqual(resolved.compactMap(\.targetWeight), [],
-                       "A partner with no history inherited the owner's weight")
+        #expect(resolved.compactMap(\.targetWeight) == [],
+                "A partner with no history inherited the owner's weight")
     }
 
-    func testPartnerWithNoExerciseHistoryUsesTheirGeneralRepPattern() {
+    @Test func partnerWithNoExerciseHistoryUsesTheirGeneralRepPattern() {
         let history = PartnerPlanResolver.ExerciseHistory(generalRepLadders: [[15, 15], [12, 10, 8]])
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([5, 5, 5]), history: history)
 
-        XCTAssertEqual(resolved.map(\.targetReps), [12, 10, 8], "The most recent pattern should win")
-        XCTAssertEqual(resolved.compactMap(\.targetWeight), [],
-                       "A general rep pattern says nothing about load")
+        #expect(resolved.map(\.targetReps) == [12, 10, 8], "The most recent pattern should win")
+        #expect(resolved.compactMap(\.targetWeight) == [],
+                "A general rep pattern says nothing about load")
     }
 
-    func testPartnerWithNoHistoryAtAllUsesOwnerRepsWithNoWeight() {
+    @Test func partnerWithNoHistoryAtAllUsesOwnerRepsWithNoWeight() {
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([12, 10, 8]), history: .empty)
 
-        XCTAssertEqual(resolved.map(\.targetReps), [12, 10, 8])
-        XCTAssertTrue(resolved.allSatisfy { $0.targetWeight == nil })
+        #expect(resolved.map(\.targetReps) == [12, 10, 8])
+        #expect(resolved.allSatisfy { $0.targetWeight == nil })
     }
 
-    func testExerciseLadderIsUsedWhenTheLastSessionHasNoLoggedSets() {
+    @Test func exerciseLadderIsUsedWhenTheLastSessionHasNoLoggedSets() {
         let history = PartnerPlanResolver.ExerciseHistory(
             repLadders: [[10, 10], [8, 6]],
             firstWorkingWeightKg: 42.5)
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([5, 5]), history: history)
 
-        XCTAssertEqual(resolved.map(\.targetReps), [8, 6])
-        XCTAssertEqual(resolved.map(\.targetWeight), [42.5, 42.5])
+        #expect(resolved.map(\.targetReps) == [8, 6])
+        #expect(resolved.map(\.targetWeight) == [42.5, 42.5])
     }
 
-    func testResolvedSetCountAlwaysMatchesTheOwnersSetCount() {
+    @Test func resolvedSetCountAlwaysMatchesTheOwnersSetCount() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 50, reps: 10)],
             firstWorkingWeightKg: 50)
 
         for count in 1...6 {
             let owner = ownerSets(Array(repeating: 8, count: count))
-            XCTAssertEqual(PartnerPlanResolver.sets(forOwnerSets: owner, history: history).count, count)
+            #expect(PartnerPlanResolver.sets(forOwnerSets: owner, history: history).count == count)
         }
-        XCTAssertTrue(PartnerPlanResolver.sets(forOwnerSets: [], history: history).isEmpty)
+        #expect(PartnerPlanResolver.sets(forOwnerSets: [], history: history).isEmpty)
     }
 
-    func testShorterPartnerHistoryRepeatsTheLastLoggedSet() {
+    @Test func shorterPartnerHistoryRepeatsTheLastLoggedSet() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 40, reps: 12), .init(weightKg: 45, reps: 10)],
             firstWorkingWeightKg: 40)
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([12, 10, 8, 8]), history: history)
 
-        XCTAssertEqual(resolved.map(\.targetReps), [12, 10, 10, 10])
-        XCTAssertEqual(resolved.map(\.targetWeight), [40, 45, 45, 45])
+        #expect(resolved.map(\.targetReps) == [12, 10, 10, 10])
+        #expect(resolved.map(\.targetWeight) == [40, 45, 45, 45])
     }
 
-    func testLongerPartnerHistoryIsTruncatedToTheOwnersSetCount() {
+    @Test func longerPartnerHistoryIsTruncatedToTheOwnersSetCount() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: (1...5).map { .init(weightKg: Double(40 + $0), reps: 12 - $0) })
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([10, 10]), history: history)
 
-        XCTAssertEqual(resolved.count, 2)
-        XCTAssertEqual(resolved.map(\.targetReps), [11, 10])
+        #expect(resolved.count == 2)
+        #expect(resolved.map(\.targetReps) == [11, 10])
     }
 
-    func testZeroOrNegativeRepsAreTreatedAsMissing() {
+    @Test func zeroOrNegativeRepsAreTreatedAsMissing() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 60, reps: 0), .init(weightKg: 60, reps: -3)],
             repLadders: [[9, 9]],
             firstWorkingWeightKg: 60)
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([5, 5]), history: history)
 
-        XCTAssertEqual(resolved.map(\.targetReps), [9, 9],
-                       "Zero/negative logged reps should fall through to the rep ladder")
+        #expect(resolved.map(\.targetReps) == [9, 9],
+                "Zero/negative logged reps should fall through to the rep ladder")
     }
 
-    func testAWeightlessLoggedSetFallsBackToTheirFirstWorkingWeight() {
+    @Test func aWeightlessLoggedSetFallsBackToTheirFirstWorkingWeight() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 0, reps: 10), .init(weightKg: 55, reps: 8)],
             firstWorkingWeightKg: 52.5)
         let resolved = PartnerPlanResolver.sets(forOwnerSets: ownerSets([10, 8]), history: history)
 
-        XCTAssertEqual(resolved.map(\.targetWeight), [52.5, 55])
+        #expect(resolved.map(\.targetWeight) == [52.5, 55])
     }
 
     // MARK: - fill(plan:roster:history:)
 
-    func testOwnerIsAlwaysTheFirstPerformerPlan() {
+    @Test func ownerIsAlwaysTheFirstPerformerPlan() {
         let filled = PartnerPlanResolver.fill(
             plan: plan([EditableExercise(name: "Bench Press", sets: ownerSets([8, 6]), notes: "")]),
             roster: [.init(performerID: nil, name: "Me"), .init(performerID: alex, name: "Alex")],
             history: { _, _ in .empty })
 
         let plans = filled.exercises[0].performerPlans
-        XCTAssertEqual(plans.map(\.name), ["Me", "Alex"])
-        XCTAssertTrue(plans[0].isMe)
-        XCTAssertEqual(plans[0].sets.map(\.targetReps), [8, 6])
-        XCTAssertEqual(plans[0].sets.map(\.targetWeight), [100, 100],
-                       "The owner's own plan is copied verbatim, weights included")
+        #expect(plans.map(\.name) == ["Me", "Alex"])
+        #expect(plans[0].isMe)
+        #expect(plans[0].sets.map(\.targetReps) == [8, 6])
+        #expect(plans[0].sets.map(\.targetWeight) == [100, 100],
+                "The owner's own plan is copied verbatim, weights included")
     }
 
-    func testFillIsIdempotent() {
+    @Test func fillIsIdempotent() {
         let source = plan([EditableExercise(name: "Bench Press", sets: ownerSets([8, 6, 5]), notes: ""),
                            EditableExercise(name: "Row", sets: ownerSets([10, 10]), notes: "")])
         let roster: [PartnerPlanResolver.RosterMember] = [
@@ -147,10 +149,10 @@ final class PartnerPlanResolverTests: XCTestCase {
         let once = PartnerPlanResolver.fill(plan: source, roster: roster, history: history)
         let twice = PartnerPlanResolver.fill(plan: once, roster: roster, history: history)
 
-        XCTAssertEqual(once, twice, "Re-resolving an unchanged roster changed the plan (or its identity)")
+        #expect(once == twice, "Re-resolving an unchanged roster changed the plan (or its identity)")
     }
 
-    func testRemovingAPartnerDropsTheirPerformerPlan() {
+    @Test func removingAPartnerDropsTheirPerformerPlan() {
         let source = plan([EditableExercise(name: "Bench Press", sets: ownerSets([8, 6]), notes: "")])
         let withPartners = PartnerPlanResolver.fill(
             plan: source,
@@ -158,35 +160,35 @@ final class PartnerPlanResolverTests: XCTestCase {
                      .init(performerID: alex, name: "Alex"),
                      .init(performerID: sam, name: "Sam")],
             history: { _, _ in .empty })
-        XCTAssertEqual(withPartners.exercises[0].performerPlans.count, 3)
+        #expect(withPartners.exercises[0].performerPlans.count == 3)
 
         let oneRemoved = PartnerPlanResolver.fill(
             plan: withPartners,
             roster: [.init(performerID: nil, name: "Me"), .init(performerID: alex, name: "Alex")],
             history: { _, _ in .empty })
-        XCTAssertEqual(oneRemoved.exercises[0].performerPlans.map(\.name), ["Me", "Alex"])
+        #expect(oneRemoved.exercises[0].performerPlans.map(\.name) == ["Me", "Alex"])
 
         let solo = PartnerPlanResolver.fill(
             plan: oneRemoved,
             roster: [.init(performerID: nil, name: "Me")],
             history: { _, _ in .empty })
-        XCTAssertTrue(solo.exercises[0].performerPlans.isEmpty,
-                      "A solo roster should leave the plan exactly as a solo user's")
+        #expect(solo.exercises[0].performerPlans.isEmpty,
+                "A solo roster should leave the plan exactly as a solo user's")
     }
 
-    func testAddingAPartnerLeavesTheOwnerPlanUntouched() {
+    @Test func addingAPartnerLeavesTheOwnerPlanUntouched() {
         let source = plan([EditableExercise(name: "Bench Press", sets: ownerSets([8, 6, 5]), notes: "")])
         let filled = PartnerPlanResolver.fill(
             plan: source,
             roster: [.init(performerID: nil, name: "Me"), .init(performerID: alex, name: "Alex")],
             history: { _, _ in .init(lastSets: [.init(weightKg: 60, reps: 12)]) })
 
-        XCTAssertEqual(filled.exercises[0].sets, source.exercises[0].sets,
-                       "Adding a partner rewrote the owner's own sets")
-        XCTAssertEqual(filled.exercises[0].performerPlans[1].sets.map(\.targetReps), [12, 12, 12])
+        #expect(filled.exercises[0].sets == source.exercises[0].sets,
+                "Adding a partner rewrote the owner's own sets")
+        #expect(filled.exercises[0].performerPlans[1].sets.map(\.targetReps) == [12, 12, 12])
     }
 
-    func testTheCoachNeverAddsOrRemovesAnExerciseForAPartner() {
+    @Test func theCoachNeverAddsOrRemovesAnExerciseForAPartner() {
         let source = plan([EditableExercise(name: "Bench Press", sets: ownerSets([8]), notes: ""),
                            EditableExercise(name: "Squat", sets: ownerSets([5, 5]), notes: "")])
         let filled = PartnerPlanResolver.fill(
@@ -194,15 +196,15 @@ final class PartnerPlanResolverTests: XCTestCase {
             roster: [.init(performerID: nil, name: "Me"), .init(performerID: alex, name: "Alex")],
             history: { _, _ in .empty })
 
-        XCTAssertEqual(filled.exercises.map(\.name), ["Bench Press", "Squat"])
+        #expect(filled.exercises.map(\.name) == ["Bench Press", "Squat"])
         for exercise in filled.exercises {
             for performerPlan in exercise.performerPlans {
-                XCTAssertEqual(performerPlan.sets.count, exercise.sets.count)
+                #expect(performerPlan.sets.count == exercise.sets.count)
             }
         }
     }
 
-    func testBodyweightExerciseResolvesWithNilWeightForEveryPerformer() {
+    @Test func bodyweightExerciseResolvesWithNilWeightForEveryPerformer() {
         let source = plan([EditableExercise(name: "Pull Up",
                                             sets: ownerSets([10, 8], weight: nil),
                                             notes: "")])
@@ -212,12 +214,12 @@ final class PartnerPlanResolverTests: XCTestCase {
             history: { _, _ in .init(lastSets: [.init(weightKg: 0, reps: 6)]) })
 
         for performerPlan in filled.exercises[0].performerPlans {
-            XCTAssertTrue(performerPlan.sets.allSatisfy { $0.targetWeight == nil },
-                          "\(performerPlan.name) got a weight for a bodyweight movement")
+            #expect(performerPlan.sets.allSatisfy { $0.targetWeight == nil },
+                    "\(performerPlan.name) got a weight for a bodyweight movement")
         }
     }
 
-    func testEachPartnerIsResolvedFromTheirOwnHistory() {
+    @Test func eachPartnerIsResolvedFromTheirOwnHistory() {
         let filled = PartnerPlanResolver.fill(
             plan: plan([EditableExercise(name: "Bench Press", sets: ownerSets([8, 8]), notes: "")]),
             roster: [.init(performerID: nil, name: "Me"),
@@ -230,8 +232,8 @@ final class PartnerPlanResolverTests: XCTestCase {
             })
 
         let plans = filled.exercises[0].performerPlans
-        XCTAssertEqual(plans[1].sets.map(\.targetWeight), [60, 60])
-        XCTAssertEqual(plans[2].sets.map(\.targetReps), [15, 15])
+        #expect(plans[1].sets.map(\.targetWeight) == [60, 60])
+        #expect(plans[2].sets.map(\.targetReps) == [15, 15])
     }
 
     // MARK: - aligned(_:) — set-count maintenance between re-resolutions
@@ -244,84 +246,84 @@ final class PartnerPlanResolverTests: XCTestCase {
         ).exercises[0]
     }
 
-    func testAligningAfterTheOwnerAddsASetExtendsEveryPartner() {
+    @Test func aligningAfterTheOwnerAddsASetExtendsEveryPartner() {
         var exercise = filledExercise()
         exercise.sets.append(EditableSet(targetReps: 4, targetWeight: 110))
 
         let aligned = PartnerPlanResolver.aligned(exercise)
 
-        XCTAssertEqual(aligned.performerPlans[0].sets.map(\.targetReps), [8, 6, 4],
-                       "The owner's entry mirrors their own sets exactly")
-        XCTAssertEqual(aligned.performerPlans[1].sets.map(\.targetReps), [12, 12, 12],
-                       "A partner's extra set repeats their own last planned set")
-        XCTAssertEqual(aligned.performerPlans[1].sets.map(\.targetWeight), [60, 60, 60],
-                       "and never picks up the owner's weight")
+        #expect(aligned.performerPlans[0].sets.map(\.targetReps) == [8, 6, 4],
+                "The owner's entry mirrors their own sets exactly")
+        #expect(aligned.performerPlans[1].sets.map(\.targetReps) == [12, 12, 12],
+                "A partner's extra set repeats their own last planned set")
+        #expect(aligned.performerPlans[1].sets.map(\.targetWeight) == [60, 60, 60],
+                "and never picks up the owner's weight")
     }
 
-    func testAligningAfterTheOwnerRemovesASetTruncatesEveryPartner() {
+    @Test func aligningAfterTheOwnerRemovesASetTruncatesEveryPartner() {
         var exercise = filledExercise()
         exercise.sets.removeLast()
 
         let aligned = PartnerPlanResolver.aligned(exercise)
 
         for performerPlan in aligned.performerPlans {
-            XCTAssertEqual(performerPlan.sets.count, 1)
+            #expect(performerPlan.sets.count == 1)
         }
     }
 
-    func testAligningASoloExerciseChangesNothing() {
+    @Test func aligningASoloExerciseChangesNothing() {
         let solo = EditableExercise(name: "Bench Press", sets: ownerSets([8, 6]), notes: "")
-        XCTAssertEqual(PartnerPlanResolver.aligned(solo), solo)
+        #expect(PartnerPlanResolver.aligned(solo) == solo)
     }
 
     // MARK: - Owner seed (field test 2026-08-19 #1)
 
-    func testOwnerSeedReproducesTheirLastSessionOnTheLift() {
+    @Test func ownerSeedReproducesTheirLastSessionOnTheLift() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 100, reps: 5), .init(weightKg: 100, reps: 3)],
             firstWorkingWeightKg: 100)
         let seed = PartnerPlanResolver.ownerSeedSets(history: history, defaultReps: 10)
-        XCTAssertEqual(seed.map(\.targetReps), [5, 3])
-        XCTAssertEqual(seed.map(\.targetWeight), [100, 100])
+        #expect(seed.map(\.targetReps) == [5, 3])
+        #expect(seed.map(\.targetWeight) == [100, 100])
     }
 
-    func testOwnerSeedTurnsFlatHistoricalHypertrophySetsIntoDescendingLadder() {
+    @Test func ownerSeedTurnsFlatHistoricalHypertrophySetsIntoDescendingLadder() {
         let history = PartnerPlanResolver.ExerciseHistory(
             lastSets: [.init(weightKg: 40, reps: 12),
                        .init(weightKg: 40, reps: 12),
                        .init(weightKg: 40, reps: 12)])
         let seed = PartnerPlanResolver.ownerSeedSets(history: history, defaultReps: 10)
-        XCTAssertEqual(seed.map(\.targetReps), [12, 10, 8])
-        XCTAssertEqual(seed.map(\.targetWeight), [40, 40, 40])
+        #expect(seed.map(\.targetReps) == [12, 10, 8])
+        #expect(seed.map(\.targetWeight) == [40, 40, 40])
     }
 
-    func testOwnerSeedFallsBackToTheirRepLadderThenTheirHabit() {
+    @Test func ownerSeedFallsBackToTheirRepLadderThenTheirHabit() {
         let ladderOnly = PartnerPlanResolver.ExerciseHistory(
             repLadders: [[12, 10, 8]], firstWorkingWeightKg: 40)
-        XCTAssertEqual(PartnerPlanResolver.ownerSeedSets(history: ladderOnly, defaultReps: 10)
-                        .map(\.targetReps), [12, 10, 8])
+        #expect(PartnerPlanResolver.ownerSeedSets(history: ladderOnly, defaultReps: 10)
+                        .map(\.targetReps) == [12, 10, 8])
 
         let habitOnly = PartnerPlanResolver.ExerciseHistory(generalRepLadders: [[20, 20, 20]])
         let seed = PartnerPlanResolver.ownerSeedSets(history: habitOnly, defaultReps: 10)
-        XCTAssertEqual(seed.map(\.targetReps), [20])
-        XCTAssertEqual(seed.map(\.targetWeight), [nil])
+        #expect(seed.map(\.targetReps) == [20])
+        #expect(seed.map(\.targetWeight) == [nil])
     }
 
-    func testOwnerSeedWithNoHistoryAtAllUsesTheEditorDefault() {
+    @Test func ownerSeedWithNoHistoryAtAllUsesTheEditorDefault() {
         let seed = PartnerPlanResolver.ownerSeedSets(history: .empty, defaultReps: 10,
                                                      defaultSetCount: 3)
-        XCTAssertEqual(seed.map(\.targetReps), [10, 10, 10])
+        #expect(seed.map(\.targetReps) == [10, 10, 10])
     }
 
     /// A partner who has never done the movement but always works at 20 reps
     /// gets 20, not the owner's prescription (field test 2026-08-19 #3).
-    func testPartnerWithoutMovementHistoryUsesTheirHabitualReps() {
+    @Test func partnerWithoutMovementHistoryUsesTheirHabitualReps() {
         let history = PartnerPlanResolver.ExerciseHistory(
             generalRepLadders: [[20, 20], [20, 20, 20]])
         let sets = PartnerPlanResolver.sets(forOwnerSets: ownerSets([5, 5, 5, 5]),
                                             history: history)
-        XCTAssertEqual(sets.map(\.targetReps), [20, 20, 20, 20],
-                       "Past the end of their last ladder we use how they usually work")
-        XCTAssertEqual(sets.compactMap(\.targetWeight), [], "…but never a made-up load")
+        #expect(sets.map(\.targetReps) == [20, 20, 20, 20],
+                "Past the end of their last ladder we use how they usually work")
+        #expect(sets.compactMap(\.targetWeight) == [], "…but never a made-up load")
     }
 }

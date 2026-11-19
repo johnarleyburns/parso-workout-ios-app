@@ -1,29 +1,29 @@
 import Foundation
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class UnifiedPlanModelTests: XCTestCase {
-    func testFailureAndSupersetSemanticsRoundTripThroughTheUnifiedPlan() throws {
+struct UnifiedPlanModelTests {
+    @Test func failureAndSupersetSemanticsRoundTripThroughTheUnifiedPlan() throws {
         let failure = PrescribedSet(setIndex: 0, kind: .failure, repTarget: .exact(8))
         let item = StrengthItem(exerciseKey: ExerciseKey(raw: "bench_press"), order: 0,
                                 sets: [failure], supersetGroup: SupersetGroupID(raw: "A"))
         let session = Session(title: "Superset", items: [.strength(item)])
         let snapshot = PlanSessionSnapshot(session: session)
 
-        XCTAssertEqual(snapshot.strengthItems.first?.supersetGroup, "A")
-        XCTAssertEqual(snapshot.strengthItems.first?.sets.first?.kind, .failure)
+        #expect(snapshot.strengthItems.first?.supersetGroup == "A")
+        #expect(snapshot.strengthItems.first?.sets.first?.kind == .failure)
         let data = try JSONEncoder().encode(snapshot)
         let decoded = try JSONDecoder().decode(PlanSessionSnapshot.self, from: data)
-        XCTAssertEqual(decoded, snapshot)
+        #expect(decoded == snapshot)
     }
 
-    func testLegacyPlannedSetDefaultsToWorkingKind() throws {
+    @Test func legacyPlannedSetDefaultsToWorkingKind() throws {
         let legacy = Data(#"{"targetReps":8,"targetWeightKg":60}"#.utf8)
         let decoded = try JSONDecoder().decode(PlannedSetPrescription.self, from: legacy)
-        XCTAssertEqual(decoded.kind, .working)
+        #expect(decoded.kind == .working)
     }
 
-    func testUnifiedPlanRoundTripsAllItemFamiliesAndProvenance() throws {
+    @Test func unifiedPlanRoundTripsAllItemFamiliesAndProvenance() throws {
         let set = PrescribedSet(
             setIndex: 0,
             kind: .working,
@@ -75,29 +75,28 @@ final class UnifiedPlanModelTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(Plan.self, from: encoder.encode(plan))
 
-        XCTAssertEqual(decoded, plan)
-        XCTAssertEqual(decoded.weeks[0].days[0].sessions[0].orderedItems.count, 4)
-        XCTAssertEqual(decoded.weeks[0].days[0].sessions[0].orderedItems[0].id, strength.id)
+        #expect(decoded == plan)
+        #expect(decoded.weeks[0].days[0].sessions[0].orderedItems.count == 4)
+        #expect(decoded.weeks[0].days[0].sessions[0].orderedItems[0].id == strength.id)
     }
 
-    func testPlanValidationRequiresCanonicalSevenDayWeeks() {
+    @Test func planValidationRequiresCanonicalSevenDayWeeks() {
         let invalid = PlanWeek(index: 0, days: [PlanDay(weekday: .monday)])
-        XCTAssertThrowsError(try invalid.validate()) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError, .weekMustHaveSevenDays)
+        #expect(throws: UnifiedPlanValidationError.weekMustHaveSevenDays) {
+            try invalid.validate()
         }
     }
 
-    func testPlanValidationRejectsMoreThanTwoSessionsPerDay() {
+    @Test func planValidationRejectsMoreThanTwoSessionsPerDay() {
         let sessions = (0..<3).map { Session(title: "Session \($0)") }
         let day = PlanDay(weekday: .monday, sessions: sessions)
 
-        XCTAssertThrowsError(try day.validate()) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError,
-                           .dayHasTooManySessions(.monday))
+        #expect(throws: UnifiedPlanValidationError.dayHasTooManySessions(.monday)) {
+            try day.validate()
         }
     }
 
-    func testSessionValidationRejectsDuplicateItemIDs() {
+    @Test func sessionValidationRejectsDuplicateItemIDs() {
         let itemID = UUID()
         let first = InstructionItem(id: itemID, order: 0, text: "One")
         let second = InstructionItem(id: itemID, order: 1, text: "Two")
@@ -105,20 +104,20 @@ final class UnifiedPlanModelTests: XCTestCase {
             .instruction(first), .instruction(second)
         ])
 
-        XCTAssertThrowsError(try session.validate()) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError, .duplicateItemID)
+        #expect(throws: UnifiedPlanValidationError.duplicateItemID) {
+            try session.validate()
         }
     }
 
-    func testPlanHorizonMatchesWeekCount() {
+    @Test func planHorizonMatchesWeekCount() {
         let days = Weekday.mondayThroughSunday.map { PlanDay(weekday: $0) }
         let plan = Plan(
             title: "Mesocycle",
             horizon: .mesocycle(weeks: 2),
             weeks: [PlanWeek(index: 0, days: days)])
 
-        XCTAssertThrowsError(try plan.validate()) { error in
-            XCTAssertEqual(error as? UnifiedPlanValidationError, .horizonMismatch)
+        #expect(throws: UnifiedPlanValidationError.horizonMismatch) {
+            try plan.validate()
         }
     }
 }

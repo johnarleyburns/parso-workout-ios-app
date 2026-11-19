@@ -1,8 +1,10 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class SessionEligibilityPolicyTests: XCTestCase {
+struct SessionEligibilityPolicyTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -38,7 +40,7 @@ final class SessionEligibilityPolicyTests: XCTestCase {
 
     // MARK: - R1/R2/R3: Lift recovery gates
 
-    func testFullBody42MinAgoBlocksStrengthSession() throws {
+    @Test func fullBody42MinAgoBlocksStrengthSession() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-42 * 60), in: ctx)
@@ -57,12 +59,13 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         let result = SessionEligibilityPolicy.evaluate(candidate, facts: facts)
 
         guard case .deferred(_, let reasons) = result else {
-            XCTFail("Expected defer for strength session 42min after full-body"); return
+            Issue.record("Expected defer for strength session 42min after full-body")
+            return
         }
-        XCTAssertFalse(reasons.isEmpty, "Should have at least one reason")
+        #expect(!reasons.isEmpty, "Should have at least one reason")
     }
 
-    func testStrengthDeferralUsesRecoveryWindowNotCurrentTime() throws {
+    @Test func strengthDeferralUsesRecoveryWindowNotCurrentTime() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 3600), in: ctx)
@@ -79,14 +82,15 @@ final class SessionEligibilityPolicyTests: XCTestCase {
 
         let result = SessionEligibilityPolicy.evaluate(makeStrengthCandidate(), facts: facts)
         guard case .deferred(let until, _) = result else {
-            XCTFail("Expected defer for recent hard squat"); return
+            Issue.record("Expected defer for recent hard squat")
+            return
         }
         let expected = facts.recovery.byExercise["Back Squat"]?.hardEligibleAt
-        XCTAssertEqual(until.timeIntervalSince1970, expected?.timeIntervalSince1970 ?? 0, accuracy: 1)
-        XCTAssertGreaterThan(until, now)
+        #expect(abs(until.timeIntervalSince1970 - (expected?.timeIntervalSince1970 ?? 0)) <= 1)
+        #expect(until > now)
     }
 
-    func testDeadlift23h59mAgoBlocksExactDeadlift() throws {
+    @Test func deadlift23h59mAgoBlocksExactDeadlift() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-23.98 * 3600), in: ctx)
@@ -108,11 +112,12 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         )
         let result = SessionEligibilityPolicy.evaluate(candidate, facts: facts)
         guard case .deferred = result else {
-            XCTFail("Expected defer for deadlift 23h59m ago"); return
+            Issue.record("Expected defer for deadlift 23h59m ago")
+            return
         }
     }
 
-    func testDeadlift24h01mAgoPosteriorChainStillBlocked() throws {
+    @Test func deadlift24h01mAgoPosteriorChainStillBlocked() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-24.02 * 3600), in: ctx)
@@ -134,13 +139,14 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         )
         let result = SessionEligibilityPolicy.evaluate(candidate, facts: facts)
         guard case .deferred = result else {
-            XCTFail("Expected pattern-gate defer at 24h01m"); return
+            Issue.record("Expected pattern-gate defer at 24h01m")
+            return
         }
     }
 
     // MARK: - R4: Technique work vs hard progression
 
-    func testLowVolumeTechniqueWorkWithGoodReadinessIsEligible() throws {
+    @Test func lowVolumeTechniqueWorkWithGoodReadinessIsEligible() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-26 * 3600), in: ctx)
@@ -161,13 +167,14 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         )
         let result = SessionEligibilityPolicy.evaluate(candidate, facts: facts)
         guard case .eligible = result else {
-            XCTFail("Low-volume technique work >24h should be eligible"); return
+            Issue.record("Low-volume technique work >24h should be eligible")
+            return
         }
     }
 
     // MARK: - R6: Upper body strength, lower easy aerobic
 
-    func testUpperBodyStrengthYesterdayAllowsEasyRun() throws {
+    @Test func upperBodyStrengthYesterdayAllowsEasyRun() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-25 * 3600), in: ctx)
@@ -185,11 +192,12 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         let candidate = makeAerobicCandidate(kind: .easyAerobic)
         let result = SessionEligibilityPolicy.evaluate(candidate, facts: facts)
         guard case .eligible = result else {
-            XCTFail("Easy run should be eligible after upper-body only strength"); return
+            Issue.record("Easy run should be eligible after upper-body only strength")
+            return
         }
     }
 
-    func testUpperBodyStrengthBlocksHardFullBodyWithBench() throws {
+    @Test func upperBodyStrengthBlocksHardFullBodyWithBench() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-2 * 3600), in: ctx)
@@ -214,13 +222,14 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         )
         let result = SessionEligibilityPolicy.evaluate(fullBody, facts: facts)
         guard case .deferred = result else {
-            XCTFail("Full-body with bench should be deferred after recent bench"); return
+            Issue.record("Full-body with bench should be deferred after recent bench")
+            return
         }
     }
 
     // MARK: - R7: Lower-body strength blocks hard cardio
 
-    func testLowerBodyStrengthTodayBlocksHardRun() throws {
+    @Test func lowerBodyStrengthTodayBlocksHardRun() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3 * 3600), in: ctx)
@@ -238,13 +247,14 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         let hardRun = makeAerobicCandidate(kind: .moderateAerobic)
         let result = SessionEligibilityPolicy.evaluate(hardRun, facts: facts)
         guard case .deferred = result else {
-            XCTFail("Hard run should be deferred after lower-body strength"); return
+            Issue.record("Hard run should be deferred after lower-body strength")
+            return
         }
     }
 
     // MARK: - Phase A (field-test-fixes): active-workout gate → eligible + warning
 
-    func testActiveWorkoutDoesNotBlockEligibleCandidate() throws {
+    @Test func activeWorkoutDoesNotBlockEligibleCandidate() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-30 * 60), in: ctx)
@@ -262,11 +272,12 @@ final class SessionEligibilityPolicyTests: XCTestCase {
 
         // Phase A: in-progress workout should NOT block — candidates stay eligible.
         guard case .eligible = result else {
-            XCTFail("Expected eligible after Phase A; in-progress workout only warns, never blocks"); return
+            Issue.record("Expected eligible after Phase A; in-progress workout only warns, never blocks")
+            return
         }
     }
 
-    func testLowerBodyStrengthAllowsEasyWalk() throws {
+    @Test func lowerBodyStrengthAllowsEasyWalk() throws {
         let ctx = try makeContext()
         let now = testNow
         let session = try WorkoutRepository.createSession(date: now.addingTimeInterval(-3 * 3600), in: ctx)
@@ -284,7 +295,9 @@ final class SessionEligibilityPolicyTests: XCTestCase {
         let easyWalk = makeAerobicCandidate(kind: .easyAerobic)
         let result = SessionEligibilityPolicy.evaluate(easyWalk, facts: facts)
         guard case .eligible = result else {
-            XCTFail("Easy walk should be eligible even after lower-body strength"); return
+            Issue.record("Easy walk should be eligible even after lower-body strength")
+            return
         }
     }
 }
+#endif

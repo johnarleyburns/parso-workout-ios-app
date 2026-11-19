@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// A prominent, always-visible elapsed-time header for the strength
 /// session screen (field-testing Round 4 P2, feedback #7). Cardio and interval

@@ -10,6 +10,9 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
+        .library(name: "CadenceWorkoutFeatures", targets: ["CadenceWorkoutFeatures"]),
+        .library(name: "CadencePhoneFeatures", targets: ["CadencePhoneFeatures"]),
+        .library(name: "CadencePortability", targets: ["CadencePortability"]),
         .library(name: "CadenceCore", targets: ["CadenceCore"]),
         // Foundation-only planning domain; builds and tests on Linux.
         .library(name: "CadencePlanning", targets: ["CadencePlanning"]),
@@ -29,6 +32,13 @@ let package = Package(
     targets: [
         // Foundation ONLY — never SwiftUI, SwiftData, HealthKit, UIKit,
         // WatchConnectivity, CoreLocation, StoreKit, or app model types.
+        .target(name: "CadencePortability", dependencies: [
+            "CadenceCore",
+            .product(name: "FreeExerciseDBPlusPlus", package: "free-exercise-db-plusplus"),
+            .product(name: "FreeExerciseDBPlusPlusFIT", package: "free-exercise-db-plusplus")
+        ], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadencePortabilityTests", dependencies: ["CadencePortability"],
+                    swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadencePlanning", swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(
             name: "CadenceCore",
@@ -36,11 +46,6 @@ let package = Package(
                 "CadencePlanning",
                 .product(
                     name: "FreeExerciseDBPlusPlus",
-                    package: "free-exercise-db-plusplus"
-                ),
-                // Garmin FIT codec boundary (GarminFITBridge only).
-                .product(
-                    name: "FreeExerciseDBPlusPlusFIT",
                     package: "free-exercise-db-plusplus"
                 )
             ],
@@ -66,17 +71,33 @@ let package = Package(
         // no StoreKit, no UIKit — that is what keeps it testable on macOS.
         .target(
             name: "CadenceFeatures",
-            dependencies: ["CadenceCore"],
+            dependencies: [],
             resources: [.process("Resources/Localizable.xcstrings")],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
+        .target(name: "CadenceWorkoutFeatures", dependencies: ["CadenceCore", "CadenceFeatures"],
+                swiftSettings: [.swiftLanguageMode(.v6)]),
+        // Phone-only dashboards, backup/export, assessment presentation and
+        // full plan editing. Never linked into the Watch target.
+        .target(name: "CadencePhoneFeatures",
+                dependencies: ["CadenceCore", "CadenceFeatures", "CadenceWorkoutFeatures"],
+                swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadencePlatformTests", dependencies: ["CadenceFeatures"],
+                    swiftSettings: [.swiftLanguageMode(.v6)]),
         .target(name: "CadenceFixtures", dependencies: ["CadenceCore"], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadencePlanningTests",
             dependencies: ["CadencePlanning"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         ),
-        .testTarget(name: "CadenceCoreTests", dependencies: ["CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceExerciseImages"], swiftSettings: [.swiftLanguageMode(.v6)]),
+        .testTarget(name: "CadenceCoreTests", dependencies: [
+            "CadencePlanning", "CadenceCore", "CadenceFeatures", "CadenceExerciseImages",
+            // Only WeightSuggestionTests.swift needs this, and that file is
+            // itself `#if canImport(SwiftData)`-gated (Apple platforms only),
+            // so CadenceWorkoutFeatures need not build on Linux for the rest
+            // of this target's 83 SwiftData-free tests to compile and run.
+            .target(name: "CadenceWorkoutFeatures", condition: .when(platforms: [.iOS, .macOS, .watchOS])),
+        ], swiftSettings: [.swiftLanguageMode(.v6)]),
         .testTarget(
             name: "CadenceExerciseImagesTests",
             dependencies: ["CadenceCore", "CadenceExerciseImages"],
@@ -84,7 +105,7 @@ let package = Package(
         ),
         .testTarget(
             name: "CadenceFeaturesTests",
-            dependencies: ["CadenceFeatures", "CadenceFixtures"],
+            dependencies: ["CadenceFeatures", "CadenceWorkoutFeatures", "CadencePhoneFeatures", "CadenceFixtures"],
             swiftSettings: [.swiftLanguageMode(.v6)]
         )
     ]

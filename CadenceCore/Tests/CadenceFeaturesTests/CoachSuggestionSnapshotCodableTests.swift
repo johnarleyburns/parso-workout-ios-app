@@ -1,40 +1,43 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
-final class CoachSuggestionSnapshotCodableTests: XCTestCase {
+struct CoachSuggestionSnapshotCodableTests {
     private typealias F = CoachSuggestionFixtures
 
-    func testJSONAndPlistRoundTripPreserveEveryGeneratorInput() throws {
+    @Test func jsonAndPlistRoundTripPreserveEveryGeneratorInput() throws {
         let snapshot = F.snapshot(F.request(candidates: F.catalog, recent: ["bench"]))
         let json = try JSONEncoder().encode(snapshot)
         let plist = try PropertyListEncoder().encode(snapshot)
         for data in [json, plist] {
             guard case .success(let decoded) = CoachSuggestionSnapshot.decode(data) else {
-                return XCTFail("decode failed")
+                Issue.record("decode failed")
+                return
             }
-            XCTAssertEqual(decoded, snapshot)
-            XCTAssertEqual(decoded.request.input, snapshot.request.input)
-            XCTAssertEqual(CoachSuggestionFingerprint.make(request: decoded.request), snapshot.fingerprint)
+            #expect(decoded == snapshot)
+            #expect(decoded.request.input == snapshot.request.input)
+            #expect(CoachSuggestionFingerprint.make(request: decoded.request) == snapshot.fingerprint)
         }
     }
 
-    func testUnsupportedSchemaAndCorruptDataFailClosed() throws {
+    @Test func unsupportedSchemaAndCorruptDataFailClosed() throws {
         let snapshot = F.snapshot(F.request(candidates: F.catalog))
         let future = CoachSuggestionSnapshot(
             schemaVersion: 99, generatedAt: snapshot.generatedAt, dayKey: snapshot.dayKey,
             fingerprint: snapshot.fingerprint, request: snapshot.request)
-        XCTAssertEqual(CoachSuggestionSnapshot.decode(try JSONEncoder().encode(future)),
-                       .failure(.unsupportedSchema(99)))
-        XCTAssertNil(CoachSuggestionService.generate(from: future))
-        XCTAssertEqual(CoachSuggestionSnapshot.decode(Data("garbage".utf8)), .failure(.corrupt))
-        XCTAssertEqual(CoachSuggestionSnapshot.decode(Data("{\"schemaVersion\":1}".utf8)), .failure(.corrupt))
+        #expect(CoachSuggestionSnapshot.decode(try JSONEncoder().encode(future))
+                       == .failure(.unsupportedSchema(99)))
+        #expect(CoachSuggestionService.generate(from: future) == nil)
+        #expect(CoachSuggestionSnapshot.decode(Data("garbage".utf8)) == .failure(.corrupt))
+        #expect(CoachSuggestionSnapshot.decode(Data("{\"schemaVersion\":1}".utf8)) == .failure(.corrupt))
     }
 
-    func testFingerprintTracksSemanticInputsNotTransportMetadata() {
+    @Test func fingerprintTracksSemanticInputsNotTransportMetadata() {
         let base = F.request(candidates: F.catalog, recent: ["bench"])
         let fp = CoachSuggestionFingerprint.make(request: base)
-        XCTAssertEqual(fp, CoachSuggestionFingerprint.make(request: base))
+        #expect(fp == CoachSuggestionFingerprint.make(request: base))
 
         let variants: [CoachSuggestionRequest] = [
             F.request(candidates: F.catalog, recent: []),
@@ -46,10 +49,10 @@ final class CoachSuggestionSnapshotCodableTests: XCTestCase {
             CoachSuggestionRequest(input: base.input, unit: base.unit, warmupMinutes: 6, cooldownMinutes: 5),
             CoachSuggestionRequest(input: base.input, unit: base.unit, warmupMinutes: 5, cooldownMinutes: 7),
         ]
-        for v in variants { XCTAssertNotEqual(CoachSuggestionFingerprint.make(request: v), fp) }
+        for v in variants { #expect(CoachSuggestionFingerprint.make(request: v) != fp) }
 
         let a = CoachSuggestionSnapshotBuilder.make(request: base, generatedAt: F.asOf)
         let b = CoachSuggestionSnapshotBuilder.make(request: base, generatedAt: F.asOf.addingTimeInterval(500))
-        XCTAssertEqual(a.fingerprint, b.fingerprint)
+        #expect(a.fingerprint == b.fingerprint)
     }
 }

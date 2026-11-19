@@ -1,6 +1,7 @@
 import AVFoundation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import Observation
 
 /// Production composition root: one coordinator shared by speech and every bell player.

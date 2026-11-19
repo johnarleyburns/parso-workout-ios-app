@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension HomeView {
     /// Starts a scheduled snapshot through the same reviewed Workout Plan
@@ -59,7 +61,7 @@ extension HomeView {
     /// suggestion opens the timer setup with its recommended duration; an
     /// established interval suggestion uses the existing interval runner.
     func launchSuggestedCardio(_ suggestion: CardioSuggestion) {
-        if let id = suggestion.protocolID, let hiit = HIITProtocol.find(id: id) {
+        if let id = suggestion.protocolID, let hiit = CadenceCore.HIITProtocol.find(id: id) {
             let plan = hiit.plan
             begin(.interval(IntervalLaunch(plan: plan,
                                             saveType: suggestion.type,

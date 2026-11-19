@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// The Progress tab's training-consistency heatmap (FR-5.4, revenue plan Phase 6):
 /// a GitHub-style calendar of trained vs rest days over the trailing weeks, plus a

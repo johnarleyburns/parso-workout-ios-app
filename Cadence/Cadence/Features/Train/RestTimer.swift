@@ -2,6 +2,7 @@ import SwiftUI
 import Combine
 import Observation
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The "Rest · 0:47" pill at the top of the session screen.
 struct RestTimerBar: View {

@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class WatchCardioCompletionTests: XCTestCase {
-    func testRoundTripPreservesVersionedCompletion() throws {
+struct WatchCardioCompletionTests {
+    @Test func roundTripPreservesVersionedCompletion() throws {
         let id = UUID()
         let value = WatchCardioCompletion(id: id, type: .run, title: "Morning run",
                                           start: Date(timeIntervalSince1970: 100),
@@ -11,40 +12,40 @@ final class WatchCardioCompletionTests: XCTestCase {
                                           hrSamples: [HRSamplePoint(t: 2, bpm: 140)],
                                           avgHeartRate: 135, maxHeartRate: 160,
                                           gpsEnabled: true)
-        XCTAssertEqual(try WatchCardioCompletion.decode(value.encoded()), value)
+        #expect(try WatchCardioCompletion.decode(value.encoded()) == value)
     }
 
-    func testUnsupportedVersionIsRejected() throws {
+    @Test func unsupportedVersionIsRejected() throws {
         let value = WatchCardioCompletion(type: .walk, start: Date(), end: Date(), version: 99)
-        XCTAssertThrowsError(try WatchCardioCompletion.decode(value.encoded())) { error in
-            XCTAssertEqual(error as? WatchCardioCompletion.DecodeError, .unsupportedVersion(99))
+        #expect(throws: WatchCardioCompletion.DecodeError.unsupportedVersion(99)) {
+            try WatchCardioCompletion.decode(value.encoded())
         }
     }
 
-    func testNonGPSDistanceIsRemovedFromEnvelope() {
+    @Test func nonGPSDistanceIsRemovedFromEnvelope() {
         let value = WatchCardioCompletion(type: .cycle, start: Date(), end: Date(),
                                           distanceMeters: 1000, gpsEnabled: false)
-        XCTAssertNil(value.distanceMeters)
+        #expect(value.distanceMeters == nil)
     }
-    func testPoolSwimPreservesDistanceLapsAndPoolSizeWithoutGPS() throws {
+    @Test func poolSwimPreservesDistanceLapsAndPoolSizeWithoutGPS() throws {
         let value = WatchCardioCompletion(type: .swim, start: Date(), end: Date(),
             distanceMeters: 500, gpsEnabled: false, swimmingLapCount: 20, poolLengthMeters: 25)
-        XCTAssertEqual(try WatchCardioCompletion.decode(value.encoded()), value)
-        XCTAssertEqual(value.distanceMeters, 500)
-        XCTAssertEqual(value.ingestedWorkout.distanceMeters, 500)
-        XCTAssertEqual(value.swimmingLapCount, 20)
-        XCTAssertEqual(value.poolLengthMeters, 25)
-        XCTAssertFalse(value.gpsEnabled)
+        #expect(try WatchCardioCompletion.decode(value.encoded()) == value)
+        #expect(value.distanceMeters == 500)
+        #expect(value.ingestedWorkout.distanceMeters == 500)
+        #expect(value.swimmingLapCount == 20)
+        #expect(value.poolLengthMeters == 25)
+        #expect(!value.gpsEnabled)
     }
 
-    func testLegacyCompletionStillDecodesWithoutSwimmingFields() throws {
+    @Test func legacyCompletionStillDecodesWithoutSwimmingFields() throws {
         let value = WatchCardioCompletion(type: .swim, start: Date(), end: Date())
-        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: value.encoded()) as? [String: Any])
+        var json = try #require(JSONSerialization.jsonObject(with: value.encoded()) as? [String: Any])
         json.removeValue(forKey: "swimmingLapCount")
         json.removeValue(forKey: "poolLengthMeters")
         let decoded = try WatchCardioCompletion.decode(JSONSerialization.data(withJSONObject: json))
-        XCTAssertNil(decoded.swimmingLapCount)
-        XCTAssertNil(decoded.poolLengthMeters)
+        #expect(decoded.swimmingLapCount == nil)
+        #expect(decoded.poolLengthMeters == nil)
     }
 
 }

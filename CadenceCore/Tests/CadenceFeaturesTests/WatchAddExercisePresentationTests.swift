@@ -1,38 +1,39 @@
-import XCTest
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchAddExercisePresentationTests: XCTestCase {
+struct WatchAddExercisePresentationTests {
 
-    func testMuscleGroupPolicyShowsEveryCanonicalGroup() {
-        XCTAssertEqual(WatchAddExercisePresentation.muscleGroupSectionTitle, "Muscle groups")
+    @Test func muscleGroupPolicyShowsEveryCanonicalGroup() {
+        #expect(WatchAddExercisePresentation.muscleGroupSectionTitle == "Muscle groups")
         let groups = WatchAddExercisePresentation.visibleMuscleGroups
-        XCTAssertEqual(groups, MuscleGroup.canonicalOrder)
-        XCTAssertEqual(Set(groups).count, groups.count)
+        #expect(groups == MuscleGroup.canonicalOrder)
+        #expect(Set(groups).count == groups.count)
         for group in [MuscleGroup.neck, .rotatorCuff, .hipFlexors, .tibialis] {
-            XCTAssertTrue(groups.contains(group))
+            #expect(groups.contains(group))
         }
-        XCTAssertFalse(WatchAddExercisePresentation.offersMoreMuscles)
-        XCTAssertFalse(WatchAddExercisePresentation.offersRecentExercises)
+        #expect(!WatchAddExercisePresentation.offersMoreMuscles)
+        #expect(!WatchAddExercisePresentation.offersRecentExercises)
     }
 
-    func testResultRowReservesTwoLinesAndOpensPreview() {
+    @Test func resultRowReservesTwoLinesAndOpensPreview() {
         let name = "Barbell Romanian Deadlift With Extra Long Descriptive Suffix"
-        XCTAssertEqual(WatchAddExercisePresentation.rowTitle(for: name), name)
-        XCTAssertEqual(WatchAddExercisePresentation.exerciseNameMaxLines, 2)
-        XCTAssertFalse(WatchAddExercisePresentation.usesMarqueeForNames)
-        XCTAssertEqual(WatchAddExercisePresentation.rowAction, .openPreview)
-        XCTAssertNotEqual(WatchAddExercisePresentation.rowAction, .addImmediately)
-        XCTAssertTrue(WatchAddExercisePresentation.rowAccessibilityLabel(for: name).contains(name))
-        XCTAssertTrue(WatchAddExercisePresentation.rowAccessibilityHint.lowercased().contains("before adding"))
+        #expect(WatchAddExercisePresentation.rowTitle(for: name) == name)
+        #expect(WatchAddExercisePresentation.exerciseNameMaxLines == 2)
+        #expect(!WatchAddExercisePresentation.usesMarqueeForNames)
+        #expect(WatchAddExercisePresentation.rowAction == .openPreview)
+        #expect(WatchAddExercisePresentation.rowAction != .addImmediately)
+        #expect(WatchAddExercisePresentation.rowAccessibilityLabel(for: name).contains(name))
+        #expect(WatchAddExercisePresentation.rowAccessibilityHint.lowercased().contains("before adding"))
     }
 
-    func testPreviewDetailToggleAndLayout() {
-        XCTAssertEqual(WatchAddExercisePresentation.detailToggleTitle(isExpanded: false), "Show detail")
-        XCTAssertEqual(WatchAddExercisePresentation.detailToggleTitle(isExpanded: true), "Hide detail")
-        XCTAssertEqual(WatchAddExercisePresentation.detailPlacement, .belowActions)
-        XCTAssertEqual(WatchAddExercisePresentation.backTreatment, .leadingChevronOnly)
-        XCTAssertEqual(WatchAddExercisePresentation.backAccessibilityLabel, "Back to exercises")
-        XCTAssertGreaterThanOrEqual(WatchAddExercisePresentation.minimumTouchHeight, 44)
+    @Test func previewDetailToggleAndLayout() {
+        #expect(WatchAddExercisePresentation.detailToggleTitle(isExpanded: false) == "Show detail")
+        #expect(WatchAddExercisePresentation.detailToggleTitle(isExpanded: true) == "Hide detail")
+        #expect(WatchAddExercisePresentation.detailPlacement == .belowActions)
+        #expect(WatchAddExercisePresentation.backTreatment == .leadingChevronOnly)
+        #expect(WatchAddExercisePresentation.backAccessibilityLabel == "Back to exercises")
+        #expect(WatchAddExercisePresentation.minimumTouchHeight >= 44)
     }
 }

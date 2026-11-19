@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Full cardio catalog reached by the compact launcher's More.. choice.
 /// Weekly review remains exclusively in the Cardio tab.

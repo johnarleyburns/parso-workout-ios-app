@@ -1,34 +1,34 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 struct WatchHomeStartControls: View {
     @Binding var selection: WatchHomeWorkoutSelection
 
     var body: some View {
-        VStack(spacing: 8) {
-            Picker("Workout type", selection: Binding(
-                get: { selection.selection }, set: { selection.select($0) })) {
-                ForEach(selection.choices) { option in
+        // Instant picker: tapping Strength/Cardio (WatchHomeStartNavigation's
+        // mode buttons) already shows this list immediately; tapping a row
+        // here both selects AND starts it in one step, same as the phone's
+        // dropdown Menu -- no separate wheel-scroll + Start tap.
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(selection.choices) { option in
+                Button {
+                    WatchHaptics.tap()
+                    selection.selectAndStart(option)
+                    selection.persist()
+                } label: {
                     Label(LocalizedStringKey(selection.title(for: option)), systemImage: option.symbol)
-                        .tag(option)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             }
-            .pickerStyle(.wheel)
-            .labelsHidden()
-            .frame(height: 44)
-            .clipped()
-            .accessibilityLabel(selection.mode == .strength ? "Strength workout" : "Cardio workout")
-            .accessibilityIdentifier("watch.workoutPicker")
-
-            WatchPrimaryStartButton { selection.start() }
-            .accessibilityHint("Opens the selected workout")
-            .accessibilityIdentifier("watch.startWorkout")
         }
         .padding(.horizontal, 6)
         .padding(.vertical, 5)
-        .onChange(of: selection.strengthChoice) { _, _ in selection.persist() }
-        .onChange(of: selection.cardioChoice) { _, _ in selection.persist() }
+        .accessibilityLabel(selection.mode == .strength ? "Strength workout" : "Cardio workout")
+        .accessibilityIdentifier("watch.workoutPicker")
     }
 }
 
@@ -75,6 +75,11 @@ struct WatchHomeStartNavigation: ViewModifier {
         case .strength(.previous): WatchPreviousListView()
         case .cardio(let type):
             if let cardio = type.cardioType { cardioDestination(cardio) }
+        case .suggestedCardio:
+            // Unreachable: "Personalized Cardio" is phone-only — excluded from
+            // `WatchHomeWorkoutSelection.choices` so it never appears in the
+            // Watch wheel/list in the first place.
+            EmptyView()
         }
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Marks a workout screen as the owner of the running `HKWorkoutSession` while it is showing.
 struct WatchWorkoutScreenPresence: ViewModifier {

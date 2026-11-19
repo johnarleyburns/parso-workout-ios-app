@@ -1,10 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 import CadenceCore
 import CadenceFixtures
+import CadencePhoneFeatures
 
 @MainActor
-final class CardioImportRunnerTests: XCTestCase {
+struct CardioImportRunnerTests {
     private struct SaveFailure: Error {}
 
     private let t0 = Date(timeIntervalSince1970: 90_000)
@@ -25,53 +28,53 @@ final class CardioImportRunnerTests: XCTestCase {
         }
     }
 
-    func testLateArrivingOldWorkoutImportsAndAdvancesAnchor() async throws {
+    @Test func lateArrivingOldWorkoutImportsAndAdvancesAnchor() async throws {
         let ctx = try makeContext(), fake = FakeHealthProvider()
         // Starts long before any prior "sync" time, but only arrives now.
         fake.pendingWorkouts = [workout(startOffset: -86_400)]
         let report = try await run(fake, ctx)
-        XCTAssertEqual(report.inserted, 1)
-        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
-        XCTAssertEqual(fake.committedAnchors.count, 1)
+        #expect(report.inserted == 1)
+        #expect(try WorkoutRepository.allCardio(ctx).count == 1)
+        #expect(fake.committedAnchors.count == 1)
     }
 
-    func testEmptyDeltaStillAdvancesAnchor() async throws {
+    @Test func emptyDeltaStillAdvancesAnchor() async throws {
         let ctx = try makeContext(), fake = FakeHealthProvider()
         fake.pendingWorkouts = []
         let report = try await run(fake, ctx)
-        XCTAssertEqual(report.inserted, 0)
-        XCTAssertFalse(report.changedHistory)
-        XCTAssertEqual(fake.committedAnchors.count, 1)
+        #expect(report.inserted == 0)
+        #expect(!report.changedHistory)
+        #expect(fake.committedAnchors.count == 1)
     }
 
-    func testFetchFailureDoesNotAdvanceAnchor() async throws {
+    @Test func fetchFailureDoesNotAdvanceAnchor() async throws {
         let ctx = try makeContext(), fake = FakeHealthProvider()
         fake.importFetchError = SaveFailure()
-        do { _ = try await run(fake, ctx); XCTFail("expected throw") } catch {}
-        XCTAssertTrue(fake.committedAnchors.isEmpty)
+        do { _ = try await run(fake, ctx); Issue.record("expected throw") } catch {}
+        #expect(fake.committedAnchors.isEmpty)
     }
 
-    func testSaveFailureKeepsAnchorAndRetryIsIdempotent() async throws {
+    @Test func saveFailureKeepsAnchorAndRetryIsIdempotent() async throws {
         let ctx = try makeContext(), fake = FakeHealthProvider()
         let w = workout()
         fake.pendingWorkouts = [w]
         let first = try await fake.fetchImportedCardioDelta()
         do {
             _ = try await CardioImportRunner.run(provider: fake) { _ in throw SaveFailure() }
-            XCTFail("expected throw")
+            Issue.record("expected throw")
         } catch is SaveFailure {}
-        XCTAssertTrue(fake.committedAnchors.isEmpty)
+        #expect(fake.committedAnchors.isEmpty)
         // Retry receives the same delta and anchor.
         let retry = try await fake.fetchImportedCardioDelta()
-        XCTAssertEqual(retry, first)
+        #expect(retry == first)
         let firstRun = try await run(fake, ctx)
         let secondRun = try await run(fake, ctx)
-        XCTAssertEqual(firstRun.inserted, 1)
-        XCTAssertEqual(secondRun.inserted, 0)
-        XCTAssertEqual(try WorkoutRepository.allCardio(ctx).count, 1)
+        #expect(firstRun.inserted == 1)
+        #expect(secondRun.inserted == 0)
+        #expect(try WorkoutRepository.allCardio(ctx).count == 1)
     }
 
-    func testCancellationDoesNotCommitAnchor() async throws {
+    @Test func cancellationDoesNotCommitAnchor() async throws {
         let ctx = try makeContext(), fake = FakeHealthProvider()
         fake.pendingWorkouts = [workout()]
         let task = Task { @MainActor in
@@ -81,11 +84,11 @@ final class CardioImportRunnerTests: XCTestCase {
                     upserts: delta.upserts, deletedIDs: [], in: ctx)
             }
         }
-        do { _ = try await task.value; XCTFail("expected cancel") } catch is CancellationError {}
-        XCTAssertTrue(fake.committedAnchors.isEmpty)
+        do { _ = try await task.value; Issue.record("expected cancel") } catch is CancellationError {}
+        #expect(fake.committedAnchors.isEmpty)
     }
 
-    func testDeletionRemovesOnlyImportedRows() throws {
+    @Test func deletionRemovesOnlyImportedRows() throws {
         let ctx = try makeContext()
         let imported = workout(), other = workout(startOffset: 7200)
         _ = try WorkoutRepository.ingest([imported, other], in: ctx)
@@ -96,9 +99,10 @@ final class CardioImportRunnerTests: XCTestCase {
         try ctx.save()
         let report = try WorkoutRepository.applyCardioImport(
             upserts: [], deletedIDs: [imported.id, recorded.healthKitWorkoutUUID!], in: ctx)
-        XCTAssertEqual(report.removed, 1)
-        XCTAssertTrue(report.changedHistory)
+        #expect(report.removed == 1)
+        #expect(report.changedHistory)
         let live = try WorkoutRepository.allCardio(ctx)
-        XCTAssertEqual(Set(live.compactMap(\.healthKitWorkoutUUID)), [other.id, recorded.healthKitWorkoutUUID!])
+        #expect(Set(live.compactMap(\.healthKitWorkoutUUID)) == [other.id, recorded.healthKitWorkoutUUID!])
     }
 }
+#endif

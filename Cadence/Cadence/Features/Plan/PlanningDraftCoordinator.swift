@@ -2,6 +2,8 @@ import Foundation
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// App-facing entry point for Planning Draft mutations. Supplies the same
 /// owner-history lookup the workout plan editor uses, then defers every

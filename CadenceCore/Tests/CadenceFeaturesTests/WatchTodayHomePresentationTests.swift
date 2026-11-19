@@ -1,32 +1,35 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class WatchTodayHomePresentationTests: XCTestCase {
-    func testSyncedUnplannedIsReadyWithEmbeddedActions() {
+struct WatchTodayHomePresentationTests {
+    @Test func syncedUnplannedIsReadyWithEmbeddedActions() {
         let p = WatchTodayHomePresentation(hero: .unplanned(synced: true))
-        XCTAssertEqual(p, .ready(synced: true))
-        XCTAssertTrue(p.showsEmbeddedStartActions)
-        XCTAssertFalse(p.showsQuickStartTiles)
-        XCTAssertNil(p.syncReminder)
+        #expect(p == .ready(synced: true))
+        #expect(p.showsEmbeddedStartActions)
+        #expect(!p.showsQuickStartTiles)
+        #expect(p.syncReminder == nil)
     }
 
-    func testUnsyncedUnplannedShowsQuietReminder() {
+    @Test func unsyncedUnplannedShowsQuietReminder() {
         let p = WatchTodayHomePresentation(hero: .unplanned(synced: false))
-        XCTAssertEqual(p, .ready(synced: false))
-        XCTAssertTrue(p.showsEmbeddedStartActions)
-        XCTAssertFalse(p.showsQuickStartTiles)
-        XCTAssertEqual(p.syncReminder, "Sync your iPhone plan when convenient.")
+        #expect(p == .ready(synced: false))
+        #expect(p.showsEmbeddedStartActions)
+        #expect(!p.showsQuickStartTiles)
+        #expect(p.syncReminder == "Sync your iPhone plan when convenient.")
     }
 
-    func testRestDayIsRestWithoutTiles() {
+    @Test func restDayIsRestWithoutTiles() {
         let p = WatchTodayHomePresentation(hero: .restDay(advice: nil))
-        XCTAssertEqual(p, .rest)
-        XCTAssertFalse(p.showsQuickStartTiles)
-        XCTAssertFalse(p.showsEmbeddedStartActions)
-        XCTAssertNil(p.syncReminder)
+        #expect(p == .rest)
+        #expect(!p.showsQuickStartTiles)
+        #expect(!p.showsEmbeddedStartActions)
+        #expect(p.syncReminder == nil)
     }
 
-    func testOtherHeroesAreStandardWithTiles() {
+    @Test func otherHeroesAreStandardWithTiles() {
         let heroes: [WatchTodayHero] = [
             .resume(title: "t", detail: "d", startedAt: Date()),
             .planned(sessionID: "s", title: "t", exercises: [], minutes: nil, advice: nil),
@@ -34,10 +37,10 @@ final class WatchTodayHomePresentationTests: XCTestCase {
         ]
         for hero in heroes {
             let p = WatchTodayHomePresentation(hero: hero)
-            XCTAssertEqual(p, .standard)
-            XCTAssertTrue(p.showsQuickStartTiles)
-            XCTAssertFalse(p.showsEmbeddedStartActions)
-            XCTAssertNil(p.syncReminder)
+            #expect(p == .standard)
+            #expect(p.showsQuickStartTiles)
+            #expect(!p.showsEmbeddedStartActions)
+            #expect(p.syncReminder == nil)
         }
     }
 }

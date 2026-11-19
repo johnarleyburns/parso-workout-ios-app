@@ -1,19 +1,20 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class RuntimePrescriptionAdapterTests: XCTestCase {
-    func testMaterializePreservesSetKindAndSupersetGroup() throws {
+struct RuntimePrescriptionAdapterTests {
+    @Test func materializePreservesSetKindAndSupersetGroup() throws {
         let plan = PlanSessionSnapshot(id: UUID(), title: "Superset", items: [
             .strength(.init(id: UUID(), exerciseKey: "bench", exerciseName: "Bench Press",
                             supersetGroup: "A",
                             sets: [.init(id: UUID(), targetReps: 8, kind: .failure)]))
         ])
         let draft = try RuntimePrescriptionAdapter().materialize(planSession: plan, athlete: .init())
-        XCTAssertEqual(draft.plannedPrescriptions.first?.supersetGroup, "A")
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.kind, .failure)
+        #expect(draft.plannedPrescriptions.first?.supersetGroup == "A")
+        #expect(draft.plannedPrescriptions.first?.sets.first?.kind == .failure)
     }
 
-    func testMaterializeResolvesPercentAndPreservesIntentAndSourceIDs() throws {
+    @Test func materializeResolvesPercentAndPreservesIntentAndSourceIDs() throws {
         let itemID = UUID()
         let setID = UUID()
         let session = PlanSessionSnapshot(
@@ -32,19 +33,19 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
             athlete: .init(oneRepMaxKgByExerciseKey: ["bench_press": 101], loadIncrementKg: 0.5),
             existingSessionID: UUID())
 
-        XCTAssertEqual(draft.plannedExerciseNames, ["Bench Press"])
-        XCTAssertEqual(draft.plannedRepLadder, [5, 8])
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sourceItemID, itemID)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.exerciseKey, "bench_press")
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.sourceSetID, setID)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.targetWeightKg, 70.5)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.oneRepMaxPercent, 0.70)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.targetRPE, 8)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.restSeconds, 150)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.last?.isWarmup, true)
+        #expect(draft.plannedExerciseNames == ["Bench Press"])
+        #expect(draft.plannedRepLadder == [5, 8])
+        #expect(draft.plannedPrescriptions.first?.sourceItemID == itemID)
+        #expect(draft.plannedPrescriptions.first?.exerciseKey == "bench_press")
+        #expect(draft.plannedPrescriptions.first?.sets.first?.sourceSetID == setID)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.targetWeightKg == 70.5)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.oneRepMaxPercent == 0.70)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.targetRPE == 8)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.restSeconds == 150)
+        #expect(draft.plannedPrescriptions.first?.sets.last?.isWarmup == true)
     }
 
-    func testMaterializeIsResumableWhenExistingSessionIDIsSupplied() throws {
+    @Test func materializeIsResumableWhenExistingSessionIDIsSupplied() throws {
         let plan = PlanSessionSnapshot(id: UUID(), title: "Lower", items: [
             .strength(.init(id: UUID(), exerciseKey: "squat", exerciseName: "Back Squat",
                             sets: [.init(id: UUID(), targetReps: 5, load: .absoluteKg(100))]))
@@ -56,12 +57,12 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         let resumed = try RuntimePrescriptionAdapter().materialize(
             planSession: plan, athlete: .init(), existingSessionID: existingID)
 
-        XCTAssertEqual(first.sessionID, existingID)
-        XCTAssertEqual(resumed.sessionID, existingID)
-        XCTAssertEqual(first.plannedPrescriptions, resumed.plannedPrescriptions)
+        #expect(first.sessionID == existingID)
+        #expect(resumed.sessionID == existingID)
+        #expect(first.plannedPrescriptions == resumed.plannedPrescriptions)
     }
 
-    func testLegacyPlanFieldsArePopulatedAlongsideRichPrescriptions() throws {
+    @Test func legacyPlanFieldsArePopulatedAlongsideRichPrescriptions() throws {
         let plan = PlanSessionSnapshot(id: UUID(), title: "Push", items: [
             .strength(.init(id: UUID(), exerciseKey: "bench_press", exerciseName: "Bench Press",
                             sets: [.init(id: UUID(), targetReps: 8, load: .absoluteKg(60))])),
@@ -72,12 +73,12 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         let draft = try RuntimePrescriptionAdapter().materialize(
             planSession: plan, athlete: .init())
 
-        XCTAssertEqual(draft.plannedRepLadder, [8])
-        XCTAssertEqual(draft.prescribedLoadKg, 60)
-        XCTAssertEqual(draft.plannedPrescriptions.count, 2)
+        #expect(draft.plannedRepLadder == [8])
+        #expect(draft.prescribedLoadKg == 60)
+        #expect(draft.plannedPrescriptions.count == 2)
     }
 
-    func testApplyingDraftKeepsPlanSourceAndCreatesNoResults() throws {
+    @Test func applyingDraftKeepsPlanSourceAndCreatesNoResults() throws {
         let planSessionID = UUID()
         let plan = PlanSessionSnapshot(id: planSessionID, title: "Push", items: [
             .strength(.init(id: UUID(), exerciseKey: "bench_press", exerciseName: "Bench Press",
@@ -89,16 +90,16 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
 
         draft.apply(to: session)
 
-        XCTAssertEqual(session.planSessionID, planSessionID)
-        XCTAssertEqual(session.plannedExerciseNames, ["Bench Press"])
-        XCTAssertEqual(session.plannedPrescriptions.first?.sets.first?.targetWeightKg, 80)
-        XCTAssertTrue(session.orderedSets.isEmpty,
+        #expect(session.planSessionID == planSessionID)
+        #expect(session.plannedExerciseNames == ["Bench Press"])
+        #expect(session.plannedPrescriptions.first?.sets.first?.targetWeightKg == 80)
+        #expect(session.orderedSets.isEmpty,
                       "The adapter writes prescription metadata only")
     }
 
-    func testStableCatalogKeyOutranksStaleDisplayNameProjection() throws {
-        let template = try XCTUnwrap(ExerciseLibrary.starter.first { $0.name == "Bench Press" })
-        let key = try XCTUnwrap(template.sourceExerciseID)
+    @Test func stableCatalogKeyOutranksStaleDisplayNameProjection() throws {
+        let template = try #require(ExerciseLibrary.starter.first { $0.name == "Bench Press" })
+        let key = try #require(template.sourceExerciseID)
         let item = StrengthItem(
             exerciseKey: ExerciseKey(raw: key), order: 0,
             sets: [PrescribedSet(setIndex: 0, repTarget: .exact(8))])
@@ -109,34 +110,32 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
             exerciseNameByKey: [key: "Old Bench Alias"],
             athlete: AthleteExecutionSnapshot())
 
-        XCTAssertEqual(draft.plannedExerciseNames, ["Bench Press"])
-        XCTAssertEqual(draft.plannedPrescriptions.first?.exerciseName, "Bench Press")
+        #expect(draft.plannedExerciseNames == ["Bench Press"])
+        #expect(draft.plannedPrescriptions.first?.exerciseName == "Bench Press")
     }
 
-    func testPercentLoadRequiresAnExerciseSpecificOneRepMax() {
+    @Test func percentLoadRequiresAnExerciseSpecificOneRepMax() {
         let plan = PlanSessionSnapshot(id: UUID(), title: "Push", items: [
             .strength(.init(id: UUID(), exerciseKey: "bench_press", exerciseName: "Bench Press",
                             sets: [.init(id: UUID(), targetReps: 5, load: .oneRepMaxPercent(0.70))]))
         ])
 
-        XCTAssertThrowsError(try RuntimePrescriptionAdapter().materialize(
-            planSession: plan, athlete: .init())) { error in
-            XCTAssertEqual(error as? RuntimePrescriptionAdapterError,
-                           .missingOneRepMax(exerciseKey: "bench_press"))
+        #expect(throws: RuntimePrescriptionAdapterError.missingOneRepMax(exerciseKey: "bench_press")) {
+            try RuntimePrescriptionAdapter().materialize(planSession: plan, athlete: .init())
         }
     }
 
-    func testLegacyPrescriptionJSONDefaultsMissingWarmupFlag() throws {
+    @Test func legacyPrescriptionJSONDefaultsMissingWarmupFlag() throws {
         let legacyJSON = Data(#"{"targetReps":5,"targetWeightKg":100}"#.utf8)
 
         let prescription = try JSONDecoder().decode(PlannedSetPrescription.self, from: legacyJSON)
 
-        XCTAssertEqual(prescription.targetReps, 5)
-        XCTAssertEqual(prescription.targetWeightKg, 100)
-        XCTAssertFalse(prescription.isWarmup)
+        #expect(prescription.targetReps == 5)
+        #expect(prescription.targetWeightKg == 100)
+        #expect(!prescription.isWarmup)
     }
 
-    func testWatchPlanPayloadMaterializesStrengthAndCardio() throws {
+    @Test func watchPlanPayloadMaterializesStrengthAndCardio() throws {
         let sessionID = UUID()
         let session = PlanSessionSnapshot(
             id: sessionID,
@@ -152,16 +151,16 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
 
         let payload = try WatchPlanPayload.make(from: session, athlete: .init())
 
-        XCTAssertEqual(payload.version, WatchPlanPayload.currentVersion)
-        XCTAssertEqual(payload.planSessionID, sessionID)
-        XCTAssertEqual(payload.strength?.prescriptions.first?.sets.first?.targetWeightKg, 80)
-        XCTAssertEqual(payload.cardio.first?.kind, "run")
-        XCTAssertEqual(payload.cardio.first?.durationSeconds, 1_800)
-        XCTAssertEqual(payload.cardio.first?.distanceMeters, 5_000)
-        XCTAssertEqual(payload.cardio.first?.targetZone, 2)
+        #expect(payload.version == WatchPlanPayload.currentVersion)
+        #expect(payload.planSessionID == sessionID)
+        #expect(payload.strength?.prescriptions.first?.sets.first?.targetWeightKg == 80)
+        #expect(payload.cardio.first?.kind == "run")
+        #expect(payload.cardio.first?.durationSeconds == 1_800)
+        #expect(payload.cardio.first?.distanceMeters == 5_000)
+        #expect(payload.cardio.first?.targetZone == 2)
     }
 
-    func testUnifiedCardioPlanPreservesDistanceAndHeartRateZoneInWatchPayload() throws {
+    @Test func unifiedCardioPlanPreservesDistanceAndHeartRateZoneInWatchPayload() throws {
         let cardio = CardioItem(
             id: UUID(), order: 0,
             prescription: .steadyState(SteadyState(
@@ -174,12 +173,12 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         let payload = try WatchPlanPayload.make(
             from: PlanSessionSnapshot(session: unified), athlete: .init())
 
-        XCTAssertEqual(payload.cardio.count, 1)
-        XCTAssertEqual(payload.cardio.first?.distanceMeters, 5_000)
-        XCTAssertEqual(payload.cardio.first?.targetZone, 2)
+        #expect(payload.cardio.count == 1)
+        #expect(payload.cardio.first?.distanceMeters == 5_000)
+        #expect(payload.cardio.first?.targetZone == 2)
     }
 
-    func testUnifiedSessionConversionPreservesAllItemFamiliesAndStableIDs() throws {
+    @Test func unifiedSessionConversionPreservesAllItemFamiliesAndStableIDs() throws {
         let strengthItemID = UUID()
         let setID = UUID()
         let cardioID = UUID()
@@ -205,24 +204,24 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
             session: unified,
             exerciseNameByKey: ["incline_crunch": "Incline Crunch"])
 
-        XCTAssertEqual(snapshot.items.count, 4)
-        XCTAssertEqual(snapshot.strengthItems.first?.id, strengthItemID)
-        XCTAssertEqual(snapshot.strengthItems.first?.exerciseName, "Incline Crunch")
-        XCTAssertEqual(snapshot.strengthItems.first?.sets.first?.id, setID)
-        XCTAssertEqual(snapshot.strengthItems.first?.sets.first?.load, .bodyweight)
-        XCTAssertTrue(snapshot.items.contains {
+        #expect(snapshot.items.count == 4)
+        #expect(snapshot.strengthItems.first?.id == strengthItemID)
+        #expect(snapshot.strengthItems.first?.exerciseName == "Incline Crunch")
+        #expect(snapshot.strengthItems.first?.sets.first?.id == setID)
+        #expect(snapshot.strengthItems.first?.sets.first?.load == .bodyweight)
+        #expect(snapshot.items.contains {
             if case let .cardio(item) = $0 {
                 return item.id == cardioID && item.kind == "run" && item.durationSeconds == 600
             }
             return false
         })
-        XCTAssertTrue(snapshot.items.contains {
+        #expect(snapshot.items.contains {
             if case let .mobility(item) = $0 {
                 return item.id == mobilityID && item.rounds == 2
             }
             return false
         })
-        XCTAssertTrue(snapshot.items.contains {
+        #expect(snapshot.items.contains {
             if case let .instruction(item) = $0 {
                 return item.id == instructionID && item.text == "Brace first"
             }
@@ -230,7 +229,7 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
         })
     }
 
-    func testUnifiedSessionMaterializerResolvesPercentLoadThroughSessionOverload() throws {
+    @Test func unifiedSessionMaterializerResolvesPercentLoadThroughSessionOverload() throws {
         let itemID = UUID()
         let setID = UUID()
         let unified = Session(
@@ -246,11 +245,11 @@ final class RuntimePrescriptionAdapterTests: XCTestCase {
             athlete: AthleteExecutionSnapshot(
                 oneRepMaxKgByExerciseKey: ["bench_press": 100], loadIncrementKg: 2.5))
 
-        XCTAssertEqual(draft.planSessionID, unified.id)
-        XCTAssertEqual(draft.plannedExerciseNames, ["Bench Press"])
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sourceItemID, itemID)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.sourceSetID, setID)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.targetWeightKg, 75)
-        XCTAssertEqual(draft.plannedPrescriptions.first?.sets.first?.oneRepMaxPercent, 0.75)
+        #expect(draft.planSessionID == unified.id)
+        #expect(draft.plannedExerciseNames == ["Bench Press"])
+        #expect(draft.plannedPrescriptions.first?.sourceItemID == itemID)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.sourceSetID == setID)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.targetWeightKg == 75)
+        #expect(draft.plannedPrescriptions.first?.sets.first?.oneRepMaxPercent == 0.75)
     }
 }

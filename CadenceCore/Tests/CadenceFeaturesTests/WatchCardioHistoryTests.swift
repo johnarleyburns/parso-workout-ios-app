@@ -1,8 +1,11 @@
+#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 @MainActor
 struct WatchCardioHistoryTests {
@@ -196,3 +199,4 @@ struct WatchCardioHistoryTests {
 private extension WatchMyWorkoutRow.Source {
     var isStrengthForTest: Bool { if case .strength = self { return true } else { return false } }
 }
+#endif

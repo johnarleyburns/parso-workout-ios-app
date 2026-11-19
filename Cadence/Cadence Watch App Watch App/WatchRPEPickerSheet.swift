@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// RPE choices presented from More; `onSelect(nil)` clears the rating.
 struct WatchRPEPickerSheet: View {

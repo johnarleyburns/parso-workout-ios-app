@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(SwiftData)
 import SwiftData
+#endif
 
 // MARK: - Normalized plan records
 
@@ -8,7 +10,9 @@ import SwiftData
 /// rows make the hierarchy addressable by stable IDs for CloudKit and future
 /// client relationship queries without putting execution data in a second
 /// domain model.
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlanHeader {
     public var id: UUID = UUID()
     public var title: String = ""
@@ -51,7 +55,16 @@ public final class PersistedPlanHeader {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedPlanHeader: Equatable, Hashable {
+    public static func == (lhs: PersistedPlanHeader, rhs: PersistedPlanHeader) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlanWeek {
     public var id: UUID = UUID()
     public var planID: UUID = UUID()
@@ -74,7 +87,16 @@ public final class PersistedPlanWeek {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedPlanWeek: Equatable, Hashable {
+    public static func == (lhs: PersistedPlanWeek, rhs: PersistedPlanWeek) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlanDay {
     public var id: UUID = UUID()
     public var weekID: UUID = UUID()
@@ -91,7 +113,16 @@ public final class PersistedPlanDay {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedPlanDay: Equatable, Hashable {
+    public static func == (lhs: PersistedPlanDay, rhs: PersistedPlanDay) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlanSession {
     public var id: UUID = UUID()
     public var dayID: UUID = UUID()
@@ -133,7 +164,16 @@ public final class PersistedPlanSession {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedPlanSession: Equatable, Hashable {
+    public static func == (lhs: PersistedPlanSession, rhs: PersistedPlanSession) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlanItem {
     public var id: UUID = UUID()
     public var sessionID: UUID = UUID()
@@ -179,7 +219,16 @@ public final class PersistedPlanItem {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedPlanItem: Equatable, Hashable {
+    public static func == (lhs: PersistedPlanItem, rhs: PersistedPlanItem) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedPlanSet {
     public var id: UUID = UUID()
     public var itemID: UUID = UUID()
@@ -198,6 +247,13 @@ public final class PersistedPlanSet {
         self.id = id; self.itemID = itemID; self.setIndex = setIndex; self.payloadData = payloadData
     }
 }
+
+#if !canImport(SwiftData)
+extension PersistedPlanSet: Equatable, Hashable {
+    public static func == (lhs: PersistedPlanSet, rhs: PersistedPlanSet) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
 
 // MARK: - Client relationship persistence
 
@@ -236,7 +292,9 @@ public struct ClientRelationship: Codable, Equatable, Identifiable, Sendable {
     }
 }
 
+#if canImport(SwiftData)
 @Model
+#endif
 public final class PersistedClientRelationship {
     public var id: UUID = UUID()
     public var displayName: String = ""
@@ -283,6 +341,13 @@ public final class PersistedClientRelationship {
     }
 }
 
+#if !canImport(SwiftData)
+extension PersistedClientRelationship: Equatable, Hashable {
+    public static func == (lhs: PersistedClientRelationship, rhs: PersistedClientRelationship) -> Bool { lhs.id == rhs.id }
+    public func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+#endif
+
 public enum NormalizedPlanStoreError: Error, Equatable, Sendable {
     case invalidPlan
     case invalidRelationship
@@ -293,6 +358,7 @@ public enum NormalizedPlanStoreError: Error, Equatable, Sendable {
 public enum NormalizedPlanStore {
     public static let currentSchemaVersion = 1
 
+    #if canImport(SwiftData)
     @discardableResult
     public static func upsert(_ plan: Plan, originDevice: String = "",
                               in context: ModelContext) throws -> PersistedPlanHeader {
@@ -489,6 +555,7 @@ public enum NormalizedPlanStore {
         for day in days { context.delete(day) }
         for week in weeks { context.delete(week) }
     }
+    #endif
 
     private static func mondayFirstRank(_ rawValue: Int) -> Int {
         switch rawValue {

@@ -1,11 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Testing
 import Foundation
 import SwiftData
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WorkoutEntryPreferenceTests: XCTestCase {
-    func testWatchOverrideBeatsLaterPlanSetsAndExercises() throws {
+struct WorkoutEntryPreferenceTests {
+    @Test func watchOverrideBeatsLaterPlanSetsAndExercises() throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let context = ModelContext(container)
         let model = WatchStrengthFlowModel(context: context, unit: .kilograms,
@@ -20,30 +22,31 @@ final class WorkoutEntryPreferenceTests: XCTestCase {
             }))
         model.start(title: "Sticky", plannedExerciseNames: names,
                     planPayload: payload, createSession: true)
-        let first = try XCTUnwrap(model.exerciseList.first?.exercise)
+        let first = try #require(model.exerciseList.first?.exercise)
         model.startLogSet(for: first)
         model.currentReps = 10
         model.currentWeight = 25
         _ = model.logSet()
         model.startLogSet(for: first)
-        XCTAssertEqual(model.currentReps, 10)
-        XCTAssertEqual(model.currentWeight, 25)
-        let second = try XCTUnwrap(model.exerciseList.first { $0.exercise.id != first.id }?.exercise)
+        #expect(model.currentReps == 10)
+        #expect(model.currentWeight == 25)
+        let second = try #require(model.exerciseList.first { $0.exercise.id != first.id }?.exercise)
         model.startLogSet(for: second)
-        XCTAssertEqual(model.currentReps, 10)
-        XCTAssertEqual(model.currentWeight, 20)
+        #expect(model.currentReps == 10)
+        #expect(model.currentWeight == 20)
     }
 
-    func testExplicitRepsStayWithinWorkoutAndPerformer() {
+    @Test func explicitRepsStayWithinWorkoutAndPerformer() {
         let workout = WorkoutSession(title: "Workout")
         let partner = UUID()
-        XCTAssertNil(WorkoutEntryPreference.reps(in: workout, performerID: nil))
+        #expect(WorkoutEntryPreference.reps(in: workout, performerID: nil) == nil)
         WorkoutEntryPreference.setReps(10, in: workout, performerID: nil)
-        XCTAssertEqual(WorkoutEntryPreference.reps(in: workout, performerID: nil), 10)
-        XCTAssertNil(WorkoutEntryPreference.reps(in: workout, performerID: partner))
+        #expect(WorkoutEntryPreference.reps(in: workout, performerID: nil) == 10)
+        #expect(WorkoutEntryPreference.reps(in: workout, performerID: partner) == nil)
         WorkoutEntryPreference.setReps(12, in: workout, performerID: partner)
-        XCTAssertEqual(WorkoutEntryPreference.reps(in: workout, performerID: nil), 10)
-        XCTAssertEqual(WorkoutEntryPreference.reps(in: workout, performerID: partner), 12)
-        XCTAssertNil(WorkoutEntryPreference.reps(in: WorkoutSession(title: "Next"), performerID: nil))
+        #expect(WorkoutEntryPreference.reps(in: workout, performerID: nil) == 10)
+        #expect(WorkoutEntryPreference.reps(in: workout, performerID: partner) == 12)
+        #expect(WorkoutEntryPreference.reps(in: WorkoutSession(title: "Next"), performerID: nil) == nil)
     }
 }
+#endif

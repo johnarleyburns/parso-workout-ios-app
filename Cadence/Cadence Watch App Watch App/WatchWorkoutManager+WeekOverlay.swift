@@ -2,6 +2,7 @@ import Foundation
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// The Watch-local completion overlay (issue: Watch This Week renders zero
 /// while disconnected, then must reconcile with the phone baseline without a

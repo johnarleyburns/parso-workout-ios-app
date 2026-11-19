@@ -1,4 +1,5 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
 /// The "I missed a day — ignore constraints and plan workouts to meet my weekly
@@ -6,9 +7,9 @@ import XCTest
 /// back-to-back hard days, oversized sessions, work on rest days, or work while
 /// recovery is still open — so a crunched week leaves volume deficits unresolved.
 /// The `.meetDeficits` policy relaxes those guardrails so the deficits close.
-final class CoachPlanConstraintOverrideTests: XCTestCase {
+struct CoachPlanConstraintOverrideTests {
 
-    func testSafePolicyLeavesDeficitsWhenRecoveryAndRestBlockTheWeek() {
+    @Test func safePolicyLeavesDeficitsWhenRecoveryAndRestBlockTheWeek() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
         let plan = crunchedWeek(now: now)
@@ -23,14 +24,14 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
 
         // Every remaining strength slot is recovery-blocked and the other days are
         // rest days, so the safe planner cannot place any work.
-        XCTAssertTrue(safe.plannedStrengthSessions.isEmpty,
+        #expect(safe.plannedStrengthSessions.isEmpty,
                       "Safe policy must not plan through recovery/rest constraints")
-        XCTAssertFalse(safe.unresolvedDeficits.isEmpty,
+        #expect(!safe.unresolvedDeficits.isEmpty,
                        "Safe policy should leave the week's deficits unresolved")
-        XCTAssertTrue(safe.diagnostics.contains { $0.kind == .recoveryBlocked })
+        #expect(safe.diagnostics.contains { $0.kind == .recoveryBlocked })
     }
 
-    func testMeetDeficitsOverrideClosesTheDeficits() {
+    @Test func meetDeficitsOverrideClosesTheDeficits() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
         let plan = crunchedWeek(now: now)
@@ -43,13 +44,13 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
             candidates: [genericStrengthSession()],
             constraintPolicy: .meetDeficits)
 
-        XCTAssertFalse(override.plannedStrengthSessions.isEmpty,
+        #expect(!override.plannedStrengthSessions.isEmpty,
                        "Override must plan work even when recovery/rest would block it")
-        XCTAssertTrue(override.unresolvedDeficits.isEmpty,
+        #expect(override.unresolvedDeficits.isEmpty,
                       "Override should close the week's volume deficits: \(override.unresolvedDeficits)")
     }
 
-    func testOverridePlansMoreThanSafeForTheSameWeek() {
+    @Test func overridePlansMoreThanSafeForTheSameWeek() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
         let plan = crunchedWeek(now: now)
@@ -64,15 +65,15 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
             schedulePreferences: preferences(), candidates: [genericStrengthSession()],
             constraintPolicy: .meetDeficits)
 
-        XCTAssertGreaterThan(override.plannedStrengthSessions.count,
+        #expect(override.plannedStrengthSessions.count >
                              safe.plannedStrengthSessions.count,
                              "Override should schedule more sessions than the safe plan")
         // It closed the deficit by using days the safe planner refused (rest /
         // recovery-blocked / back-to-back), i.e. more than the single planned slot.
-        XCTAssertGreaterThanOrEqual(override.plannedStrengthSessions.count, 2)
+        #expect(override.plannedStrengthSessions.count >= 2)
     }
 
-    func testOverrideRelaxesSessionSizeToCloseMoreInOneDay() {
+    @Test func overrideRelaxesSessionSizeToCloseMoreInOneDay() {
         let now = fixedWednesday()
         // Whole-body hole with only a single available day: the safe per-session
         // caps (5 exercises / 16 sets) can't cover every part in one session; the
@@ -95,16 +96,16 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
 
         let safeRemaining = safe.unresolvedDeficits.values.reduce(0, +)
         let overrideRemaining = override.unresolvedDeficits.values.reduce(0, +)
-        XCTAssertLessThan(overrideRemaining, safeRemaining,
+        #expect(overrideRemaining < safeRemaining,
                           "Override should close more total volume in one day than safe")
 
         let safeExercises = safe.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.count
         let overrideExercises = override.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.count
-        XCTAssertGreaterThan(overrideExercises, safeExercises,
+        #expect(overrideExercises > safeExercises,
                              "Override should fit more exercises into the single session")
     }
 
-    func testSafePolicyRemainsTheDefault() {
+    @Test func safePolicyRemainsTheDefault() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
         let plan = crunchedWeek(now: now)
@@ -118,7 +119,7 @@ final class CoachPlanConstraintOverrideTests: XCTestCase {
             trainingFacts: facts, coachFacts: coach, weeklyPlan: plan,
             schedulePreferences: preferences(), candidates: [genericStrengthSession()])
 
-        XCTAssertEqual(defaulted, explicitSafe,
+        #expect(defaulted == explicitSafe,
                        "Omitting constraintPolicy must behave exactly like .safe")
     }
 

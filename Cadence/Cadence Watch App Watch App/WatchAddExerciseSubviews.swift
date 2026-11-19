@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Create & Add form for a custom exercise (explicit creation, never implicit).
 struct WatchCustomExerciseForm: View {

@@ -1,8 +1,11 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class TodaySuggestionReplacementGateTests: XCTestCase {
+struct TodaySuggestionReplacementGateTests {
     private func payload(title: String = "Push", exercise: String = "Bench Press") -> TodaySuggestedPlanPayload {
         TodaySuggestedPlanPayload(EditablePlan(
             title: title, warmupMinutes: 5, cooldownMinutes: 3,
@@ -14,25 +17,25 @@ final class TodaySuggestionReplacementGateTests: XCTestCase {
             enginePlanId: "plan", engineRevisionId: "rev", enginePlanJSON: Data([1])))
     }
 
-    func testNothingDisplayedAppliesImmediately() {
-        XCTAssertEqual(TodaySuggestionReplacementGate.decide(displayed: nil, freshlyComputed: payload()),
+    @Test func nothingDisplayedAppliesImmediately() {
+        #expect(TodaySuggestionReplacementGate.decide(displayed: nil, freshlyComputed: payload()) ==
                        .applyImmediately)
     }
 
-    func testIdenticalRecomputeAppliesImmediately() {
-        XCTAssertEqual(TodaySuggestionReplacementGate.decide(displayed: payload(), freshlyComputed: payload()),
+    @Test func identicalRecomputeAppliesImmediately() {
+        #expect(TodaySuggestionReplacementGate.decide(displayed: payload(), freshlyComputed: payload()) ==
                        .applyImmediately)
     }
 
-    func testDifferentTitleHoldsPending() {
-        XCTAssertEqual(TodaySuggestionReplacementGate.decide(displayed: payload(title: "Push"),
-                                                             freshlyComputed: payload(title: "Pull")),
+    @Test func differentTitleHoldsPending() {
+        #expect(TodaySuggestionReplacementGate.decide(displayed: payload(title: "Push"),
+                                                             freshlyComputed: payload(title: "Pull")) ==
                        .holdPending)
     }
 
-    func testDifferentExercisesHoldsPending() {
-        XCTAssertEqual(TodaySuggestionReplacementGate.decide(displayed: payload(exercise: "Bench Press"),
-                                                             freshlyComputed: payload(exercise: "Squat")),
+    @Test func differentExercisesHoldsPending() {
+        #expect(TodaySuggestionReplacementGate.decide(displayed: payload(exercise: "Bench Press"),
+                                                             freshlyComputed: payload(exercise: "Squat")) ==
                        .holdPending)
     }
 }

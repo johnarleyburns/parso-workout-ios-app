@@ -1,6 +1,7 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// "Workout sent from your phone": every workout the user sent from the iPhone, each startable
 /// here. A workout leaves this list the moment it is started.
@@ -8,6 +9,7 @@ struct WatchSentWorkoutsSection: View {
     let onStartCardio: (WatchSync.TodayPlan.Session) -> Void
     private let store = WatchSentWorkoutStore.shared
     @State private var startingStrength: WatchSync.TodayPlan.Session?
+    @Environment(\.watchHomeResetToken) private var homeResetToken
 
     var body: some View {
         Group {
@@ -36,6 +38,7 @@ struct WatchSentWorkoutsSection: View {
                                   planPayload: session.planPayload)
             }
         }
+        .onChange(of: homeResetToken) { _, _ in startingStrength = nil }
     }
 
     private func title(_ session: WatchSync.TodayPlan.Session) -> String {

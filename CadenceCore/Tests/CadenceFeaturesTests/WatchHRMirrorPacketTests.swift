@@ -1,7 +1,10 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class WatchHRMirrorPacketTests: XCTestCase {
+struct WatchHRMirrorPacketTests {
     private let s = UUID(), r = UUID(), e = UUID()
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
 
@@ -14,58 +17,59 @@ final class WatchHRMirrorPacketTests: XCTestCase {
                                     routeCaptureEpoch: epoch ?? e, now: now)
     }
 
-    func testRoundTrip() throws {
+    @Test func roundTrip() throws {
         let p = packet()
         let back = try JSONDecoder().decode(WatchHRMirrorPacket.self, from: JSONEncoder().encode(p))
-        XCTAssertEqual(back, p)
-        XCTAssertEqual(WatchHRMirrorRouting.decode([try JSONEncoder().encode(p), Data([1])]), [p])
+        #expect(back == p)
+        #expect(WatchHRMirrorRouting.decode([try JSONEncoder().encode(p), Data([1])]) == [p])
     }
 
-    func testRejectsInvalidFields() throws {
-        XCTAssertFalse(packet(bpm: 10).isValid)
-        XCTAssertFalse(packet(bpm: 300).isValid)
-        XCTAssertFalse(packet(bpm: .nan).isValid)
-        XCTAssertFalse(packet(end: 0).isValid)
-        XCTAssertFalse(packet(end: .infinity).isValid)
+    @Test func rejectsInvalidFields() throws {
+        #expect(!packet(bpm: 10).isValid)
+        #expect(!packet(bpm: 300).isValid)
+        #expect(!packet(bpm: .nan).isValid)
+        #expect(!packet(end: 0).isValid)
+        #expect(!packet(end: .infinity).isValid)
         var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(packet())) as! [String: Any]
         json["protocolVersion"] = 2
         let bad = try JSONDecoder().decode(WatchHRMirrorPacket.self,
                                            from: JSONSerialization.data(withJSONObject: json))
-        XCTAssertFalse(bad.isValid)
-        XCTAssertEqual(decide(bad), .rejectedInvalid)
+        #expect(!bad.isValid)
+        #expect(decide(bad) == .rejectedInvalid)
     }
 
-    func testRoutingAcceptsMatchingFreshPacket() {
-        XCTAssertEqual(decide(packet()), .accept)
+    @Test func routingAcceptsMatchingFreshPacket() {
+        #expect(decide(packet()) == .accept)
     }
 
-    func testRoutingRejectsWrongSessionRequestEpoch() {
-        XCTAssertEqual(decide(packet(), session: UUID()), .rejectedRoute)
-        XCTAssertEqual(decide(packet(), request: UUID()), .rejectedRoute)
-        XCTAssertEqual(decide(packet(), epoch: UUID()), .rejectedRoute)
-        XCTAssertEqual(WatchHRMirrorRouting.decide(packet(), activeSessionID: nil, activeRequestID: r,
-                                                   routeCaptureEpoch: e, now: now), .rejectedRoute)
+    @Test func routingRejectsWrongSessionRequestEpoch() {
+        #expect(decide(packet(), session: UUID()) == .rejectedRoute)
+        #expect(decide(packet(), request: UUID()) == .rejectedRoute)
+        #expect(decide(packet(), epoch: UUID()) == .rejectedRoute)
+        #expect(WatchHRMirrorRouting.decide(packet(), activeSessionID: nil, activeRequestID: r,
+                                                   routeCaptureEpoch: e, now: now) == .rejectedRoute)
     }
 
-    func testRoutingAcceptsPacketForActivePhoneCardioSession() {
+    @Test func routingAcceptsPacketForActivePhoneCardioSession() {
         let cardioID = s
         let active = WatchHRMirrorRouting.activeSessionID(strength: nil, cardio: cardioID)
-        XCTAssertEqual(active, cardioID)
-        XCTAssertEqual(WatchHRMirrorRouting.decide(packet(), activeSessionID: active, activeRequestID: r,
-                                                   routeCaptureEpoch: e, now: now), .accept)
-        XCTAssertEqual(WatchHRMirrorRouting.activeSessionID(strength: UUID(), cardio: cardioID) == cardioID, false)
+        #expect(active == cardioID)
+        #expect(WatchHRMirrorRouting.decide(packet(), activeSessionID: active, activeRequestID: r,
+                                                   routeCaptureEpoch: e, now: now) == .accept)
+        #expect((WatchHRMirrorRouting.activeSessionID(strength: UUID(), cardio: cardioID) == cardioID) == false)
     }
 
-    @MainActor func testStalePacketDoesNotReviveLiveBPM() {
+    @MainActor
+    @Test func stalePacketDoesNotReviveLiveBPM() {
         let old = packet(end: now.timeIntervalSince1970 - WatchHRRelay.staleAfter - 1)
-        XCTAssertEqual(decide(old), .stale)
+        #expect(decide(old) == .stale)
     }
 
-    func testPacketDoesNotTouchOutboxAcknowledgementState() {
+    @Test func packetDoesNotTouchOutboxAcknowledgementState() {
         // Routing is pure: it takes no outbox and returns only a decision, so
         // durable acknowledgement state cannot change by construction.
         let before = packet()
         _ = decide(before)
-        XCTAssertEqual(before, packet())
+        #expect(before == packet())
     }
 }

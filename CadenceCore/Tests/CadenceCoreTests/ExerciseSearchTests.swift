@@ -1,9 +1,11 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Field-testing §03 — faceted catalog + keyword-aware search.
-final class ExerciseSearchTests: XCTestCase {
+struct ExerciseSearchTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
@@ -12,85 +14,94 @@ final class ExerciseSearchTests: XCTestCase {
 
     // MARK: Keyword search over the static catalog
 
-    func testEquipmentTermSurfacesAllCableMovements() {
+    @Test func equipmentTermSurfacesAllCableMovements() {
         let results = ExerciseLibrary.search("cable", in: ExerciseLibrary.starter)
-        XCTAssertGreaterThan(results.count, 3, "‘cable’ should surface many cable movements")
-        XCTAssertTrue(results.allSatisfy { $0.equipment == .cable },
+        #expect(results.count > 3, "‘cable’ should surface many cable movements")
+        #expect(results.allSatisfy { $0.equipment == .cable },
                       "every ‘cable’ result should be a cable exercise")
-        XCTAssertTrue(results.contains { $0.name == "Cable Fly" })
-        XCTAssertTrue(results.contains { $0.name == "Triceps Pushdown" }, "pushdown is a cable move")
+        #expect(results.contains { $0.name == "Cable Fly" })
+        #expect(results.contains { $0.name == "Triceps Pushdown" }, "pushdown is a cable move")
     }
 
-    func testColloquialMuscleSynonymsResolve() {
+    @Test func colloquialMuscleSynonymsResolve() {
         let lats = ExerciseLibrary.search("lats", in: ExerciseLibrary.starter)
-        XCTAssertTrue(lats.contains { $0.name == "Lat Pulldown" })
-        XCTAssertTrue(lats.contains { $0.name == "Pull-Up" })
+        #expect(lats.contains { $0.name == "Lat Pulldown" })
+        #expect(lats.contains { $0.name == "Pull-Up" })
 
         let pecs = ExerciseLibrary.search("pecs", in: ExerciseLibrary.starter)
-        XCTAssertTrue(pecs.contains { $0.name == "Bench Press" }, "‘pecs’ should map to chest exercises")
+        #expect(pecs.contains { $0.name == "Bench Press" }, "‘pecs’ should map to chest exercises")
     }
 
-    func testForceTermSurfacesPushingMovements() {
+    @Test func forceTermSurfacesPushingMovements() {
         let push = ExerciseLibrary.search("push", in: ExerciseLibrary.starter)
-        XCTAssertTrue(push.contains { $0.name == "Bench Press" })
-        XCTAssertTrue(push.contains { $0.name == "Overhead Press" })
-        XCTAssertFalse(push.contains { $0.name == "Barbell Curl" }, "a curl is not a pushing movement")
+        #expect(push.contains { $0.name == "Bench Press" })
+        #expect(push.contains { $0.name == "Overhead Press" })
+        #expect(!push.contains { $0.name == "Barbell Curl" }, "a curl is not a pushing movement")
     }
 
-    func testNamePrefixRanksAboveKeywordMatch() {
+    @Test func namePrefixRanksAboveKeywordMatch() {
         let results = ExerciseLibrary.search("incline", in: ExerciseLibrary.starter)
-        XCTAssertTrue(results.first?.name.localizedCaseInsensitiveContains("Incline") ?? false,
+        #expect(results.first?.name.localizedCaseInsensitiveContains("Incline") ?? false,
                       "a name match should rank first")
     }
 
-    func testMultiWordQueryAndsTerms() {
+    @Test func trainingDisciplineTermSurfacesOlympicLifts() {
+        // "Snatch" carries no "olympic" substring in its name — only in its
+        // `trainingTypes` facet (field-testing batch: universal search).
+        let results = ExerciseLibrary.search("olympic", in: ExerciseLibrary.starter)
+        #expect(results.contains { $0.name == "Snatch" },
+                      "'olympic' should surface olympic-weightlifting movements by discipline, not just name")
+        #expect(results.contains { $0.name == "Clean and Jerk" })
+    }
+
+    @Test func multiWordQueryAndsTerms() {
         let results = ExerciseLibrary.search("cable chest", in: ExerciseLibrary.starter)
-        XCTAssertFalse(results.isEmpty)
-        XCTAssertTrue(results.allSatisfy { $0.equipment == .cable },
+        #expect(!results.isEmpty)
+        #expect(results.allSatisfy { $0.equipment == .cable },
                       "both terms must match: cable + chest")
     }
 
-    func testEmptyQueryReturnsAllBuiltInsFirst() {
+    @Test func emptyQueryReturnsAllBuiltInsFirst() {
         let results = ExerciseLibrary.search("", in: ExerciseLibrary.starter)
-        XCTAssertEqual(results.count, ExerciseLibrary.starter.count)
+        #expect(results.count == ExerciseLibrary.starter.count)
     }
 
     // MARK: Seeding & re-seed
 
-    func testSeedInsertsFacetedCatalog() throws {
+    @Test func seedInsertsFacetedCatalog() throws {
         let ctx = try makeContext()
-        XCTAssertTrue(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
+        #expect(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
         let bench = try WorkoutRepository.allExercises(ctx).first { $0.name == "Bench Press" }
-        XCTAssertEqual(bench?.equipmentValue, .barbell)
-        XCTAssertEqual(bench?.forceValue, .push)
-        XCTAssertTrue(bench?.primaryMuscles.contains("chest") ?? false)
-        XCTAssertFalse(bench?.searchKeywords.isEmpty ?? true)
+        #expect(bench?.equipmentValue == .barbell)
+        #expect(bench?.forceValue == .push)
+        #expect(bench?.primaryMuscles.contains("chest") ?? false)
+        #expect(!(bench?.searchKeywords.isEmpty ?? true))
     }
 
-    func testReSeedIsIdempotentAndPreservesCustoms() throws {
+    @Test func reSeedIsIdempotentAndPreservesCustoms() throws {
         let ctx = try makeContext()
         try WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
         _ = try WorkoutRepository.findOrCreateExercise(named: "My Custom Move", in: ctx)
         let countAfterCustom = try WorkoutRepository.allExercises(ctx).count
 
-        XCTAssertFalse(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx), "nothing new to add")
-        XCTAssertEqual(try WorkoutRepository.allExercises(ctx).count, countAfterCustom)
-        XCTAssertTrue(try WorkoutRepository.allExercises(ctx).contains { $0.name == "My Custom Move" })
+        #expect(!(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx)), "nothing new to add")
+        #expect(try WorkoutRepository.allExercises(ctx).count == countAfterCustom)
+        #expect(try WorkoutRepository.allExercises(ctx).contains { $0.name == "My Custom Move" })
     }
 
-    func testReSeedBackfillsLegacyBuiltIn() throws {
+    @Test func reSeedBackfillsLegacyBuiltIn() throws {
         let ctx = try makeContext()
         // Simulate a legacy built-in with no facets/keywords (pre-§03).
         ctx.insert(Exercise(name: "Bench Press", category: .push, isCustom: false))
         try ctx.save()
-        XCTAssertTrue(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
+        #expect(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
         let bench = try WorkoutRepository.allExercises(ctx).filter { $0.name == "Bench Press" }
-        XCTAssertEqual(bench.count, 1, "should backfill, not duplicate")
-        XCTAssertEqual(bench.first?.equipmentValue, .barbell)
-        XCTAssertFalse(bench.first?.searchKeywords.isEmpty ?? true)
+        #expect(bench.count == 1, "should backfill, not duplicate")
+        #expect(bench.first?.equipmentValue == .barbell)
+        #expect(!(bench.first?.searchKeywords.isEmpty ?? true))
     }
 
-    func testReSeedRefreshesLegacyKeywordsAndMuscles() throws {
+    @Test func reSeedRefreshesLegacyKeywordsAndMuscles() throws {
         let ctx = try makeContext()
         // This represents an installed row from the pre-faceted search index:
         // it has a name token, but no canonical muscle fields.
@@ -98,34 +109,35 @@ final class ExerciseSearchTests: XCTestCase {
                             searchKeywords: ["bench", "press"]))
         try ctx.save()
 
-        XCTAssertTrue(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
-        let bench = try XCTUnwrap(try WorkoutRepository.allExercises(ctx)
+        #expect(try WorkoutRepository.seedStarterLibraryIfNeeded(ctx))
+        let bench = try #require(try WorkoutRepository.allExercises(ctx)
             .first { $0.name == "Bench Press" })
-        XCTAssertTrue(bench.primaryMuscles.contains("chest"))
-        XCTAssertTrue(bench.searchKeywords.contains("chest"))
-        XCTAssertTrue(ExerciseSearchIndex([bench]).rank("chest").contains { $0.id == bench.id })
+        #expect(bench.primaryMuscles.contains("chest"))
+        #expect(bench.searchKeywords.contains("chest"))
+        #expect(ExerciseSearchIndex([bench]).rank("chest").contains { $0.id == bench.id })
     }
 
-    func testCustomExerciseGetsKeywords() throws {
+    @Test func customExerciseGetsKeywords() throws {
         let ctx = try makeContext()
         let ex = try WorkoutRepository.findOrCreateExercise(
             named: "Cable Hammer Curl", category: .pull, equipment: .cable,
             mechanics: .isolation, force: .pull, primaryMuscles: ["biceps"], in: ctx)
-        XCTAssertTrue(ex.searchKeywords.contains("cable"))
-        XCTAssertTrue(ex.searchKeywords.contains("biceps") || ex.searchKeywords.contains("bis"))
+        #expect(ex.searchKeywords.contains("cable"))
+        #expect(ex.searchKeywords.contains("biceps") || ex.searchKeywords.contains("bis"))
         let found = try WorkoutRepository.searchExercises("cable", in: ctx)
-        XCTAssertTrue(found.contains { $0.id == ex.id })
+        #expect(found.contains { $0.id == ex.id })
     }
-    func testCatalogEnglishAliasFindsCanonicalExercise() {
+    @Test func catalogEnglishAliasFindsCanonicalExercise() {
         let results = ExerciseSearch.rank("Banded March", over: ExerciseLibrary.starter)
-        XCTAssertTrue(results.contains { $0.sourceExerciseID == "Hip_Flexion_with_Band" })
+        #expect(results.contains { $0.sourceExerciseID == "Hip_Flexion_with_Band" })
     }
 
-    func testReleasedNamesSearchInGermanAndChineseWithoutChangingIdentity() {
+    @Test func releasedNamesSearchInGermanAndChineseWithoutChangingIdentity() {
         let german = ExerciseSearchIndex(ExerciseLibrary.starter, locale: Locale(identifier: "de"))
-        XCTAssertTrue(german.rank("Zehenheben").contains { $0.sourceExerciseID == "Standing_Toe_Raise" })
+        #expect(german.rank("Zehenheben").contains { $0.sourceExerciseID == "Standing_Toe_Raise" })
         let chinese = ExerciseSearchIndex(ExerciseLibrary.starter, locale: Locale(identifier: "zh-Hans"))
-        XCTAssertTrue(chinese.rank("胫骨").contains { $0.sourceExerciseID == "Single-Leg_Tib_Bar_Raise" })
+        #expect(chinese.rank("胫骨").contains { $0.sourceExerciseID == "Single-Leg_Tib_Bar_Raise" })
     }
 
 }
+#endif

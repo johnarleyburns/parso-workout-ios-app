@@ -3,6 +3,8 @@ import Combine
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// The flagship interval screen (field-testing §06): the WHOLE screen is the
 /// signal — bright green during work, yellow in the last 30 s, flashing in the

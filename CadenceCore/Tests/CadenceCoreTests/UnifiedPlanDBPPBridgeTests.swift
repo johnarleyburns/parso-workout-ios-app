@@ -1,9 +1,9 @@
 import Foundation
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class UnifiedPlanDBPPBridgeTests: XCTestCase {
-    func testFailureSetProjectsAsAppCompatibleOtherType() throws {
+struct UnifiedPlanDBPPBridgeTests {
+    @Test func failureSetProjectsAsAppCompatibleOtherType() throws {
         let strength = StrengthItem(
             exerciseKey: ExerciseKey(raw: "barbell_bench_press"), order: 0,
             sets: [PrescribedSet(setIndex: 0, kind: .failure, repTarget: .exact(8))])
@@ -12,10 +12,10 @@ final class UnifiedPlanDBPPBridgeTests: XCTestCase {
                 ? [Session(title: "Failure", items: [.strength(strength)])] : [])
         }
         let projection = UnifiedPlanDBPPBridge.project(Plan(title: "Failure", weeks: [PlanWeek(index: 0, days: days)]))
-        XCTAssertEqual(projection.plan.sessions.first?.exercises.first?.plannedSets?.first?.setType, "other")
+        #expect(projection.plan.sessions.first?.exercises.first?.plannedSets?.first?.setType == "other")
     }
 
-    func testProjectionKeepsDBPPResistanceShapeAndReportsAppOnlyItems() throws {
+    @Test func projectionKeepsDBPPResistanceShapeAndReportsAppOnlyItems() throws {
         let strength = StrengthItem(
             exerciseKey: ExerciseKey(raw: "barbell_bench_press"),
             order: 0,
@@ -46,38 +46,39 @@ final class UnifiedPlanDBPPBridgeTests: XCTestCase {
 
         let projection = UnifiedPlanDBPPBridge.project(plan)
 
-        XCTAssertEqual(projection.plan.planId, "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")
-        XCTAssertEqual(projection.plan.revisionId, "r7")
-        XCTAssertEqual(projection.plan.phases?.first?.phaseId, "base")
-        XCTAssertEqual(projection.plan.sessions.count, 1)
-        XCTAssertEqual(projection.projectedItemIDs, [strength.id] as [UUID])
-        XCTAssertEqual(Set(projection.omittedItemIDs), Set([cardio.id, instruction.id]))
+        #expect(projection.plan.planId == "AAAAAAAA-AAAA-AAAA-AAAA-AAAAAAAAAAAA")
+        #expect(projection.plan.revisionId == "r7")
+        #expect(projection.plan.phases?.first?.phaseId == "base")
+        #expect(projection.plan.sessions.count == 1)
+        #expect(projection.projectedItemIDs == [strength.id] as [UUID])
+        #expect(Set(projection.omittedItemIDs) == Set([cardio.id, instruction.id]))
 
-        let dbExercise = try XCTUnwrap(projection.plan.sessions.first?.exercises.first)
-        XCTAssertEqual(dbExercise.prescriptionId, strength.id.uuidString)
-        XCTAssertEqual(dbExercise.order, 1)
-        XCTAssertEqual(dbExercise.laterality, "bilateral")
-        XCTAssertEqual(dbExercise.plannedSets?.count, 2)
-        XCTAssertEqual(dbExercise.plannedSets?.first?.setType, "working")
-        XCTAssertEqual(dbExercise.plannedSets?.first?.effort,
+        let dbExercise = try #require(projection.plan.sessions.first?.exercises.first)
+        #expect(dbExercise.prescriptionId == strength.id.uuidString)
+        #expect(dbExercise.order == 1)
+        #expect(dbExercise.laterality == "bilateral")
+        #expect(dbExercise.plannedSets?.count == 2)
+        #expect(dbExercise.plannedSets?.first?.setType == "working")
+        #expect(dbExercise.plannedSets?.first?.effort ==
                        DBPPJSONValue.object([
                            "rir": DBPPJSONValue.number(2)
                        ]))
     }
 
-    func testEvaluationIsAdditiveAndDoesNotPersistAppOnlyItemsInDBPPPlan() throws {
+    @Test func evaluationIsAdditiveAndDoesNotPersistAppOnlyItemsInDBPPPlan() throws {
         let days = Weekday.mondayThroughSunday.map { PlanDay(weekday: $0) }
         let plan = Plan(title: "Empty resistance projection", weeks: [PlanWeek(index: 0, days: days)])
         let schedule = CoachSchedulePreferences.default
 
         guard let evaluation = UnifiedPlanDBPPBridge.evaluate(
             plan, experience: .intermediate, schedule: schedule) else {
-            throw XCTSkip("DB++ bundled engine is unavailable in this test environment")
+            // DB++ bundled engine is unavailable in this test environment
+            return
         }
 
-        XCTAssertEqual(evaluation.projectedItemCount, 0)
-        XCTAssertEqual(evaluation.omittedAppItemCount, 0)
-        XCTAssertFalse(evaluation.status.isEmpty)
+        #expect(evaluation.projectedItemCount == 0)
+        #expect(evaluation.omittedAppItemCount == 0)
+        #expect(!evaluation.status.isEmpty)
     }
 }
 

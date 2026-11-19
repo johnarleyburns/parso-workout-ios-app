@@ -3,7 +3,9 @@ import Charts
 import MapKit
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import SwiftData
+import CadencePhoneFeatures
 
 /// Cardio workout detail (FR-5.3): summary, HR overlay, and route map.
 struct CardioDetailView: View {

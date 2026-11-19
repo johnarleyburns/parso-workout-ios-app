@@ -1,8 +1,9 @@
-import XCTest
+import Foundation
+import Testing
 @testable import CadenceCore
 
-final class CoachPlanOptimizerTests: XCTestCase {
-    func testWednesdayRemainingStrengthPlanClearsPushDeficitsWhenFeasible() {
+struct CoachPlanOptimizerTests {
+    @Test func wednesdayRemainingStrengthPlanClearsPushDeficitsWhenFeasible() {
         let now = fixedWednesday()
         let facts = trainingFacts([
             .chest: 4,
@@ -26,15 +27,13 @@ final class CoachPlanOptimizerTests: XCTestCase {
         // With whole-body coverage and only 1 slot, not all 8 body parts can
         // reach MEV. But the coach plans a valid session covering the core
         // deficits.
-        XCTAssertEqual(optimized.plannedStrengthSessions.count, 1)
+        #expect(optimized.plannedStrengthSessions.count == 1)
         let names = optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.map(\.name)
-        XCTAssertTrue(names.contains("Bench Press"),
-                      "Chest deficit (4→8 MEV) should be addressed")
+        #expect(names.contains("Bench Press"), "Chest deficit (4→8 MEV) should be addressed")
 
         // Chest had the most completed volume, so it should be resolved.
         let chestDeficit = optimized.unresolvedDeficits[.chest]
-        XCTAssertTrue(chestDeficit == nil || (chestDeficit ?? 0) <= 0,
-                      "Chest should be at or above MEV")
+        #expect(chestDeficit == nil || (chestDeficit ?? 0) <= 0, "Chest should be at or above MEV")
 
         let insights = PlanAwareInsightEngine.run(
             completed: facts,
@@ -45,18 +44,18 @@ final class CoachPlanOptimizerTests: XCTestCase {
             now: now)
 
         // Trained parts must never show "low volume" nags.
-        XCTAssertNil(lowVolumeInsight(.chest, in: insights))
-        XCTAssertNil(lowVolumeInsight(.shoulders, in: insights))
-        XCTAssertNil(lowVolumeInsight(.triceps, in: insights))
+        #expect(lowVolumeInsight(.chest, in: insights) == nil)
+        #expect(lowVolumeInsight(.shoulders, in: insights) == nil)
+        #expect(lowVolumeInsight(.triceps, in: insights) == nil)
 
         // Genuinely unresolved deficits surface via the aggregate triage only
         // (partial when planned work closed some parts, unresolved when none).
         if !optimized.unresolvedDeficits.isEmpty {
-            XCTAssertNotNil(aggregatePlanningShortfall(in: insights))
+            #expect(aggregatePlanningShortfall(in: insights) != nil)
         }
     }
 
-    func testOptimizerDoesNotBlindlyRepeatGenericFallbackForFutureStrengthSlots() {
+    @Test func optimizerDoesNotBlindlyRepeatGenericFallbackForFutureStrengthSlots() {
         let now = fixedWednesday()
         let facts = trainingFacts([
             .chest: 4,
@@ -80,16 +79,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
         // Two planned sessions should cover different body-part gaps (the
         // optimizer reshapes each session against remaining deficits, and the
         // even split spreads isolation evenly), never returning identical copies.
-        XCTAssertEqual(optimized.plannedStrengthSessions.count, 2)
+        #expect(optimized.plannedStrengthSessions.count == 2)
         let sessions = optimized.plannedStrengthSessions
         let firstNames = Set((sessions.first?.exercises ?? []).map(\.name))
         let secondNames = Set((sessions.last?.exercises ?? []).map(\.name))
         let allNames = firstNames.union(secondNames)
-        XCTAssertGreaterThan(allNames.count, firstNames.count,
-                             "Two planned sessions should not have identical exercise lists")
+        #expect(allNames.count > firstNames.count, "Two planned sessions should not have identical exercise lists")
     }
 
-    func testOptimizerUsesDesiredSetsWhenCandidateSetsAreMissing() throws {
+    @Test func optimizerUsesDesiredSetsWhenCandidateSetsAreMissing() throws {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 0])
         let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
@@ -115,16 +113,14 @@ final class CoachPlanOptimizerTests: XCTestCase {
             schedulePreferences: prefs,
             candidates: [candidate])
 
-        let exercise = try XCTUnwrap(
-            optimized.plannedStrengthSessions
+        let exercise = try #require(optimized.plannedStrengthSessions
                 .flatMap { $0.exercises ?? [] }
-                .first { $0.name == "Bench Press" }
-        )
-        XCTAssertEqual(exercise.sets, 4)
-        XCTAssertEqual(exercise.repLadder, [5, 5, 3, 3])
+                .first { $0.name == "Bench Press" })
+        #expect(exercise.sets == 4)
+        #expect(exercise.repLadder == [5, 5, 3, 3])
     }
 
-    func testOptimizerTargetsOnlyRemainingLowGroups() {
+    @Test func optimizerTargetsOnlyRemainingLowGroups() {
         let now = fixedWednesday()
         let facts = trainingFacts(trackedSets(baseline: 12, [
             .abdominals: 9, .biceps: 0, .triceps: 0, .calves: 0,
@@ -140,15 +136,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
             candidates: [genericStrengthSession()])
 
         let names = Set(optimized.plannedStrengthSessions.flatMap { $0.exercises ?? [] }.map(\.name))
-        XCTAssertTrue(names.contains("Barbell Curl"), "Biceps deficit should select direct biceps work")
-        XCTAssertTrue(names.contains("Triceps Pushdown"), "Triceps deficit should select direct triceps work")
-        XCTAssertTrue(names.contains("Standing Calf Raise"), "Calves deficit should select direct calf work")
-        XCTAssertFalse(names.contains("Back Squat"), "Satisfied legs should not drive the recommendation")
-        XCTAssertFalse(names.contains("Bench Press"), "Satisfied chest should not drive the recommendation")
-        XCTAssertFalse(names.contains("Romanian Deadlift"), "Satisfied back/legs should not drive the recommendation")
+        #expect(names.contains("Barbell Curl"), "Biceps deficit should select direct biceps work")
+        #expect(names.contains("Triceps Pushdown"), "Triceps deficit should select direct triceps work")
+        #expect(names.contains("Standing Calf Raise"), "Calves deficit should select direct calf work")
+        #expect(!names.contains("Back Squat"), "Satisfied legs should not drive the recommendation")
+        #expect(!names.contains("Bench Press"), "Satisfied chest should not drive the recommendation")
+        #expect(!names.contains("Romanian Deadlift"), "Satisfied back/legs should not drive the recommendation")
     }
 
-    func testOptimizerCarriesHistoryBasedSuggestedWeightIntoPlan() throws {
+    @Test func optimizerCarriesHistoryBasedSuggestedWeightIntoPlan() throws {
         let now = fixedWednesday()
         let snapshot = LiftSnapshot(exercise: "Bench Press", group: .chest,
                                     topSetWeightKg: 80, topSetReps: 5,
@@ -179,12 +175,12 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: plan,
             schedulePreferences: preferences(twoADays: false),
             candidates: [candidate])
-        let exercise = try XCTUnwrap(optimized.plannedStrengthSessions.first?.exercises?.first)
-        XCTAssertNotNil(exercise.loadKg)
-        XCTAssertGreaterThan(exercise.loadKg ?? 0, 0)
+        let exercise = try #require(optimized.plannedStrengthSessions.first?.exercises?.first)
+        #expect(exercise.loadKg != nil)
+        #expect(exercise.loadKg ?? 0 > 0)
     }
 
-    func testImpossibleCaseEmitsOneUnresolvedPlanningInsight() {
+    @Test func impossibleCaseEmitsOneUnresolvedPlanningInsight() {
         let now = fixedWednesday()
         let facts = trainingFacts([
             .quadriceps: 1,
@@ -208,7 +204,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             schedulePreferences: preferences(twoADays: false),
             candidates: [genericStrengthSession()])
 
-        XCTAssertFalse(optimized.unresolvedDeficits.isEmpty)
+        #expect(!optimized.unresolvedDeficits.isEmpty)
 
         let insights = PlanAwareInsightEngine.run(
             completed: facts,
@@ -218,23 +214,23 @@ final class CoachPlanOptimizerTests: XCTestCase {
             diagnostics: optimized.diagnostics,
             now: now)
 
-        XCTAssertEqual(insights.filter {
+        #expect(insights.filter {
             $0.id == "planning.partialResolved" || $0.id == "planning.unresolvedVolume"
-        }.count, 1)
+        }.count == 1)
         let individualLowVolume = insights.filter {
             $0.kind == .volume
                 && $0.severity == .attention
                 && $0.title.localizedCaseInsensitiveContains("low")
                 && $0.group != nil
         }
-        XCTAssertTrue(individualLowVolume.isEmpty)
+        #expect(individualLowVolume.isEmpty)
     }
 
     /// Reproduces the "coach paints itself into a corner" bug (Phase 3) — then
     /// verifies the fix: with whole-body weekly coverage, the optimizer plans for
     /// every body part below MEV (including abs/calves with 0 sets) and the
     /// plan-aware layer never nags about parts the coach chose to cover.
-    func testMondayPostWorkoutSuppressesUntrainedPartAlertsWhenWeekIsTight() {
+    @Test func mondayPostWorkoutSuppressesUntrainedPartAlertsWhenWeekIsTight() {
         let cal = Calendar(identifier: .gregorian)
         var mondayComps = DateComponents()
         mondayComps.calendar = cal
@@ -325,17 +321,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
             guard let part = ins.group else { return false }
             return (completedSets[part] ?? 0) == 0
         }
-        XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
-                      "Should not show individual low-volume alerts for untrained parts (0 completed sets), but got: \(untrainedPartsWithAlerts.map { $0.group?.rawValue ?? "nil" })")
+        #expect(untrainedPartsWithAlerts.isEmpty, "Should not show individual low-volume alerts for untrained parts (0 completed sets), but got: \(untrainedPartsWithAlerts.map { $0.group?.rawValue ?? "nil" })")
 
         // For any genuine unresolved deficits, the aggregate triage insight exists.
         if !optimized.unresolvedDeficits.isEmpty {
-            XCTAssertNotNil(aggregatePlanningShortfall(in: insights),
-                            "Expected an aggregate planning insight when deficits exist")
+            #expect(aggregatePlanningShortfall(in: insights) != nil, "Expected an aggregate planning insight when deficits exist")
         }
     }
 
-    func testOptimizerOutputIsDeterministic() {
+    @Test func optimizerOutputIsDeterministic() {
         let now = fixedWednesday()
         let facts = trainingFacts([
             .chest: 4,
@@ -361,10 +355,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
             schedulePreferences: preferences(twoADays: true),
             candidates: [genericStrengthSession()])
 
-        XCTAssertEqual(a, b)
+        #expect(a == b)
     }
 
-    func testOptimizerRespectsScheduleAndRecoveryConstraints() {
+    @Test func optimizerRespectsScheduleAndRecoveryConstraints() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
         let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 1)
@@ -382,9 +376,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: cardioOnlyPlan,
             schedulePreferences: preferences(twoADays: false),
             candidates: [genericStrengthSession()])
-        XCTAssertFalse(noTwoADays.plannedStrengthSessions.isEmpty)
-        XCTAssertTrue(noTwoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
-                      "Coach self-schedules the free day today")
+        #expect(!noTwoADays.plannedStrengthSessions.isEmpty)
+        #expect(noTwoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" }, "Coach self-schedules the free day today")
 
         let fixedRestPlan = weeklyPlan(now: now, days: [
             (1, [.strength]),
@@ -400,11 +393,9 @@ final class CoachPlanOptimizerTests: XCTestCase {
         // The only planned strength slot lands on the user's fixed rest day (Thursday),
         // so the coach must skip it — but it may self-schedule today (not a rest day)
         // to close the weekly shortfall.
-        XCTAssertTrue(fixedRest.diagnostics.contains { $0.kind == .recoveryBlocked },
-                      "Coach must skip the strength slot that falls on the fixed rest day")
-        XCTAssertEqual(fixedRest.plannedStrengthSessions.count, 1)
-        XCTAssertTrue(fixedRest.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
-                      "Coach self-schedules today rather than training the fixed rest day")
+        #expect(fixedRest.diagnostics.contains { $0.kind == .recoveryBlocked }, "Coach must skip the strength slot that falls on the fixed rest day")
+        #expect(fixedRest.plannedStrengthSessions.count == 1)
+        #expect(fixedRest.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" }, "Coach self-schedules today rather than training the fixed rest day")
 
         let recoveryEnd = Calendar.current.date(byAdding: .day, value: 2, to: now) ?? now
         let recovery = RecoveryState(
@@ -423,8 +414,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: fixedRestPlan,
             schedulePreferences: preferences(twoADays: true),
             candidates: [genericStrengthSession()])
-        XCTAssertTrue(recoveryBlocked.plannedStrengthSessions.isEmpty)
-        XCTAssertTrue(recoveryBlocked.diagnostics.contains { $0.kind == .recoveryBlocked })
+        #expect(recoveryBlocked.plannedStrengthSessions.isEmpty)
+        #expect(recoveryBlocked.diagnostics.contains { $0.kind == .recoveryBlocked })
     }
 
     /// Guard for the ad-hoc "route residual volume into today" slot (Phase 3): it
@@ -432,7 +423,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
     /// manufacture a two-a-day the user disallowed. When today already holds a
     /// (cardio) session and two-a-days are off, the coach defers to the aggregate
     /// nag instead of stacking a second session; with two-a-days on, it may add it.
-    func testAdHocTodaySlotRespectsTwoADayPreference() {
+    @Test func adHocTodaySlotRespectsTwoADayPreference() {
         let now = fixedWednesday()
         let facts = trainingFacts([.chest: 2, .shoulders: 2, .triceps: 1])
         let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup,
@@ -448,8 +439,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: cardioTodayPlan,
             schedulePreferences: preferences(twoADays: false),
             candidates: [genericStrengthSession()])
-        XCTAssertFalse(noTwoADays.plannedStrengthSessions.isEmpty,
-                       "Two-a-days are always allowed; the legacy opt-out is ignored")
+        #expect(!noTwoADays.plannedStrengthSessions.isEmpty, "Two-a-days are always allowed; the legacy opt-out is ignored")
 
         let twoADays = CoachPlanOptimizer.optimize(
             trainingFacts: facts,
@@ -457,14 +447,13 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: cardioTodayPlan,
             schedulePreferences: preferences(twoADays: true),
             candidates: [genericStrengthSession()])
-        XCTAssertTrue(twoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" },
-                      "With two-a-days allowed the coach may self-schedule strength today")
+        #expect(twoADays.diagnostics.contains { $0.id == "plannedExistingSlot.today.adhoc" }, "With two-a-days allowed the coach may self-schedule strength today")
     }
 
     /// The ad-hoc today slot only fires to close a genuine weekly shortfall. When
     /// every part is already at/above MEV there is nothing to route, so the coach
     /// plans nothing rather than inventing a session on a free day.
-    func testAdHocTodaySlotSkippedWhenNoWeeklyShortfall() {
+    @Test func adHocTodaySlotSkippedWhenNoWeeklyShortfall() {
         let now = fixedWednesday()
         let facts = trainingFacts(trackedSets(baseline: 16, [
             .biceps: 14, .triceps: 14, .calves: 12, .abdominals: 12,
@@ -478,11 +467,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
             weeklyPlan: emptyPlan,
             schedulePreferences: preferences(twoADays: true),
             candidates: [genericStrengthSession()])
-        XCTAssertTrue(optimized.plannedStrengthSessions.isEmpty,
-                      "No ad-hoc session should be self-scheduled when there is no weekly shortfall")
+        #expect(optimized.plannedStrengthSessions.isEmpty, "No ad-hoc session should be self-scheduled when there is no weekly shortfall")
     }
 
-    func testTuesdayNoNagForAbsCalvesWhenPlanCoversWholeBody() {
+    @Test func tuesdayNoNagForAbsCalvesWhenPlanCoversWholeBody() {
         let cal = Calendar(identifier: .gregorian)
         var tuesdayComps = DateComponents()
         tuesdayComps.calendar = cal
@@ -525,10 +513,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
         // RED: The coach must never surface a "you're low" alert for a part it
         // chose not to program. Abs and calves had 0 sets because the optimizer
         // excluded them.
-        XCTAssertNil(lowVolumeInsight(.abdominals, in: insights),
-                     "Abs should not read 'low' when coach never planned them")
-        XCTAssertNil(lowVolumeInsight(.calves, in: insights),
-                     "Calves should not read 'low' when coach never planned them")
+        #expect(lowVolumeInsight(.abdominals, in: insights) == nil, "Abs should not read 'low' when coach never planned them")
+        #expect(lowVolumeInsight(.calves, in: insights) == nil, "Calves should not read 'low' when coach never planned them")
 
         // RED: The planned sessions' exercises should include abs and calves work
         // so the user following the coach actually hits every weekly target.
@@ -539,23 +525,19 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let hasCalfWork = allExercises.contains { name in
             ["Standing Calf Raise", "Seated Calf Raise", "Calf Press on Leg Press"].contains(name)
         }
-        XCTAssertTrue(hasAbWork,
-                      "Planned sessions should include an ab movement so coach covers whole body")
-        XCTAssertTrue(hasCalfWork,
-                      "Planned sessions should include a calf movement so coach covers whole body")
+        #expect(hasAbWork, "Planned sessions should include an ab movement so coach covers whole body")
+        #expect(hasCalfWork, "Planned sessions should include a calf movement so coach covers whole body")
 
         // If capacity truly can't reach MEV, we should see the aggregate shortfall
         // triage (partial or unresolved), never per-part "low" nags.
         if !optimized.unresolvedDeficits.isEmpty {
-            XCTAssertNotNil(aggregatePlanningShortfall(in: insights),
-                            "Expected the aggregate planning shortfall insight when deficits remain")
+            #expect(aggregatePlanningShortfall(in: insights) != nil, "Expected the aggregate planning shortfall insight when deficits remain")
             let untrainedPartsWithAlerts = insights.filter {
                 $0.kind == .volume && $0.severity == .attention
                     && $0.title.localizedCaseInsensitiveContains("low")
                     && (completedSets[$0.group ?? .abdominals] ?? 0) == 0
             }
-            XCTAssertTrue(untrainedPartsWithAlerts.isEmpty,
-                          "No per-part 'low' nags for parts coach never programmed")
+            #expect(untrainedPartsWithAlerts.isEmpty, "No per-part 'low' nags for parts coach never programmed")
         }
     }
 
@@ -565,7 +547,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
     /// MEV→MAV), not stop at the MEV floor. For an intermediate, abs MEV=6, MAV=12,
     /// so the productive target is 9 sets/week. Given ample slots + capacity, planned
     /// abs sets should reach ~9, not 6.
-    func testAbsPlannedTowardProductiveTargetNotMEVFloor() {
+    @Test func absPlannedTowardProductiveTargetNotMEVFloor() {
         let now = fixedWednesday()
         // Every large part is already at/above MEV so abs is the ONLY deficit —
         // isolates the productive-target behaviour from whole-body coverage noise.
@@ -602,16 +584,15 @@ final class CoachPlanOptimizerTests: XCTestCase {
             .plannedSetsByGroup(from: optimized.plannedStrengthSessions)[.abdominals] ?? 0
         let projectedAbs = 3 + plannedAbsSets
         let productive = VolumeLandmarks.productiveTarget(for: .abdominals, experience: .intermediate)
-        XCTAssertEqual(productive, 9, "intermediate abs productive target is the MEV/MAV midpoint (6+12)/2 = 9")
-        XCTAssertGreaterThanOrEqual(projectedAbs, productive,
-            "Abs should be planned toward the productive dose (\(productive)), not the MEV floor — got projected \(projectedAbs)")
+        #expect(productive == 9, "intermediate abs productive target is the MEV/MAV midpoint (6+12)/2 = 9")
+        #expect(projectedAbs >= productive, "Abs should be planned toward the productive dose (\(productive)), not the MEV floor — got projected \(projectedAbs)")
         // And there should be no residual below-MEV deficit for abs.
-        XCTAssertNil(optimized.unresolvedDeficits[.abdominals],
-                     "Abs trained to a productive dose leaves no below-MEV residual")
+        #expect(optimized.unresolvedDeficits[.abdominals] == nil, "Abs trained to a productive dose leaves no below-MEV residual")
     }
 
     /// Guard: the productive target must never push a part above MRV.
-    func testProductiveTargetNeverExceedsMRV() {        let now = fixedWednesday()
+    @Test func productiveTargetNeverExceedsMRV() {
+        let now = fixedWednesday()
         let facts = trainingFacts([.abdominals: 3, .calves: 3])
         let coach = coachFacts(now: now, completedSets: facts.weeklySetsByGroup, strengthDays: 0)
         let plan = weeklyPlan(now: now, days: [
@@ -629,8 +610,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
         for part in MuscleGroup.canonicalOrder {
             let total = (facts.weeklySetsByGroup[part] ?? 0) + (projected[part] ?? 0)
             let mrv = VolumeLandmarks.bands(for: part, experience: .intermediate).mrv
-            XCTAssertLessThanOrEqual(total, mrv,
-                "\(part) projected \(total) must not exceed MRV \(mrv)")
+            #expect(total <= mrv, "\(part) projected \(total) must not exceed MRV \(mrv)")
         }
     }
 
@@ -641,7 +621,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
     /// MEV-based reporting, when abs is planned to a productive dose there is no
     /// residual below-MEV deficit, so the per-part nag and the aggregate both stay
     /// silent for abs.
-    func testProductivelyPlannedAbsProducesNoNag() {
+    @Test func productivelyPlannedAbsProducesNoNag() {
         let now = fixedWednesday()
         // Abs is the only deficit; everything else is already covered.
         let facts = trainingFacts(trackedSets(baseline: 16, [
@@ -667,30 +647,27 @@ final class CoachPlanOptimizerTests: XCTestCase {
             unresolvedDeficits: optimized.unresolvedDeficits,
             diagnostics: optimized.diagnostics, now: now)
 
-        XCTAssertNil(optimized.unresolvedDeficits[.abdominals],
-                     "Abs planned to a productive dose leaves no below-MEV residual")
-        XCTAssertNil(lowVolumeInsight(.abdominals, in: insights),
-                     "No per-part abs nag when abs is productively covered")
-        XCTAssertNil(insights.first { $0.id == "planning.unresolvedVolume" },
-                     "No aggregate 'needs attention' nag when the only deficit is productively covered")
+        #expect(optimized.unresolvedDeficits[.abdominals] == nil, "Abs planned to a productive dose leaves no below-MEV residual")
+        #expect(lowVolumeInsight(.abdominals, in: insights) == nil, "No per-part abs nag when abs is productively covered")
+        #expect(insights.first { $0.id == "planning.unresolvedVolume" } == nil, "No aggregate 'needs attention' nag when the only deficit is productively covered")
     }
 
     // MARK: - Session-structure classification (evidence: ramosCampoSplit2024)
 
-    func testSessionStructureFactSurfaced() {
+    @Test func sessionStructureFactSurfaced() {
         let now = fixedWednesday()
 
         // A whole-body session (squat, bench, row, RDL) covers ≥5 body parts.
         let fullBody = genericStrengthSession()
-        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: fullBody), .fullBody)
+        #expect(CoachPlanOptimizer.classifyStructure(of: fullBody) == .fullBody)
 
         let fact = CoachPlanOptimizer.sessionStructureFact(for: fullBody, now: now)
-        XCTAssertNotNil(fact)
-        XCTAssertEqual(fact?.kind, .sessionStructure)
-        XCTAssertEqual(fact?.value, "Full-body")
-        XCTAssertFalse((fact?.detail ?? "").isEmpty, "Structure fact must explain the choice")
-        XCTAssertEqual(fact?.citationIds, ["ramosCampoSplit2024"],
-                       "Session-structure fact must cite the full-body-vs-split study")
+        #expect(fact != nil)
+        #expect(fact?.kind == .sessionStructure)
+        #expect(fact?.value == "Full-body")
+        let detail = fact?.detail ?? ""
+        #expect(!detail.isEmpty, "Structure fact must explain the choice")
+        #expect(fact?.citationIds == ["ramosCampoSplit2024"], "Session-structure fact must cite the full-body-vs-split study")
 
         // An upper-only session (bench press) is classified as an upper-body focus.
         let upper = CoachSession(
@@ -698,13 +675,13 @@ final class CoachPlanOptimizerTests: XCTestCase {
             durationMinutes: 30,
             exercises: [.init(name: "Bench Press", sets: 3)],
             launchPayload: .strengthPlan("upper"))
-        XCTAssertEqual(CoachPlanOptimizer.classifyStructure(of: upper), .upperFocus)
-        XCTAssertEqual(CoachPlanOptimizer.sessionStructureFact(for: upper, now: now)?.value, "Upper body")
+        #expect(CoachPlanOptimizer.classifyStructure(of: upper) == .upperFocus)
+        #expect(CoachPlanOptimizer.sessionStructureFact(for: upper, now: now)?.value == "Upper body")
 
         // Non-strength sessions have no structure to explain.
         let rest = CoachSession(id: "rest.full", kind: .rest, title: "Rest", launchPayload: .rest)
-        XCTAssertNil(CoachPlanOptimizer.classifyStructure(of: rest))
-        XCTAssertNil(CoachPlanOptimizer.sessionStructureFact(for: rest, now: now))
+        #expect(CoachPlanOptimizer.classifyStructure(of: rest) == nil)
+        #expect(CoachPlanOptimizer.sessionStructureFact(for: rest, now: now) == nil)
     }
 
     /// The aggregate "weekly volume shortfall" triage insight. Phase 3 split the old
@@ -847,7 +824,7 @@ final class CoachPlanOptimizerTests: XCTestCase {
 
     /// A movement last trained three weeks ago is absent from `liftSnapshots`
     /// (trailing week only) and used to render as `BW×12`.
-    func testPlannedLoadResolvesFromHistoryOlderThanOneWeek() {
+    @Test func plannedLoadResolvesFromHistoryOlderThanOneWeek() {
         let now = fixedWednesday()
         let facts = trainingFacts([:])
         let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0,
@@ -864,15 +841,14 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let planned = optimized.plannedStrengthSessions
             .flatMap { $0.exercises ?? [] }
             .first { $0.name == "Standing Dumbbell Upright Row" }
-        XCTAssertNotNil(planned, "the planned session should still contain the movement")
-        XCTAssertNotNil(planned?.loadKg,
-                        "a lift trained 21 days ago must still carry a real load, not BW")
-        XCTAssertGreaterThan(planned?.loadKg ?? 0, 0)
+        #expect(planned != nil, "the planned session should still contain the movement")
+        #expect(planned?.loadKg != nil, "a lift trained 21 days ago must still carry a real load, not BW")
+        #expect(planned?.loadKg ?? 0 > 0)
     }
 
     /// Anti-repeat rotation used to hard-code `loadKg: nil`, so every swapped-in
     /// isolation movement lost its weight.
-    func testVarietyRotationKeepsAResolvedLoad() {
+    @Test func varietyRotationKeepsAResolvedLoad() {
         let now = fixedWednesday()
         // Only the arms and the upper back are short, so the optimizer reaches for
         // the curl/row variants the history below prices.
@@ -900,15 +876,13 @@ final class CoachPlanOptimizerTests: XCTestCase {
         }
         // Day 2 rotates a trained movement out for a trained variant, so both must
         // be priced. Before the fix the rotated-in one was always nil.
-        XCTAssertGreaterThanOrEqual(withHistory.count, 2,
-                                    "rotation should have placed a second trained variant")
+        #expect(withHistory.count >= 2, "rotation should have placed a second trained variant")
         for exercise in withHistory {
-            XCTAssertNotNil(exercise.loadKg,
-                            "\(exercise.name) has history, so the plan must carry its load")
+            #expect(exercise.loadKg != nil, "\(exercise.name) has history, so the plan must carry its load")
         }
     }
 
-    func testBodyweightMovementKeepsNilLoad() {
+    @Test func bodyweightMovementKeepsNilLoad() {
         let now = fixedWednesday()
         let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0,
                                events: [strengthEvent("Push-Up", weightKg: 80, reps: 20, e1rm: 120,
@@ -923,10 +897,10 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let pushUp = optimized.plannedStrengthSessions
             .flatMap { $0.exercises ?? [] }
             .first { $0.name == "Push-Up" }
-        XCTAssertNil(pushUp?.loadKg, "a bodyweight movement must never be given an external load")
+        #expect(pushUp?.loadKg == nil, "a bodyweight movement must never be given an external load")
     }
 
-    func testUntrainedLoadedMovementKeepsNilLoad() {
+    @Test func untrainedLoadedMovementKeepsNilLoad() {
         let now = fixedWednesday()
         let coach = coachFacts(now: now, completedSets: [:], strengthDays: 0)
         let optimized = CoachPlanOptimizer.optimize(
@@ -939,11 +913,11 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let planned = optimized.plannedStrengthSessions
             .flatMap { $0.exercises ?? [] }
             .first { $0.name == "Standing Dumbbell Upright Row" }
-        XCTAssertNil(planned?.loadKg, "we never invent a weight for a movement with no history")
+        #expect(planned?.loadKg == nil, "we never invent a weight for a movement with no history")
     }
 
     /// The trailing-week snapshot still wins over the all-history fallback.
-    func testTrailingWeekSnapshotStillWins() {
+    @Test func trailingWeekSnapshotStillWins() {
         let now = fixedWednesday()
         var facts = trainingFacts([:])
         facts = TrainingFacts(
@@ -977,9 +951,8 @@ final class CoachPlanOptimizerTests: XCTestCase {
         let bench = optimized.plannedStrengthSessions
             .flatMap { $0.exercises ?? [] }
             .first { $0.name == "Bench Press" }
-        XCTAssertNotNil(bench?.loadKg)
-        XCTAssertGreaterThan(bench?.loadKg ?? 0, 60,
-                             "the trailing-week snapshot (116 e1RM) must win over 40 kg from 40 days ago")
+        #expect(bench?.loadKg != nil)
+        #expect(bench?.loadKg ?? 0 > 60, "the trailing-week snapshot (116 e1RM) must win over 40 kg from 40 days ago")
     }
 
     private func session(withExercises names: [String]) -> CoachSession {

@@ -1,33 +1,33 @@
-import XCTest
+import Testing
 @testable import CadenceCore
 
-final class PlanExecutionBoundaryTests: XCTestCase {
-    func testEmptySessionHasNoExecutionRunner() {
+struct PlanExecutionBoundaryTests {
+    @Test func emptySessionHasNoExecutionRunner() {
         let session = Session(title: "Empty")
 
-        XCTAssertEqual(session.executionBoundary, .empty)
-        XCTAssertFalse(session.executionBoundary.canStartStrengthRunner)
-        XCTAssertFalse(session.executionBoundary.canProjectToWatch)
+        #expect(session.executionBoundary == .empty)
+        #expect(!session.executionBoundary.canStartStrengthRunner)
+        #expect(!session.executionBoundary.canProjectToWatch)
     }
 
-    func testStrengthOnlySessionKeepsTheExistingRunnerBoundary() {
+    @Test func strengthOnlySessionKeepsTheExistingRunnerBoundary() {
         let session = Session(title: "Strength", items: [.strength(strengthItem())])
 
-        XCTAssertEqual(session.executionBoundary, .strengthOnly)
-        XCTAssertTrue(session.executionBoundary.canStartStrengthRunner)
-        XCTAssertTrue(session.executionBoundary.canProjectToWatch)
+        #expect(session.executionBoundary == .strengthOnly)
+        #expect(session.executionBoundary.canStartStrengthRunner)
+        #expect(session.executionBoundary.canProjectToWatch)
     }
 
-    func testCardioOnlySessionProjectsToWatchButNotStrengthRunner() {
+    @Test func cardioOnlySessionProjectsToWatchButNotStrengthRunner() {
         let session = Session(title: "Run", items: [.cardio(cardioItem())])
 
-        XCTAssertEqual(session.executionBoundary, .cardioOnly)
-        XCTAssertFalse(session.executionBoundary.canStartStrengthRunner)
-        XCTAssertTrue(session.executionBoundary.canStartCombinedRunner)
-        XCTAssertTrue(session.executionBoundary.canProjectToWatch)
+        #expect(session.executionBoundary == .cardioOnly)
+        #expect(!session.executionBoundary.canStartStrengthRunner)
+        #expect(session.executionBoundary.canStartCombinedRunner)
+        #expect(session.executionBoundary.canProjectToWatch)
     }
 
-    func testMobilityAndInstructionRemainSavedButNotExecutable() {
+    @Test func mobilityAndInstructionRemainSavedButNotExecutable() {
         let mobility = Session(title: "Mobility", items: [
             .mobility(MobilityItem(order: 0, name: "Hip opener", perRound: .duration(seconds: 30)))
         ])
@@ -35,39 +35,39 @@ final class PlanExecutionBoundaryTests: XCTestCase {
             .instruction(InstructionItem(order: 0, text: "Breathe slowly."))
         ])
 
-        XCTAssertEqual(mobility.executionBoundary, .mobilityOnly)
-        XCTAssertEqual(instruction.executionBoundary, .instructionOnly)
-        XCTAssertTrue(mobility.executionBoundary.canStartCombinedRunner)
-        XCTAssertFalse(instruction.executionBoundary.canStartCombinedRunner)
-        XCTAssertFalse(mobility.executionBoundary.canProjectToWatch)
-        XCTAssertFalse(instruction.executionBoundary.canProjectToWatch)
+        #expect(mobility.executionBoundary == .mobilityOnly)
+        #expect(instruction.executionBoundary == .instructionOnly)
+        #expect(mobility.executionBoundary.canStartCombinedRunner)
+        #expect(!instruction.executionBoundary.canStartCombinedRunner)
+        #expect(!mobility.executionBoundary.canProjectToWatch)
+        #expect(!instruction.executionBoundary.canProjectToWatch)
     }
 
-    func testCardioMobilitySessionUsesCombinedRunnerBoundary() {
+    @Test func cardioMobilitySessionUsesCombinedRunnerBoundary() {
         let session = Session(title: "Run and recover", items: [
             .cardio(CardioItem(order: 0, prescription: .steadyState(SteadyState(
                 activity: .run, durationSeconds: 1_800)))),
             .mobility(MobilityItem(order: 1, name: "Hip opener", perRound: .duration(seconds: 30)))
         ])
 
-        XCTAssertEqual(session.executionBoundary,
+        #expect(session.executionBoundary ==
                        .mixed([.cardio, .mobility]))
-        XCTAssertTrue(session.executionBoundary.canStartCombinedRunner)
-        XCTAssertFalse(session.executionBoundary.canStartStrengthRunner)
-        XCTAssertFalse(session.executionBoundary.canProjectToWatch)
+        #expect(session.executionBoundary.canStartCombinedRunner)
+        #expect(!session.executionBoundary.canStartStrengthRunner)
+        #expect(!session.executionBoundary.canProjectToWatch)
     }
 
-    func testMixedSessionCannotBeMisclassifiedAsStrengthOrWatchExecutable() {
+    @Test func mixedSessionCannotBeMisclassifiedAsStrengthOrWatchExecutable() {
         let session = Session(title: "Lift and run", items: [
             .strength(strengthItem()),
             .cardio(cardioItem()),
             .instruction(InstructionItem(order: 2, text: "Cool down."))
         ])
 
-        XCTAssertEqual(session.executionBoundary,
+        #expect(session.executionBoundary ==
                        .mixed([.strength, .cardio, .instruction]))
-        XCTAssertFalse(session.executionBoundary.canStartStrengthRunner)
-        XCTAssertFalse(session.executionBoundary.canProjectToWatch)
+        #expect(!session.executionBoundary.canStartStrengthRunner)
+        #expect(!session.executionBoundary.canProjectToWatch)
     }
 
     private func strengthItem() -> StrengthItem {

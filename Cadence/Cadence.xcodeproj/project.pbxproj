@@ -20,6 +20,10 @@
 		PW0000010000000000000001 /* CadenceWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = PW0000020000000000000001 /* CadenceWidgets.appex */; };
 		PW0000030000000000000001 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = PW0000040000000000000001 /* WidgetKit.framework */; };
 		PW0000050000000000000001 /* CadenceFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = PW0000060000000000000001 /* CadenceFeatures */; };
+		FA95D08A8A1F2D7841013F4B /* CadencePortability in Frameworks */ = {isa = PBXBuildFile; productRef = 3D816059BC331487C83CF02D /* CadencePortability */; };
+		928CA8503F20073F252C61BA /* CadenceWorkoutFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = B5A131A6D00201A09D276956 /* CadenceWorkoutFeatures */; };
+		913CAA0F1FE6ECCE19AE77FF /* CadenceWorkoutFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = C0EB814A816767E25BE7BAB7 /* CadenceWorkoutFeatures */; };
+		4B43A67B46A8C80AB8ED5493 /* CadencePhoneFeatures in Frameworks */ = {isa = PBXBuildFile; productRef = EB5C5D9A22E3FE8914679A93 /* CadencePhoneFeatures */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,21 +34,7 @@
 			remoteGlobalIDString = 8D78A4F42FD282B500AE7C2F;
 			remoteInfo = Cadence;
 		};
-		8D78A5102FD282B700AE7C2F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 8D78A4ED2FD282B500AE7C2F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D78A4F42FD282B500AE7C2F;
-			remoteInfo = Cadence;
-		};
 		8D78A5362FD286E300AE7C2F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 8D78A4ED2FD282B500AE7C2F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8D78A5252FD286E200AE7C2F;
-			remoteInfo = "Cadence Watch App Watch App";
-		};
-		8D78A5402FD286E300AE7C2F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8D78A4ED2FD282B500AE7C2F /* Project object */;
 			proxyType = 1;
@@ -106,10 +96,8 @@
 /* Begin PBXFileReference section */
 		8D78A4F52FD282B500AE7C2F /* Cadence.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cadence.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D78A5052FD282B700AE7C2F /* CadenceTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CadenceTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		8D78A50F2FD282B700AE7C2F /* CadenceUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CadenceUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D78A5262FD286E200AE7C2F /* Cadence Watch App Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Cadence Watch App Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D78A5352FD286E300AE7C2F /* Cadence Watch App Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cadence Watch App Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
-		8D78A53F2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Cadence Watch App Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		WW0000020000000000000001 /* CadenceWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "com.apple.product-type.app-extension"; includeInIndex = 0; path = CadenceWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		WW0000040000000000000001 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		PW0000020000000000000001 /* CadenceWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "com.apple.product-type.app-extension"; includeInIndex = 0; path = CadenceWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -170,11 +158,6 @@
 			path = CadenceTests;
 			sourceTree = "<group>";
 		};
-		8D78A5122FD282B700AE7C2F /* CadenceUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CadenceUITests;
-			sourceTree = "<group>";
-		};
 		8D78A5272FD286E200AE7C2F /* Cadence Watch App Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -186,11 +169,6 @@
 		8D78A5382FD286E300AE7C2F /* Cadence Watch App Watch AppTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Cadence Watch App Watch AppTests";
-			sourceTree = "<group>";
-		};
-		8D78A5422FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = "Cadence Watch App Watch AppUITests";
 			sourceTree = "<group>";
 		};
 		PW0000110000000000000001 /* CadenceWidgets */ = {
@@ -216,6 +194,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				928CA8503F20073F252C61BA /* CadenceWorkoutFeatures in Frameworks */,
+				4B43A67B46A8C80AB8ED5493 /* CadencePhoneFeatures in Frameworks */,
+				FA95D08A8A1F2D7841013F4B /* CadencePortability in Frameworks */,
 				8D78A55C2FD28A6200AE7C2F /* CadenceCore in Frameworks */,
 				CAFEFEA70000000000000001 /* CadenceFeatures in Frameworks */,
 				CAFEF1180000000000000001 /* CadenceFixtures in Frameworks */,
@@ -230,30 +211,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		8D78A50C2FD282B700AE7C2F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		8D78A5232FD286E200AE7C2F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				913CAA0F1FE6ECCE19AE77FF /* CadenceWorkoutFeatures in Frameworks */,
 				8D78A55F2FD28A7C00AE7C2F /* CadenceCore in Frameworks */,
 				WA0000020000000000000001 /* CadenceFeatures in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8D78A5322FD286E300AE7C2F /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		8D78A53C2FD286E300AE7C2F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -286,10 +254,8 @@
 			children = (
 				8D78A4F72FD282B500AE7C2F /* Cadence */,
 				8D78A5082FD282B700AE7C2F /* CadenceTests */,
-				8D78A5122FD282B700AE7C2F /* CadenceUITests */,
 				8D78A5272FD286E200AE7C2F /* Cadence Watch App Watch App */,
 				8D78A5382FD286E300AE7C2F /* Cadence Watch App Watch AppTests */,
-				8D78A5422FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */,
 				WW0000110000000000000001 /* CadenceWatchWidgets */,
 				PW0000110000000000000001 /* CadenceWidgets */,
 				8D78A55D2FD28A7C00AE7C2F /* Frameworks */,
@@ -302,10 +268,8 @@
 			children = (
 				8D78A4F52FD282B500AE7C2F /* Cadence.app */,
 				8D78A5052FD282B700AE7C2F /* CadenceTests.xctest */,
-				8D78A50F2FD282B700AE7C2F /* CadenceUITests.xctest */,
 				8D78A5262FD286E200AE7C2F /* Cadence Watch App Watch App.app */,
 				8D78A5352FD286E300AE7C2F /* Cadence Watch App Watch AppTests.xctest */,
-				8D78A53F2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests.xctest */,
 				WW0000020000000000000001 /* CadenceWatchWidgets.appex */,
 				PW0000020000000000000001 /* CadenceWidgets.appex */,
 			);
@@ -344,6 +308,9 @@
 			);
 			name = Cadence;
 			packageProductDependencies = (
+				B5A131A6D00201A09D276956 /* CadenceWorkoutFeatures */,
+				EB5C5D9A22E3FE8914679A93 /* CadencePhoneFeatures */,
+				3D816059BC331487C83CF02D /* CadencePortability */,
 				8D78A55B2FD28A6200AE7C2F /* CadenceCore */,
 				CAFEFEA70000000000000000 /* CadenceFeatures */,
 				CAFEF1180000000000000000 /* CadenceFixtures */,
@@ -376,29 +343,6 @@
 			productReference = 8D78A5052FD282B700AE7C2F /* CadenceTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		8D78A50E2FD282B700AE7C2F /* CadenceUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 8D78A51F2FD282B700AE7C2F /* Build configuration list for PBXNativeTarget "CadenceUITests" */;
-			buildPhases = (
-				8D78A50B2FD282B700AE7C2F /* Sources */,
-				8D78A50C2FD282B700AE7C2F /* Frameworks */,
-				8D78A50D2FD282B700AE7C2F /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				8D78A5112FD282B700AE7C2F /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				8D78A5122FD282B700AE7C2F /* CadenceUITests */,
-			);
-			name = CadenceUITests;
-			packageProductDependencies = (
-			);
-			productName = CadenceUITests;
-			productReference = 8D78A50F2FD282B700AE7C2F /* CadenceUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
-		};
 		8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8D78A54A2FD286E300AE7C2F /* Build configuration list for PBXNativeTarget "Cadence Watch App Watch App" */;
@@ -418,6 +362,7 @@
 			);
 			name = "Cadence Watch App Watch App";
 			packageProductDependencies = (
+				C0EB814A816767E25BE7BAB7 /* CadenceWorkoutFeatures */,
 				8D78A55E2FD28A7C00AE7C2F /* CadenceCore */,
 				WA0000060000000000000001 /* CadenceFeatures */,
 			);
@@ -447,29 +392,6 @@
 			productName = "Cadence Watch App Watch AppTests";
 			productReference = 8D78A5352FD286E300AE7C2F /* Cadence Watch App Watch AppTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
-		};
-		8D78A53E2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 8D78A5512FD286E300AE7C2F /* Build configuration list for PBXNativeTarget "Cadence Watch App Watch AppUITests" */;
-			buildPhases = (
-				8D78A53B2FD286E300AE7C2F /* Sources */,
-				8D78A53C2FD286E300AE7C2F /* Frameworks */,
-				8D78A53D2FD286E300AE7C2F /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				8D78A5412FD286E300AE7C2F /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				8D78A5422FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */,
-			);
-			name = "Cadence Watch App Watch AppUITests";
-			packageProductDependencies = (
-			);
-			productName = "Cadence Watch App Watch AppUITests";
-			productReference = 8D78A53F2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests.xctest */;
-			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		PW0000100000000000000001 /* CadenceWidgets */ = {
 			isa = PBXNativeTarget;
@@ -534,18 +456,10 @@
 						CreatedOnToolsVersion = 16.1;
 						TestTargetID = 8D78A4F42FD282B500AE7C2F;
 					};
-					8D78A50E2FD282B700AE7C2F = {
-						CreatedOnToolsVersion = 16.1;
-						TestTargetID = 8D78A4F42FD282B500AE7C2F;
-					};
 					8D78A5252FD286E200AE7C2F = {
 						CreatedOnToolsVersion = 16.1;
 					};
 					8D78A5342FD286E300AE7C2F = {
-						CreatedOnToolsVersion = 16.1;
-						TestTargetID = 8D78A5252FD286E200AE7C2F;
-					};
-					8D78A53E2FD286E300AE7C2F = {
 						CreatedOnToolsVersion = 16.1;
 						TestTargetID = 8D78A5252FD286E200AE7C2F;
 					};
@@ -584,10 +498,8 @@
 			targets = (
 				8D78A4F42FD282B500AE7C2F /* Cadence */,
 				8D78A5042FD282B700AE7C2F /* CadenceTests */,
-				8D78A50E2FD282B700AE7C2F /* CadenceUITests */,
 				8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */,
 				8D78A5342FD286E300AE7C2F /* Cadence Watch App Watch AppTests */,
-				8D78A53E2FD286E300AE7C2F /* Cadence Watch App Watch AppUITests */,
 				WW0000100000000000000001 /* CadenceWatchWidgets */,
 				PW0000100000000000000001 /* CadenceWidgets */,
 			);
@@ -609,13 +521,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		8D78A50D2FD282B700AE7C2F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		8D78A5242FD286E200AE7C2F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -624,13 +529,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8D78A5332FD286E300AE7C2F /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		8D78A53D2FD286E300AE7C2F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -668,13 +566,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		8D78A50B2FD282B700AE7C2F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		8D78A5222FD286E200AE7C2F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -683,13 +574,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		8D78A5312FD286E300AE7C2F /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		8D78A53B2FD286E300AE7C2F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -718,20 +602,10 @@
 			target = 8D78A4F42FD282B500AE7C2F /* Cadence */;
 			targetProxy = 8D78A5062FD282B700AE7C2F /* PBXContainerItemProxy */;
 		};
-		8D78A5112FD282B700AE7C2F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D78A4F42FD282B500AE7C2F /* Cadence */;
-			targetProxy = 8D78A5102FD282B700AE7C2F /* PBXContainerItemProxy */;
-		};
 		8D78A5372FD286E300AE7C2F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */;
 			targetProxy = 8D78A5362FD286E300AE7C2F /* PBXContainerItemProxy */;
-		};
-		8D78A5412FD286E300AE7C2F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8D78A5252FD286E200AE7C2F /* Cadence Watch App Watch App */;
-			targetProxy = 8D78A5402FD286E300AE7C2F /* PBXContainerItemProxy */;
 		};
 		WA0000030000000000000001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -978,40 +852,6 @@
 			};
 			name = Release;
 		};
-		8D78A5202FD282B700AE7C2F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = guru.parso.CadenceUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Cadence;
-			};
-			name = Debug;
-		};
-		8D78A5212FD282B700AE7C2F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = guru.parso.CadenceUITests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_TARGET_NAME = Cadence;
-			};
-			name = Release;
-		};
 		8D78A54B2FD286E300AE7C2F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1118,46 +958,6 @@
 				SWIFT_VERSION = 6.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Cadence Watch App Watch App.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Cadence Watch App Watch App";
-				WATCHOS_DEPLOYMENT_TARGET = 11.1;
-			};
-			name = Release;
-		};
-		8D78A5522FD286E300AE7C2F /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3264Y8YUGV;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "guru.parso.Cadence-Watch-App-Watch-AppUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				TEST_TARGET_NAME = "Cadence Watch App Watch App";
-				WATCHOS_DEPLOYMENT_TARGET = 11.1;
-			};
-			name = Debug;
-		};
-		8D78A5532FD286E300AE7C2F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 3264Y8YUGV;
-				GENERATE_INFOPLIST_FILE = YES;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "guru.parso.Cadence-Watch-App-Watch-AppUITests";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = watchos;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_STRICT_CONCURRENCY = complete;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = 4;
-				TEST_TARGET_NAME = "Cadence Watch App Watch App";
 				WATCHOS_DEPLOYMENT_TARGET = 11.1;
 			};
 			name = Release;
@@ -1284,15 +1084,6 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		8D78A51F2FD282B700AE7C2F /* Build configuration list for PBXNativeTarget "CadenceUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				8D78A5202FD282B700AE7C2F /* Debug */,
-				8D78A5212FD282B700AE7C2F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		8D78A54A2FD286E300AE7C2F /* Build configuration list for PBXNativeTarget "Cadence Watch App Watch App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -1307,15 +1098,6 @@
 			buildConfigurations = (
 				8D78A54F2FD286E300AE7C2F /* Debug */,
 				8D78A5502FD286E300AE7C2F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		8D78A5512FD286E300AE7C2F /* Build configuration list for PBXNativeTarget "Cadence Watch App Watch AppUITests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				8D78A5522FD286E300AE7C2F /* Debug */,
-				8D78A5532FD286E300AE7C2F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -1386,6 +1168,26 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
 			productName = CadenceFeatures;
+		};
+		3D816059BC331487C83CF02D /* CadencePortability */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadencePortability;
+		};
+		B5A131A6D00201A09D276956 /* CadenceWorkoutFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadenceWorkoutFeatures;
+		};
+		C0EB814A816767E25BE7BAB7 /* CadenceWorkoutFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadenceWorkoutFeatures;
+		};
+		EB5C5D9A22E3FE8914679A93 /* CadencePhoneFeatures */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 8D78A55A2FD28A6200AE7C2F /* XCLocalSwiftPackageReference "../CadenceCore" */;
+			productName = CadencePhoneFeatures;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

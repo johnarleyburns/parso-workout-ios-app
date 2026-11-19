@@ -1,43 +1,45 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class WatchWeekRingsTests: XCTestCase {
-    func testToneBands() {
+struct WatchWeekRingsTests {
+    @Test func toneBands() {
         func tone(_ v: Double) -> WatchWeekRingTone {
             WatchWeekRing(kind: .strength, value: v, minimum: 20, target: 60).tone
         }
-        XCTAssertEqual(tone(0), .red)
-        XCTAssertEqual(tone(1), .yellow)
-        XCTAssertEqual(tone(19.9), .yellow)
-        XCTAssertEqual(tone(127), .yellow)
-        XCTAssertEqual(tone(128), .lightGreen)
-        XCTAssertEqual(tone(191), .lightGreen)
-        XCTAssertEqual(tone(192), .green)
+        #expect(tone(0) == .red)
+        #expect(tone(1) == .yellow)
+        #expect(tone(19.9) == .yellow)
+        #expect(tone(127) == .yellow)
+        #expect(tone(128) == .lightGreen)
+        #expect(tone(191) == .lightGreen)
+        #expect(tone(192) == .green)
     }
 
-    func testProgressClampsAndHandlesZeroTarget() {
-        XCTAssertEqual(WatchWeekRing(kind: .cardio, value: 450, minimum: 150, target: 300).progress, 1)
-        XCTAssertEqual(WatchWeekRing(kind: .cardio, value: 150, minimum: 150, target: 300).progress, 0.5)
-        XCTAssertEqual(WatchWeekRing(kind: .cardio, value: 10, minimum: 0, target: 0).progress, 0)
+    @Test func progressClampsAndHandlesZeroTarget() {
+        #expect(WatchWeekRing(kind: .cardio, value: 450, minimum: 150, target: 300).progress == 1)
+        #expect(WatchWeekRing(kind: .cardio, value: 150, minimum: 150, target: 300).progress == 0.5)
+        #expect(WatchWeekRing(kind: .cardio, value: 10, minimum: 0, target: 0).progress == 0)
     }
 
-    func testRingsOrderAndDefaults() {
+    @Test func ringsOrderAndDefaults() {
         let empty = WatchWeekRings.rings(from: nil)
-        XCTAssertEqual(empty.map(\.kind), [.strength, .cardio])
-        XCTAssertEqual(empty.map(\.tone), [.red, .red])
-        XCTAssertEqual(empty[1].minimum, 150)
-        XCTAssertEqual(empty[1].target, 300)
+        #expect(empty.map(\.kind) == [.strength, .cardio])
+        #expect(empty.map(\.tone) == [.red, .red])
+        #expect(empty[1].minimum == 150)
+        #expect(empty[1].target == 300)
 
         let summary = WatchSync.WeekSummary(sets: 30, setsMinimum: 40, setsTarget: 120,
                                             cardioMinutes: 200, updatedAt: Date())
         let rings = WatchWeekRings.rings(from: summary)
-        XCTAssertEqual(rings[0].tone, .yellow)
-        XCTAssertEqual(rings[1].tone, .lightGreen)
-        XCTAssertEqual(rings[1].displayValue, 200)
+        #expect(rings[0].tone == .yellow)
+        #expect(rings[1].tone == .lightGreen)
+        #expect(rings[1].displayValue == 200)
     }
 
-    func testOverlayAddsToBaselineForCurrentWeekOnly() {
+    @Test func overlayAddsToBaselineForCurrentWeekOnly() {
         let baseline = WatchSync.WeekSummary(sets: 111, setsMinimum: 40, setsTarget: 120,
                                              cardioMinutes: 76, updatedAt: Date())
         let overlays = [
@@ -50,11 +52,11 @@ final class WatchWeekRingsTests: XCTestCase {
                                   sets: 99, completedAt: Date()),
         ]
         let rings = WatchWeekRings.rings(baseline: baseline, overlays: overlays, currentWeekKey: "2026-11-02")
-        XCTAssertEqual(rings[0].value, 116)
-        XCTAssertEqual(rings[1].value, 106)
+        #expect(rings[0].value == 116)
+        #expect(rings[1].value == 106)
     }
 
-    func testAcknowledgedOverlayIsNotDoubleCountedAgainstTheNewBaseline() {
+    @Test func acknowledgedOverlayIsNotDoubleCountedAgainstTheNewBaseline() {
         let staleBaseline = WatchSync.WeekSummary(sets: 111, setsMinimum: 40, setsTarget: 120,
                                                   cardioMinutes: 76, updatedAt: Date())
         let overlays = [
@@ -64,8 +66,8 @@ final class WatchWeekRingsTests: XCTestCase {
                                   moderateEquivalentMinutes: 30, completedAt: Date()),
         ]
         let beforeReconnect = WatchWeekRings.rings(baseline: staleBaseline, overlays: overlays, currentWeekKey: "2026-11-02")
-        XCTAssertEqual(beforeReconnect[0].value, 116)
-        XCTAssertEqual(beforeReconnect[1].value, 106)
+        #expect(beforeReconnect[0].value == 116)
+        #expect(beforeReconnect[1].value == 106)
 
         // The phone's new baseline already includes the acknowledged completions;
         // once acknowledged, the overlay list is empty, so the total must land on
@@ -73,34 +75,34 @@ final class WatchWeekRingsTests: XCTestCase {
         let freshBaseline = WatchSync.WeekSummary(sets: 116, setsMinimum: 40, setsTarget: 120,
                                                   cardioMinutes: 106, updatedAt: Date())
         let afterReconnect = WatchWeekRings.rings(baseline: freshBaseline, overlays: [], currentWeekKey: "2026-11-02")
-        XCTAssertEqual(afterReconnect[0].value, 116)
-        XCTAssertEqual(afterReconnect[1].value, 106)
+        #expect(afterReconnect[0].value == 116)
+        #expect(afterReconnect[1].value == 106)
     }
 
-    func testWeekSummaryContextRoundTrip() {
+    @Test func weekSummaryContextRoundTrip() {
         let date = Date(timeIntervalSince1970: 1_000)
         let summary = WatchSync.WeekSummary(sets: 12.5, setsMinimum: 40, setsTarget: 120,
                                             cardioMinutes: 95, updatedAt: date)
         let context = WatchSync.WeekSummary.contextDict(summary)
-        XCTAssertEqual(WatchSync.WeekSummary.from(context: context), summary)
-        XCTAssertNil(WatchSync.WeekSummary.from(context: [:]))
+        #expect(WatchSync.WeekSummary.from(context: context) == summary)
+        #expect(WatchSync.WeekSummary.from(context: [:]) == nil)
         let incoming = WatchSync.IncomingContext.from(
             context: context, applyingTo: WatchSync.Preferences())
-        XCTAssertEqual(incoming.weekSummary, summary)
+        #expect(incoming.weekSummary == summary)
     }
 
-    func testMeasuredStrengthOverlayAddsSetsAndModerateEquivalentMinutes() {
+    @Test func measuredStrengthOverlayAddsSetsAndModerateEquivalentMinutes() {
         let id = UUID(), date = Date(timeIntervalSince1970: 1_800_000_000)
         let baseline = WatchSync.WeekSummary(sets: 10, setsMinimum: 40, setsTarget: 120,
                                              cardioMinutes: 20, updatedAt: date)
         let overlay = WatchWeekLocalOverlay(id: id, weekKey: "2026-11-09", kind: .strength,
                                             sets: 4, moderateEquivalentMinutes: 12.5, completedAt: date)
         let rings = WatchWeekRings.rings(baseline: baseline, overlays: [overlay], currentWeekKey: "2026-11-09")
-        XCTAssertEqual(rings.first { $0.kind == .strength }?.value ?? -1, 14, accuracy: 0.001)
-        XCTAssertEqual(rings.first { $0.kind == .cardio }?.value ?? -1, 32.5, accuracy: 0.001)
+        #expect(abs((rings.first { $0.kind == .strength }?.value ?? -1) - 14) <= 0.001)
+        #expect(abs((rings.first { $0.kind == .cardio }?.value ?? -1) - 32.5) <= 0.001)
     }
 
-    func testSameStrengthCompletionIDReplacesInsteadOfDoubleCounting() {
+    @Test func sameStrengthCompletionIDReplacesInsteadOfDoubleCounting() {
         let id = UUID(), date = Date(timeIntervalSince1970: 1_800_000_000)
         let defaults = UserDefaults(suiteName: "ring-\(UUID().uuidString)")!
         let store = WatchWeekLocalOverlayStore(defaults: defaults)
@@ -109,7 +111,7 @@ final class WatchWeekRingsTests: XCTestCase {
                                                moderateEquivalentMinutes: 12.5, completedAt: date))
         }
         let rings = WatchWeekRings.rings(baseline: nil, overlays: store.overlays(forWeekKey: "w"), currentWeekKey: "w")
-        XCTAssertEqual(rings.first { $0.kind == .strength }?.value ?? -1, 4, accuracy: 0.001)
-        XCTAssertEqual(rings.first { $0.kind == .cardio }?.value ?? -1, 12.5, accuracy: 0.001)
+        #expect(abs((rings.first { $0.kind == .strength }?.value ?? -1) - 4) <= 0.001)
+        #expect(abs((rings.first { $0.kind == .cardio }?.value ?? -1) - 12.5) <= 0.001)
     }
 }

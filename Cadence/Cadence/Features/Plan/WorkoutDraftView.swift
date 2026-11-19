@@ -2,6 +2,8 @@ import SwiftUI
 import SwiftData
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 private struct RootTabSelectionKey: EnvironmentKey {
     static var defaultValue: Binding<RootTabView.Tab> { .constant(.home) }

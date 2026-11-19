@@ -1,11 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 /// Regression coverage for the "rotary torso every day" defect: a movement
 /// pattern's *exercise identity* must rotate across the days of a generated plan
 /// instead of pinning the single most-trained favorite to every session.
-final class CoachExerciseVarietyTests: XCTestCase {
+struct CoachExerciseVarietyTests {
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
@@ -20,7 +22,7 @@ final class CoachExerciseVarietyTests: XCTestCase {
 
     // MARK: - Ranked candidate list
 
-    func testTrainedExerciseCandidatesRanksMostTrainedFirst() throws {
+    @Test func trainedExerciseCandidatesRanksMostTrainedFirst() throws {
         let ctx = try makeContext()
         let now = fixedWednesday()
         let events = try coreHistory(context: ctx, now: now)
@@ -30,19 +32,19 @@ final class CoachExerciseVarietyTests: XCTestCase {
         let all = CoachSession.trainedExerciseCandidates(facts: facts)
         let ranked = all[.core] ?? []
         let everyTrainedName = all.values.flatMap { $0 }
-        XCTAssertEqual(ranked.first, "Rotary Torso",
+        #expect(ranked.first == "Rotary Torso",
                        "Most-trained core movement ranks first in its pattern")
-        XCTAssertTrue(everyTrainedName.contains("Rotary Torso"),
+        #expect(everyTrainedName.contains("Rotary Torso"),
                       "The dominant lift appears in the ranked candidates")
-        XCTAssertTrue(everyTrainedName.contains("Cable Crunch"),
+        #expect(everyTrainedName.contains("Cable Crunch"),
                       "Less-trained lifts still appear in the ranked candidates")
-        XCTAssertEqual(CoachSession.mostTrainedExercises(facts: facts)[.core], ranked.first,
+        #expect(CoachSession.mostTrainedExercises(facts: facts)[.core] == ranked.first,
                        "mostTrainedExercises is the first of the ranked candidate list")
     }
 
     // MARK: - Cross-day rotation
 
-    func testCoreExerciseRotatesAcrossPlannedDays() throws {
+    @Test func coreExerciseRotatesAcrossPlannedDays() throws {
         let ctx = try makeContext()
         let now = fixedWednesday()
         let events = try coreHistory(context: ctx, now: now)
@@ -65,7 +67,7 @@ final class CoachExerciseVarietyTests: XCTestCase {
             schedulePreferences: preferences(twoADays: true),
             candidates: [genericStrengthSession()])
 
-        XCTAssertEqual(optimized.plannedStrengthSessions.count, 2,
+        #expect(optimized.plannedStrengthSessions.count == 2,
                        "Both strength slots should be planned")
 
         let perSessionCoreNames = optimized.plannedStrengthSessions.map { session in
@@ -75,9 +77,9 @@ final class CoachExerciseVarietyTests: XCTestCase {
         }
         let allCoreNames = perSessionCoreNames.reduce(into: Set<String>()) { $0.formUnion($1) }
 
-        XCTAssertTrue(perSessionCoreNames.allSatisfy { !$0.isEmpty },
+        #expect(perSessionCoreNames.allSatisfy { !$0.isEmpty },
                       "Every planned strength day should include the abs work it was routed for")
-        XCTAssertGreaterThanOrEqual(allCoreNames.count, 2,
+        #expect(allCoreNames.count >= 2,
             "The core exercise identity must rotate across days, not repeat one favorite: \(allCoreNames)")
     }
 
@@ -187,3 +189,4 @@ final class CoachExerciseVarietyTests: XCTestCase {
             evidenceCategory: .strengthIntensity)
     }
 }
+#endif

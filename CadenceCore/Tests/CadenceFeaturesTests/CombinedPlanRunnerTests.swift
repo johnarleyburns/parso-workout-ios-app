@@ -1,9 +1,12 @@
-import XCTest
+import Foundation
+import Testing
 import CadenceCore
+import CadencePhoneFeatures
 @testable import CadenceFeatures
+@testable import CadenceWorkoutFeatures
 
-final class CombinedPlanRunnerTests: XCTestCase {
-    func testPlanPreservesCardioAndMobilityOrderAndRejectsStrength() throws {
+struct CombinedPlanRunnerTests {
+    @Test func planPreservesCardioAndMobilityOrderAndRejectsStrength() throws {
         let cardioID = UUID()
         let mobilityID = UUID()
         let plan = try CombinedExecutionPlan(session: Session(title: "Conditioning", items: [
@@ -14,20 +17,18 @@ final class CombinedPlanRunnerTests: XCTestCase {
                                     perRound: .duration(seconds: 30)))
         ]))
 
-        XCTAssertEqual(plan.steps.map(\.id), [cardioID, mobilityID])
-        XCTAssertEqual(plan.steps.first?.timedDurationSeconds, 10)
-        XCTAssertEqual(plan.steps.last?.timedDurationSeconds, nil)
+        #expect(plan.steps.map(\.id) == [cardioID, mobilityID])
+        #expect(plan.steps.first?.timedDurationSeconds == 10)
+        #expect(plan.steps.last?.timedDurationSeconds == nil)
 
-        XCTAssertThrowsError(try CombinedExecutionPlan(session: Session(
-            title: "Strength", items: [.strength(StrengthItem(
-                exerciseKey: ExerciseKey(raw: "back_squat"), order: 0))]))) { error in
-            guard case .unsupportedBoundary(.strengthOnly) = error as? CombinedExecutionPlan.Error else {
-                return XCTFail("Expected the strength-only boundary")
-            }
+        #expect(throws: CombinedExecutionPlan.Error.unsupportedBoundary(.strengthOnly)) {
+            try CombinedExecutionPlan(session: Session(
+                title: "Strength", items: [.strength(StrengthItem(
+                    exerciseKey: ExerciseKey(raw: "back_squat"), order: 0))]))
         }
     }
 
-    func testTimedCardioAutoAdvancesAndMobilityRequiresExplicitCompletion() throws {
+    @Test func timedCardioAutoAdvancesAndMobilityRequiresExplicitCompletion() throws {
         let plan = try CombinedExecutionPlan(session: Session(title: "Intervals", items: [
             .cardio(CardioItem(order: 0, prescription: .steadyState(SteadyState(
                 activity: .bike, durationSeconds: 5)))),
@@ -38,23 +39,23 @@ final class CombinedPlanRunnerTests: XCTestCase {
 
         runner.start(now: start)
         runner.tick(seconds: 4)
-        XCTAssertEqual(runner.currentStepIndex, 0)
-        XCTAssertEqual(runner.elapsedSeconds, 4)
+        #expect(runner.currentStepIndex == 0)
+        #expect(runner.elapsedSeconds == 4)
         runner.tick(seconds: 1)
-        XCTAssertEqual(runner.currentStepIndex, 1)
-        XCTAssertEqual(runner.completedStepIDs, [plan.steps[0].id])
-        XCTAssertEqual(runner.state, .running)
+        #expect(runner.currentStepIndex == 1)
+        #expect(runner.completedStepIDs == [plan.steps[0].id])
+        #expect(runner.state == .running)
 
         runner.tick(seconds: 20)
-        XCTAssertEqual(runner.currentStepIndex, 1)
-        XCTAssertEqual(runner.state, .running)
+        #expect(runner.currentStepIndex == 1)
+        #expect(runner.state == .running)
         runner.completeCurrentStep()
-        XCTAssertTrue(runner.isComplete)
-        XCTAssertEqual(runner.completedStepIDs, plan.steps.map(\.id))
-        XCTAssertEqual(runner.endedAt, start.addingTimeInterval(25))
+        #expect(runner.isComplete)
+        #expect(runner.completedStepIDs == plan.steps.map(\.id))
+        #expect(runner.endedAt == start.addingTimeInterval(25))
     }
 
-    func testPauseFreezesClockAndFinishCapturesPartialStep() throws {
+    @Test func pauseFreezesClockAndFinishCapturesPartialStep() throws {
         let plan = try CombinedExecutionPlan(session: Session(title: "Mobility", items: [
             .mobility(MobilityItem(order: 0, name: "Hips", perRound: .duration(seconds: 30)))
         ]))
@@ -65,16 +66,16 @@ final class CombinedPlanRunnerTests: XCTestCase {
         runner.tick(seconds: 7)
         runner.pause()
         runner.tick(seconds: 100)
-        XCTAssertEqual(runner.elapsedSeconds, 7)
-        XCTAssertEqual(runner.state, .paused)
+        #expect(runner.elapsedSeconds == 7)
+        #expect(runner.state == .paused)
 
-        XCTAssertTrue(runner.finish(now: start.addingTimeInterval(11)))
-        XCTAssertEqual(runner.state, .finished)
-        XCTAssertEqual(runner.completedStepIDs, [plan.steps[0].id])
-        XCTAssertEqual(runner.endedAt, start.addingTimeInterval(11))
+        #expect(runner.finish(now: start.addingTimeInterval(11)))
+        #expect(runner.state == .finished)
+        #expect(runner.completedStepIDs == [plan.steps[0].id])
+        #expect(runner.endedAt == start.addingTimeInterval(11))
     }
 
-    func testIntervalTimingIncludesWarmupWorkRecoveryAndCooldown() throws {
+    @Test func intervalTimingIncludesWarmupWorkRecoveryAndCooldown() throws {
         let intervals = Intervals(
             activity: .row,
             warmupSeconds: 3,
@@ -86,7 +87,7 @@ final class CombinedPlanRunnerTests: XCTestCase {
             .cardio(CardioItem(order: 0, prescription: .intervals(intervals)))
         ]))
 
-        XCTAssertEqual(plan.steps.first?.timedDurationSeconds, 27)
-        XCTAssertEqual(plan.timedDurationSeconds, 27)
+        #expect(plan.steps.first?.timedDurationSeconds == 27)
+        #expect(plan.timedDurationSeconds == 27)
     }
 }

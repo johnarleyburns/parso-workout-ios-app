@@ -82,8 +82,20 @@ public enum OneRepMaxFormula: String, CaseIterable, Codable, Sendable, Identifia
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .epley: return String(localized: "Epley", bundle: .module)
-        case .brzycki: return String(localized: "Brzycki", bundle: .module)
+        case .epley: return {
+            #if os(Linux)
+            "Epley"
+            #else
+            String(localized: "Epley", bundle: .module)
+            #endif
+        }()
+        case .brzycki: return {
+            #if os(Linux)
+            "Brzycki"
+            #else
+            String(localized: "Brzycki", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -100,8 +112,20 @@ public enum MeasurementUnitPreference: String, CaseIterable, Codable, Sendable, 
     }
     public var displayName: String {
         switch self {
-        case .kilograms: return String(localized: "Kilograms (kg)", bundle: .module)
-        case .pounds: return String(localized: "Pounds (lb)", bundle: .module)
+        case .kilograms: return {
+            #if os(Linux)
+            "Kilograms (kg)"
+            #else
+            String(localized: "Kilograms (kg)", bundle: .module)
+            #endif
+        }()
+        case .pounds: return {
+            #if os(Linux)
+            "Pounds (lb)"
+            #else
+            String(localized: "Pounds (lb)", bundle: .module)
+            #endif
+        }()
         }
     }
 }
@@ -118,13 +142,25 @@ public enum DistanceUnitPreference: String, CaseIterable, Codable, Sendable, Ide
     }
     public var displayName: String {
         switch self {
-        case .kilometers: return String(localized: "Kilometers (km)", bundle: .module)
-        case .miles: return String(localized: "Miles (mi)", bundle: .module)
+        case .kilometers: return {
+            #if os(Linux)
+            "Kilometers (km)"
+            #else
+            String(localized: "Kilometers (km)", bundle: .module)
+            #endif
+        }()
+        case .miles: return {
+            #if os(Linux)
+            "Miles (mi)"
+            #else
+            String(localized: "Miles (mi)", bundle: .module)
+            #endif
+        }()
         }
     }
 
-    public static func unitDefault() -> DistanceUnitPreference {
-        Locale.current.measurementSystem == .us ? .miles : .kilometers
+    public static func unitDefault(locale: Locale = .current) -> DistanceUnitPreference {
+        locale.measurementSystem == .us ? .miles : .kilometers
     }
 }
 
@@ -136,9 +172,27 @@ public enum PRRule: String, CaseIterable, Codable, Sendable, Identifiable {
     public var id: String { rawValue }
     public var displayName: String {
         switch self {
-        case .topWeight: return String(localized: "Heaviest weight", bundle: .module)
-        case .estimated1RM: return String(localized: "Best estimated 1RM", bundle: .module)
-        case .topVolume: return String(localized: "Best set volume", bundle: .module)
+        case .topWeight: return {
+            #if os(Linux)
+            "Heaviest weight"
+            #else
+            String(localized: "Heaviest weight", bundle: .module)
+            #endif
+        }()
+        case .estimated1RM: return {
+            #if os(Linux)
+            "Best estimated 1RM"
+            #else
+            String(localized: "Best estimated 1RM", bundle: .module)
+            #endif
+        }()
+        case .topVolume: return {
+            #if os(Linux)
+            "Best set volume"
+            #else
+            String(localized: "Best set volume", bundle: .module)
+            #endif
+        }()
         }
     }
 }

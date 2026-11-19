@@ -1,21 +1,23 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
 @MainActor
-final class WorkoutHistoryTests: XCTestCase {
+struct WorkoutHistoryTests {
 
     private func makeContext() throws -> ModelContext {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         return ModelContext(container)
     }
 
-    func testEmptyStoreReturnsEmpty() throws {
+    @Test func emptyStoreReturnsEmpty() throws {
         let ctx = try makeContext()
-        XCTAssertTrue(try WorkoutRepository.unifiedHistory(ctx).isEmpty)
+        #expect(try WorkoutRepository.unifiedHistory(ctx).isEmpty)
     }
 
-    func testMergesAndSortsNewestFirst() throws {
+    @Test func mergesAndSortsNewestFirst() throws {
         let ctx = try makeContext()
 
         let oldSession = try WorkoutRepository.createSession(title: "Old", date: Date(timeIntervalSince1970: 1000), in: ctx)
@@ -28,16 +30,16 @@ final class WorkoutHistoryTests: XCTestCase {
         try ctx.save()
 
         let history = try WorkoutRepository.unifiedHistory(ctx)
-        XCTAssertEqual(history.count, 3)
-        XCTAssertEqual(history.map(\.id), [newSession.id, midCardio.id, oldSession.id])
-        XCTAssertEqual(history.map(\.date), [
+        #expect(history.count == 3)
+        #expect(history.map(\.id) == [newSession.id, midCardio.id, oldSession.id])
+        #expect(history.map(\.date) == [
             Date(timeIntervalSince1970: 9000),
             Date(timeIntervalSince1970: 5000),
             Date(timeIntervalSince1970: 1000),
         ])
     }
 
-    func testEntryIdentityAndDate() throws {
+    @Test func entryIdentityAndDate() throws {
         let ctx = try makeContext()
         let session = try WorkoutRepository.createSession(title: "S", date: Date(timeIntervalSince1970: 1000), in: ctx)
         let cardio = CardioWorkout(type: .run, start: Date(timeIntervalSince1970: 2000),
@@ -48,16 +50,17 @@ final class WorkoutHistoryTests: XCTestCase {
         let history = try WorkoutRepository.unifiedHistory(ctx)
         // Newest first: cardio (2000) then session (1000).
         if case .cardio(let c) = history[0] {
-            XCTAssertEqual(c.id, cardio.id)
-            XCTAssertEqual(history[0].date, cardio.start)
+            #expect(c.id == cardio.id)
+            #expect(history[0].date == cardio.start)
         } else {
-            XCTFail("Expected cardio first")
+            Issue.record("Expected cardio first")
         }
         if case .strength(let s) = history[1] {
-            XCTAssertEqual(s.id, session.id)
-            XCTAssertEqual(history[1].date, session.date)
+            #expect(s.id == session.id)
+            #expect(history[1].date == session.date)
         } else {
-            XCTFail("Expected strength second")
+            Issue.record("Expected strength second")
         }
     }
 }
+#endif

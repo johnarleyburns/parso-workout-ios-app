@@ -2,6 +2,7 @@ import SwiftUI
 import WatchConnectivity
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 
 /// Watch redesign §5 F2 — saved, with receipts: each destination shows its real state (Transparency
 /// HARD RULE). Strength summaries reach Apple Health from the iPhone once it has the sets, so that
@@ -31,9 +32,6 @@ struct WatchStrengthSummaryView: View {
                 WatchSummaryHeartRateBlock(presentation: presentation, profile: intensityProfile,
                                            pending: watchManager.strengthCompletionOutbox.failedRecoverably
                                                || model.completionHeartRateOmitted)
-                WatchReceiptRow(title: "Saved on watch", state: receipt.watch)
-                WatchReceiptRow(title: "iPhone", state: receipt.iPhone)
-                WatchReceiptRow(title: "Apple Health", state: receipt.health)
                 if watchManager.strengthCompletionOutbox.failedRecoverably || model.completionHeartRateOmitted {
                     Text("Heart rate is saved on this watch and will retry sending to iPhone.")
                         .font(.caption2).foregroundStyle(.secondary)

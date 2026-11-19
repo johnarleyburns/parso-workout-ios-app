@@ -1,11 +1,13 @@
-import XCTest
+#if canImport(SwiftData)
+import Foundation
+import Testing
 import SwiftData
 @testable import CadenceCore
 
-final class TrainingEngineContractTests: XCTestCase {
+struct TrainingEngineContractTests {
     private let asOf = Date(timeIntervalSince1970: 1_750_000_000.125)
 
-    func testFixedEngineLoopIsDeterministicAndEligibilityGated() throws {
+    @Test func fixedEngineLoopIsDeterministicAndEligibilityGated() throws {
         let schedule = CoachSchedulePreferences(
             trackedMuscleGroups: [.chest])
         let profile = TrainingEngineBridge.trainingProfile(
@@ -17,20 +19,20 @@ final class TrainingEngineContractTests: XCTestCase {
         let target = TrainingEngineBridge.volumeTarget(
             trackedGroups: [.chest], experience: .intermediate)
 
-        let firstGeneration = try XCTUnwrap(
+        let firstGeneration = try #require(
             TrainingEngineBridge.run(
                 .generatePlan, asOf: asOf, profile: profile, target: target))
-        let secondGeneration = try XCTUnwrap(
+        let secondGeneration = try #require(
             TrainingEngineBridge.run(
                 .generatePlan, asOf: asOf, profile: profile, target: target))
-        let plan = try XCTUnwrap(firstGeneration.plan)
+        let plan = try #require(firstGeneration.plan)
 
-        XCTAssertEqual(firstGeneration.status, "generated")
-        XCTAssertNotEqual(firstGeneration.requestId, secondGeneration.requestId)
-        XCTAssertEqual(firstGeneration.plan, secondGeneration.plan)
-        XCTAssertEqual(firstGeneration.evaluation, secondGeneration.evaluation)
+        #expect(firstGeneration.status == "generated")
+        #expect(firstGeneration.requestId != secondGeneration.requestId)
+        #expect(firstGeneration.plan == secondGeneration.plan)
+        #expect(firstGeneration.evaluation == secondGeneration.evaluation)
 
-        let originalEvaluation = try XCTUnwrap(
+        let originalEvaluation = try #require(
             TrainingEngineBridge.run(
                 .evaluatePlan, asOf: asOf, profile: profile, target: target,
                 plan: plan)?.evaluation)
@@ -40,11 +42,11 @@ final class TrainingEngineContractTests: XCTestCase {
             title: "Engine contract workout",
             date: asOf.addingTimeInterval(-3 * 86_400),
             in: context)
-        let prescription = try XCTUnwrap(
+        let prescription = try #require(
             plan.sessions
                 .flatMap(\.exercises)
                 .first { $0.exerciseId != nil })
-        let record = try XCTUnwrap(
+        let record = try #require(
             prescription.exerciseId.flatMap { id in
                 TrainingEngineBridge.exerciseRecords.first { $0.exerciseId == id }
             })
@@ -75,21 +77,21 @@ final class TrainingEngineContractTests: XCTestCase {
 
         let history = TrainingEngineBridge.trainingHistory(
             from: [workout], subjectId: "contract-subject")
-        XCTAssertEqual(history.plans, [plan])
-        XCTAssertEqual(history.workouts.count, 1)
+        #expect(history.plans == [plan])
+        #expect(history.workouts.count == 1)
 
-        let firstStateResult = try XCTUnwrap(
+        let firstStateResult = try #require(
             TrainingEngineBridge.run(
                 .deriveState, asOf: asOf, target: target, history: history))
-        let secondStateResult = try XCTUnwrap(
+        let secondStateResult = try #require(
             TrainingEngineBridge.run(
                 .deriveState, asOf: asOf, target: target, history: history))
-        let state = try XCTUnwrap(firstStateResult.trainingState)
-        XCTAssertEqual(firstStateResult.status, "state_derived")
-        XCTAssertNotEqual(firstStateResult.requestId, secondStateResult.requestId)
-        XCTAssertEqual(firstStateResult.trainingState, secondStateResult.trainingState)
+        let state = try #require(firstStateResult.trainingState)
+        #expect(firstStateResult.status == "state_derived")
+        #expect(firstStateResult.requestId != secondStateResult.requestId)
+        #expect(firstStateResult.trainingState == secondStateResult.trainingState)
 
-        let firstAdaptation = try XCTUnwrap(
+        let firstAdaptation = try #require(
             TrainingEngineBridge.run(
                 .adaptPlan,
                 asOf: asOf,
@@ -98,7 +100,7 @@ final class TrainingEngineContractTests: XCTestCase {
                 history: history,
                 trainingState: state,
                 currentPlan: plan))
-        let secondAdaptation = try XCTUnwrap(
+        let secondAdaptation = try #require(
             TrainingEngineBridge.run(
                 .adaptPlan,
                 asOf: asOf,
@@ -107,23 +109,23 @@ final class TrainingEngineContractTests: XCTestCase {
                 history: history,
                 trainingState: state,
                 currentPlan: plan))
-        XCTAssertNotEqual(firstAdaptation.requestId, secondAdaptation.requestId)
-        XCTAssertEqual(firstAdaptation.adaptation, secondAdaptation.adaptation)
-        let adaptedPlan = try XCTUnwrap(
+        #expect(firstAdaptation.requestId != secondAdaptation.requestId)
+        #expect(firstAdaptation.adaptation == secondAdaptation.adaptation)
+        let adaptedPlan = try #require(
             firstAdaptation.adaptation?.proposedPlan ?? firstAdaptation.adaptation?.currentPlan ?? plan)
 
-        let hydratedPlan = try XCTUnwrap(
+        let hydratedPlan = try #require(
             workout.enginePlanJSON.flatMap(TrainingEngineBridge.deserializePlan))
-        let hydratedEvaluation = try XCTUnwrap(
+        let hydratedEvaluation = try #require(
             TrainingEngineBridge.run(
                 .evaluatePlan, asOf: asOf, profile: profile, target: target,
                 plan: hydratedPlan)?.evaluation)
-        XCTAssertEqual(hydratedPlan, plan)
-        XCTAssertEqual(hydratedEvaluation, originalEvaluation)
+        #expect(hydratedPlan == plan)
+        #expect(hydratedEvaluation == originalEvaluation)
 
         let candidateExercises = TrainingEngineBridge.recommendedExercises(
             from: adaptedPlan.sessions.sorted { $0.planSessionId < $1.planSessionId }[0])
-        XCTAssertFalse(candidateExercises.isEmpty)
+        #expect(!candidateExercises.isEmpty)
         let candidate = CoachSession(
             id: "engine.contract",
             kind: .strength,
@@ -134,11 +136,12 @@ final class TrainingEngineContractTests: XCTestCase {
             from: [], goal: .hypertrophy, experience: .intermediate, now: asOf)
 
         guard case .eligible = SessionEligibilityPolicy.evaluate(candidate, facts: facts) else {
-            return XCTFail("The engine proposal should pass the app eligibility gate with no conflicting history")
+            Issue.record("The engine proposal should pass the app eligibility gate with no conflicting history")
+            return
         }
     }
 
-    func testDBPlusPlusImportBoundaryHasOneOwner() throws {
+    @Test func dBPlusPlusImportBoundaryHasOneOwner() throws {
         let sourceRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent() // CadenceCoreTests
             .deletingLastPathComponent() // Tests
@@ -155,8 +158,9 @@ final class TrainingEngineContractTests: XCTestCase {
         }
 
         // The engine bridge, plus the single explicit Garmin FIT codec adapter.
-        XCTAssertEqual(
-            importOwners.map(\.lastPathComponent).sorted(),
+        #expect(
+            importOwners.map(\.lastPathComponent).sorted() ==
             ["GarminFITBridge.swift", "TrainingEngineBridge.swift"])
     }
 }
+#endif

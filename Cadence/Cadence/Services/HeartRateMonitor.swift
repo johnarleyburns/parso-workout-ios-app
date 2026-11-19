@@ -2,6 +2,7 @@ import Foundation
 import Observation
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
 import CoreBluetooth
 
 enum HeartRateSource: Equatable { case none, bluetooth, appleWatch }
@@ -10,10 +11,6 @@ enum HeartRateSource: Equatable { case none, bluetooth, appleWatch }
 /// BLE strap exposing the standard Heart Rate Service (0x180D / char 0x2A37),
 /// reconnects with exponential backoff, surfaces battery + signal state, and
 /// buffers the last known BPM during short signal drops.
-///
-/// Has a `simulated` mode used by previews and UI tests (the simulator has no
-/// Bluetooth), where scanning yields fake devices and connecting emits a
-/// deterministic BPM stream.
 @Observable
 final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable {
 
@@ -47,12 +44,9 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
     private(set) var connectionError: String?
     private(set) var criticalBattery: Bool = false
 
-    private let simulated: Bool
-    private var simulationTick = 0
     private var central: CBCentralManager?
     private var peripheral: CBPeripheral?
     private var rememberedID: UUID?
-    private var simTimer: Timer?
 
     // Reconnection backoff (FR-4.4).
     private var reconnectAttempts: Int = 0
@@ -66,14 +60,9 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
     // Battery refresh (FR-4.4).
     private var batteryReadTimer: Timer?
 
-    init(simulated: Bool) {
-        self.simulated = simulated
+    override init() {
         super.init()
-        if !simulated {
-            central = CBCentralManager(delegate: self, queue: .main)
-        } else {
-            state = .idle
-        }
+        central = CBCentralManager(delegate: self, queue: .main)
     }
 
     func rememberDevice(_ id: UUID?) { rememberedID = id }
@@ -90,21 +79,12 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
     // MARK: Public control
 
     func startScanning() {
-        if simulated {
-            state = .scanning
-            discovered = [
-                DiscoveredHRM(id: UUID(uuidString: "AAAAAAAA-0000-0000-0000-000000000001")!, name: "Garmin HRM-Pro", rssi: -52),
-                DiscoveredHRM(id: UUID(uuidString: "AAAAAAAA-0000-0000-0000-000000000002")!, name: "Wahoo TICKR", rssi: -61)
-            ]
-            return
-        }
         guard let central, central.state == .poweredOn else { return }
         state = .scanning
         central.scanForPeripherals(withServices: [Self.heartRateService])
     }
 
     func stopScanning() {
-        if simulated { if case .scanning = state { state = .idle }; return }
         central?.stopScan()
         if case .scanning = state { state = .idle }
     }
@@ -114,18 +94,6 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
         reconnectAttempts = 0
         connectionError = nil
         rememberedID = id
-        if simulated {
-            state = .connecting(id)
-            Task { @MainActor [weak self] in
-                try? await Task.sleep(for: .milliseconds(200))
-                guard let self else { return }
-                self.state = .connected(id)
-                self.source = .bluetooth
-                self.battery = 88
-                self.startSimFeed()
-            }
-            return
-        }
         guard let central else { return }
         if let p = central.retrievePeripherals(withIdentifiers: [id]).first {
             peripheral = p
@@ -139,13 +107,6 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
 
     func disconnect() {
         cancelAllScheduledWork()
-        if simulated {
-            simTimer?.invalidate(); simTimer = nil
-            currentBPM = nil; lastKnownBPM = nil; bufferExpiryTime = nil
-            state = .idle
-            source = .none
-            return
-        }
         if let peripheral { central?.cancelPeripheralConnection(peripheral) }
         currentBPM = nil; lastKnownBPM = nil; bufferExpiryTime = nil
         state = .idle
@@ -181,18 +142,6 @@ final class HeartRateMonitor: NSObject, HeartRateMonitoring, @unchecked Sendable
     }
 
     // MARK: Internal helpers
-
-    private func startSimFeed() {
-        simTimer?.invalidate()
-        simulationTick = 0
-        currentBPM = 132
-        simTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self else { return }
-            self.simulationTick += 1
-            let t = Double(self.simulationTick)
-            self.currentBPM = 130 + 25 * (0.5 + 0.5 * sin(t / 8))
-        }
-    }
 
     /// Cancel all pending timers (reconnect schedule, buffer expiry, battery refresh).
     private func cancelAllScheduledWork() {

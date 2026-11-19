@@ -1,3 +1,4 @@
+#if canImport(SwiftData)
 import Foundation
 import SwiftData
 import CadenceCore
@@ -325,3 +326,4 @@ public enum Fixtures {
         return (try? JSONEncoder().encode(prefs)) ?? Data()
     }
 }
+#endif

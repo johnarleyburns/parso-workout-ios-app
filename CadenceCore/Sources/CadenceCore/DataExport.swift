@@ -568,9 +568,11 @@ public enum DataExport {
 
     /// Compact JSON compressed as a standard gzip (`.json.gz`) container — the
     /// default share/backup format. HR/route-heavy payloads compress ~15–20×.
+    #if canImport(Compression)
     public static func encodeJSONGzipped(_ export: CadenceExport) throws -> Data {
         try DataCompression.gzip(encodeJSON(export))
     }
+    #endif
 
     public static func decodeJSON(_ data: Data) throws -> CadenceExport {
         try jsonDecoder().decode(CadenceExport.self, from: data)
@@ -585,9 +587,11 @@ public enum DataExport {
         if FITExport.isFIT(data) {
             return CadenceExport(sessions: [], cardio: try FITExport.decode(data))
         }
+        #if canImport(Compression)
         if data.count >= 2, data[data.startIndex] == 0x1f, data[data.startIndex + 1] == 0x8b {
             return try decodeJSON(DataCompression.gunzip(data))
         }
+        #endif
         return try decodeJSON(data)
     }
 

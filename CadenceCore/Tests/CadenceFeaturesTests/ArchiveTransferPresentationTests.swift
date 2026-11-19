@@ -1,43 +1,45 @@
-import XCTest
+import Testing
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
-final class ArchiveTransferPresentationTests: XCTestCase {
-    func testModesNeverShowBoth() {
+struct ArchiveTransferPresentationTests {
+    @Test func modesNeverShowBoth() {
         let e = ArchiveFlowPresentation(mode: .exportOnly)
-        XCTAssertTrue(e.showsExportControls); XCTAssertFalse(e.showsRestoreControls)
+        #expect(e.showsExportControls); #expect(!e.showsRestoreControls)
         let r = ArchiveFlowPresentation(mode: .restoreOnly)
-        XCTAssertTrue(r.showsRestoreControls); XCTAssertFalse(r.showsExportControls)
+        #expect(r.showsRestoreControls); #expect(!r.showsExportControls)
     }
 
-    func testActionModels() {
-        XCTAssertTrue(ArchiveActionPresenter.historyHeaderActions.contains("Export"))
-        XCTAssertFalse(ArchiveActionPresenter.settingsBackupActions.contains { $0.localizedCaseInsensitiveContains("export") })
-        XCTAssertTrue(ArchiveActionPresenter.settingsBackupActions.contains { $0.localizedCaseInsensitiveContains("restore") })
+    @Test func actionModels() {
+        #expect(ArchiveActionPresenter.historyHeaderActions.contains("Export"))
+        #expect(!ArchiveActionPresenter.settingsBackupActions.contains { $0.localizedCaseInsensitiveContains("export") })
+        #expect(ArchiveActionPresenter.settingsBackupActions.contains { $0.localizedCaseInsensitiveContains("restore") })
     }
 
-    func testRequestIsCompleteArchive() {
+    @Test func requestIsCompleteArchive() {
         for f in ArchiveExportFormat.allCases {
             let r = ArchiveExportRequest(format: f)
-            XCTAssertEqual(r.scope, .completeArchive)
-            XCTAssertNotEqual(r.scope, .visiblePage)
+            #expect(r.scope == .completeArchive)
+            #expect(r.scope != .visiblePage)
         }
     }
 
-    func testPayloadMappingMatchesFormats() {
+    @Test func payloadMappingMatchesFormats() {
         let full = CadenceExport(sessions: [], cardio: [])
-        XCTAssertEqual(ArchiveExportFormat.json.payload(from: full).sessions.count, 0)
-        XCTAssertTrue(ArchiveExportFormat.fit.payload(from: full).sessions.isEmpty)
-        XCTAssertTrue(ArchiveExportFormat.csv.payload(from: full).cardio.isEmpty)
+        #expect(ArchiveExportFormat.json.payload(from: full).sessions.count == 0)
+        #expect(ArchiveExportFormat.fit.payload(from: full).sessions.isEmpty)
+        #expect(ArchiveExportFormat.csv.payload(from: full).cardio.isEmpty)
     }
 
-    func testStates() {
-        XCTAssertEqual(ArchiveExportState.preparing.accessibilityIdentifier, "export.loading")
-        XCTAssertEqual(ArchiveExportState.failed("x").message, "x")
-        XCTAssertEqual(ArchiveExportState.failed("x").accessibilityIdentifier, "export.error")
-        XCTAssertNotNil(ArchiveExportState.empty.message)
-        XCTAssertFalse(ArchiveExportState.empty.offersShare)
-        XCTAssertTrue(ArchiveExportState.ready.offersShare)
-        XCTAssertNil(ArchiveExportState.ready.message)
+    @Test func states() {
+        #expect(ArchiveExportState.preparing.accessibilityIdentifier == "export.loading")
+        #expect(ArchiveExportState.failed("x").message == "x")
+        #expect(ArchiveExportState.failed("x").accessibilityIdentifier == "export.error")
+        #expect(ArchiveExportState.empty.message != nil)
+        #expect(!ArchiveExportState.empty.offersShare)
+        #expect(ArchiveExportState.ready.offersShare)
+        #expect(ArchiveExportState.ready.message == nil)
     }
 }

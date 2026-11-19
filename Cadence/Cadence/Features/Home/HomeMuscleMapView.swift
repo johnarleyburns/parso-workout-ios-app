@@ -1,6 +1,8 @@
 import SwiftUI
 import CadenceCore
 import CadenceFeatures
+import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 struct HomeMuscleMapView: View {
     let dashboard: HomeDashboardState
@@ -20,6 +22,15 @@ struct HomeMuscleMapView: View {
         HomeDashboardPresenter.sortedVolumeRows(volumeRows ?? dashboard.volume)
     }
 
+    /// Weekly tracked-set totals and target, shared with callers that render
+    /// the "m / n sets" figure alongside their own header (issue: field
+    /// testing wanted this on the same row as "Muscle coverage").
+    static func weeklyTotals(for rows: [HomeDashboardState.VolumeRow]) -> (totals: Int, target: Int) {
+        let tracked = rows.filter(\.isTracked)
+        let totalSets = tracked.reduce(0.0) { $0 + $1.sets }
+        return (Int(totalSets.rounded()), tracked.count * 12)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Picker("Muscle view", selection: $selectedPanel) {
@@ -28,6 +39,7 @@ struct HomeMuscleMapView: View {
                 Text("List").tag(MuscleMapPanel.list)
             }
             .pickerStyle(.segmented)
+            .font(.headline)
             .accessibilityIdentifier("home.week.muscleMap.picker")
 
             if isLoading {
@@ -38,16 +50,6 @@ struct HomeMuscleMapView: View {
                 heatMap
             }
 
-            let totals = rows.filter(\.isTracked).reduce(0) { $0 + $1.sets }
-            let target = rows.filter(\.isTracked).count * 12
-            HStack(alignment: .firstTextBaseline) {
-                Text("\(WeeklySetProgress.formattedSets(totals))")
-                    .font(.title2.weight(.bold)).monospacedDigit()
-                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
-                Text("/ \(target) sets").font(.caption)
-                    .foregroundStyle(CadenceTheme.weeklyTint(WeeklyActivityColor.strength(totals)))
-                Spacer()
-            }
             legend
         }
         .accessibilityHint("Switch to List for all muscles")
@@ -195,7 +197,7 @@ struct HomeMuscleMapView: View {
             legendItem("4–7", color: CadenceTheme.muscleBuilding)
             legendItem("8+", color: CadenceTheme.muscleProductive)
         }
-        .font(.caption2)
+        .font(.headline)
         .foregroundStyle(.secondary)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Muscle coverage legend: red for zero sets, yellow below the 4-set minimum, light green building toward productive volume, and green for productive volume")

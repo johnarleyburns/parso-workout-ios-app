@@ -9,7 +9,7 @@ import SwiftData
 @MainActor
 @Suite final class StarterLibraryReconciliationTests {
     private var suiteName = ""
-    private var defaults: UserDefaults!
+    private nonisolated(unsafe) var defaults: UserDefaults!
 
     init() {
         suiteName = "StarterLibraryReconciliationTests.\(UUID().uuidString)"

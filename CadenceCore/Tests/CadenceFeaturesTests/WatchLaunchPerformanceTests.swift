@@ -10,8 +10,8 @@ import CadencePhoneFeatures
 /// The Watch replays the phone's custom exercises on every launch. These pin
 /// that an unchanged list is recognised and costs no writes.
 final class WatchCustomExerciseStoreTests {
-    private var container: ModelContainer!
-    private var context: ModelContext!
+    private nonisolated(unsafe) var container: ModelContainer!
+    private nonisolated(unsafe) var context: ModelContext!
 
     init() throws {
         container = try CadenceStore.makeModelContainer(inMemory: true)
@@ -99,7 +99,7 @@ final class WatchCustomExerciseStoreTests {
 /// request status instead of a one-way UserDefaults flag.
 final class WatchHealthAuthorizationGateTests {
     private var suiteName = ""
-    private var defaults: UserDefaults!
+    private nonisolated(unsafe) var defaults: UserDefaults!
 
     init() {
         suiteName = "WatchHealthAuthorizationGateTests.\(UUID().uuidString)"

@@ -8,8 +8,8 @@ import CadencePhoneFeatures
 import CadenceCore
 
 final class WatchStrengthSyncApplierTests {
-    private var container: ModelContainer!
-    private var context: ModelContext!
+    private nonisolated(unsafe) var container: ModelContainer!
+    private nonisolated(unsafe) var context: ModelContext!
 
     init() throws {
         container = try CadenceStore.makeModelContainer(inMemory: true)

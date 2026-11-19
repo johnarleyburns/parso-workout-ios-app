@@ -6,7 +6,7 @@ import CadenceCore
 
 final class WatchSingleExerciseSuggestionContextStoreTests {
     private var suite = ""
-    private var defaults: UserDefaults!
+    private nonisolated(unsafe) var defaults: UserDefaults!
 
     init() {
         suite = "suggestion-store-\(UUID().uuidString)"

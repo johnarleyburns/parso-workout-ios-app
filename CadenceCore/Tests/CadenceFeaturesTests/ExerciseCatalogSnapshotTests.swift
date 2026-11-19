@@ -11,8 +11,8 @@ import CadencePhoneFeatures
 /// picker. It must answer the same questions the pickers used to answer from
 /// `@Model` rows on the main actor.
 final class ExerciseCatalogSnapshotTests {
-    private var container: ModelContainer!
-    private var context: ModelContext!
+    private nonisolated(unsafe) var container: ModelContainer!
+    private nonisolated(unsafe) var context: ModelContext!
 
     init() throws {
         container = try CadenceStore.makeModelContainer(inMemory: true)
@@ -159,8 +159,8 @@ final class ExerciseCatalogSnapshotTests {
 /// The Watch resolves exercises by exact name with a one-row fetch instead of
 /// loading the whole catalog on the first lookup of every workout.
 final class WatchStrengthFlowExerciseLookupTests {
-    private var container: ModelContainer!
-    private var context: ModelContext!
+    private nonisolated(unsafe) var container: ModelContainer!
+    private nonisolated(unsafe) var context: ModelContext!
 
     init() throws {
         container = try CadenceStore.makeModelContainer(inMemory: true)

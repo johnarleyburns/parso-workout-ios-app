@@ -31,6 +31,22 @@ struct WorkoutPlanRepStructureTests {
         #expect(plan.exercises.allSatisfy { $0.sets.map(\.targetReps) == [5, 5] && $0.performerPlans[0].sets == $0.sets })
     }
 
+    @Test func repSchemeOptionsAreSortedBySetCountThenFirstSetReps() {
+        let common = WorkoutPlanRepSchemeOptions.common
+        #expect(common.contains([20, 20, 20]), "20-20-20 must be offered as a default option")
+        let keys = common.map { "\($0.count)-\($0.first ?? 0)" }
+        let sortedKeys = common
+            .sorted { $0.count != $1.count ? $0.count < $1.count : ($0.first ?? 0) < ($1.first ?? 0) }
+            .map { "\($0.count)-\($0.first ?? 0)" }
+        #expect(keys == sortedKeys)
+    }
+
+    @Test func repSchemeSummaryFormatsNameAndReps() {
+        #expect(WorkoutPlanRepSchemeOptions.summary(name: "Me", reps: [8, 8, 8]) == "Me: 8-8-8")
+        #expect(WorkoutPlanRepSchemeOptions.summary(name: "Pat", reps: [12, 10, 8]) == "Pat: 12-10-8")
+        #expect(WorkoutPlanRepSchemeOptions.summary(name: "Me", reps: []) == "Me")
+    }
+
     @Test func mountainClimbersAreBodyweightWithoutAnExternalLoad() {
         let exercise = Exercise(name: "Mountain Climbers")
         #expect(SessionViewModel.isNonWeighted(exercise))

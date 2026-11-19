@@ -249,8 +249,8 @@ struct WorkoutSummaryDataTests {
         let start = Date(timeIntervalSince1970: 41_000)
         let c = CardioWorkout(type: .other, start: start, end: start.addingTimeInterval(60),
                               customTitle: "   ")
-        #expect(c.displayTitle == "Other", "whitespace-only label is ignored")
-        #expect(WorkoutSummaryData.from(cardio: c).title == "Other")
+        #expect(c.displayTitle == "Custom", "whitespace-only label is ignored")
+        #expect(WorkoutSummaryData.from(cardio: c).title == "Custom")
     }
 
     @Test func loggedFlagFlowsThrough() throws {

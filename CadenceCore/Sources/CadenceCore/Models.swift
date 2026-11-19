@@ -1425,7 +1425,7 @@ public enum CardioType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .rowing: return "Rowing"
         case .elliptical: return "Elliptical"
         case .stairClimber: return "Stairs"
-        case .other: return "Other"
+        case .other: return "Custom"
         }
     }
     public var symbol: String {

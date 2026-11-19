@@ -16,4 +16,9 @@ struct HomeHeaderPresentationTests {
     @Test func nonSupporterHasNoBadge() {
         #expect(HomeHeaderPresentation(isSupporter: false).supporterBadge == nil)
     }
+
+    @Test func trailingItemsPlaceTheSupporterBadgeBeforeSettings() {
+        #expect(HomeHeaderPresentation(isSupporter: true).trailingItems == [.supporterBadge, .settings])
+        #expect(HomeHeaderPresentation(isSupporter: false).trailingItems == [.settings])
+    }
 }

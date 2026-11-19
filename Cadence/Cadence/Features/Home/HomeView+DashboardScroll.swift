@@ -2,6 +2,7 @@ import SwiftUI
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 /// Split out of HomeView+Dashboard.swift (2026-11) to stay under the
 /// test-pyramid's 400-LOC cap once issue #619's weekly-credit wiring landed
@@ -70,7 +71,20 @@ extension HomeView {
                         .accessibilityLabel("Workout history")
                         .accessibilityIdentifier("home.history")
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if let badge = HomeHeaderPresentation(isSupporter: contributions.store.isSupporter).supporterBadge {
+                            HStack(spacing: 4) {
+                                Image(systemName: badge.systemImage)
+                                Text(badge.text)
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(CadenceTheme.achievement)
+                            .padding(.horizontal, badge.horizontalPadding)
+                            .padding(.vertical, badge.verticalPadding)
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel(badge.accessibilityLabel)
+                            .accessibilityIdentifier(badge.accessibilityIdentifier)
+                        }
                         Button {
                             Haptics.selection()
                             path.append(HomeRoute.settings)

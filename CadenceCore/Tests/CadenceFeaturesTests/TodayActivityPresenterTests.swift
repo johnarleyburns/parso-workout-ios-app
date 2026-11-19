@@ -217,5 +217,31 @@ struct TodayActivityPresenterTests {
         #expect(entries.first?.value.hasPrefix("4 sets · ") ?? false)
         #expect(entries.first?.detail == "C, B, A")
     }
+
+    // MARK: - HistoryEntryTimestamp
+
+    @Test func currentWeekUsesWeekdayAbbreviation() {
+        // now = Wednesday 2026-07-22 (same week as `now`'s Saturday 2026-07-18).
+        let wed = Calendar.current.date(from: DateComponents(year: 2026, month: 7, day: 22, hour: 18, minute: 30))!
+        let text = HistoryEntryTimestamp.format(wed, now: now)
+        #expect(!text.contains("2026"), "current week must show a weekday, not a numeric date")
+        #expect(text.contains("·"))
+    }
+
+    @Test func priorWeekUsesTheDateNotAWeekday() {
+        let lastMonth = Calendar.current.date(byAdding: .month, value: -1, to: now)!
+        let text = HistoryEntryTimestamp.format(lastMonth, now: now)
+        let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        #expect(!weekdays.contains { text.hasPrefix($0) },
+                      "a prior week must show a date, not a bare weekday abbreviation: \(text)")
+    }
+
+    @Test func exactlyAtWeekStartCountsAsCurrentWeek() {
+        let weekStart = WeeklyStats.weekStart(now: now)
+        let text = HistoryEntryTimestamp.format(weekStart, now: now)
+        let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        #expect(weekdays.contains { text.hasPrefix($0) },
+                      "the boundary instant itself belongs to the current week: \(text)")
+    }
 }
 #endif

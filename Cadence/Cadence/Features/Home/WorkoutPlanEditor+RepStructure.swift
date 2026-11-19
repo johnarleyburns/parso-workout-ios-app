@@ -1,22 +1,31 @@
 import SwiftUI
 import CadenceFeatures
 import CadenceWorkoutFeatures
+import CadencePhoneFeatures
 
 extension WorkoutPlanEditor {
+    /// The given performer's sets on the plan's first exercise -- the same
+    /// sets the rep-structure sheet edits and the summary label describes.
+    func repStructureSets(for performerID: UUID?) -> [EditableSet] {
+        let first = plan.exercises.first
+        return performerID == nil ? (first?.sets ?? [])
+            : (first?.performerPlans.first { $0.performerID == performerID }?.sets ?? [])
+    }
+
     var workoutRepStructureControls: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Workout rep structure").font(.headline)
             Text("Choose a structure for each person. It applies to every exercise and keeps their planned loads.")
                 .font(.caption).foregroundStyle(.secondary)
             ForEach(rosterMembers(), id: \.performerID) { person in
+                let sets = repStructureSets(for: person.performerID)
                 Button {
-                    let first = plan.exercises.first
                     repStructurePerformer = EditablePerformerPlan(
-                        performerID: person.performerID, name: person.name,
-                        sets: person.performerID == nil ? (first?.sets ?? [])
-                            : (first?.performerPlans.first { $0.performerID == person.performerID }?.sets ?? []))
+                        performerID: person.performerID, name: person.name, sets: sets)
                 } label: {
-                    Label(person.name, systemImage: "list.number")
+                    Label(
+                        WorkoutPlanRepSchemeOptions.summary(name: person.name, reps: sets.map(\.targetReps)),
+                        systemImage: "list.number")
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.bordered)

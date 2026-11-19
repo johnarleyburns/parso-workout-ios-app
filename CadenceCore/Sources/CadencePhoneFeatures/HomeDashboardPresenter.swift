@@ -26,9 +26,9 @@ public enum HomeDashboardPresenter {
         let strength = HomeDashboardState.Progress(completed: strengthSets, target: strengthTarget,
             displayText: {
                 #if os(Linux)
-                "\(Int(strengthSets.rounded())) of \(Int(strengthTarget)) sets"
+                "\(Int(strengthSets.rounded()))/\(Int(strengthTarget)) sets"
                 #else
-                String(localized: "\(Int(strengthSets.rounded())) of \(Int(strengthTarget)) sets", bundle: FeatureLocalization.bundle)
+                String(localized: "\(Int(strengthSets.rounded()))/\(Int(strengthTarget)) sets", bundle: FeatureLocalization.bundle)
                 #endif
             }(),
             normalized: min(1, strengthSets / strengthTarget))
@@ -37,9 +37,9 @@ public enum HomeDashboardPresenter {
         let cardio = HomeDashboardState.Progress(completed: cardioCredit, target: cardioTarget,
             displayText: {
                 #if os(Linux)
-                "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit"
+                "\(Int(cardioCredit.rounded()))/\(Int(cardioTarget)) min"
                 #else
-                String(localized: "\(Int(cardioCredit.rounded())) of \(Int(cardioTarget)) min credit", bundle: FeatureLocalization.bundle)
+                String(localized: "\(Int(cardioCredit.rounded()))/\(Int(cardioTarget)) min", bundle: FeatureLocalization.bundle)
                 #endif
             }(),
             normalized: min(1, max(0, cardioCredit / cardioTarget)))

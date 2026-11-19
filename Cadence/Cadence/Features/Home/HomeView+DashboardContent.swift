@@ -10,6 +10,7 @@ extension HomeView {
     var dashboardTopContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("This Week").font(.headline)
+                .padding(.bottom, 8)
             WeeklyIntentRingsCard(
                 display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
                 tabSelection: rootTabSelection)

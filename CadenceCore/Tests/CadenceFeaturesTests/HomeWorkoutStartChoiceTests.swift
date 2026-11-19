@@ -6,7 +6,7 @@ import CadenceCore
 
 struct HomeWorkoutStartChoiceTests {
     @Test func strengthChoicesAndRecentCardioLimit() {
-        #expect(HomeStrengthStartChoice.allCases.map(\.title) == ["Quick Start", "Personalized", "Previous"])
+        #expect(HomeStrengthStartChoice.allCases.map(\.title) == ["Custom", "Personalized", "Previous"])
         #expect(HomeRecentCardioChoices.recent(["run", "run", "walk", "cycle", "swim"]) ==
                        ["run", "walk", "cycle"])
         #expect(HomeRecentCardioChoices.recent([String]()) == [])
@@ -14,8 +14,8 @@ struct HomeWorkoutStartChoiceTests {
     @Test func unifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
         let choices = HomeWorkoutStartChoice.allChoices
         #expect(choices.map(\.title) == [
-            "Personalized Lifts", "Repeat Lifts", "Quick Start", "Personalized Cardio", "HIIT",
-            "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Cardio"
+            "Personalized Lifts", "Repeat Lifts", "Custom", "Personalized Cardio", "HIIT",
+            "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Custom"
         ])
         #expect(Set(choices.map(\.id)).count == choices.count)
         for type in WorkoutType.allCases where type != .weights {

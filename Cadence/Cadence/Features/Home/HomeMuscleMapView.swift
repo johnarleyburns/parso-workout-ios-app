@@ -33,14 +33,8 @@ struct HomeMuscleMapView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("Muscle view", selection: $selectedPanel) {
-                Text("Front").tag(MuscleMapPanel.front)
-                Text("Back").tag(MuscleMapPanel.back)
-                Text("List").tag(MuscleMapPanel.list)
-            }
-            .pickerStyle(.segmented)
-            .font(.headline)
-            .accessibilityIdentifier("home.week.muscleMap.picker")
+            MuscleMapPanelTabs(selection: $selectedPanel)
+                .accessibilityIdentifier("home.week.muscleMap.picker")
 
             if isLoading {
                 loadingPlaceholder
@@ -211,4 +205,51 @@ struct HomeMuscleMapView: View {
         }
     }
 
+}
+
+/// Replaces `Picker(.segmented)`: a native segmented control routes its title
+/// text through `UISegmentedControl` appearance plumbing, which doesn't scale
+/// with Dynamic Type the way `Text(...).font(.headline)` does, so it drifted
+/// out of sync with the "Muscle coverage" title at larger text sizes. This is
+/// a real `Text` per option, so it scales identically.
+private struct MuscleMapPanelTabs: View {
+    @Binding var selection: MuscleMapPanel
+    @Namespace private var highlight
+
+    private func title(_ panel: MuscleMapPanel) -> String {
+        switch panel {
+        case .front: "Front"
+        case .back: "Back"
+        case .list: "List"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(MuscleMapPanel.allCases, id: \.self) { panel in
+                Button {
+                    selection = panel
+                } label: {
+                    Text(title(panel))
+                        .font(.headline)
+                        .foregroundStyle(selection == panel ? Color.primary : Color.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                        .background {
+                            if selection == panel {
+                                RoundedRectangle(cornerRadius: 7, style: .continuous)
+                                    .fill(.background)
+                                    .matchedGeometryEffect(id: "selection", in: highlight)
+                            }
+                        }
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("home.week.muscleMap.picker.\(panel.rawValue)")
+                .accessibilityAddTraits(selection == panel ? .isSelected : [])
+            }
+        }
+        .padding(2)
+        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(.quaternary))
+        .animation(.default, value: selection)
+    }
 }

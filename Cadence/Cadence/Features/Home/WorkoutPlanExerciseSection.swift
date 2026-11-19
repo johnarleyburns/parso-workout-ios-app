@@ -328,15 +328,23 @@ struct RepSchemeSheet: View {
     let onSelect: ([Int]) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var custom = ""
-    private let common: [[Int]] = [[5,5,5,5,5], [8,8,8], [10,10,10], [12,12,12], [8,8,8,8], [3,3,3,3,3]]
+    private var common: [[Int]] { WorkoutPlanRepSchemeOptions.common }
 
     var body: some View {
         NavigationStack {
             List {
                 Section("Common") {
                     ForEach(common, id: \.self) { reps in
-                        Button("\(reps.count) sets · \(reps.map(String.init).joined(separator: "-")) reps") {
+                        Button {
                             onSelect(reps); dismiss()
+                        } label: {
+                            HStack {
+                                Text("\(reps.count) sets · \(reps.map(String.init).joined(separator: "-")) reps")
+                                Spacer()
+                                if reps == current {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
                         }
                     }
                 }

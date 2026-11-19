@@ -49,7 +49,7 @@ struct HomeWorkoutStartControls: View {
                 case .suggestedCardio: onSuggestedCardio()
                 }
             } label: {
-                Label("Start Workout", systemImage: "activity.exercise")
+                Label("Start Workout", systemImage: "play.fill")
                     .font(.headline)
                     .frame(maxWidth: .infinity)
             }

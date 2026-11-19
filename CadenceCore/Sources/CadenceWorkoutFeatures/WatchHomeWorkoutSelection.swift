@@ -50,7 +50,6 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
         switch choice {
         case .strength(.suggested): "Personalized"
         case .strength(.previous): "Previous"
-        case .strength(.quickStart): "Custom"
         default: choice.title
         }
     }

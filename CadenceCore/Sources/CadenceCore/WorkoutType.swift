@@ -31,7 +31,7 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
         case .stairClimber: return "Stairs"
         case .hiit: return "HIIT"
         case .boxing: return "Boxing"
-        case .other: return "Other"
+        case .other: return "Custom"
         }
     }
 

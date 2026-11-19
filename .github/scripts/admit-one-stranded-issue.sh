@@ -92,7 +92,7 @@ done < <(gh issue list --repo "$repo" --state closed --label qa-failed --limit 1
 # comment every 5 minutes while it runs, and (since the 2026-11-10 fix for
 # issue #619) that comment's own text now carries "last new output Nm ago" -
 # computed by issue-to-pr.sh's in-process watchdog, which also kills the
-# stalled `claude` process itself once that number crosses its own threshold.
+# stalled `opencode` process itself once that number crosses its own threshold.
 # This function is now just a WARN-ONLY secondary signal for a human to see:
 # it must never cancel runs or touch intake-running itself (two independent
 # systems racing to manage the same run/labels is exactly the kind of bug

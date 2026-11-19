@@ -72,7 +72,7 @@ while IFS= read -r pr; do
   # originating issue without changing the issue's open/closed state.
   marker_issue=$(gh api "repos/$repo/pulls/$pr" --jq '.body // ""' \
     | sed -n 's/.*<!-- claude-issue:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
-  [[ -z "$marker_issue" ]] || printf '%s\t%s\n' "$marker_issue" 'Claude-generated issue' >> "$issues_file"
+  [[ -z "$marker_issue" ]] || printf '%s\t%s\n' "$marker_issue" 'OpenCode-generated issue' >> "$issues_file"
   release_run=$(gh api "repos/$repo/pulls/$pr" --jq '.body // ""' \
     | sed -n 's/.*<!-- release-repair:\([0-9][0-9]*\) -->.*/\1/p' | head -1)
   if [[ -n "$release_run" ]]; then

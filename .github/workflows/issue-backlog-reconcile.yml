@@ -1,4 +1,4 @@
-name: Claude Issue Controller
+name: OpenCode Issue Controller
 run-name: Reconcile one repository-local issue intake
 on:
   issues:

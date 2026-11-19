@@ -1,12 +1,12 @@
-name: Claude PR Maintenance
+name: OpenCode PR Maintenance
 # Reconciler / orchestrator. Runs on a cheap Linux runner, checks out ONLY the
-# trusted default branch (never PR code), and holds no Claude or release
-# secrets. It reads authoritative GitHub state for every open Claude PR and
+# trusted default branch (never PR code), and holds no agent or release
+# secrets. It reads authoritative GitHub state for every open automation PR and
 # performs narrow API actions (ready, auto-merge, update-branch, re-run,
 # dispatch repair, escalate). See docs/CI_AUTOMATION.md.
 on:
   workflow_run:
-    workflows: ["PR Swift Validation", "Claude PR Conflict Repair", "Claude Issue to PR", "iOS Build & TestFlight"]
+    workflows: ["PR Swift Validation", "OpenCode PR Conflict Repair", "OpenCode Issue to PR", "iOS Build & TestFlight"]
     types: [completed]
   push:
     branches: [main]
@@ -23,7 +23,7 @@ permissions:
   pull-requests: write
   issues: write
   actions: write
-# Every run sweeps ALL open Claude PRs, so one pending run covers any number of
+# Every run sweeps ALL open automation PRs, so one pending run covers any number of
 # coalesced requests: nothing is lost when a queued run is superseded. Runs are
 # serialized so there is a single orchestrator writer at a time.
 concurrency:
@@ -45,7 +45,7 @@ jobs:
         with:
           ref: main
           persist-credentials: false
-      - name: Reconcile Claude PRs
+      - name: Reconcile automation PRs
         run: |
           test -n "$GH_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
           cp .github/scripts/pr-maintenance.sh "$RUNNER_TEMP/pr-maintenance-runner.sh"

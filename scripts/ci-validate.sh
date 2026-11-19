@@ -36,6 +36,7 @@ if [[ "$mode" == --all || "$mode" == --fast ]]; then
   python3 scripts/tests/test_module_boundaries.py
   bash scripts/tests/test-xcodebuild-platform.sh
   bash scripts/tests/test-issue-pr-policy.sh
+  bash scripts/tests/test-agent-invocation.sh
   bash scripts/tests/test-issue-pr-introspection.sh
   bash scripts/tests/test-issue-backlog-order.sh
   bash scripts/tests/test-release-repair-policy.sh

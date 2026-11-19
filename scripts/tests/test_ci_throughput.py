@@ -80,29 +80,23 @@ class ThroughputTests(unittest.TestCase):
             self.assertTrue((restored / 'Current').is_symlink())
             self.assertEqual(os.readlink(restored / 'Current'), 'Cadence')
 
-    def test_test_driver_preserves_filters_and_supports_bounded_workers(self):
+    def test_test_driver_preserves_filters_and_propagates_failure(self):
+        # Swift Testing schedules itself concurrently regardless of how swift
+        # test is invoked, so ci-test.sh no longer picks a serial/parallel mode
+        # (there is no XCTest content left for --parallel/--no-parallel to shard).
         with tempfile.TemporaryDirectory() as tmp:
             tool = Path(tmp) / 'swift'
             tool.write_text('#!/bin/bash\nprintf "%s\\n" "$@" > "$CAPTURE"\nexit "${FAKE_EXIT:-0}"\n')
             tool.chmod(0o755)
-            env = {**os.environ, 'PATH': tmp + ':' + os.environ['PATH'], 'CAPTURE': tmp + '/args', 'CADENCE_TEST_MODE': 'serial'}
+            env = {**os.environ, 'PATH': tmp + ':' + os.environ['PATH'], 'CAPTURE': tmp + '/args'}
             driver = ['bash', str(ROOT / 'scripts/ci-test.sh'), '--filter', 'ProductionFlowHarnessTests']
             result = subprocess.run(driver, env=env, capture_output=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             args = Path(env['CAPTURE']).read_text().splitlines()
-            self.assertIn('--no-parallel', args)
-            self.assertEqual(args[-2:], ['--filter', 'ProductionFlowHarnessTests'])
-            result = subprocess.run(driver, env={**env, 'CADENCE_TEST_MODE': 'parallel',
-                                                'CADENCE_TEST_WORKERS': '3'}, capture_output=True)
-            self.assertEqual(result.returncode, 0)
-            args = Path(env['CAPTURE']).read_text().splitlines()
-            self.assertIn('--parallel', args)
-            self.assertEqual(args[args.index('--num-workers') + 1], '3')
+            self.assertEqual(args, ['test', '--package-path', 'CadenceCore',
+                                     '--filter', 'ProductionFlowHarnessTests'])
             self.assertEqual(subprocess.run(driver, env={**env, 'FAKE_EXIT': '17'},
                                             capture_output=True).returncode, 17)
-            for bad in ['0', '00', '-1', 'oops']:
-                self.assertNotEqual(subprocess.run(driver, env={**env, 'CADENCE_TEST_MODE': 'parallel',
-                     'CADENCE_TEST_WORKERS': bad}, capture_output=True).returncode, 0)
 
     def test_validation_modes_do_not_repeat_harness_and_build_stays_release(self):
         source = (ROOT / 'scripts/ci-validate.sh').read_text()
@@ -157,11 +151,11 @@ class ThroughputTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             calls = Path(env['CAPTURE']).read_text().splitlines()
             self.assertEqual(sum(call.startswith('build ') for call in calls), 1)
-            self.assertEqual(sum(call.startswith('test ') for call in calls), 5)
+            # Two full-suite timing runs plus the dedicated search-benchmark lane.
+            self.assertEqual(sum(call.startswith('test ') for call in calls), 3)
             self.assertTrue(all('--skip-build' in call for call in calls if call.startswith('test ')))
             timing = (Path(tmp) / 'cadence-test-benchmark/timing-seconds.csv').read_text().splitlines()
-            self.assertEqual([line.split(',')[0] for line in timing],
-                             ['serial', 'parallel-2', 'parallel-3', 'serial-repeat'])
+            self.assertEqual([line.split(',')[0] for line in timing], ['run-1', 'run-2'])
 
     def test_cache_scopes_toolchains_dependencies_and_commits_are_isolated(self):
         cache = module('cache', ROOT / 'scripts/ci-cache-key.py')

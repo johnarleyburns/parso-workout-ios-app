@@ -250,7 +250,7 @@ struct WorkoutRepositoryTests {
 
         let report = try WorkoutRepository.applyHealthRestore(plan, in: ctx)
         #expect(report.replaced == 1)
-        #expect(session.orderedSets.filter(\.isOwnerSet).map(\.weight) == [57])
+        #expect(session.orderedSets.filter { $0.isOwnerSet }.map(\.weight) == [57])
         #expect(session.orderedSets.filter { !$0.isOwnerSet }.map(\.weight) == [30])
         #expect(session.title == "Restored")
     }

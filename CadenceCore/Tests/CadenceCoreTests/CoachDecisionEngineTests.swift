@@ -266,12 +266,12 @@ struct CoachDecisionEngineTests {
         let tomorrow = try #require(plan.futureDays.first)
         #expect(tomorrow.sessionKind != .recovery,
                           "Poor readiness must not force a Recovery day")
-        #expect(tomorrow.sessions.contains(where: \.recommendsLighter),
+        #expect(tomorrow.sessions.contains { $0.recommendsLighter },
                       "Poor readiness should attach a non-blocking lighter-day recommendation")
         #expect(plan.futureDays.contains { day in
             day.sessions.contains { $0.kind == .strength }
         }, "A one-day readiness dip should not drop the plan's strength days")
-        #expect(!plan.futureDays.dropFirst().flatMap(\.sessions).contains(where: \.recommendsLighter),
+        #expect(!plan.futureDays.dropFirst().flatMap(\.sessions).contains { $0.recommendsLighter },
                        "The readiness recommendation applies to tomorrow only")
     }
 

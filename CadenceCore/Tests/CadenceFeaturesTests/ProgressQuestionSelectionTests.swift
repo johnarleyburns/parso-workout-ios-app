@@ -62,7 +62,7 @@ struct ProgressQuestionSelectionTests {
     }
 
     @Test func onlyWorkoutHistoryHostsItsOwnList() {
-        #expect(ProgressQuestion.allCases.filter(\.hostsOwnList) == [.workoutHistory])
+        #expect(ProgressQuestion.allCases.filter { $0.hostsOwnList } == [.workoutHistory])
     }
 
     @Test func selectingHistoryKeepsPickerStateStable() {

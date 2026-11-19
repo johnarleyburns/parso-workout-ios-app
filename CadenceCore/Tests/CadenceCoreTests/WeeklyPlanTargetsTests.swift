@@ -113,7 +113,7 @@ struct WeeklyPlanTargetsTests {
         let quietFacts = CoachFacts.make(from: [], goal: .hypertrophy,
                                          experience: .intermediate, now: testNow)
         let quietPlan = WeeklyPlan.generate(from: quietFacts, schedulePreferences: exportPrefs)
-        #expect(!quietPlan.futureDays.flatMap(\.sessions).contains(where: \.recommendsLighter),
+        #expect(!quietPlan.futureDays.flatMap(\.sessions).contains { $0.recommendsLighter },
                        "A normal week must not be nagged about recovery")
 
         // 6 consecutive genuinely-hard real days ending today → tomorrow carries
@@ -137,7 +137,7 @@ struct WeeklyPlanTargetsTests {
             return
         }
 
-        #expect(tomorrow.sessions.contains(where: \.recommendsLighter),
+        #expect(tomorrow.sessions.contains { $0.recommendsLighter },
                       "After 6 straight hard days the coach should recommend a lighter day")
         #expect(tomorrow.sessions.contains { !$0.isRest },
                       "The recommendation must not replace the scheduled training day")

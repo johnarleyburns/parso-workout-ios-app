@@ -195,7 +195,7 @@ struct ImportedExerciseLibraryBaselineTests {
                            "\(stretch.name) must stay browsable by muscle")
             #expect(stretch.volumeCredits.isEmpty, "\(stretch.name)")
         }
-        #expect(ImportedExerciseLibrary.templates.filter(\.volumeEligible).count == 735)
+        #expect(ImportedExerciseLibrary.templates.filter { $0.volumeEligible }.count == 735)
     }
 
     /// No template may carry a muscle string the volume engine cannot resolve.

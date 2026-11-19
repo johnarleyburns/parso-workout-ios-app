@@ -113,10 +113,11 @@ struct WatchStrengthPreview: View {
 }
 
 struct WatchPrimaryStartButton: View {
+    var title: LocalizedStringKey = "Start"
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            Label("Start", systemImage: "play.fill").frame(maxWidth: .infinity)
+            Label(title, systemImage: "play.fill").frame(maxWidth: .infinity)
         }
         .buttonStyle(.borderedProminent)
         .buttonBorderShape(.capsule)

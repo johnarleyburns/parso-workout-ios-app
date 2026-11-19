@@ -136,6 +136,25 @@ public enum PartnerPlanResolver {
         }
     }
 
+    /// Fills only the missing loads on a generated owner prescription with the
+    /// owner's literal last working weight, the same reference the set logger
+    /// uses. Suggested reps are left exactly as generated; explicit loads,
+    /// bodyweight sets, and percentage-of-1RM sets are untouched. A movement
+    /// with no logged external load keeps `nil`, which the editor renders as BW
+    /// when the movement is bodyweight.
+    public static func suggestedOwnerSets(_ sets: [EditableSet],
+                                          history: ExerciseHistory) -> [EditableSet] {
+        let lastWeight = history.lastSets.last(where: { $0.reps > 0 && $0.weightKg > 0 })?.weightKg
+            ?? history.firstWorkingWeightKg
+        guard let lastWeight, lastWeight > 0 else { return sets }
+        return sets.map { original in
+            guard original.targetWeight == nil, original.loadMode == .straight else { return original }
+            var set = original
+            set.targetWeight = lastWeight
+            return set
+        }
+    }
+
     /// The owner's own plan as a performer entry, so "Me" is always index 0.
     public static func ownerPlan(name: String = "Me",
                                  ownerSets: [EditableSet]) -> EditablePerformerPlan {

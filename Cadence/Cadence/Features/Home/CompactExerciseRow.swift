@@ -8,13 +8,16 @@ struct CompactExerciseRow: View {
     let exercise: EditableExercise
     let unit: MeasurementUnitPreference
     let exerciseInfo: Exercise?
+    let onSwap: (() -> Void)?
     let onExclude: (() -> Void)?
 
     init(exercise: EditableExercise, unit: MeasurementUnitPreference,
-         exerciseInfo: Exercise? = nil, onExclude: (() -> Void)? = nil) {
+         exerciseInfo: Exercise? = nil, onSwap: (() -> Void)? = nil,
+         onExclude: (() -> Void)? = nil) {
         self.exercise = exercise
         self.unit = unit
         self.exerciseInfo = exerciseInfo
+        self.onSwap = onSwap
         self.onExclude = onExclude
     }
 
@@ -35,15 +38,28 @@ struct CompactExerciseRow: View {
                     .accessibilityIdentifier("editor.exerciseInfo.\(exercise.name)")
                     .accessibilityLabel("\(exercise.name) details")
                 }
-                if onExclude != nil, exerciseInfo != nil {
-                    Button {
-                        onExclude?()
+                if onSwap != nil || (onExclude != nil && exerciseInfo != nil) {
+                    Menu {
+                        if let onSwap {
+                            Button(action: onSwap) {
+                                Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            .accessibilityIdentifier("editor.swapExercise.\(exercise.name)")
+                        }
+                        if onExclude != nil, exerciseInfo != nil {
+                            Button {
+                                onExclude?()
+                            } label: {
+                                Label("Don't Suggest This Exercise", systemImage: "hand.raised")
+                            }
+                            .accessibilityIdentifier("editor.excludeExercise.\(exercise.name)")
+                        }
                     } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.headline)
                             .foregroundStyle(.secondary)
+                            .frame(width: 36, height: 36)
                     }
-                    .buttonStyle(.plain)
                     .accessibilityIdentifier("editor.exerciseMenu.\(exercise.name)")
                     .accessibilityLabel("Exercise options")
                 }

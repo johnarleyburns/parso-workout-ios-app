@@ -31,6 +31,29 @@ struct WorkoutPlanRepStructureTests {
         #expect(plan.exercises.allSatisfy { $0.sets.map(\.targetReps) == [5, 5] && $0.performerPlans[0].sets == $0.sets })
     }
 
+    @Test func suggestedOwnerSetsFillMissingStraightLoadsWithoutChangingRepsOrExplicitLoads() {
+        let original = (0..<3).map { _ in EditableSet(targetReps: 6, targetWeight: nil) }
+        let history = PartnerPlanResolver.ExerciseHistory(lastSets: [
+            .init(weightKg: 100, reps: 6),
+            .init(weightKg: 92.98643585, reps: 8)
+        ])
+        let seeded = PartnerPlanResolver.suggestedOwnerSets(original, history: history)
+        #expect(seeded.map(\.id) == original.map(\.id))
+        #expect(seeded.map(\.targetReps) == [6, 6, 6])
+        #expect(seeded.map(\.targetWeight) == [92.98643585, 92.98643585, 92.98643585])
+        #expect(PartnerPlanResolver.suggestedOwnerSets(original, history: .empty) == original)
+
+        let firstOnly = PartnerPlanResolver.ExerciseHistory(firstWorkingWeightKg: 50)
+        #expect(PartnerPlanResolver.suggestedOwnerSets(original, history: firstOnly)
+            .map(\.targetWeight) == [50, 50, 50])
+
+        let bodyweight = [EditableSet(targetReps: 12, targetWeight: nil, loadMode: .bodyweight)]
+        #expect(PartnerPlanResolver.suggestedOwnerSets(bodyweight, history: history) == bodyweight)
+
+        let explicit = [EditableSet(targetReps: 12, targetWeight: 20)]
+        #expect(PartnerPlanResolver.suggestedOwnerSets(explicit, history: history) == explicit)
+    }
+
     @Test func repSchemeOptionsAreSortedBySetCountThenFirstSetReps() {
         let common = WorkoutPlanRepSchemeOptions.common
         #expect(common.contains([20, 20, 20]), "20-20-20 must be offered as a default option")

@@ -84,7 +84,8 @@ struct PlanningDraftTests {
         let container = try ModelContainer(for: CadenceStore.schema,
                                            configurations: ModelConfiguration(schema: CadenceStore.schema, url: url))
         let context = ModelContext(container)
-        let current = try #require(PlanningDraft.current(in: context))
+        let maybeCurrent = try PlanningDraft.current(in: context)
+        let current = try #require(maybeCurrent)
         #expect(current.id == id)
         #expect(current.originDevice == "phone")
         #expect(try PlanningDraftCodec.decode(current) == plan)
@@ -98,7 +99,8 @@ struct PlanningDraftTests {
         let archive = try NativeDatabaseExport.build(from: source)
         let destination = ModelContext(try CadenceStore.makeModelContainer(inMemory: true))
         _ = try NativeDatabaseExport.merge(archive, in: destination)
-        let restored = try #require(PlanningDraft.current(in: destination))
+        let maybeRestored = try PlanningDraft.current(in: destination)
+        let restored = try #require(maybeRestored)
         #expect(try PlanningDraftCodec.decode(restored) == plan)
     }
 

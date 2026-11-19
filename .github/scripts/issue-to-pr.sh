@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Issue intake + Claude implementation. Idempotent per issue: any number of
+# Issue intake + OpenCode implementation. Idempotent per issue: any number of
 # opened/labeled/dispatch events resolve to the same work item.
 #
 # Outcomes: 0 = PR created/resumed, valid no-op (closed issue, PR exists), or
 #               WAITING for owner CI-maintenance authorization (durable label+comment)
-#           1 = real failure (Claude produced nothing, validation exhausted, infra)
-# Claude and validation run without the push token; the token is used only by
+#           1 = real failure (OpenCode produced nothing, validation exhausted, infra)
+# The agent and validation run without the push token; the token is used only by
 # git_auth/gh after path and symlink checks.
 set -euo pipefail
 mkdir -p /tmp/claude-issue-logs
@@ -20,7 +20,7 @@ stream_log='/tmp/claude-issue-logs/stream.ndjson'
 # final result, up to the 360-minute job timeout. A stuck and a merely-busy
 # run were indistinguishable. summary() checkpoints the run's phase on the
 # job's own summary page (renders incrementally, unlike the logs API);
-# format_claude_stream() turns Claude's --output-format stream-json events
+# format_opencode_stream() turns OpenCode's --format json events
 # into one readable line per tool call/turn as they happen; the heartbeat
 # is an independent liveness signal (so a frozen process still shows
 # "no progress" instead of total silence) and keeps one pinned issue comment
@@ -28,30 +28,25 @@ stream_log='/tmp/claude-issue-logs/stream.ndjson'
 summary() { [[ -n "${GITHUB_STEP_SUMMARY:-}" ]] && printf -- '- %sZ %s\n' "$(date -u +%H:%M:%S)" "$1" >> "$GITHUB_STEP_SUMMARY" || true; }
 summary "starting issue #${ISSUE}"
 
-format_claude_stream() {
+format_opencode_stream() {
   jq -r --unbuffered '
-    if .type == "system" then "[system] " + (.subtype // "init")
-    elif .type == "assistant" then
-      ( .message.content[]? |
-        if .type == "tool_use" then
-          "[tool] " + .name + " " + ((.input.file_path // .input.command // .input.pattern // .input.description // "") | tostring)
-        elif .type == "text" then "[assistant] " + ((.text // "") | split("\n")[0])
-        else empty end )
-    elif .type == "user" then
-      ( .message.content[]? | select(.type == "tool_result") |
-        "[result] " + (((.content[0].text // .content // "") | tostring) | split("\n")[0] | .[0:200]) )
-    elif .type == "result" then
-      "[done] turns=" + ((.num_turns // 0) | tostring) + " duration_s=" + (((.duration_ms // 0) / 1000) | floor | tostring)
+    if .type == "step_start" then "[step] started"
+    elif .type == "tool_use" then
+      "[tool] " + (.part.tool // "tool") + " " +
+        ((.part.state.input.path // .part.state.input.command // .part.state.input.pattern // .part.state.title // "") | tostring)
+    elif .type == "text" then "[assistant] " + ((.part.text // "") | split("\n")[0])
+    elif .type == "step_finish" then "[step] finished " + (.part.reason // "")
+    elif .type == "error" then "[error] " + ((.error // .message // "") | tostring)
     else empty end
   ' 2>/dev/null | while IFS= read -r line; do printf '[%s] %s\n' "$(date -u +%H:%M:%S)" "$line"; done
 }
 
 heartbeat_pid=''
-claude_pid_file='/tmp/claude-issue-logs/claude.pid'
-: > "$claude_pid_file"
+agent_pid_file='/tmp/claude-issue-logs/agent.pid'
+: > "$agent_pid_file"
 # How long the stream log may go without a new line before we treat the
-# `claude` process as hung rather than merely busy with one long tool call
-# (a full build/test can legitimately produce no stream-json event for
+# `opencode` process as hung rather than merely busy with one long tool call
+# (a full build/test can legitimately produce no stream event for
 # several minutes). 2026-11-10: issue #619's run sat with its event counter
 # frozen at 83 for 4+ hours before a human noticed and cancelled it - the old
 # heartbeat only measured "is the heartbeat subshell alive", which is always
@@ -59,7 +54,7 @@ claude_pid_file='/tmp/claude-issue-logs/claude.pid'
 # instead of just reporting on it, so the job fails through its normal path
 # (finalize-issue-intake.sh already labels/comments correctly on any failed
 # or cancelled `implement` job) well before the 120-minute job timeout.
-stall_limit_minutes="${CLAUDE_STALL_MINUTES:-25}"
+stall_limit_minutes="${OPENCODE_STALL_MINUTES:-25}"
 start_heartbeat() {
   (
     heartbeat_comment_id=''
@@ -95,9 +90,9 @@ start_heartbeat() {
         fi
       fi
       if [[ "$killed" == false ]] && (( stalled_minutes >= stall_limit_minutes )); then
-        pid=$(cat "$claude_pid_file" 2>/dev/null || true)
+        pid=$(cat "$agent_pid_file" 2>/dev/null || true)
         if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-          echo "[heartbeat] no new output for ${stalled_minutes}m; killing claude pid ${pid} and its direct children"
+          echo "[heartbeat] no new output for ${stalled_minutes}m; killing opencode pid ${pid} and its direct children"
           pkill -9 -P "$pid" 2>/dev/null || true
           kill -9 "$pid" 2>/dev/null || true
           killed=true
@@ -126,19 +121,18 @@ retry_git_network() {
     attempt=$((attempt + 1))
   done
 }
-CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-1000}"
-[[ "$CLAUDE_MAX_TURNS" =~ ^[1-9][0-9]*$ ]] && (( CLAUDE_MAX_TURNS <= 1000 )) || { echo 'CLAUDE_MAX_TURNS must be an integer from 1 to 1000.' >&2; exit 64; }
-run_claude() {
-  # Run claude as the backgrounded command itself (not the last stage of a
-  # pipe) so its own PID - not tee's or format_claude_stream's - is what
-  # start_heartbeat's watchdog can find and kill via $claude_pid_file.
-  env -u GH_TOKEN -u GITHUB_TOKEN claude -p "$1" --model sonnet --permission-mode bypassPermissions \
-    --max-turns "$CLAUDE_MAX_TURNS" --output-format stream-json --verbose \
-    > >(tee -a "$stream_log" | format_claude_stream) &
+OPENCODE_MODEL="${OPENCODE_MODEL:-opencode/deepseek-v4.1-flash-free#high}"
+run_agent() {
+  # Run opencode as the backgrounded command itself (not the last stage of a
+  # pipe) so its own PID - not tee's or format_opencode_stream's - is what
+  # start_heartbeat's watchdog can find and kill via $agent_pid_file.
+  env -u GH_TOKEN -u GITHUB_TOKEN opencode --standalone run --model "$OPENCODE_MODEL" \
+    --auto --archived --format json "$1" \
+    > >(tee -a "$stream_log" | format_opencode_stream) &
   local pid=$! rc=0
-  echo "$pid" > "$claude_pid_file"
+  echo "$pid" > "$agent_pid_file"
   wait "$pid" || rc=$?
-  : > "$claude_pid_file"
+  : > "$agent_pid_file"
   return "$rc"
 }
 
@@ -218,7 +212,7 @@ fi
 
 make_pr() { # branch -> prints PR number
   local br="$1" url pr_json
-  url=$(gh pr create --base main --head "$br" --title "[Claude] ${title}" --body "$(printf '%s\nCloses #%s when this pull request merges into main.\n\nGenerated by Claude, ready for review. Auto-merge is requested immediately; required checks and branch protection govern when it can merge.\n' "$marker" "$ISSUE")")
+  url=$(gh pr create --base main --head "$br" --title "[OpenCode] ${title}" --body "$(printf '%s\nCloses #%s when this pull request merges into main.\n\nGenerated by OpenCode (DeepSeek V4.1 Flash), ready for review. Auto-merge is requested immediately; required checks and branch protection govern when it can merge.\n' "$marker" "$ISSUE")")
   pr_json=$(gh pr view "$url" --json number,id)
   # Request auto-merge explicitly: unlike gh pr merge, this never merges directly
   # when branch rules are missing or checks have not registered yet.
@@ -302,9 +296,9 @@ prepare_changes() { # stages candidate changes; never publishes them
 }
 
 publish_changes() { # commit only code that has already passed local CI
-  git commit -qm "Implement issue #${ISSUE} with Claude
+  git commit -qm "Implement issue #${ISSUE} with OpenCode
 
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+Co-Authored-By: OpenCode DeepSeek V4.1 Flash <noreply@opencode.ai>"
   retry_git_network git_auth push -u origin "$branch"
 }
 
@@ -321,9 +315,9 @@ mark_validation_failure() {
 Automation made candidate changes but they failed local validation after ${used} attempts. No commit, branch, or PR was published. Review the run and retry after the underlying failure is addressed: ${run_url}" >/dev/null || true
 }
 
-summary "starting Claude implementation pass"
-run_claude "$prompt"
-prepare_changes || { rc=$?; [[ $rc -eq 10 ]] && echo 'Claude produced an empty diff' >&2 || echo 'Claude candidate was unsafe or invalid' >&2; exit 1; }
+summary "starting OpenCode implementation pass"
+run_agent "$prompt"
+prepare_changes || { rc=$?; [[ $rc -eq 10 ]] && echo 'OpenCode produced an empty diff' >&2 || echo 'OpenCode candidate was unsafe or invalid' >&2; exit 1; }
 summary "candidate diff staged ($(git diff --cached --shortstat | sed 's/^ *//'))"
 
 passed=false; used=0
@@ -334,14 +328,14 @@ for attempt in 0 1 2; do
   used=$((attempt + 1))
   if [[ "$attempt" -lt 2 ]]; then
     excerpt=$(tail -c 12000 "/tmp/claude-issue-logs/validation-${attempt}.log")
-    summary "starting Claude repair pass after validation attempt ${attempt}"
-    run_claude "${NONINTERACTIVE}
+    summary "starting OpenCode repair pass after validation attempt ${attempt}"
+    run_agent "${NONINTERACTIVE}
 
 Fix the build/test/guardrail failures for issue #${ISSUE}. CI maintenance authorization: ${ci_authorized}; if true .github edits are restricted to: ${ci_paths[*]}. Untrusted CI output:
 \`\`\`
 ${excerpt}
 \`\`\`" || true
-    prepare_changes || { rc=$?; [[ $rc -eq 10 ]] && echo 'Claude repair produced an empty diff' >&2 || echo 'Claude repair candidate was unsafe or invalid' >&2; exit 1; }
+    prepare_changes || { rc=$?; [[ $rc -eq 10 ]] && echo 'OpenCode repair produced an empty diff' >&2 || echo 'OpenCode repair candidate was unsafe or invalid' >&2; exit 1; }
     summary "repaired candidate diff staged ($(git diff --cached --shortstat | sed 's/^ *//'))"
   fi
 done

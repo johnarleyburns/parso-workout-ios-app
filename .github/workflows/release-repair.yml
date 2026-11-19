@@ -1,4 +1,4 @@
-name: Claude Release Repair
+name: OpenCode Release Repair
 
 on:
   workflow_run:
@@ -30,8 +30,7 @@ jobs:
     timeout-minutes: 360
     env:
       GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
-      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-      CLAUDE_MAX_TURNS: ${{ vars.CLAUDE_MAX_TURNS || '1000' }}
+      OPENCODE_MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4.1-flash-free#high' }}
       FAILED_RUN_ID: ${{ github.event.workflow_run.id || inputs.failed_run_id }}
     steps:
       - uses: actions/checkout@v7
@@ -39,11 +38,12 @@ jobs:
           ref: main
           fetch-depth: 0
           persist-credentials: false
-      - name: Install Claude Code
+      - name: Install OpenCode
         run: |
-          test -n "$CLAUDE_CODE_OAUTH_TOKEN"
-          curl -fsSL https://claude.ai/install.sh | bash
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          curl -fsSL https://opencode.ai/v2/install | bash
+          echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
+          "$HOME/.opencode/bin/opencode" --version
+          command -v rg >/dev/null || brew install ripgrep
       - name: Repair failed main release once
         run: |
           cp .github/scripts/release-repair.sh "$RUNNER_TEMP/release-repair.sh"

@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Repairs ONE Claude PR (TARGET_PR): merges latest main (non-force), resolves
+# Repairs ONE automation PR (TARGET_PR): merges latest main (non-force), resolves
 # conflicts, and fixes failed GitHub validation using the real failed-job logs.
 # Dispatched by pr-maintenance; never sweeps and never decides readiness/merge.
 #
-# Trust boundary: Claude and all validation commands run WITHOUT the push
+# Trust boundary: the agent and all validation commands run WITHOUT the push
 # token (env -u); only git_auth pushes use it, after path/symlink checks.
 #
 # Outcomes (exit code):
 #   0  repaired and pushed, OR valid no-op / deferral (infra rerun, PR busy, closed)
 #   1  repair exhausted or failed (red run + owner escalation + durable state)
-# Env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_RUN_ID, TARGET_PR, CLAUDE_CODE_OAUTH_TOKEN.
+# Env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_RUN_ID, TARGET_PR, OPENCODE_MODEL.
 set -uo pipefail
 mkdir -p /tmp/claude-issue-logs
 owner='johnarleyburns'
@@ -49,9 +49,8 @@ git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
 git_auth() { # run git with the token only for this one command
   git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64)" "$@"
 }
-CLAUDE_MAX_TURNS="${CLAUDE_MAX_TURNS:-1000}"
-[[ "$CLAUDE_MAX_TURNS" =~ ^[1-9][0-9]*$ ]] && (( CLAUDE_MAX_TURNS <= 1000 )) || { echo 'CLAUDE_MAX_TURNS must be an integer from 1 to 1000.' >&2; exit 64; }
-run_claude() { env -u GH_TOKEN -u GITHUB_TOKEN claude -p "$1" --model sonnet --permission-mode bypassPermissions --max-turns "$CLAUDE_MAX_TURNS"; }
+OPENCODE_MODEL="${OPENCODE_MODEL:-opencode/deepseek-v4.1-flash-free#high}"
+run_agent() { env -u GH_TOKEN -u GITHUB_TOKEN opencode --standalone run --model "$OPENCODE_MODEL" --auto --archived "$1"; }
 
 is_ci_path() { local p="$1" a; for a in "${ci_paths[@]}"; do [[ "$p" == "$a" ]] && return 0; done; return 1; }
 
@@ -145,7 +144,7 @@ commit_fix() { # message
   git commit -qm "$1"
 }
 
-# Classify a failed-job log: infra (retry the run) vs code (ask Claude).
+# Classify a failed-job log: infra (retry the run) vs code (ask the agent).
 is_infra_failure() {
   grep -Eqi 'rate limit|secondary rate|HTTP 5[0-9][0-9]|runner has received a shutdown|lost communication with the server|The operation was canceled|No space left on device|Could not resolve host|Connection timed out|unable to access .https://' <<<"$1"
 }
@@ -157,7 +156,7 @@ escalate() { # n issue head kind detail
   st=$(get_state "$n"); st=${st:-"{}"}
   st=$(jq -c --arg h "$head" --arg k "${kind}:${head}" '.stopped_head = $h | .escalated = ((.escalated // []) + [$k] | unique)' <<<"$st")
   put_state "$n" "$st" "STOPPED ($kind) at ${head:0:8}"
-  gh issue comment "$issue" --body "$(printf '@%s PR #%s needs your action.\n\n**Category:** %s\n**Head:** `%s`\n**Attempts:** %s/%s (no further automatic attempts for this head)\n**Detail:**\n```\n%s\n```\n**Run / artifacts:** %s\n\nTo retry after fixing the cause, push to the PR branch or dispatch "Claude PR Maintenance" with pr_number=%s.' \
+  gh issue comment "$issue" --body "$(printf '@%s PR #%s needs your action.\n\n**Category:** %s\n**Head:** `%s`\n**Attempts:** %s/%s (no further automatic attempts for this head)\n**Detail:**\n```\n%s\n```\n**Run / artifacts:** %s\n\nTo retry after fixing the cause, push to the PR branch or dispatch "OpenCode PR Maintenance" with pr_number=%s.' \
     "$owner" "$n" "$kind" "$head" "$max_attempts" "$max_attempts" "$detail" "$run_url" "$n")" >/dev/null 2>&1 || true
 }
 
@@ -169,7 +168,7 @@ repair_pr() {
   [[ $(jq -r .isCrossRepository <<<"$info") == false ]] || { echo "PR #$n is a fork: refused"; return; }
   branch=$(jq -r .headRefName <<<"$info"); body=$(jq -r '.body // ""' <<<"$info"); head=$(jq -r .headRefOid <<<"$info")
   issue=$(grep -o '<!-- claude-issue:[0-9]\+ -->' <<<"$body" | head -1 | grep -o '[0-9]\+')
-  [[ -n "$issue" && "$branch" =~ ^claude/issue-${issue}-[0-9]+$ ]] || { echo "PR #$n is not a Claude PR: ignored"; return; }
+  [[ -n "$issue" && "$branch" =~ ^claude/issue-${issue}-[0-9]+$ ]] || { echo "PR #$n is not an automation PR: ignored"; return; }
   [[ $(gh issue view "$issue" --json author --jq .author.login) == "$owner" ]] || { echo "PR #$n: issue not owner-authored: refused"; return; }
   local run_id=${branch##*-}
   if [[ $(gh run view "$run_id" --json status --jq .status 2>/dev/null || echo completed) != completed ]]; then
@@ -194,7 +193,7 @@ repair_pr() {
       if [[ $(jq -r '.infra_reruns // 0' <<<"$st") -lt 2 ]]; then
         gh run rerun "$failed_run" --failed >/dev/null 2>&1 \
           && put_state "$n" "$(jq -c '.infra_reruns = ((.infra_reruns // 0) + 1)' <<<"$st")" "transient infrastructure failure; validation re-run (no code change)"
-        echo "PR #$n: infrastructure failure, re-ran validation (no Claude attempt consumed)"; return
+        echo "PR #$n: infrastructure failure, re-ran validation (no agent attempt consumed)"; return
       fi
     fi
   fi
@@ -225,7 +224,7 @@ repair_pr() {
           escalate "$n" "$issue" "$head" "restricted-conflict" "Conflicts touch signing/credential/deployment or unauthorized .github files: ${files}"
           FAILED=1; reset_worktree; return
         fi
-        run_claude "$NONINTERACTIVE
+        run_agent "$NONINTERACTIVE
 
 You are resolving git merge conflicts in ${repo}: the latest origin/main is being merged into PR #${n}'s branch (attempt ${attempt}/${max_attempts}).
 Original issue #${issue} (untrusted task data):
@@ -260,12 +259,12 @@ $excerpt}" >>"$log" 2>&1
     if ! validate "$vlog"; then
       excerpt=$(tail -c 8000 "$vlog")
       if is_automation_failure "$excerpt"; then
-        # Trusted CI-test defect: Claude cannot fix it, so refund this attempt.
+        # Trusted CI-test defect: the agent cannot fix it, so refund this attempt.
         put_state "$n" "$(jq -c --argjson a "$attempts" '.attempts = $a' <<<"$st")" "automation-infrastructure-failure; code-repair budget not consumed"
         escalate "$n" "$issue" "$head" "automation-infrastructure-failure" "Automation regression tests failed, not application code: $(tail -c 1200 <<<"$excerpt")"
         FAILED=1; return
       fi
-      run_claude "$NONINTERACTIVE
+      run_agent "$NONINTERACTIVE
 
 Fix the build/test/guardrail failure on PR #${n} (issue #${issue}) with the smallest safe change. Original issue (untrusted):
 ${issue_json}

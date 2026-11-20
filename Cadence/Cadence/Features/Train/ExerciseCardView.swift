@@ -90,7 +90,7 @@ struct ExerciseCardView: View {
                             Text(context.name.localizedExerciseName).font(.headline).lineLimit(1)
                             if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
                         }
-                        if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(context.hasPartners ? 3 : 2) }
+                        if !isExpanded, !context.hasPartners { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
                         if !isExpanded, let defaultsLine { Text(defaultsLine).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1).accessibilityIdentifier("exercise.defaults.\(context.name)") }
                     }
                 }

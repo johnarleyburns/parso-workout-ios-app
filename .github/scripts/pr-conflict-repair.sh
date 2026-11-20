@@ -19,13 +19,14 @@ repo="$GITHUB_REPOSITORY"
 run_url="${GITHUB_SERVER_URL:-https://github.com}/${repo}/actions/runs/${GITHUB_RUN_ID:-0}"
 ci_paths=(
   .github/workflows/issue-to-pr.yml
-  .github/workflows/pr-validation.yml
   .github/workflows/ios.yml
   .github/workflows/pr-conflict-repair.yml
   .github/workflows/pr-maintenance.yml
   .github/scripts/issue-to-pr.sh
   .github/scripts/pr-conflict-repair.sh
   .github/scripts/pr-maintenance.sh
+  .github/scripts/prune-pr-caches.sh
+  .github/scripts/tree-validation-attestation.sh
 )
 is_sensitive_path() {
   local path
@@ -180,7 +181,7 @@ repair_pr() {
   ms=$(gh api "repos/${repo}/pulls/$n" --jq .mergeable_state 2>/dev/null || echo unknown)
   git_auth fetch -q origin main "$branch" || { echo "fetch failed" >&2; FAILED=1; return; }
   git merge-base --is-ancestor origin/main "origin/$branch" || need_merge=true
-  failed_run=$(gh api "repos/${repo}/actions/workflows/pr-validation.yml/runs?head_sha=${head}&event=pull_request&per_page=30" \
+  failed_run=$(gh api "repos/${repo}/actions/workflows/ios.yml/runs?head_sha=${head}&event=pull_request&per_page=30" \
     --jq '[.workflow_runs[]|select(.status=="completed" and (.conclusion=="failure" or .conclusion=="timed_out"))]|sort_by(.created_at)|last|.id // empty' 2>/dev/null)
   if [[ -z "$failed_run" && "$need_merge" != true ]]; then
     echo "PR #$n: up to date and no failed validation (state=$ms): valid no-op"; return

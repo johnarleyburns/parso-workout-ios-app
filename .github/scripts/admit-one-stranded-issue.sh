@@ -31,7 +31,7 @@ blocking_generated_pr() {
   while IFS= read -r number; do
     [[ -z "$number" ]] && continue
     head=$(gh api "${api}/pulls/${number}" --jq '.head.sha')
-    runs=$(gh api "${api}/actions/workflows/pr-validation.yml/runs?head_sha=${head}&event=pull_request&per_page=30")
+    runs=$(gh api "${api}/actions/workflows/ios.yml/runs?head_sha=${head}&event=pull_request&per_page=30")
     if generated_pr_blocks_admission <<<"$runs"; then
       printf '%s\n' "$number"
       return 0

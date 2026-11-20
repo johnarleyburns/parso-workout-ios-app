@@ -2,12 +2,12 @@ name: OpenCode Release Repair
 
 on:
   workflow_run:
-    workflows: ["iOS Build & TestFlight"]
+    workflows: ["iOS"]
     types: [completed]
   workflow_dispatch:
     inputs:
       failed_run_id:
-        description: Failed main iOS Build & TestFlight run to triage
+        description: Failed main iOS release run to triage
         required: true
         type: string
 

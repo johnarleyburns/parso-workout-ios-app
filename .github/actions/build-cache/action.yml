@@ -2,8 +2,16 @@ name: Cadence build cache
 description: Restore compiled outputs scoped to toolchain, platform and build role
 inputs:
   scope:
-    description: host, device (unsigned Release), or archive (signed Release)
+    description: host, device (unsigned fast Release), or archive (signed Release)
     required: true
+  save:
+    description: >-
+      Save this run's compiled outputs. Only default-branch runs may seed a
+      cache: GitHub lets a pull request restore caches from its own ref and the
+      default branch only, so a cache saved on refs/pull/N/merge is unusable by
+      every other PR while still consuming the repository cache budget.
+    required: false
+    default: 'true'
 outputs:
   derived-data:
     description: Stable repository-specific DerivedData directory
@@ -11,6 +19,9 @@ outputs:
   source-packages:
     description: Stable repository-specific package checkout directory
     value: ${{ steps.identity.outputs.source-packages }}
+  matched-key:
+    description: Key of the restored cache, empty when nothing was restored
+    value: ${{ steps.restore-host.outputs.cache-matched-key || steps.restore-device.outputs.cache-matched-key }}
 runs:
   using: composite
   steps:
@@ -20,19 +31,53 @@ runs:
       env:
         CACHE_SCOPE: ${{ inputs.scope }}
       run: python3 scripts/ci-cache-key.py "$CACHE_SCOPE" >> "$GITHUB_OUTPUT"
-    - name: Cache host build outputs
+    - name: Restore host build outputs
+      id: restore-host
       if: inputs.scope == 'host'
-      uses: actions/cache@v6
+      uses: actions/cache/restore@v6
       with:
         path: CadenceCore/.build
         key: ${{ steps.identity.outputs.key }}
         restore-keys: ${{ steps.identity.outputs.prefix }}
-    - name: Cache device build outputs
+    - name: Restore device build outputs
+      id: restore-device
       if: inputs.scope != 'host'
-      uses: actions/cache@v6
+      uses: actions/cache/restore@v6
       with:
         path: |
           ${{ steps.identity.outputs.derived-data }}
           ${{ steps.identity.outputs.source-packages }}
         key: ${{ steps.identity.outputs.key }}
         restore-keys: ${{ steps.identity.outputs.prefix }}
+    - name: Decide whether there is anything to save
+      # actions/cache/save fails the step when the path does not exist, which
+      # happens on main whenever the build was skipped because a warm seed was
+      # restored. Gate it on both the caller's intent and a real directory.
+      id: gate
+      shell: bash
+      env:
+        SAVE: ${{ inputs.save }}
+        SCOPE: ${{ inputs.scope }}
+        DERIVED_DATA: ${{ steps.identity.outputs.derived-data }}
+      run: |
+        target="CadenceCore/.build"
+        [[ "$SCOPE" == "host" ]] || target="$DERIVED_DATA"
+        if [[ "$SAVE" == "true" && -d "$target" ]]; then
+          echo "value=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "value=false" >> "$GITHUB_OUTPUT"
+        fi
+    - name: Save host build outputs
+      if: steps.gate.outputs.value == 'true' && inputs.scope == 'host'
+      uses: actions/cache/save@v6
+      with:
+        path: CadenceCore/.build
+        key: ${{ steps.identity.outputs.key }}
+    - name: Save device build outputs
+      if: steps.gate.outputs.value == 'true' && inputs.scope != 'host'
+      uses: actions/cache/save@v6
+      with:
+        path: |
+          ${{ steps.identity.outputs.derived-data }}
+          ${{ steps.identity.outputs.source-packages }}
+        key: ${{ steps.identity.outputs.key }}

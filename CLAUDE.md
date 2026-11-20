@@ -10,7 +10,7 @@ This repository is fully on Swift 6 language mode with complete strict-concurren
 
 A task is **not** complete when the PR merges, when PR checks turn green, when
 the host suite passes, or when the archive step succeeds. It is complete only
-when the post-merge **iOS Build & TestFlight** run has produced a TestFlight
+when the post-merge **iOS** run (`ios.yml` on `main`) has produced a TestFlight
 build that App Store Connect accepts and the build is available to testers.
 
 - A green PR, a green archive, an upload command that ran, or a merged PR is
@@ -22,6 +22,12 @@ build that App Store Connect accepts and the build is available to testers.
   `VALID`/available. Do not say "succeeded" or "done" without that build.
 - A passing host suite on one runner does not prove the release runner will
   finish; the post-merge run is the acceptance gate.
+- The release run may skip the host suite when `.github/scripts/tree-validation-attestation.sh`
+  proves this is the merge commit of a PR whose *identical tree* already passed
+  `host-tests` and `app-build`. That is a validation transfer, not a waiver: any
+  tree mismatch, missing check, direct push, or manual dispatch runs the suite.
+- Exactly one workflow (`ios.yml`) covers pull requests and `main`; do not add a
+  second validation workflow that duplicates its jobs.
 
 ## GitHub CLI only
 
@@ -190,7 +196,7 @@ not have.
 - **Issue traceability (every user-visible issue):** the PR must map each requirement → the real production entry point (the shipped coordinator/presenter/view, never a parallel test-only state machine) → the observable result → the regression that guards it → the issue's device checklist. Show failing→passing evidence for that regression, and finish with an issue-to-diff audit. Helper/refactor-only work must say it is **infrastructure** and cannot claim feature completion.
 - **Hermetic harness:** `bash scripts/run-verification-harness.sh [--self-test]` runs `ProductionFlowHarnessTests` (real production types with injected Watch transport, clock, store and Health boundary; no network, signing, HealthKit hardware, or sleeps) once as an optional focused check; `--self-test` proves it fails when a production binding is removed. Failures print `[harness:<scenario>]` plus a trace artifact path (`HARNESS_ARTIFACT_DIR`). The normal package suite already runs these tests once; CI must not invoke the focused harness again. Extend its scenarios when touching those flows; it is not a prerequisite for other issues — each repair carries its own regression. Rendered-view/reflow checks are covered by `LiveWorkoutReflowGuardTests.swift` (a host `swift test` that statically scans the SwiftUI source tree for `minimumScaleFactor` regressions) and the device checklist.
 - **QA labels:** `ready-for-qa` means delivered/eligible for QA; `qa-passed` / `qa-failed` are human-only states. A TestFlight upload never clears `qa-failed`; only a human result does.
-- **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test. After merge, also watch the `iOS Build & TestFlight` run; only an accepted TestFlight build satisfies the definition of done.
+- **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test. After merge, also watch the `iOS` run on `main`; only an accepted TestFlight build satisfies the definition of done.
 - Scope investigations narrowly; ask before large refactors or new dependencies (this repo aims for zero proprietary deps — see NFR-6).
 - When a design decision changes, update this file so it stays the source of truth.
 

@@ -28,13 +28,14 @@ def workflow(name):
 
 
 class ThroughputTests(unittest.TestCase):
-    def test_pr_jobs_overlap_but_required_gate_rejects_every_non_success(self):
-        jobs = workflow('pr-validation.yml')['jobs']
+    def test_pull_request_jobs_overlap_but_the_required_gate_rejects_every_non_success(self):
+        jobs = workflow('ios.yml')['jobs']
         self.assertNotIn('needs', jobs['host-tests'])
         self.assertNotIn('needs', jobs['app-build'])
         gate = jobs['validate']
         self.assertEqual(set(gate['needs']), {'host-tests', 'app-build'})
         self.assertIn('always()', gate['if'])
+        self.assertIn("github.event_name == 'pull_request'", gate['if'])
         for a in ['success', 'failure', 'cancelled', 'skipped']:
             for b in ['success', 'failure', 'cancelled', 'skipped']:
                 result = subprocess.run(['bash', '-c', gate['steps'][0]['run']],
@@ -44,16 +45,78 @@ class ThroughputTests(unittest.TestCase):
     def test_release_archives_in_parallel_but_upload_requires_both_jobs(self):
         jobs = workflow('ios.yml')['jobs']
         self.assertNotIn('needs', jobs['archive'])
+        self.assertIn("github.ref == 'refs/heads/main'", jobs['archive']['if'])
         upload = jobs['testflight-build']
-        self.assertEqual(set(upload['needs']), {'core-tests', 'archive'})
-        self.assertNotIn('always()', upload.get('if', ''))
+        self.assertEqual(set(upload['needs']), {'host-tests', 'archive'})
+        condition = upload.get('if', '')
+        self.assertIn("needs.host-tests.result == 'success'", condition)
+        self.assertIn("needs.archive.result == 'success'", condition)
         self.assertNotIn('continue-on-error', upload)
         names = [step.get('name', '') for step in upload['steps']]
         self.assertLess(names.index('Restore signed archive'), names.index('Upload to TestFlight'))
         archive_steps = jobs['archive']['steps']
         self.assertFalse(any(step.get('name') == 'Upload to TestFlight' for step in archive_steps))
         self.assertTrue(any('tar -cf' in step.get('run', '') for step in archive_steps))
-        self.assertEqual(set(jobs['deployment-report']['needs']), {'core-tests', 'archive', 'testflight-build'})
+        self.assertEqual(set(jobs['deployment-report']['needs']), {'host-tests', 'archive', 'testflight-build'})
+
+    def test_one_workflow_owns_pr_and_release_and_only_main_seeds_the_cache(self):
+        jobs = workflow('ios.yml')['jobs']
+        self.assertEqual(set(jobs), {'host-tests', 'app-build', 'validate', 'archive',
+                                     'testflight-build', 'deployment-report'})
+        triggers = workflow('ios.yml')['true']
+        self.assertIn('pull_request', triggers)
+        self.assertIn('push', triggers)
+        seeds = [step for step in jobs['app-build']['steps']
+                 if step.get('name') == 'iPhone and embedded Watch build with guardrails']
+        self.assertEqual(len(seeds), 1)
+        # main may skip the rebuild when the shared seed already exists.
+        self.assertIn("steps.cache.outputs.matched-key == ''", seeds[0]['if'])
+        cache = next(step for step in jobs['app-build']['steps'] if step.get('uses', '').endswith('build-cache'))
+        self.assertIn("github.ref == 'refs/heads/main'", cache['with']['save'])
+
+    def test_tree_attestation_skips_only_an_identical_tree_with_both_checks_green(self):
+        script = ROOT / '.github/scripts/tree-validation-attestation.sh'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = ['git', '-c', 'user.email=t@example.com', '-c', 'user.name=t']
+            subprocess.run(['git', 'init', '-q'], cwd=root, check=True)
+            (root / 'a').write_text('one')
+            subprocess.run(git + ['add', 'a'], cwd=root, check=True)
+            subprocess.run(git + ['commit', '-qm', 'one'], cwd=root, check=True)
+            first = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+            (root / 'a').write_text('two')
+            subprocess.run(git + ['commit', '-qam', 'two'], cwd=root, check=True)
+            second = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+
+            fake = root / 'gh'
+            fake.write_text('''#!/usr/bin/env bash
+case "$*" in
+  *"--jq"*) printf '7\n' ;;
+  *"/pulls/7") printf '{"merged_at":"2026-01-01T00:00:00Z","merge_commit_sha":"%s","head":{"sha":"%s"}}\n' "$SHA" "$PR_HEAD" ;;
+  *"/check-runs"*) printf '%s\n' "${CHECKS:-}" ;;
+  *) printf '{}\n' ;;
+esac
+''')
+            fake.chmod(0o755)
+
+            def run(sha, pr_head, checks, force='0'):
+                env = {**os.environ, 'PATH': f'{root}:{os.environ["PATH"]}',
+                       'GITHUB_EVENT_NAME': 'push', 'GITHUB_REF': 'refs/heads/main',
+                       'GITHUB_REPOSITORY': 'o/r', 'GITHUB_SHA': sha,
+                       'FORCE_TESTS': force, 'SHA': sha, 'PR_HEAD': pr_head, 'CHECKS': checks}
+                out = subprocess.run(['bash', str(script)], cwd=root, env=env,
+                                     capture_output=True, text=True)
+                self.assertEqual(out.returncode, 0, out.stderr)
+                return out.stdout.strip()
+
+            green = ('{"check_runs":[{"name":"host-tests","status":"completed","conclusion":"success"},'
+                     '{"name":"app-build","status":"completed","conclusion":"success"}]}')
+            red = ('{"check_runs":[{"name":"host-tests","status":"completed","conclusion":"success"},'
+                   '{"name":"app-build","status":"completed","conclusion":"failure"}]}')
+            self.assertEqual(run(second, second, green), 'skip=true')
+            self.assertEqual(run(second, second, red), 'skip=false')
+            self.assertEqual(run(second, first, green), 'skip=false')
+            self.assertEqual(run(second, second, green, force='1'), 'skip=false')
 
     def test_signed_archive_handoff_preserves_symlinks_and_execute_permissions(self):
         jobs = workflow('ios.yml')['jobs']
@@ -173,6 +236,34 @@ class ThroughputTests(unittest.TestCase):
         self.assertNotIn('private_keys', action)
         self.assertNotIn('Library/Developer/Xcode/DerivedData/*', action)
 
+
+
+    def test_pr_cache_pruning_deletes_only_closed_pull_request_entries(self):
+        script = ROOT / '.github/scripts/prune-pr-caches.sh'
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            log = root / 'deleted'
+            fake = root / 'gh'
+            fake.write_text("""#!/usr/bin/env bash
+case "$*" in
+  *"/pulls/41"*) printf 'closed\n' ;;
+  *"/pulls/42"*) printf 'open\n' ;;
+  *"-X DELETE"*)
+    printf '%s\n' "${@: -1}" >> "$DELETED" ;;
+  *"--jq"*)
+    printf '11\trefs/pull/41/merge\t100\n'
+    printf '12\trefs/pull/42/merge\t100\n'
+    printf '13\trefs/heads/main\t100\n' ;;
+esac
+""")
+            fake.chmod(0o755)
+            env = {**os.environ, 'PATH': f'{root}:{os.environ["PATH"]}',
+                   'GITHUB_REPOSITORY': 'o/r', 'DELETED': str(log)}
+            out = subprocess.run(['bash', str(script)], env=env,
+                                 capture_output=True, text=True)
+            self.assertEqual(out.returncode, 0, out.stderr)
+            deleted = log.read_text().split()
+            self.assertEqual(deleted, ['repos/o/r/actions/caches/11'])
 
 
 if __name__ == '__main__':

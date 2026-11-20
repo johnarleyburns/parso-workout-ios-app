@@ -35,10 +35,6 @@ jobs:
       actions: read
       checks: read
       pull-requests: read
-    env:
-      # Quarantines the synchronous-I/O/thread-blocking test seams in release
-      # CI only; PR validation still runs them. See ReleaseCITestSupport.
-      CADENCE_RELEASE_CI: ${{ github.event_name != 'pull_request' && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -71,13 +67,10 @@ jobs:
         run: sudo xcodebuild -license accept
 
       - uses: ./.github/actions/build-cache
+        id: cache
         if: steps.attest.outputs.skip != 'true'
         with:
-          # The host cache is small and is the only reusable artifact a PR can
-          # warm for its own later pushes; the large device cache is seeded by
-          # main only.
           scope: host
-          save: 'true'
 
       - name: Run static checks and SwiftPM package tests
         if: steps.attest.outputs.skip != 'true'
@@ -116,6 +109,13 @@ jobs:
           bash scripts/check-ci-no-simulators.sh
           bash scripts/check-release-safety.sh
 
+      - name: Save the shared host cache
+        if: steps.attest.outputs.skip != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: CadenceCore/.build
+          key: ${{ steps.cache.outputs.key }}
+
   # There is no XCUITest/simulator suite in this repo: simulator-based UI tests
   # were removed (unreliable on shared runners — cold-launch timing, shared CPU —
   # and this CI environment cannot boot simulators at all). The CI gate is
@@ -149,7 +149,6 @@ jobs:
         id: cache
         with:
           scope: device
-          save: ${{ github.ref == 'refs/heads/main' }}
 
       - name: iPhone and embedded Watch build with guardrails
         # On main this job exists only to keep the shared cache warm, so it
@@ -168,6 +167,17 @@ jobs:
           path: ${{ runner.temp }}/ci-validate-build.log
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Save the shared device cache
+        # Only main may seed: GitHub restores a PR cache for its own ref only.
+        # Saving after the build is what makes the seed contain compiled output.
+        if: github.ref == 'refs/heads/main' && steps.cache.outputs.matched-key == ''
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            ${{ steps.cache.outputs.derived-data }}
+            ${{ steps.cache.outputs.source-packages }}
+          key: ${{ steps.cache.outputs.key }}
 
   validate:
     # The required status context for merging into main. Runs only on pull

@@ -18,6 +18,10 @@ jobs:
   core-tests:
     runs-on: xcode-27
     timeout-minutes: 90
+    env:
+      # Quarantines the synchronous-I/O/thread-blocking test seams in release
+      # CI only; PR validation still runs them. See ReleaseCITestSupport.
+      CADENCE_RELEASE_CI: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v7

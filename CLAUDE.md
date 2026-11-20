@@ -6,6 +6,23 @@ Project memory for Claude Code. This file is the quick, durable context. The cod
 
 This repository is fully on Swift 6 language mode with complete strict-concurrency checking and is kept as warning-free as the selected toolchain permits. Do not introduce or permit any deviation, mixed Swift modes, warning suppression, or unexplained concurrency escape hatch. A commit runs the SwiftPM package tests only. A push runs no tests.
 
+## Definition of done: a successful TestFlight build
+
+A task is **not** complete when the PR merges, when PR checks turn green, when
+the host suite passes, or when the archive step succeeds. It is complete only
+when the post-merge **iOS Build & TestFlight** run has produced a TestFlight
+build that App Store Connect accepts and the build is available to testers.
+
+- A green PR, a green archive, an upload command that ran, or a merged PR is
+  necessary but not sufficient.
+- If the post-merge release run fails, hangs, is cancelled, or skips the upload
+  job, the task is still open. Open a repair PR (never rewrite `main`), fix the
+  release blocker, and repeat until the exact version/build exists.
+- Report the exact **version (build)** and whether App Store Connect reports it
+  `VALID`/available. Do not say "succeeded" or "done" without that build.
+- A passing host suite on one runner does not prove the release runner will
+  finish; the post-merge run is the acceptance gate.
+
 ## GitHub CLI only
 
 Always use the `gh` CLI directly for every GitHub interaction (issues, PRs, comments, reviews, checks, runs, labels). Do not try any other GitHub integration or tool first on the assumption it might work here — it doesn't, and attempting it before falling back to `gh` wastes turns and time for no benefit.
@@ -165,7 +182,7 @@ not have.
 - For any non-trivial feature, **propose a plan first** (plan mode), wait for approval, then implement.
 - **Test the requested behavior before and after implementation:** for every non-UI issue, first add or strengthen a focused automated test that fails for the reported defect, then make that same test pass with the implementation. If a behavior cannot be covered automatically, explain why in the PR and add the narrowest reliable alternative verification.
 - **Perform a completion audit before committing a PR:** re-read the entire issue and compare every requirement and acceptance criterion against the actual diff and tests. Fix every gap found, then repeat the audit until no gaps remain. Do not commit, open, or update a PR while a known issue requirement is unaddressed.
-- **Device behavior is the acceptance target, not compilation:** for every issue with a user-visible, Watch, HealthKit, performance, navigation, persistence, or lifecycle requirement, write an explicit device-verification checklist in the PR that follows the issue's exact reproduction path and expected result. Identify the precise TestFlight build containing the merge. A green host test, simulator result, archive, or upload never substitutes for this checklist.
+- **Device behavior is the acceptance target, not compilation:** for every issue with a user-visible, Watch, HealthKit, performance, navigation, persistence, or lifecycle requirement, write an explicit device-verification checklist in the PR that follows the issue's exact reproduction path and expected result. Identify the precise TestFlight build containing the merge. If the post-merge release has not produced that build yet, the task is not done (see “Definition of done: a successful TestFlight build”). A green host test, simulator result, archive, or upload attempt never substitutes for this checklist.
 - **Treat a reported failed device check as a failed delivery:** do not claim the issue is solved, close it, or leave it only `ready-for-qa` when its reported acceptance path still fails. Diagnose the mismatch, add a regression test where possible, repair the code, and repeat the issue-to-diff and device-checklist audits. A limitation that cannot be device-tested must be called out plainly with the unavailable device/service and the next verification owner; never present it as verified.
 - **Auto-close on merge (reversed 2026-11-03):** generated PR bodies now use GitHub's closing keyword (`Closes #123`) for their marker-linked issue, so the issue auto-closes when the PR merges into main — this is a deliberate reversal of the prior "never auto-close" rule. This is *not* a substitute for human device verification: a `qa-failed` label on a closed issue causes the intake controller to automatically reopen it (removing `ready-for-qa`) and start a repair cycle before it is re-admitted, so the human-QA gate in the two rules above still holds — auto-close just means "believed done," not "verified."
 - **TestFlight labels are a state machine, not a claim that a person tested it:** `testflight-uploaded` means Apple accepted the binary; `testflight-processing` means Apple has not finished processing; `ready-for-qa` means App Store Connect reports the exact build `VALID`; `testflight-distribution-confirmed` is additional API evidence of an assigned group; and `testflight-access-unverified` means the group lookup was unavailable or empty, not that the build cannot be installed. Never add `ready-for-qa` merely because an upload command succeeded.
@@ -173,7 +190,7 @@ not have.
 - **Issue traceability (every user-visible issue):** the PR must map each requirement → the real production entry point (the shipped coordinator/presenter/view, never a parallel test-only state machine) → the observable result → the regression that guards it → the issue's device checklist. Show failing→passing evidence for that regression, and finish with an issue-to-diff audit. Helper/refactor-only work must say it is **infrastructure** and cannot claim feature completion.
 - **Hermetic harness:** `bash scripts/run-verification-harness.sh [--self-test]` runs `ProductionFlowHarnessTests` (real production types with injected Watch transport, clock, store and Health boundary; no network, signing, HealthKit hardware, or sleeps) once as an optional focused check; `--self-test` proves it fails when a production binding is removed. Failures print `[harness:<scenario>]` plus a trace artifact path (`HARNESS_ARTIFACT_DIR`). The normal package suite already runs these tests once; CI must not invoke the focused harness again. Extend its scenarios when touching those flows; it is not a prerequisite for other issues — each repair carries its own regression. Rendered-view/reflow checks are covered by `LiveWorkoutReflowGuardTests.swift` (a host `swift test` that statically scans the SwiftUI source tree for `minimumScaleFactor` regressions) and the device checklist.
 - **QA labels:** `ready-for-qa` means delivered/eligible for QA; `qa-passed` / `qa-failed` are human-only states. A TestFlight upload never clears `qa-failed`; only a human result does.
-- **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test.
+- **Verify before declaring done:** run `swift test` / `xcodebuild` and report the result. Don't claim a feature works without a green build or a test. After merge, also watch the `iOS Build & TestFlight` run; only an accepted TestFlight build satisfies the definition of done.
 - Scope investigations narrowly; ask before large refactors or new dependencies (this repo aims for zero proprietary deps — see NFR-6).
 - When a design decision changes, update this file so it stays the source of truth.
 
@@ -240,7 +257,8 @@ matter how small.
    and the owner can always stop a PR by disabling automerge or saying so
    before it's opened.
 7. **Monitor CI** on the PR (`gh pr checks <PR>`, or `gh run list --branch <branch> --limit 1`).
-8. **Report the PR URL and CI status** to the user.
+8. **After merge, monitor the post-merge release** (`gh run list --workflow ios.yml --branch main --limit 1`). Do not declare the task done until the `testflight-build` job succeeds and the build is uploaded. If it fails, hangs, or skips the upload, open a repair PR and repeat.
+9. **Report the PR URL, CI status, and exact TestFlight version/build** to the user. “Merged” without a TestFlight build is an incomplete report.
 
 ## Automatic TestFlight crash intake
 

@@ -54,11 +54,23 @@ public struct WatchStrengthInactivityNotice: Codable, Equatable, Sendable {
 public struct WatchStrengthInactivityStore: Sendable {
     public static let recordKey = "watch.strengthInactivity.record.v1"
     public static let noticeKey = "watch.strengthInactivity.notice.v1"
-    /// nil = `UserDefaults.standard`. Held by name because `UserDefaults` is not `Sendable`.
-    private let suiteName: String?
-    private var defaults: UserDefaults { suiteName.flatMap(UserDefaults.init(suiteName:)) ?? .standard }
+    private enum Backing: Sendable {
+        case suite(String?)
+        case store(SendableDefaultsStoring)
+    }
 
-    public init(suiteName: String? = nil) { self.suiteName = suiteName }
+    private let backing: Backing
+    private var defaults: DefaultsStoring {
+        switch backing {
+        case .suite(let name):
+            return name.flatMap(UserDefaults.init(suiteName:)) ?? .standard
+        case .store(let store):
+            return store
+        }
+    }
+
+    public init(defaults: SendableDefaultsStoring) { self.backing = .store(defaults) }
+    public init(suiteName: String? = nil) { self.backing = .suite(suiteName) }
 
     public func loadRecord() -> WatchStrengthInactivityRecord? {
         defaults.data(forKey: Self.recordKey).flatMap { try? JSONDecoder().decode(WatchStrengthInactivityRecord.self, from: $0) }

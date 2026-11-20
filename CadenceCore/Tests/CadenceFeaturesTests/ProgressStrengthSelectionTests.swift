@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
@@ -10,7 +11,7 @@ struct ProgressStrengthSelectionTests {
     }
 
     @Test func customSelectionPersistsAndRoundTrips() {
-        let defaults = UserDefaults(suiteName: "ProgressStrengthSelectionTests.\(UUID().uuidString)")!
+        let defaults = InMemoryDefaultsStore()
         let selection = ProgressStrengthSelection(selectedNames: ["Bench Press", "Overhead Press"])
         selection.persist(defaults: defaults)
 
@@ -18,7 +19,7 @@ struct ProgressStrengthSelectionTests {
     }
 
     @Test func legacySquatPreferenceMigratesToBarbellSquat() {
-        let defaults = UserDefaults(suiteName: "ProgressStrengthSelectionTests.\(UUID().uuidString)")!
+        let defaults = InMemoryDefaultsStore()
         defaults.set(try! JSONEncoder().encode(["Squat", "Deadlift"]),
                      forKey: ProgressStrengthSelection.persistenceKey)
 
@@ -27,7 +28,7 @@ struct ProgressStrengthSelectionTests {
     }
 
     @Test func legacyCombinedPreferenceMigratesToTotal() {
-        let defaults = UserDefaults(suiteName: "ProgressStrengthSelectionTests.\(UUID().uuidString)")!
+        let defaults = InMemoryDefaultsStore()
         defaults.set(try! JSONEncoder().encode(["Bench Press", "Combined"]),
                      forKey: ProgressStrengthSelection.persistenceKey)
 

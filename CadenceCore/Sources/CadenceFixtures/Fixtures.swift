@@ -170,7 +170,8 @@ public enum Fixtures {
     /// planned workout remaining. Sets `settings.coachSchedulePreferences` and
     /// `settings.coachPreferenceProfile` in the given defaults (UserDefaults.standard
     /// by default) to match the original UI-test seed.
-    public static func coachTwoADayStrengthDone(into ctx: ModelContext, defaults: UserDefaults = .standard) {
+    public static func coachTwoADayStrengthDone(into ctx: ModelContext,
+                                                defaults: DefaultsStoring = UserDefaults.standard) {
         defaults.set(twoADaySchedulePreferencesJSON(), forKey: "settings.coachSchedulePreferences")
         defaults.set(runPreferenceJSON, forKey: "settings.coachPreferenceProfile")
 

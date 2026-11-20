@@ -60,9 +60,7 @@ final class WatchSetDefaultParityTests {
             context: [WatchSync.Key.setDefaultSnapshot: built.propertyList], applyingTo: .init())
         let received = try #require(ctx.setDefaultSnapshot)
         #expect(received == built)
-        let suite = "parity-\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryDefaultsStore()
         #expect(WatchSetDefaultSnapshotPersistence(defaults: defaults).replaceIfNewer(received) == .replaced)
         // Relaunch: a fresh persistence object, phone unreachable.
         return try #require(WatchSetDefaultSnapshotPersistence(defaults: defaults).load())

@@ -69,10 +69,10 @@ struct CoachSuggestionServiceParityTests {
         #expect(option.exercises.allSatisfy { !["bench", "row"].contains($0.candidateID) })
     }
 
-    @Test func resultIsIndependentOfWallClock() {
+    @Test func resultIsIndependentOfWallClock() async {
         let snapshot = F.snapshot(F.request(candidates: F.catalog, recent: ["bench"]))
         let first = CoachSuggestionService.generate(from: snapshot)
-        Thread.sleep(forTimeInterval: 0.05)
+        try? await Task.sleep(for: .seconds(0.05))
         #expect(first == CoachSuggestionService.generate(from: snapshot))
     }
 

@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// Decides when the Watch shows its first-screen "Heart Rate Access" boundary.
 ///
@@ -32,7 +33,7 @@ public enum WatchHealthAuthorizationGate {
     public static let lastKnownNeedsRequestKey = "watch.healthAuthorization.lastKnownNeedsRequest"
 
     /// The first frame, before HealthKit has answered this launch.
-    public static func initialGateActive(defaults: UserDefaults = .standard) -> Bool {
+    public static func initialGateActive(defaults: DefaultsStoring = UserDefaults.standard) -> Bool {
         if defaults.object(forKey: lastKnownNeedsRequestKey) != nil {
             return defaults.bool(forKey: lastKnownNeedsRequestKey)
         }
@@ -55,7 +56,7 @@ public enum WatchHealthAuthorizationGate {
     }
 
     /// Remembers HealthKit's answer for the next launch's first frame.
-    public static func record(_ status: RequestStatus, defaults: UserDefaults = .standard) {
+    public static func record(_ status: RequestStatus, defaults: DefaultsStoring = UserDefaults.standard) {
         switch status {
         case .shouldRequest:
             defaults.set(true, forKey: lastKnownNeedsRequestKey)

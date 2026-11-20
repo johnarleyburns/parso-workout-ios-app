@@ -62,7 +62,7 @@ final class StrengthInactivityRegressionSuite {
         let s = WorkoutSession(title: "Push", date: t0)
         ctx.insert(s)
         if withSet { ctx.insert(SetEntry(weight: 80, reps: 5, order: 0, completedAt: t0, session: s)) }
-        let m = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let m = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         #expect(m.startStrength(s, now: t0))
         let platform = FakeWorkoutPlatform(diag)
         m.strengthFinalizer = { _, _ in platform.endHKSession(); platform.endLiveActivity(); self.diag.record("finalizer") }
@@ -74,7 +74,7 @@ final class StrengthInactivityRegressionSuite {
     }
 
     private func watchTracker() -> WatchStrengthInactivityTracker {
-        WatchStrengthInactivityTracker(store: .init(suiteName: "regression.\(UUID().uuidString)"))
+        WatchStrengthInactivityTracker(store: .init(defaults: InMemoryDefaultsStore()))
     }
 
     private func assertTerminalPhone(_ m: ActiveWorkoutModel, _ s: WorkoutSession, deadline: Date,
@@ -163,11 +163,11 @@ final class StrengthInactivityRegressionSuite {
         let s = WorkoutSession(title: "Legs", date: t0)
         ctx.insert(s)
         ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: t0, session: s))
-        let suite = "regression.relaunch.\(UUID().uuidString)"
-        WatchStrengthInactivityTracker(store: .init(suiteName: suite))
+        let defaults = InMemoryDefaultsStore()
+        WatchStrengthInactivityTracker(store: .init(defaults: defaults))
             .begin(sessionID: s.id, now: t0, timeoutMinutes: timeout, enabled: true)
         // "Relaunch": brand-new tracker over the same durable store.
-        let relaunched = WatchStrengthInactivityTracker(store: .init(suiteName: suite))
+        let relaunched = WatchStrengthInactivityTracker(store: .init(defaults: defaults))
         clock.set(t0.addingTimeInterval(3 * 3600))
         guard case let .finalize(rec, endedAt) = relaunched.evaluate(now: clock.now, enabled: true) else {
             Issue.record("watch watchdog: persisted overdue record must finalize")
@@ -305,7 +305,7 @@ final class StrengthInactivityRegressionSuite {
         #expect(s.lastMeaningfulActivityAt == nil)
         ctx.insert(s)
         ctx.insert(SetEntry(weight: 80, reps: 5, order: 0, completedAt: t0, session: s))
-        let m = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let m = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         let alive = t0.addingTimeInterval(120)
         let hb = WorkoutHeartbeat(sessionID: s.id, lastAlive: alive, elapsed: 120, isPaused: false)
         clock.set(t0.addingTimeInterval(10 * 3600))

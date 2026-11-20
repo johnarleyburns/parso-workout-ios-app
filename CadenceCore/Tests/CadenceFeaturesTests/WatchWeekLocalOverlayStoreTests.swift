@@ -1,13 +1,12 @@
 import Foundation
 import Testing
+import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
 struct WatchWeekLocalOverlayStoreTests {
-    private func makeStore(_ name: String = #function) -> WatchWeekLocalOverlayStore {
-        let defaults = UserDefaults(suiteName: "WatchWeekLocalOverlayStoreTests.\(name)")!
-        defaults.removePersistentDomain(forName: "WatchWeekLocalOverlayStoreTests.\(name)")
-        return WatchWeekLocalOverlayStore(defaults: defaults, key: "overlays")
+    private func makeStore() -> WatchWeekLocalOverlayStore {
+        WatchWeekLocalOverlayStore(defaults: InMemoryDefaultsStore(), key: "overlays")
     }
 
     @Test func duplicateRecordWithSameIDDoesNotDuplicate() {
@@ -36,8 +35,7 @@ struct WatchWeekLocalOverlayStoreTests {
     }
 
     @Test func malformedPersistedDataDecodesAsEmpty() {
-        let defaults = UserDefaults(suiteName: "WatchWeekLocalOverlayStoreTests.malformed")!
-        defaults.removePersistentDomain(forName: "WatchWeekLocalOverlayStoreTests.malformed")
+        let defaults = InMemoryDefaultsStore()
         defaults.set(Data([0xFF, 0x00, 0x13]), forKey: "overlays")
         let store = WatchWeekLocalOverlayStore(defaults: defaults, key: "overlays")
 
@@ -45,8 +43,7 @@ struct WatchWeekLocalOverlayStoreTests {
     }
 
     @Test func watchRelaunchPreservesUnresolvedOverlay() {
-        let defaults = UserDefaults(suiteName: "WatchWeekLocalOverlayStoreTests.relaunch")!
-        defaults.removePersistentDomain(forName: "WatchWeekLocalOverlayStoreTests.relaunch")
+        let defaults = InMemoryDefaultsStore()
         let first = WatchWeekLocalOverlayStore(defaults: defaults, key: "overlays")
         first.record(.init(id: UUID(), weekKey: "2026-11-02", kind: .cardio,
                            moderateEquivalentMinutes: 30, completedAt: Date()))

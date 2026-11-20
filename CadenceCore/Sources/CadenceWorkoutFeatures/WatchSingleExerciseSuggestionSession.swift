@@ -20,7 +20,12 @@ public final class WatchSingleExerciseSuggestionSession {
     }
 
     /// Runs off the main actor. Receives the input and the session-only exclusions.
-    public typealias Generator = @Sendable (SuggestedWorkoutInput, Set<String>) throws -> SuggestedWorkoutExercise?
+    ///
+    /// `async` so tests can gate a generation with an awaiting seam (for example
+    /// a continuation released by the test) instead of blocking a cooperative
+    /// thread with `DispatchSemaphore`/`Thread.sleep`. Synchronous generators
+    /// still satisfy this type and need no call-site changes.
+    public typealias Generator = @Sendable (SuggestedWorkoutInput, Set<String>) async throws -> SuggestedWorkoutExercise?
 
     public static let defaultGenerator: Generator = { input, excluded in
         SuggestedWorkoutGenerator.suggestSingleExercise(
@@ -117,7 +122,12 @@ public final class WatchSingleExerciseSuggestionSession {
         pendingTask = Task { [weak self] in
             let raced = await Self.withTimeout(seconds: timeout, sleep: timeoutSleep) {
                 await Task.detached {
-                    Result { try generator(input, excluded) }
+                    do {
+                        return Result<SuggestedWorkoutExercise?, Error>.success(
+                            try await generator(input, excluded))
+                    } catch {
+                        return Result<SuggestedWorkoutExercise?, Error>.failure(error)
+                    }
                 }.value
             }
             let result: Result<SuggestedWorkoutExercise?, Error>

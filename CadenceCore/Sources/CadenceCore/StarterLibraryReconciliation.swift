@@ -45,7 +45,7 @@ public enum StarterLibraryReconciliation {
     @discardableResult
     public static func reconcileIfStale(_ context: ModelContext,
                                         revision: String,
-                                        defaults: UserDefaults = .standard) throws -> Bool {
+                                        defaults: DefaultsStoring = UserDefaults.standard) throws -> Bool {
         let before = "\(revision)#\(try storeSignature(context))"
         if defaults.string(forKey: defaultsKey) == before { return false }
         try WorkoutRepository.seedStarterLibraryIfNeeded(context)

@@ -5,11 +5,7 @@ import Foundation
 import CadenceCore
 import CadencePhoneFeatures
 
-// Release-CI quarantine (2026-11-20): two cancellation tests block cooperative
-// threads on DispatchSemaphore.gate.wait(). Replace those gates with an async
-// test seam before removing this condition.
 @MainActor
-@Suite(.enabled(if: !ReleaseCITestSupport.isReleaseCI))
 final class WatchSingleExerciseSuggestionSessionTests {
     private func input(_ count: Int = 6) -> SuggestedWorkoutInput {
         let muscles = ["chest", "lats", "quadriceps", "shoulders", "hamstrings", "biceps"]
@@ -78,12 +74,15 @@ final class WatchSingleExerciseSuggestionSessionTests {
     }
 
     @Test func staleCompletionCannotReplaceNewerResult() async {
-        let gate = DispatchSemaphore(value: 0)
-        let calls = LockedCounter()
+        let gate = AsyncGate()
+        let calls = CallCounter()
         let session = WatchSingleExerciseSuggestionSession { _, _ in
-            if calls.next() == 1 { gate.wait(); return SuggestedWorkoutExercise(
-                candidateID: "old", name: "old", mechanics: .compound, plannedSets: 3,
-                repRange: 8...12, contributions: [], selectionScore: 1) }
+            if await calls.next() == 1 {
+                await gate.waitForRelease()
+                return SuggestedWorkoutExercise(
+                    candidateID: "old", name: "old", mechanics: .compound, plannedSets: 3,
+                    repRange: 8...12, contributions: [], selectionScore: 1)
+            }
             return SuggestedWorkoutExercise(
                 candidateID: "new", name: "new", mechanics: .compound, plannedSets: 3,
                 repRange: 8...12, contributions: [], selectionScore: 1)
@@ -91,21 +90,28 @@ final class WatchSingleExerciseSuggestionSessionTests {
         let i = input()
         session.suggest(input: i)
         let first = session.pendingTask
+        // Wait until the old generation is actually suspended inside the
+        // generator, so the replacement below is unambiguously newer.
+        await gate.waitUntilStarted()
         session.suggest(input: i)
         await session.pendingTask?.value
         #expect(session.state == .ready(exercise("new")))
-        gate.signal()
+        await gate.release()
         await first?.value
         #expect(session.state == .ready(exercise("new")))
     }
 
     @Test func cancelDiscardsLateCompletion() async {
-        let gate = DispatchSemaphore(value: 0)
-        let session = WatchSingleExerciseSuggestionSession { _, _ in gate.wait(); return nil }
+        let gate = AsyncGate()
+        let session = WatchSingleExerciseSuggestionSession { _, _ in
+            await gate.waitForRelease()
+            return nil
+        }
         session.suggest(input: input())
         let task = session.pendingTask
+        await gate.waitUntilStarted()
         session.cancel()
-        gate.signal()
+        await gate.release()
         await task?.value
         #expect(session.state == .idle)
     }
@@ -141,14 +147,14 @@ final class WatchSingleExerciseSuggestionSessionTests {
     /// not leave the session stuck in `.calculating` ("Finding an exercise...")
     /// forever -- it should surface a terminal `.failed` state once the bounded
     /// timeout elapses. The timeout's wait is injected to resolve instantly
-    /// instead of racing a real `Task.sleep` against the fake generator's real
-    /// `Thread.sleep`: both draw on Swift Testing's shared cooperative thread
-    /// pool, and with hundreds of suites running concurrently in the full CI
-    /// suite, no fixed real-time margin between them is safe from that
-    /// contention (confirmed: widening the margin from 6x to 20x still flaked).
+    /// instead of racing a real `Task.sleep` against the fake generator's own
+    /// sleep: both draw on Swift Testing's shared cooperative thread pool, and
+    /// with hundreds of suites running concurrently in the full CI suite, no
+    /// fixed real-time margin between them is safe from that contention
+    /// (confirmed: widening the margin from 6x to 20x still flaked).
     @Test func timesOutInsteadOfHangingForever() async {
         let session = WatchSingleExerciseSuggestionSession(generator: { _, _ in
-            Thread.sleep(forTimeInterval: 0.2)
+            try? await Task.sleep(for: .seconds(0.2))
             return nil
         }, timeout: 0.05, timeoutSleep: { _ in })
         session.suggest(input: input())
@@ -158,8 +164,38 @@ final class WatchSingleExerciseSuggestionSessionTests {
     }
 }
 
-private final class LockedCounter: @unchecked Sendable {
-    private let lock = NSLock()
+/// Deterministic, non-blocking stand-in for a cancellation/race gate. Waiting
+/// on it suspends the calling task instead of occupying a cooperative thread.
+private actor AsyncGate {
+    private var started = false
+    private var released = false
+    private var startWaiters: [CheckedContinuation<Void, Never>] = []
+    private var releaseWaiter: CheckedContinuation<Void, Never>?
+
+    /// Called by the fake generator. Signals start, then suspends until
+    /// `release()` is called.
+    func waitForRelease() async {
+        started = true
+        for waiter in startWaiters { waiter.resume() }
+        startWaiters.removeAll()
+        guard !released else { return }
+        await withCheckedContinuation { releaseWaiter = $0 }
+    }
+
+    /// Called by the test to ensure the first generation has entered the gate.
+    func waitUntilStarted() async {
+        if started { return }
+        await withCheckedContinuation { startWaiters.append($0) }
+    }
+
+    func release() {
+        released = true
+        releaseWaiter?.resume()
+        releaseWaiter = nil
+    }
+}
+
+private actor CallCounter {
     private var value = 0
-    func next() -> Int { lock.lock(); defer { lock.unlock() }; value += 1; return value }
+    func next() -> Int { value += 1; return value }
 }

@@ -23,6 +23,13 @@ struct WatchHomeWorkoutSelectionTests {
         }
     }
 
+    @Test func selectAndStartPicksAndLaunchesInOneStep() {
+        var state = WatchHomeWorkoutSelection()
+        state.selectAndStart(.cardio(.swim))
+        #expect(state.choice == .cardio(.swim))
+        #expect(state.launchChoice == .cardio(.swim))
+    }
+
     @Test func startSnapshotsTheSelectionUntilDismissed() {
         var state = WatchHomeWorkoutSelection()
         state.select(.strength(.previous))

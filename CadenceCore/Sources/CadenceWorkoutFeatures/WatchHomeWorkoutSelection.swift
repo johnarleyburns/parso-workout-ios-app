@@ -45,6 +45,12 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
         launchChoice = choice
     }
 
+    /// One-step list-row action: select the tapped choice and open it.
+    public mutating func selectAndStart(_ choice: HomeWorkoutStartChoice) {
+        select(choice)
+        start()
+    }
+
     public mutating func dismissStart() {
         launchChoice = nil
     }

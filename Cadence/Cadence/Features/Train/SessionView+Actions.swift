@@ -26,46 +26,44 @@ extension SessionView {
             }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            HStack(spacing: 12) {
+            Menu {
                 if let plan {
                     NavigationLink {
                         RoutineDetailView(plan: plan, onEditorStart: { _ in })
                     } label: {
-                        Image(systemName: "info.circle")
+                        Label("Workout details", systemImage: "info.circle")
                     }
                     .accessibilityIdentifier("session.info")
-                    .accessibilityLabel("Workout details")
                 }
-                Menu {
-                    Button {
-                        editedTitle = session.title; renamePresented = true
-                    } label: { Label("Edit plan", systemImage: "pencil") }
-                    Button { managePartnersPresented = true } label: {
-                        Label("Partners", systemImage: "person.2")
-                    }
-                    Button { workoutSettings = settings.lastStrengthSettings; workoutSettingsPresented = true } label: {
-                        Label("Workout settings", systemImage: "gearshape")
-                    }
-                    if active.strengthSession?.id == session.id {
-                        Button { coolDownConfirm = true } label: {
-                            Label("Start Cool Down", systemImage: "figure.cooldown")
-                        }.accessibilityIdentifier("session.startCoolDown")
-                    }
-                    Button(role: .destructive) { showDeleteConfirm = true } label: {
-                        Label("Delete workout", systemImage: "trash")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis")
+                Button {
+                    editedTitle = session.title; renamePresented = true
+                } label: { Label("Edit plan", systemImage: "pencil") }
+                Button { managePartnersPresented = true } label: {
+                    Label("Partners", systemImage: "person.2")
                 }
-                .accessibilityIdentifier("session.menu")
-                .accessibilityLabel("Workout options")
+                Button { workoutSettings = settings.lastStrengthSettings; workoutSettingsPresented = true } label: {
+                    Label("Workout settings", systemImage: "gearshape")
+                }
+                if active.strengthSession?.id == session.id {
+                    Button { coolDownConfirm = true } label: {
+                        Label("Start Cool Down", systemImage: "figure.cooldown")
+                    }.accessibilityIdentifier("session.startCoolDown")
+                }
                 Button { Task { await saveToHealth() } } label: {
-                    Image(systemName: healthSaved ? "checkmark.circle.fill" : "heart.text.square")
+                    Label(healthSaved ? "Saved to Apple Health" : "Save to Apple Health",
+                          systemImage: healthSaved ? "checkmark.circle.fill" : "heart.text.square")
                 }
                 .disabled(session.orderedSets.isEmpty)
                 .accessibilityIdentifier("session.saveHealth")
-                .accessibilityLabel(healthSaved ? "Saved to Apple Health" : "Save workout to Apple Health")
+                Divider()
+                Button(role: .destructive) { showDeleteConfirm = true } label: {
+                    Label("Delete workout", systemImage: "trash")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
             }
+            .accessibilityIdentifier("session.menu")
+            .accessibilityLabel("Workout options")
         }
     }
 
@@ -124,6 +122,22 @@ extension SessionView {
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded)
     }
+    /// The roster line is secondary context while training: keep it behind an
+    /// explicit disclosure so the workout list stays focused on sets.
+    var partnerDisclosure: some View {
+        DisclosureGroup(isExpanded: $showPartnerDetails) {
+            partnerBar
+                .padding(.top, 6)
+        } label: {
+            Text(showPartnerDetails ? "Show less" : "Show more…")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.tint)
+                .frame(minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .accessibilityIdentifier("session.partnerDetails")
+    }
+
     var partnerBar: some View {
         HStack(spacing: 8) {
             Text("With:").font(.caption).foregroundStyle(.secondary)

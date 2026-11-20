@@ -291,7 +291,14 @@ extension SessionView {
                             exerciseForName: { name in
                                 plannedExerciseIndex[name] ?? exerciseForName(named: name)
                             },
-                            onAdd: addSuggestedExercise)
+                            onAdd: addSuggestedExercise,
+                            onFindExercise: {
+                                suggestExerciseRequest = nil
+                                Task { @MainActor in
+                                    await Task.yield()
+                                    pickerPresented = true
+                                }
+                            })
     }
 }
 

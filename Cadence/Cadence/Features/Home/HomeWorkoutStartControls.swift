@@ -5,66 +5,31 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
+/// The inline workout list on Today. Field testing moved this out of a popup
+/// and removed its Start button: tapping a row starts that workout directly,
+/// exactly like the Watch launcher. Rows use a warm, semantic palette instead
+/// of the previous all-grey treatment.
 struct HomeWorkoutStartControls: View {
-    let onQuickStart: () -> Void
     let onSuggested: () -> Void
-    let onPreviousStart: (EditablePlan) -> Void
     let onCardio: (WorkoutType) -> Void
     let onCustomCardio: (String, Bool) -> Void
     let onSuggestedCardio: () -> Void
-    @AppStorage(HomeWorkoutStartChoice.selectionStorageKey)
-    private var selectedChoiceID = HomeWorkoutStartChoice.defaultChoice.id
-
-    private var selection: HomeWorkoutStartChoice {
-        get { HomeWorkoutStartChoice.restored(from: selectedChoiceID) }
-        nonmutating set { selectedChoiceID = newValue.id }
-    }
-    @State private var showingPrevious = false
     @State private var showingCustomCardio = false
 
     var body: some View {
-        VStack(spacing: 12) {
-            Menu {
-                Section {
-                    ForEach(HomeWorkoutStartChoice.strengthChoices) { choice($0) }
-                }
-                Section {
-                    ForEach(HomeWorkoutStartChoice.cardioChoices) { choice($0) }
-                }
-            } label: {
-                sourceLabel(selection.title)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Workout type")
-            .accessibilityValue(Text(LocalizedStringKey(selection.title)))
-            .accessibilityIdentifier("home.start.workoutSource")
-
-            Button {
-                switch selection {
-                case .strength(.suggested): onSuggested()
-                case .strength(.previous): showingPrevious = true
-                case .strength(.quickStart): onQuickStart()
-                case .cardio(.other): showingCustomCardio = true
-                case .cardio(let type): onCardio(type)
-                case .suggestedCardio: onSuggestedCardio()
-                }
-            } label: {
-                Label("Start Workout", systemImage: "play.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-            }
-            .cadenceGlassButton(prominent: true, tint: Color(red: 0.08, green: 0.38, blue: 0.16))
-            .accessibilityIdentifier("home.start.workout")
-        }
-        .glassGroup(spacing: 12)
-        .sheet(isPresented: $showingPrevious) {
-            NavigationStack {
-                HomePreviousStrengthWorkouts { plan in
-                    showingPrevious = false
-                    onPreviousStart(plan)
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Start a workout")
+                .font(.headline)
+            VStack(spacing: 0) {
+                ForEach(Array(HomeWorkoutStartChoice.allChoices.enumerated()), id: \.element.id) { index, option in
+                    if index > 0 { Divider().padding(.leading, 52) }
+                    row(option)
                 }
             }
         }
+        .padding(CGFloat(LayoutMetrics.cardPadding))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceCard()
         .sheet(isPresented: $showingCustomCardio) {
             NavigationStack {
                 OtherCardioEntryView { description, gps in
@@ -73,30 +38,64 @@ struct HomeWorkoutStartControls: View {
                 }
             }
         }
+        .accessibilityIdentifier("home.start.workoutList")
     }
 
-    private func choice(_ option: HomeWorkoutStartChoice) -> some View {
-        Button { selection = option } label: {
-            Label(LocalizedStringKey(option.title), systemImage: option.symbol)
+    private func row(_ option: HomeWorkoutStartChoice) -> some View {
+        Button {
+            Haptics.selection()
+            start(option)
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: option.symbol)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(tint(for: option))
+                    .frame(width: 34, height: 34)
+                    .background(tint(for: option).opacity(0.14), in: Circle())
+                Text(LocalizedStringKey(option.title))
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
         }
-        .accessibilityAddTraits(selection == option ? .isSelected : [])
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.start.\(option.id)")
+        .accessibilityHint("Starts \(option.title)")
     }
 
-    private func sourceLabel(_ title: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: selection.symbol)
-            Text(LocalizedStringKey(title))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.up.chevron.down")
-                .foregroundStyle(.secondary)
+    private func start(_ option: HomeWorkoutStartChoice) {
+        switch option {
+        case .strength(.suggested):
+            onSuggested()
+        case .cardio(.other):
+            showingCustomCardio = true
+        case .cardio(let type):
+            onCardio(type)
+        case .suggestedCardio:
+            onSuggestedCardio()
         }
-        .font(.body.weight(.semibold))
-        .padding(.horizontal, 20)
-        .frame(minHeight: CGFloat(LayoutMetrics.actionButtonHeight))
-        .contentShape(Capsule())
-        .cadenceGlass(in: Capsule(), interactive: true)
     }
 
+    /// Warm strength green, cardio coral/teal, and suggestion amber. These are
+    /// intentional role colors, all backed by system colors for dark mode and
+    /// Increase Contrast.
+    private func tint(for option: HomeWorkoutStartChoice) -> Color {
+        switch option {
+        case .strength: return .green
+        case .suggestedCardio: return .orange
+        case .cardio(.hiit), .cardio(.boxing): return .red
+        case .cardio(.swim): return .teal
+        case .cardio(.rowing): return .blue
+        case .cardio(.cycle), .cardio(.elliptical), .cardio(.stairClimber): return .indigo
+        case .cardio(.run), .cardio(.walk): return .orange
+        case .cardio(.other): return .pink
+        }
+    }
 }
 
 struct HomePreviousStrengthWorkouts: View {
@@ -116,7 +115,7 @@ struct HomePreviousStrengthWorkouts: View {
                 }
             }
         }
-        .navigationTitle("Repeat Lifts")
+        .navigationTitle("Previous")
         .sheet(item: $selectedPlan) { plan in
             NavigationStack {
                 WorkoutPlanEditor(plan: plan, onStart: onStart)

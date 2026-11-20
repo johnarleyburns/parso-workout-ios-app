@@ -5,8 +5,9 @@ import CadenceCore
 @testable import CadenceWorkoutFeatures
 
 struct HomeWorkoutStartChoiceTests {
-    @Test func strengthChoicesAndRecentCardioLimit() {
-        #expect(HomeStrengthStartChoice.allCases.map(\.title) == ["Custom", "Personalized", "Previous"])
+    @Test func onlyLiftIsOfferedForStrength() {
+        #expect(HomeStrengthStartChoice.allCases.map(\.title) == ["Lift"])
+        #expect(HomeWorkoutStartChoice.strengthChoices.map(\.title) == ["Lift"])
         #expect(HomeRecentCardioChoices.recent(["run", "run", "walk", "cycle", "swim"]) ==
                        ["run", "walk", "cycle"])
         #expect(HomeRecentCardioChoices.recent([String]()) == [])
@@ -14,7 +15,7 @@ struct HomeWorkoutStartChoiceTests {
     @Test func unifiedPhoneAndWatchChoicesIncludeEveryWorkoutOnce() {
         let choices = HomeWorkoutStartChoice.allChoices
         #expect(choices.map(\.title) == [
-            "Personalized Lifts", "Repeat Lifts", "Custom", "Personalized Cardio", "HIIT",
+            "Lift", "Personalized Cardio", "HIIT",
             "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Custom"
         ])
         #expect(Set(choices.map(\.id)).count == choices.count)
@@ -45,8 +46,9 @@ struct HomeWorkoutStartChoiceTests {
         }
     }
 
-    @Test func missingOrObsoleteSelectionUsesSuggestedStrength() {
-        for identifier in ["", "cardio.removedActivity", "strength.removedSource", "cardio.weights"] {
+    @Test func missingOrRetiredStrengthSelectionUsesLift() {
+        for identifier in ["", "cardio.removedActivity", "strength.removedSource",
+                           "strength.previous", "strength.quickStart", "cardio.weights"] {
             #expect(HomeWorkoutStartChoice.restored(from: identifier) == .strength(.suggested))
         }
     }

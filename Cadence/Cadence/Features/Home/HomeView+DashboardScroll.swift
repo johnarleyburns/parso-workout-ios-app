@@ -33,13 +33,6 @@ extension HomeView {
                 weeklyDashboardScroll
             }
         }
-        .safeAreaInset(edge: .bottom) {
-            if surface == .today, resumeSession == nil {
-                workoutStartControls
-                    .padding(.horizontal)
-                    .padding(.vertical, 16)
-            }
-        }
         .background { CadenceGlassBackdrop(tint: .green) }
         .navigationTitle(surface.title)
         .navigationBarTitleDisplayMode(.large)
@@ -81,18 +74,22 @@ extension HomeView {
         }
     }
 
-    /// Today is one flexible card above the bottom start controls, so This Week
-    /// fills the available height instead of leaving a scroll view's unused
-    /// space below it. Strength/Cardio remain scrollable.
+    /// Today is fully scrollable. The start list is inline rather than a
+    /// floating popup, and each row starts its workout directly.
     private var todayDashboardContent: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            dashboardTopContent
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                dashboardTopContent
+                if resumeSession == nil {
+                    workoutStartControls
+                }
+            }
+            .id("week.top")
+            .padding(.horizontal)
+            .padding(.top, 20)
+            .padding(.bottom)
+            .frame(maxWidth: .infinity, alignment: .top)
         }
-        .id("week.top")
-        .padding(.horizontal)
-        .padding(.top, 20)
-        .padding(.bottom)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var weeklyDashboardScroll: some View {

@@ -195,7 +195,7 @@ struct IntervalView: View {
                         Button {
                             runner.addTime(60)
                         } label: {
-                            Label("+1 min", systemImage: "plus")
+                            Label("1 min", systemImage: "plus")
                                 .frame(maxWidth: .infinity, minHeight: 56)
                         }
                         .cadenceGlassButton(tint: .black.opacity(0.4))

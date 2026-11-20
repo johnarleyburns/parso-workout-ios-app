@@ -19,19 +19,19 @@ struct WatchHomeSuggestedStrengthView: View {
             } else if finished && needsSync {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Sync with iPhone").font(.headline)
-                    Text("Open Cladiron on your iPhone once to send your 12-week training history. Custom and Previous still work offline.")
+                    Text("Open Cladiron on your iPhone once to send your 12-week training history.")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
                 .accessibilityIdentifier("watchStrength.personalized.needsSync")
             } else if finished {
-                Text("Couldn't create a personalized workout. Try again or use Custom.")
+                Text("Couldn't create your Lift. Try again after syncing with iPhone.")
                     .accessibilityIdentifier("watchStrength.personalized.failed")
             } else {
-                ProgressView("Preparing personalized workout…")
+                ProgressView("Preparing your Lift…")
             }
         }
-        .navigationTitle("Personalized")
+        .navigationTitle("Lift")
         .task(id: manager.mesocycleMirrorRevision) {
             await generate()
         }

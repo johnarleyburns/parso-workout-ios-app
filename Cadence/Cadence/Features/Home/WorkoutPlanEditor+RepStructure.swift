@@ -14,9 +14,20 @@ extension WorkoutPlanEditor {
 
     var workoutRepStructureControls: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Workout rep structure").font(.headline)
-            Text("Choose a structure for each person. It applies to every exercise and keeps their planned loads.")
-                .font(.caption).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                Text("Workout rep structure").font(.headline)
+                Spacer()
+                Button { showRepStructureInfo = true } label: {
+                    Image(systemName: "info.circle")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("About workout rep structure")
+                .accessibilityIdentifier("editor.repStructureInfo")
+            }
             ForEach(rosterMembers(), id: \.performerID) { person in
                 let sets = repStructureSets(for: person.performerID)
                 Button {
@@ -33,6 +44,11 @@ extension WorkoutPlanEditor {
             }
         }
         .workoutPlanCard()
+        .alert("Workout rep structure", isPresented: $showRepStructureInfo) {
+            Button("Got it", role: .cancel) {}
+        } message: {
+            Text("Choose a structure for each person. It applies to every exercise and keeps their planned loads.")
+        }
         .sheet(item: $repStructurePerformer) { person in
             RepSchemeSheet(current: person.sets.map(\.targetReps)) { reps in
                 plan.applyRepStructure(reps, performerID: person.performerID)

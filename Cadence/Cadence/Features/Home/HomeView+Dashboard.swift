@@ -55,24 +55,6 @@ extension HomeView {
             .sheet(isPresented: $recoveryOptionsPresented) {
                 recoveryOptionsSheet
             }
-            .sheet(isPresented: $workoutControlsPresented, onDismiss: presentPendingSuggestedWorkout) {
-                NavigationStack {
-                    HomeWorkoutStartControls(
-                        onQuickStart: {
-                            workoutControlsPresented = false
-                            startQuickStartStrength()
-                        },
-                        onSuggested: { workoutControlsPresented = false; openTodaySuggestion() },
-                        onPreviousStart: { plan in workoutControlsPresented = false; handleEditorStart(plan) },
-                        onCardio: { type in workoutControlsPresented = false; start(type) },
-                        onCustomCardio: { description, gps in
-                            workoutControlsPresented = false
-                            startOtherCardio(description: description, gps: gps)
-                        },
-                        onSuggestedCardio: { workoutControlsPresented = false; requestSuggestedCardio() })
-                    .padding()
-                }
-            }
             .safeAreaInset(edge: .bottom) { parkedCardioBar }
             .sheet(item: $cardioType, onDismiss: releaseCardioWorkout) {
                 RecordCardioView(initialType: $0, tracksGPS: cardioTracksGPS,
@@ -139,7 +121,7 @@ extension HomeView {
                     session.deletedAt = Date()
                     try? context.save()
                     active.discardActive()
-                    workoutControlsPresented = true
+                    workoutControlsPresented = false
                 }
                 .accessibilityIdentifier("workoutConflict.confirmCancel")
                 Button("Keep Workout", role: .cancel) { }

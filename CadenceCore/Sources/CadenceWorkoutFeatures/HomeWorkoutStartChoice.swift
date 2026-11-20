@@ -2,14 +2,15 @@ import CadenceFeatures
 import Foundation
 import CadenceCore
 
+/// The single strength launch offered on iPhone and Apple Watch. Field testing
+/// removed the separate Repeat and Custom rows: Lift is the personalized
+/// strength workout, and a workout is fully editable from its plan screen.
 public enum HomeStrengthStartChoice: String, CaseIterable, Identifiable, Sendable {
-    case quickStart, suggested, previous
+    case suggested
     public var id: String { rawValue }
     public var title: String {
         switch self {
-        case .quickStart: "Custom"
-        case .suggested: "Personalized"
-        case .previous: "Previous"
+        case .suggested: "Lift"
         }
     }
 }
@@ -41,7 +42,10 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
         allChoices.first { $0.id == identifier } ?? defaultChoice
     }
 
-    public static let strengthChoices: [Self] = [.strength(.suggested), .strength(.previous), .strength(.quickStart)]
+    /// Only the personalized Lift starts strength. The retired Repeat/Custom
+    /// identifiers are intentionally absent so an older saved selection falls
+    /// back to Lift instead of resurrecting a removed row.
+    public static let strengthChoices: [Self] = [.strength(.suggested)]
     public static let cardioChoices: [Self] = [.suggestedCardio] + ([WorkoutType.hiit] + WorkoutType.allCases.filter {
         $0 != .weights && $0 != .hiit
     }).map { .cardio($0) }
@@ -57,9 +61,7 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
 
     public var title: String {
         switch self {
-        case .strength(.suggested): "Personalized Lifts"
-        case .strength(.previous): "Repeat Lifts"
-        case .strength(.quickStart): "Custom"
+        case .strength(.suggested): "Lift"
         case .cardio(.other): "Custom"
         case .cardio(let type): type.displayName
         case .suggestedCardio: "Personalized Cardio"
@@ -69,8 +71,6 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     public var symbol: String {
         switch self {
         case .strength(.suggested): "dumbbell.fill"
-        case .strength(.previous): "dumbbell.fill"
-        case .strength(.quickStart): "dumbbell.fill"
         case .cardio(let type): type.symbol
         case .suggestedCardio: "wand.and.stars"
         }

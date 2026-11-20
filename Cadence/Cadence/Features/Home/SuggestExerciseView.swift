@@ -16,6 +16,9 @@ struct SuggestExerciseView: View {
     let request: SuggestedExerciseRequest
     let exerciseForName: (String) -> Exercise?
     let onAdd: ((SuggestedWorkoutExercise) -> Void)?
+    /// Opens the full catalog picker. This is the old "Add Exercise" action,
+    /// now secondary to the suggestion that names this screen.
+    var onFindExercise: (() -> Void)? = nil
 
     @Environment(\.dismiss) private var dismiss
     @State private var state: SingleExerciseSuggestionState = .calculating
@@ -39,7 +42,7 @@ struct SuggestExerciseView: View {
                         .accessibilityIdentifier("suggestExercise.retry")
                 }
             }
-            .navigationTitle("Suggest Exercise")
+            .navigationTitle("Add Exercise")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -142,6 +145,14 @@ struct SuggestExerciseView: View {
                         dismiss()
                     }
                     .accessibilityIdentifier("suggestExercise.add")
+                }
+                if let onFindExercise {
+                    CadenceActionButton(title: String(localized: "Find Exercise"), systemImage: "magnifyingglass",
+                                        emphasis: .secondary) {
+                        dismiss()
+                        onFindExercise()
+                    }
+                    .accessibilityIdentifier("suggestExercise.findExercise")
                 }
                 CadenceActionButton(title: String(localized: "Suggest another"), systemImage: "arrow.clockwise",
                                     emphasis: .secondary) {

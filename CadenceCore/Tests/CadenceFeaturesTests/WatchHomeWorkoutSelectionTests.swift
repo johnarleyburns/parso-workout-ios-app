@@ -32,11 +32,11 @@ struct WatchHomeWorkoutSelectionTests {
 
     @Test func startSnapshotsTheSelectionUntilDismissed() {
         var state = WatchHomeWorkoutSelection()
-        state.select(.strength(.previous))
+        state.select(.strength(.suggested))
         state.start()
-        #expect(state.launchChoice == .strength(.previous))
+        #expect(state.launchChoice == .strength(.suggested))
         state.select(.cardio(.swim))
-        #expect(state.launchChoice == .strength(.previous))
+        #expect(state.launchChoice == .strength(.suggested))
         state.dismissStart()
         #expect(state.launchChoice == nil)
         state.start()
@@ -58,7 +58,7 @@ struct WatchHomeWorkoutSelectionTests {
         defaults.removeObject(forKey: WatchHomeWorkoutSelection.storageKey)
         defaults.set("strength.previous", forKey: WatchHomeWorkoutSelection.legacyStrengthStorageKey)
         defaults.removeObject(forKey: WatchHomeWorkoutSelection.legacyCardioStorageKey)
-        #expect(WatchHomeWorkoutSelection.persisted(defaults: defaults).choice == .strength(.previous))
+        #expect(WatchHomeWorkoutSelection.persisted(defaults: defaults).choice == .strength(.suggested))
 
         defaults.removeObject(forKey: WatchHomeWorkoutSelection.legacyStrengthStorageKey)
         defaults.set("cardio.swim", forKey: WatchHomeWorkoutSelection.legacyCardioStorageKey)
@@ -69,6 +69,6 @@ struct WatchHomeWorkoutSelectionTests {
         let invalid = WatchHomeWorkoutSelection(savedID: "cardio.not-real")
         #expect(invalid.choice == HomeWorkoutStartChoice.defaultChoice)
         let legacy = WatchHomeWorkoutSelection(legacyChoiceID: "strength.previous")
-        #expect(legacy.choice == .strength(.previous))
+        #expect(legacy.choice == .strength(.suggested))
     }
 }

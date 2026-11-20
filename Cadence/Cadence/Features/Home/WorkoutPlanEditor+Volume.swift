@@ -66,15 +66,6 @@ extension WorkoutPlanEditor {
     }
 
 
-    var settingsButton: some View {
-        CadenceActionButton(title: String(localized: "Show workout settings\u{2026}"),
-                            systemImage: "gearshape",
-                            emphasis: .secondary) {
-            settingsPresented = true
-        }
-        .accessibilityIdentifier("editor.showSettings")
-    }
-
     /// Planned volume is intentionally cheap and synchronous: it only reduces
     /// the exercises currently being edited. This keeps typing, swapping, and
     /// changing set counts responsive.

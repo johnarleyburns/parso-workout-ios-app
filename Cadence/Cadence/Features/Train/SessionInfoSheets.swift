@@ -11,6 +11,54 @@ import CadenceWorkoutFeatures
 // every exercise card, every sheet closure, the exercise picker included. As its
 // own view the observation is scoped to the band alone.
 
+/// Compact right-aligned live heart rate for the elapsed-time line. The full
+/// Watch status/reconnect controls live behind the adjacent info button rather
+/// than occupying rows on the workout page.
+struct SessionLiveHRInline: View {
+    @Environment(AppModel.self) private var model
+    @State private var showingInfo = false
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 5)) { context in
+            HStack(spacing: 5) {
+                Image(systemName: "heart.fill")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                Text(bpmText(now: context.date))
+                    .font(.caption.weight(.semibold))
+                    .monospacedDigit()
+                Button { showingInfo = true } label: {
+                    Image(systemName: "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30, height: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("session.hr.info")
+                .accessibilityLabel("Heart rate status and reconnect")
+            }
+        }
+        .alert("Receiving live HR", isPresented: $showingInfo) {
+            Button("Reconnect Apple Watch HR") { model.reconnectWatchHR() }
+                .accessibilityIdentifier("session.watch.reconnect")
+            Button("Done", role: .cancel) {}
+        } message: {
+            Text(model.watchHRStatusText)
+        }
+    }
+
+    private func bpmText(now: Date) -> String {
+        if model.hrm.source == .appleWatch,
+           !model.watchHRConnection.isSampleFresh(now: now) {
+            return "—"
+        }
+        guard let bpm = model.hrm.currentBPM else { return "—" }
+        return "\(Int(bpm)) bpm"
+    }
+}
+
+
 struct SessionLiveHRBand: View {
     @Environment(AppModel.self) private var model
     var sessionID: UUID? = nil

@@ -47,9 +47,9 @@ public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
         }()
         case .strengthOverTime: return {
             #if os(Linux)
-            "Strength over time"
+            "Lifts"
             #else
-            String(localized: "Strength over time", bundle: FeatureLocalization.bundle)
+            String(localized: "Lifts", bundle: FeatureLocalization.bundle)
             #endif
         }()
         case .tests: return {

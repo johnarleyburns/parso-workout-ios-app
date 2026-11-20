@@ -82,7 +82,8 @@ extension HomeView {
             .onReceive(NotificationCenter.default.publisher(for: .cadenceStartTodaysWorkout)) { _ in
                 _ = CadencePlatformRequestStore.consumeStartWorkout()
                 guard active.liveWorkout.active == nil else { return }
-                workoutControlsPresented = true
+                workoutControlsPresented = false
+                openTodaySuggestion()
             }
             .modifier(PlanningDraftStartReceiver { plan in
                 guard active.liveWorkout.active == nil else {

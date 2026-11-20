@@ -137,16 +137,9 @@ struct HomeMuscleMapView: View {
     private func heatButton(for callout: MuscleMapCallout) -> some View {
         let row = rows.first { $0.group == callout.group }
         let sets = row?.sets ?? 0
-        let level = MuscleHeatPresenter.level(sets: sets, target: 12)
         return Button { onSelect(callout.group) } label: {
             Circle().fill(.clear)
                 .frame(width: MapMetrics.hitPointSize, height: MapMetrics.hitPointSize)
-                .overlay {
-                    if level == .none {
-                        Circle().inset(by: 9).stroke(CadenceTheme.muscleZero,
-                                        style: StrokeStyle(lineWidth: 1.5, dash: [3, 2]))
-                    }
-                }
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -186,7 +179,7 @@ struct HomeMuscleMapView: View {
 
     private var legend: some View {
         HStack(spacing: 8) {
-            legendItem("0 sets", color: CadenceTheme.muscleZero, dashed: true)
+            legendItem("0 sets", color: CadenceTheme.muscleZero)
             legendItem("Below 4", color: CadenceTheme.muscleBelow)
             legendItem("4–7", color: CadenceTheme.muscleBuilding)
             legendItem("8+", color: CadenceTheme.muscleProductive)
@@ -197,10 +190,9 @@ struct HomeMuscleMapView: View {
         .accessibilityLabel("Muscle coverage legend: red for zero sets, yellow below the 4-set minimum, light green building toward productive volume, and green for productive volume")
     }
 
-    private func legendItem(_ title: String, color: Color, dashed: Bool = false) -> some View {
+    private func legendItem(_ title: String, color: Color) -> some View {
         HStack(spacing: 3) {
             RoundedRectangle(cornerRadius: 2).fill(color).frame(width: 12, height: 8)
-                .overlay { if dashed { RoundedRectangle(cornerRadius: 2).stroke(CadenceTheme.attention, style: StrokeStyle(dash: [2, 2])) } }
             Text(title)
         }
     }

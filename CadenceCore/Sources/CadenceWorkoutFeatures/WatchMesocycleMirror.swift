@@ -280,7 +280,6 @@ public struct WatchMesocycleMirrorStore {
     /// Returns true only when the incoming envelope was applied. Older or
     /// duplicate deliveries are ignored, so the phone always wins.
     @discardableResult
-    @discardableResult
     public func apply(data: Data) -> Bool {
         guard let envelope = WatchMesocycleCodec.decode(data) else { return false }
         return apply(envelope)

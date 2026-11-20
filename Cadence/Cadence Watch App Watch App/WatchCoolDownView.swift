@@ -23,21 +23,41 @@ struct WatchCoolDownView: View {
                     .font(.system(size: 52, weight: .heavy, design: .monospaced))
                     .foregroundStyle(.white)
                 WatchLiveHeartRateBadge(bpm: watchManager.currentBPM)
-                HStack(spacing: 16) {
-                    Button("+1m") {
+                VStack(spacing: 6) {
+                    Button("+1 min") {
                         WatchHaptics.tap()
                         model.cooldownTimerModel.add(60)
                     }
-                        .foregroundStyle(.white)
-                    Button("Skip") {
-                        WatchHaptics.success()
-                        model.cooldownTimerModel.skip()
-                        let samples = watchManager.finalizeStrengthHRCapture().samples
-                        model.skipCooldown()
-                        watchManager.completeStrengthWorkout(model: model, capture: samples)
+                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
+                    .accessibilityIdentifier("watchCooldown.add")
+
+                    Button("+5 min") {
+                        WatchHaptics.tap()
+                        model.cooldownTimerModel.add(300)
                     }
-                    .foregroundStyle(.white)
-                    .accessibilityIdentifier("watchCooldown.skip")
+                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
+                    .accessibilityIdentifier("watchCooldown.addFiveMinutes")
+
+                    // Same two-action grammar as the workout: Pause/Resume on
+                    // the left, End on the right. End finishes immediately.
+                    HStack(spacing: 6) {
+                        Button(model.cooldownTimerModel.isPaused ? "Resume" : "Pause") {
+                            WatchHaptics.tap()
+                            if model.cooldownTimerModel.isPaused {
+                                model.cooldownTimerModel.resume()
+                            } else {
+                                model.cooldownTimerModel.pause()
+                            }
+                        }
+                        .buttonStyle(WatchPillStyle(kind: .light))
+                        .accessibilityIdentifier("watchCooldown.pause")
+
+                        Button("End") {
+                            endCooldown()
+                        }
+                        .buttonStyle(WatchPillStyle(kind: .primary))
+                        .accessibilityIdentifier("watchCooldown.end")
+                    }
                 }
                 .padding(.top, 8)
                 Spacer()
@@ -46,6 +66,14 @@ struct WatchCoolDownView: View {
         .onAppear {
             timerController.start(model: model, watchManager: watchManager)
         }
+    }
+
+    private func endCooldown() {
+        WatchHaptics.success()
+        model.cooldownTimerModel.skip()
+        let samples = watchManager.finalizeStrengthHRCapture().samples
+        model.skipCooldown()
+        watchManager.completeStrengthWorkout(model: model, capture: samples)
     }
 
     private func formatTime(_ interval: TimeInterval) -> String {

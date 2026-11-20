@@ -45,7 +45,7 @@ struct PlannedDayPreviewView: View {
                                     exercises: exercises,
                                     launchPayload: .strengthPlan("plannedDay"))) {
                                     NavigationLink {
-                                        WorkoutPlanEditor(plan: editable, startInEditMode: true,
+                                        WorkoutPlanEditor(plan: editable,
                                                           allowsStart: false, onStart: { _ in })
                                     } label: {
                                         Label("Edit workout plan", systemImage: "slider.horizontal.3")

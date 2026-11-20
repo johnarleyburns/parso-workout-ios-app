@@ -9,6 +9,7 @@ extension WatchRootView {
     @ViewBuilder
     func homeWorkoutChoiceRows(selection: Binding<WatchHomeWorkoutSelection>) -> some View {
         ForEach(selection.wrappedValue.choices) { option in
+            let tint = tint(for: option)
             Button {
                 WatchHaptics.tap()
                 selection.wrappedValue.selectAndStart(option)
@@ -16,18 +17,23 @@ extension WatchRootView {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: option.symbol)
-                        .foregroundStyle(tint(for: option))
+                        .foregroundStyle(tint)
                         .frame(width: 26, height: 26)
-                        .background(tint(for: option).opacity(0.16), in: Circle())
+                        .background(tint.opacity(0.16), in: Circle())
                     Text(LocalizedStringKey(option.title))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "chevron.right")
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
+                .padding(.vertical, 2)
+                .padding(.horizontal, 4)
+                // Painterly row backgrounds inside the row are cheaper on the
+                // Watch than a custom `.listRowBackground` shape per row.
+                .background(RoundedRectangle(cornerRadius: 12).fill(tint.opacity(0.12)))
             }
             .buttonStyle(.plain)
-            .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(tint(for: option).opacity(0.12)))
+            .listRowBackground(Color.clear)
             .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             .accessibilityHint("Starts or opens \(option.title)")
         }

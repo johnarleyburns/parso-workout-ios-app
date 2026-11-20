@@ -34,7 +34,7 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
         defaults.set(choice.id, forKey: Self.storageKey)
     }
 
-    /// The phone's exact options and order, including Personalized Cardio.
+    /// The phone's exact options and order, with Recommend last.
     public var choices: [HomeWorkoutStartChoice] { HomeWorkoutStartChoice.allChoices }
 
     public mutating func select(_ choice: HomeWorkoutStartChoice) {

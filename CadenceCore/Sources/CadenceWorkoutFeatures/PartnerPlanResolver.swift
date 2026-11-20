@@ -35,9 +35,8 @@ public enum PartnerPlanResolver {
         /// The performer's rep pattern across ALL exercises, oldest first — used
         /// when they have never trained THIS movement.
         public let generalRepLadders: [[Int]]
-        /// The performer's most recent loaded working set on any movement, used
-        /// only as an educated starting-load guess when this movement has no
-        /// history at all.
+        /// Legacy cross-exercise guess. Plan loading deliberately ignores it:
+        /// a movement that has never been trained keeps a blank load.
         public let generalLastWeightKg: Double?
 
         public init(lastSets: [LoggedSet] = [],

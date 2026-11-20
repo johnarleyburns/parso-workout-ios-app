@@ -4,7 +4,7 @@ import CadenceCore
 
 /// The single strength launch offered on iPhone and Apple Watch. Field testing
 /// removed the separate Repeat and Custom rows: Lift is the personalized
-/// strength workout, and a workout is fully editable from its plan screen.
+/// strength workout, reviewed on a read-first plan screen before starting.
 public enum HomeStrengthStartChoice: String, CaseIterable, Identifiable, Sendable {
     case suggested
     public var id: String { rawValue }
@@ -23,7 +23,7 @@ public enum HomeRecentCardioChoices {
 }
 
 
-/// Shared ordering and destinations for the phone popup and Watch wheel.
+/// Shared ordering and destinations for the phone list and Watch launcher.
 /// Titles are localized by the presenting app's string catalog.
 public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     case strength(HomeStrengthStartChoice)
@@ -46,9 +46,12 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     /// identifiers are intentionally absent so an older saved selection falls
     /// back to Lift instead of resurrecting a removed row.
     public static let strengthChoices: [Self] = [.strength(.suggested)]
-    public static let cardioChoices: [Self] = [.suggestedCardio] + ([WorkoutType.hiit] + WorkoutType.allCases.filter {
+    /// Fixed cardio types first, then the coach's recommendation last. Putting
+    /// Recommend at the bottom keeps the concrete choices predictable while
+    /// still offering the personalized option.
+    public static let cardioChoices: [Self] = ([WorkoutType.hiit] + WorkoutType.allCases.filter {
         $0 != .weights && $0 != .hiit
-    }).map { .cardio($0) }
+    }).map { .cardio($0) } + [.suggestedCardio]
     public static let allChoices = strengthChoices + cardioChoices
 
     public var id: String {
@@ -62,9 +65,9 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     public var title: String {
         switch self {
         case .strength(.suggested): "Lift"
-        case .cardio(.other): "Custom"
+        case .cardio(.other): "Other"
         case .cardio(let type): type.displayName
-        case .suggestedCardio: "Personalized Cardio"
+        case .suggestedCardio: "Recommend"
         }
     }
 

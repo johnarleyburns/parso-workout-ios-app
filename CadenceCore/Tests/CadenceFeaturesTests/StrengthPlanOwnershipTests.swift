@@ -43,9 +43,9 @@ struct StrengthPlanOwnershipTests {
 
     @Test func transientEditorContentOrder() {
         #expect(TransientStrengthEditorContent.order == [
-            .startWorkout, .sendToWatch, .scheduleThisWorkout,
-            .exerciseRows, .addExercise, .suggestExercise,
-            .trainingPartners, .volumeSummary])
-        #expect(TransientStrengthEditorContent.order.last == .volumeSummary)
+            .trainingPartners, .exerciseRows, .volumeSummary,
+            .sendToWatch, .addExercise, .startWorkout])
+        #expect(TransientStrengthEditorContent.order.last == .startWorkout)
+        #expect(TransientStrengthEditorContent.order.dropLast().last == .addExercise)
     }
 }

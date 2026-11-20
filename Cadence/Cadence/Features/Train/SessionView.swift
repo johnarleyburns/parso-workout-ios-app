@@ -59,7 +59,7 @@ struct SessionView: View {
     @State var usePreviousPresented = false
     @State var swapTarget: ExerciseSwap.SwapTarget?
     @State var coolingDown = false
-    @State var coolDownConfirm = false
+
     @State var prMoment: PRMoment?
     @State var prEvent: PREvent?
     @State var setLoggedRevision = 0

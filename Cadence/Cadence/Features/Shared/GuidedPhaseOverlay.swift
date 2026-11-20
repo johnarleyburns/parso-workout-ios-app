@@ -4,8 +4,10 @@ import CadenceCore
 
 /// A guided warm-up / cool-down countdown shown over a workout (feedback batch 4).
 /// Generalizes the get-ready countdown: a big `mm:ss` clock, the phase name,
-/// Pause/Resume and Skip. When the timer reaches zero — or the user taps Skip —
-/// `onFinish` fires (warm-up → opens the session; cool-down → finishes it).
+/// +1/+5 minute extenders, Pause/Resume, and the phase's finish action (Skip for
+/// warm-up, End for cool-down). When the timer reaches zero — or the user taps
+/// that finish action — `onFinish` fires (warm-up → opens the session; cool-down
+/// → finishes it).
 ///
 /// Timing is wall-clock based via `PhaseCountdownClock`, so the countdown **keeps
 /// running while the app is backgrounded** and is correct on return; it only
@@ -26,6 +28,9 @@ struct GuidedPhaseOverlay: View {
     var idPrefix: String
     /// Play a transition bell when this phase begins (batch 7 item 9).
     var soundsEnabled: Bool = false
+    /// The phase's second action matches the workout dock: warm-up skips ahead,
+    /// cool-down ends the workout.
+    var finishTitle: String = "Skip"
     let onFinish: (_ elapsedSeconds: Int) -> Void
     let onSkip: ((_ elapsedSeconds: Int) -> Void)?
     /// Optional caller-owned live metric (e.g. heart rate), rendered under the
@@ -42,6 +47,7 @@ struct GuidedPhaseOverlay: View {
 
     init(title: String, minutes: Int, tint: Color = .green,
          idPrefix: String, soundsEnabled: Bool = false,
+         finishTitle: String = "Skip",
          onFinish: @escaping (_ elapsedSeconds: Int) -> Void,
          onSkip: ((_ elapsedSeconds: Int) -> Void)? = nil,
          liveMetric: AnyView? = nil) {
@@ -51,6 +57,7 @@ struct GuidedPhaseOverlay: View {
         self.tint = tint
         self.idPrefix = idPrefix
         self.soundsEnabled = soundsEnabled
+        self.finishTitle = finishTitle
         self.onFinish = onFinish
         self.onSkip = onSkip
         let seconds = max(1, minutes) * 60
@@ -87,38 +94,46 @@ struct GuidedPhaseOverlay: View {
                         .accessibilityIdentifier("\(idPrefix).liveHR")
                 }
                 Spacer()
-                HStack(spacing: 10) {
+                VStack(spacing: 10) {
                     Button {
-                        let ref = Date()
-                        if countdown.isPaused { countdown.resume(now: ref) }
-                        else { countdown.pause(now: ref) }
-                        now = ref
+                        addTime(60)
                     } label: {
-                        Label(paused ? "Resume" : "Pause",
-                              systemImage: paused ? "play.fill" : "pause.fill")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .cadenceGlassButton(tint: .white)
-                    .accessibilityIdentifier("\(idPrefix).pause")
-
-                    Button {
-                        let ref = Date()
-                        countdown.addTime(60, now: ref)
-                        now = ref
-                    } label: {
-                        Label("1 min", systemImage: "plus")
-                            .frame(maxWidth: .infinity)
+                        Label("+1 min", systemImage: "plus").frame(maxWidth: .infinity)
                     }
                     .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("\(idPrefix).addMinute")
 
                     Button {
-                        (onSkip ?? onFinish)(consumedSeconds)
+                        addTime(300)
                     } label: {
-                        Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
+                        Label("+5 min", systemImage: "plus").frame(maxWidth: .infinity)
                     }
-                    .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
-                    .accessibilityIdentifier("\(idPrefix).skip")
+                    .cadenceGlassButton(tint: .white)
+                    .accessibilityIdentifier("\(idPrefix).addFiveMinutes")
+
+                    HStack(spacing: 10) {
+                        Button {
+                            let ref = Date()
+                            if countdown.isPaused { countdown.resume(now: ref) }
+                            else { countdown.pause(now: ref) }
+                            now = ref
+                        } label: {
+                            Label(paused ? "Resume" : "Pause",
+                                  systemImage: paused ? "play.fill" : "pause.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .cadenceGlassButton(tint: .white)
+                        .accessibilityIdentifier("\(idPrefix).pause")
+
+                        Button {
+                            (onSkip ?? onFinish)(consumedSeconds)
+                        } label: {
+                            Label(finishTitle, systemImage: "stop.fill")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
+                        .accessibilityIdentifier("\(idPrefix).skip")
+                    }
                 }
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
@@ -151,5 +166,11 @@ struct GuidedPhaseOverlay: View {
             // continues across inactive/background spans.
             if phase == .active { now = Date() }
         }
+    }
+
+    private func addTime(_ seconds: TimeInterval) {
+        let ref = Date()
+        countdown.addTime(seconds, now: ref)
+        now = ref
     }
 }

@@ -38,7 +38,7 @@ extension WorkoutPlanEditor {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("suggestedStrength.message")
             }
-            CadenceActionButton(title: String(localized: "Start This Workout"), systemImage: "play.fill") {
+            CadenceActionButton(title: String(localized: "Start Workout"), systemImage: "play.fill") {
                 saveAndStart()
             }
             .disabled(hooks.isRegenerating)

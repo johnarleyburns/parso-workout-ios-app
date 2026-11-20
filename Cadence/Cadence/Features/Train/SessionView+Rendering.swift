@@ -43,6 +43,12 @@ extension SessionView {
             ForEach(plannedOnlyNames, id: \.self) { name in
                 plannedCard(name)
             }
+            if isActiveSession {
+                LiveWorkoutVolumeSummary(state: liveVolumeState,
+                                         expanded: $liveVolumeExpanded,
+                                         performers: liveVolumePerformers,
+                                         performerStates: liveVolumePerformerStates)
+            }
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 suggestExerciseButton
 
@@ -52,12 +58,6 @@ extension SessionView {
                     }
                     .accessibilityIdentifier("log.done")
                 }
-            }
-            if isActiveSession {
-                LiveWorkoutVolumeSummary(state: liveVolumeState,
-                                         expanded: $liveVolumeExpanded,
-                                         performers: liveVolumePerformers,
-                                         performerStates: liveVolumePerformerStates)
             }
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
@@ -75,7 +75,9 @@ extension SessionView {
                     isPaused: active.isPaused,
                     onPauseToggle: togglePause,
                     onEnd: endWorkout,
-                    onCoolDown: { coolDownConfirm = true },
+                    // "Cool down, then finish" starts the cooldown immediately;
+                    // a second confirmation dialog here was redundant.
+                    onCoolDown: startCooldownAfterDialog,
                     confirmMessage: String(localized: "This finishes and saves your workout.")
                 )
                 .padding(.horizontal, 16)
@@ -176,8 +178,6 @@ extension SessionView {
         .modifier(SuggestionFailureAlertModifier(isPresented: $suggestExerciseFailed))
         .sheet(item: $setEditorRoute, onDismiss: closeInlineEditor) { _ in inlineSetEditorSheetContent }
         .fullScreenCover(isPresented: $coolingDown, content: cooldownOverlay)
-        .modifier(SessionCooldownConfirmationModifier(isPresented: $coolDownConfirm,
-                                                       onStart: startCooldown))
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onAppear(perform: startWatchIfNeeded)
         .onReceive(NotificationCenter.default.publisher(for: .cadenceLiveActivityActionRequested), perform: handleLiveActivityRequest)

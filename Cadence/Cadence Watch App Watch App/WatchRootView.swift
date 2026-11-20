@@ -192,9 +192,7 @@ struct WatchRootView: View {
                     .listRowBackground(Color.clear)
                     .listRowInsets(EdgeInsets())
             } else {
-                WatchHomeStartControls(selection: $homeSelection)
-                    .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
+                homeWorkoutChoiceRows(selection: $homeSelection)
             }
         }
         .listStyle(.plain)

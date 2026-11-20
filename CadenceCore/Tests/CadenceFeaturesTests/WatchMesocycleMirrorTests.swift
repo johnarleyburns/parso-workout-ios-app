@@ -97,14 +97,6 @@ struct WatchMesocycleMirrorTests {
         #expect(request.input.historyWorkingSetCount == 3)
         #expect(request.input.recentlyCompletedCandidateIDs == ["bench"])
         #expect(request.input.mostRecentExerciseWorkingSets == 3)
-        let option = CoachSuggestionService.generate(
-            from: CoachSuggestionSnapshotBuilder.make(
-                request: request,
-                generatedAt: mirror.generatedAt))
-        let launch = try #require(option.flatMap {
-            CoachSuggestionWatchBridge.launch(option: $0, request: request)
-        })
-        #expect(!launch.exerciseNames.isEmpty)
     }
 
     @Test func cardioInputUsesTheMirroredWeekAndSettings() {

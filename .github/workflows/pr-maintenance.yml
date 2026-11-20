@@ -6,7 +6,7 @@ name: OpenCode PR Maintenance
 # dispatch repair, escalate). See docs/CI_AUTOMATION.md.
 on:
   workflow_run:
-    workflows: ["PR Swift Validation", "OpenCode PR Conflict Repair", "OpenCode Issue to PR", "iOS Build & TestFlight"]
+    workflows: ["iOS", "OpenCode PR Conflict Repair", "OpenCode Issue to PR"]
     types: [completed]
   push:
     branches: [main]
@@ -58,3 +58,25 @@ jobs:
           path: /tmp/pr-maintenance-report.json
           if-no-files-found: ignore
           retention-days: 7
+
+  prune-caches:
+    # Merges are when pull-request caches become unreachable (GitHub only
+    # restores a PR cache for the PR that wrote it) and start evicting the
+    # default-branch seeds every PR depends on.
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Delete unreachable and over-budget caches
+        env:
+          GH_TOKEN: ${{ secrets.CLAUDE_WORKFLOW_TOKEN }}
+        run: |
+          test -n "$GH_TOKEN" || { echo '::error::CLAUDE_WORKFLOW_TOKEN is not configured'; exit 1; }
+          bash .github/scripts/prune-pr-caches.sh

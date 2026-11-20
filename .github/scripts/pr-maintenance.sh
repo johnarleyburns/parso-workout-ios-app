@@ -58,8 +58,8 @@ decide() {
   if [[ "$draft" == true || "$autom" != true ]]; then echo advance; else echo waiting-merge; fi
 }
 
-# validation_from_runs: stdin = workflow runs JSON for pr-validation.yml on the
-# head SHA (event=pull_request). A completed success is authoritative for the
+# validation_from_runs: stdin = workflow runs JSON for ios.yml on the head SHA
+# (event=pull_request). A completed success is authoritative for the
 # required `validate` context even when a duplicate run for the same SHA is
 # still queued. GitHub's check rollup has the same context-level semantics.
 validation_from_runs() {
@@ -187,7 +187,7 @@ process_pr() {
   mergeable=$(jq -r '.mergeable' <<<"$pr")
   behind=$(api "repos/${repo}/compare/main...${head}" --jq .behind_by 2>/dev/null || echo 0)
   state=$(effective_state "$ms" "$mergeable" "$behind")
-  runs=$(api "repos/${repo}/actions/workflows/pr-validation.yml/runs?head_sha=${head}&event=pull_request&per_page=30") \
+  runs=$(api "repos/${repo}/actions/workflows/ios.yml/runs?head_sha=${head}&event=pull_request&per_page=30") \
     || { INFRA=1; echo "PR #$n: cannot list validation runs" >&2; return; }
   val=$(validation_from_runs <<<"$runs")
   autom=$(jq -r '.auto_merge != null' <<<"$pr")
@@ -271,7 +271,7 @@ process_pr() {
     escalate-approval)
       escalate "$n" "$issue" "$head" "action-required" "GitHub requires approval before validation runs for this commit. Confirm CLAUDE_WORKFLOW_TOKEN belongs to a user with write access and that the repository's Actions approval policy does not require approval for this actor; then approve the run once in the Actions tab: ${GITHUB_SERVER_URL:-https://github.com}/${repo}/pull/${n}/checks" ;;
     rerun)
-      gh run list --workflow pr-validation.yml --commit "$head" --limit 5 --json databaseId,conclusion,event \
+      gh run list --workflow ios.yml --commit "$head" --limit 5 --json databaseId,conclusion,event \
         --jq '[.[]|select(.event=="pull_request" and .conclusion=="cancelled")][0].databaseId // empty' \
         | { read -r id; [[ -n "$id" ]] && gh run rerun "$id" >/dev/null 2>&1; } || INFRA=1 ;;
     retrigger)
@@ -357,7 +357,7 @@ write_report() {
 
 macos_work_pending() {
   jq -e 'any(.workflow_runs[]?;
-    (.path // "" | test("/(ios|pr-validation|pr-conflict-repair|issue-to-pr)\\.yml$")))' >/dev/null
+    (.path // "" | test("/(ios|pr-conflict-repair|issue-to-pr)\\.yml$")))' >/dev/null
 }
 
 main() {

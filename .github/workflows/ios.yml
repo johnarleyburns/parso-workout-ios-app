@@ -1,32 +1,61 @@
-name: iOS Build & TestFlight
+name: iOS
 
+# One pipeline for pull requests and main. A pull request runs the pre-merge
+# gate (host-tests, app-build, validate). A push to main runs the same test job
+# plus the signed archive and TestFlight upload. Keeping both in one file is
+# what prevents the two definitions from drifting apart.
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
+    inputs:
+      force_tests:
+        description: Run the full host suite even when this tree already passed on its PR
+        type: boolean
+        default: false
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 # Never cancel an in-flight release build (build numbers must stay monotonic);
-# later merges queue behind it.
+# later merges queue behind it. A pull request's newer push supersedes its run.
 concurrency:
-  group: ios-main-release
-  cancel-in-progress: false
+  group: ios-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  core-tests:
+  host-tests:
     runs-on: xcode-27
     timeout-minutes: 90
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
     env:
       # Quarantines the synchronous-I/O/thread-blocking test seams in release
       # CI only; PR validation still runs them. See ReleaseCITestSupport.
-      CADENCE_RELEASE_CI: "1"
+      CADENCE_RELEASE_CI: ${{ github.event_name != 'pull_request' && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # The attestation compares this commit's tree with the merged PR head.
+          fetch-depth: 0
+
+      - name: Check whether this tree was already validated on its pull request
+        id: attest
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE_TESTS: ${{ github.event_name == 'workflow_dispatch' && inputs.force_tests && '1' || '0' }}
+        run: bash .github/scripts/tree-validation-attestation.sh >> "$GITHUB_OUTPUT"
 
       - name: Select supported release Xcode
+        if: steps.attest.outputs.skip != 'true'
         run: |
           # The runner image also contains beta builds. App Store Connect
           # rejects archives made with a beta SDK (90534), so TestFlight and
@@ -38,35 +67,48 @@ jobs:
           xcodebuild -version
 
       - name: Accept Xcode License
+        if: steps.attest.outputs.skip != 'true'
         run: sudo xcodebuild -license accept
 
       - uses: ./.github/actions/build-cache
+        if: steps.attest.outputs.skip != 'true'
         with:
+          # The host cache is small and is the only reusable artifact a PR can
+          # warm for its own later pushes; the large device cache is seeded by
+          # main only.
           scope: host
+          save: 'true'
 
       - name: Run static checks and SwiftPM package tests
+        if: steps.attest.outputs.skip != 'true'
         run: |
           bash scripts/ci-validate.sh --fast
           bash scripts/ci-validate.sh --tests
 
       - name: Check warning classifier fixtures
+        if: steps.attest.outputs.skip != 'true'
         run: bash scripts/test-check-owned-warnings.sh
 
       - name: Check TestFlight reporting fixture
+        if: steps.attest.outputs.skip != 'true'
         run: |
           bash scripts/tests/test-testflight-delivery-body.sh
           bash scripts/tests/test-testflight-reconciler-discovery.sh
 
       - name: Test-pyramid guardrail
+        if: steps.attest.outputs.skip != 'true'
         run: bash scripts/check-test-pyramid.sh
 
       - name: No-network guardrail
+        if: steps.attest.outputs.skip != 'true'
         run: bash scripts/check-no-network.sh
 
       - name: History persistence safety guardrail
+        if: steps.attest.outputs.skip != 'true'
         run: bash scripts/check-history-safety.sh
 
       - name: Watch AppIcon and Xcode platform guardrails
+        if: steps.attest.outputs.skip != 'true'
         run: |
           bash scripts/check-watch-appicon.sh
           bash scripts/check-watch-background-modes.sh
@@ -77,15 +119,80 @@ jobs:
   # There is no XCUITest/simulator suite in this repo: simulator-based UI tests
   # were removed (unreliable on shared runners — cold-launch timing, shared CPU —
   # and this CI environment cannot boot simulators at all). The CI gate is
-  # core-tests (host SwiftPM package tests + guardrails).
+  # host-tests (SwiftPM package tests + guardrails) plus app-build.
+
+  app-build:
+    # Pull requests: the pre-merge compile gate. main: the cache seeder.
+    # GitHub only lets a pull request restore from its own ref and the default
+    # branch, so a cache written on refs/pull/N/merge is invisible to every
+    # other PR; the default branch has to write the seed that PRs restore.
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    runs-on: xcode-27
+    timeout-minutes: 90
+    env:
+      # Same Release configuration and source set as the archive, without
+      # whole-module optimization. ~3x faster and still warning-complete.
+      CADENCE_FAST_BUILD: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Select stable Xcode
+        run: |
+          XCODE=$(find /Applications -maxdepth 1 -type d -name 'Xcode_*.app' ! -iname '*beta*' ! -iname '*rc*' -print | sort -V | tail -1)
+          test -n "$XCODE"
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+
+      - uses: ./.github/actions/build-cache
+        id: cache
+        with:
+          scope: device
+          save: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: iPhone and embedded Watch build with guardrails
+        # On main this job exists only to keep the shared cache warm, so it
+        # skips a rebuild when a matching seed already exists.
+        if: github.event_name == 'pull_request' || steps.cache.outputs.matched-key == ''
+        env:
+          CADENCE_DERIVED_DATA: ${{ steps.cache.outputs.derived-data }}
+          CADENCE_SOURCE_PACKAGES: ${{ steps.cache.outputs.source-packages }}
+        run: bash scripts/ci-validate.sh --build
+
+      - name: Upload build transcript
+        if: always() && (github.event_name == 'pull_request' || steps.cache.outputs.matched-key == '')
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-build-${{ github.run_id }}
+          path: ${{ runner.temp }}/ci-validate-build.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  validate:
+    # The required status context for merging into main. Runs only on pull
+    # requests and fails closed on any non-success result from either gate.
+    if: always() && github.event_name == 'pull_request'
+    needs: [host-tests, app-build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require both validation jobs
+        env:
+          HOST_TESTS: ${{ needs.host-tests.result }}
+          APP_BUILD: ${{ needs.app-build.result }}
+        run: |
+          test "$HOST_TESTS" = success && test "$APP_BUILD" = success
 
   archive:
+    # Signed release build and upload are main-only.
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
     outputs:
       stage: ${{ steps.stage.outputs.stage }}
       build-number: ${{ steps.version.outputs.build-number }}
-    # Runs alongside core-tests; upload is a downstream job requiring both.
+    # Runs alongside host-tests; upload is a downstream job requiring both.
     runs-on: xcode-27
     # Archives can legitimately be slower than a compile, but must not consume
     # a permit forever if Xcode or an external signing service stops responding.
@@ -297,7 +404,8 @@ jobs:
           rm -f ~/.appstoreconnect/private_keys/AuthKey_*.p8
 
   testflight-build:
-    needs: [core-tests, archive]
+    needs: [host-tests, archive]
+    if: always() && github.ref == 'refs/heads/main' && needs.host-tests.result == 'success' && needs.archive.result == 'success'
     runs-on: xcode-27
     timeout-minutes: 45
     permissions:
@@ -429,8 +537,8 @@ jobs:
   # issue/PR comment scope and no release secrets. "Uploaded" means Xcode's
   # accepted the build; Apple processing / tester availability is NOT claimed.
   deployment-report:
-    needs: [core-tests, archive, testflight-build]
-    if: always() && github.event_name == 'push'
+    needs: [host-tests, archive, testflight-build]
+    if: always() && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -443,7 +551,7 @@ jobs:
       - name: Report deployment outcome
         env:
           GH_TOKEN: ${{ github.token }}
-          TESTS: ${{ needs.core-tests.result }}
+          TESTS: ${{ needs.host-tests.result }}
           BUILD: ${{ needs.testflight-build.result }}
           STAGE: ${{ needs.testflight-build.outputs.stage || needs.archive.outputs.stage }}
           SHA: ${{ github.sha }}

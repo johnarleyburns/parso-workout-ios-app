@@ -96,7 +96,7 @@ case "$a" in
   "api repos/o/r/pulls/5") echo '{"state":"open","head":{"repo":{"full_name":"fork/r"},"ref":"claude/issue-1-1","sha":"f"},"body":"<!-- claude-issue:1 -->","draft":false,"labels":[]}' ;;
   "api repos/o/r/pulls/6") echo '{"state":"open","head":{"repo":{"full_name":"o/r"},"ref":"feature/x","sha":"g"},"body":"","draft":false,"labels":[]}' ;;
   *compare*) echo 3 ;;
-  *"pr-validation.yml/runs"*) echo '{"workflow_runs":[{"status":"completed","conclusion":"success","created_at":"2026-01-01T00:00:00Z"}]}' ;;
+  *"ios.yml/runs"*) echo '{"workflow_runs":[{"status":"completed","conclusion":"success","created_at":"2026-01-01T00:00:00Z"}]}' ;;
   *"-X PUT"*update-branch*) echo '{}' ;;
   *comments*) ;;
   *) echo '{}' ;;

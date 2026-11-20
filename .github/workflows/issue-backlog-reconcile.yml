@@ -7,7 +7,7 @@ on:
     # recovering a failed worker waits for the best-effort cron sweep.
     types: [opened, reopened, labeled, unlabeled, closed]
   workflow_run:
-    workflows: ["iOS Build & TestFlight", "iOS"]
+    workflows: ["iOS"]
     types: [completed]
   schedule:
     # Recovery only: GitHub cron may be delayed or dropped.

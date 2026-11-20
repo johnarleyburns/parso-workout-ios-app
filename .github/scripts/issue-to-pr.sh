@@ -161,7 +161,6 @@ if gh issue view "$ISSUE" --json labels --jq '.labels[].name' | grep -Fxq 'ai-ci
 fi
 ci_paths=(
   .github/workflows/issue-to-pr.yml
-  .github/workflows/pr-validation.yml
   .github/workflows/ios.yml
   .github/workflows/pr-conflict-repair.yml
   .github/workflows/pr-maintenance.yml
@@ -169,6 +168,8 @@ ci_paths=(
   .github/scripts/issue-to-pr.sh
   .github/scripts/pr-conflict-repair.sh
   .github/scripts/pr-maintenance.sh
+  .github/scripts/prune-pr-caches.sh
+  .github/scripts/tree-validation-attestation.sh
   .github/scripts/testflight-crash-intake.rb
 )
 is_ci_path() { local p="$1" a; for a in "${ci_paths[@]}"; do [[ "$p" == "$a" ]] && return 0; done; return 1; }

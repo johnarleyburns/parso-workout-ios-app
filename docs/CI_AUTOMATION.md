@@ -12,19 +12,19 @@ An owner-reviewed GitHub orphan can be named in `CLAUDE_QUARANTINED_WORKFLOW_RUN
 | Responsibility | Owner |
 |---|---|
 | Intake, authorization, idempotency, implementation | `issue-to-pr.yml` + `issue-to-pr.sh` (macOS, OpenCode on DeepSeek Flash, no push token in the agent's env) |
-| Validation | `pr-validation.yml` → `scripts/ci-validate.sh` (read-only token, no secrets). Same script used by issue and repair agents |
+| Validation | the pull-request jobs in `ios.yml` → `scripts/ci-validate.sh` (read-only token, no secrets; `host-tests` + `app-build`, aggregated by the required `validate` context). Same script used by issue and repair agents |
 | Diagnosis + repair (one PR per run) | `pr-conflict-repair.yml` + `pr-conflict-repair.sh` |
 | Readiness, branch freshness, auto-merge, backlog, escalation | `pr-maintenance.yml` + `pr-maintenance.sh` (Linux, trusted `main` checkout, no agent, no PR code) |
-| Post-merge build/TestFlight + reporting | `ios.yml` (release secrets only here) |
+| Post-merge build/TestFlight + reporting | `ios.yml` on `main` (release secrets only here) |
 | Failed main archive triage and one bounded code repair | `release-repair.yml` + `release-repair.sh` |
 
 ## State machine (`decide()` in pr-maintenance.sh)
 stopped → nothing · dirty/failed → repair (≤3 persisted attempts) else exhausted+escalate · action_required → escalate (never "passed") · cancelled → re-run · missing → close/reopen to re-emit `pull_request` (≤2) · pending → wait · success+behind → `update-branch` (GitHub-side normal merge, no force) · success+unknown → wait · success otherwise → ready + auto-merge · already armed → waiting-merge.
-Freshness uses REST `mergeable_state` / `compare behind_by` (drafts report `draft`, so compare is used); GraphQL `MERGEABLE` is never used. Validation status comes from the `pr-validation.yml` `pull_request` run **for the PR head SHA**.
+Freshness uses REST `mergeable_state` / `compare behind_by` (drafts report `draft`, so compare is used); GraphQL `MERGEABLE` is never used. Validation status comes from the `ios.yml` `pull_request` run **for the PR head SHA**.
 Separate facts: local validation ≠ GitHub `validate` check ≠ merged ≠ TestFlight upload ≠ Apple processing (never claimed).
 
 ## Triggers
-Maintenance: completion of Validation/Repair/Issue workflows, push to `main`, every 20 min, manual (`pr_number` also clears a stop and resets the budget). Every run sweeps all open automation PRs, so coalesced/superseded runs lose nothing. Repair: dispatched per PR, concurrency group per PR (different PRs never cancel each other; a duplicate pending request for the same PR is re-dispatched by the next sweep). Issue: group per issue.
+Maintenance: completion of the Validation/Repair/Issue workflows, push to `main`, every 5 min, manual (`pr_number` also clears a stop and resets the budget). The same workflow prunes pull-request caches on every `main` push. Every run sweeps all open automation PRs, so coalesced/superseded runs lose nothing. Repair: dispatched per PR, concurrency group per PR (different PRs never cancel each other; a duplicate pending request for the same PR is re-dispatched by the next sweep). Issue: group per issue.
 
 ## Authorization
 Only `johnarleyburns`-authored issues. `.github` edits need `ai-ci-maintenance` applied *by the owner* (checked on the label event actor) and only to the 8 listed paths. If the agent needs `.github` without it, the run exits **successfully as "waiting"**: label `awaiting-ci-authorization` + one comment. Applying `ai-ci-maintenance` triggers the workflow and resumes. Existing PR for the issue → resume/reconcile, never a second PR; closed issue, merged or rejected PR → not restarted.

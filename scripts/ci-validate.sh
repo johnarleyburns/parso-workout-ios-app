@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Single source of truth for PR validation. Used by the PR Swift Validation
-# workflow, the issue agent and the repair agent so the three cannot drift.
+# Single source of truth for CI validation. Used by the ios.yml pull-request
+# jobs, the issue agent and the repair agent so they cannot drift.
 # Runs everything headless: no simulator is booted.
 # Usage: scripts/ci-validate.sh [--fast|--tests|--build]
 # Default: all stages sequentially for issue/repair callers. CI splits runners.
@@ -69,13 +69,23 @@ step "iPhone + embedded Watch build"
 # Keep a stable path so the workflow can upload the complete transcript even
 # when xcodebuild or the warning gate fails. GitHub's rendered step log is
 # size-limited, while this file remains inspectable as an artifact.
+#
+# CADENCE_FAST_BUILD=1 keeps the Release configuration and therefore the same
+# source set, feature conditions and warnings, but drops whole-module
+# optimization. The archive keeps the optimizer; the pre-merge gate only needs
+# to prove that the same code compiles cleanly, which is ~3x faster at -Onone.
 build_log="${RUNNER_TEMP:-/tmp}/ci-validate-build.log"
 rm -f "$build_log"
+build_mode_args=()
+if [[ "${CADENCE_FAST_BUILD:-0}" == "1" ]]; then
+  build_mode_args+=(SWIFT_OPTIMIZATION_LEVEL=-Onone SWIFT_COMPILATION_MODE=incremental)
+fi
 bash scripts/xcodebuild-safe.sh -project Cadence/Cadence.xcodeproj -scheme Cadence \
   -configuration Release -destination 'generic/platform=iOS' \
   -derivedDataPath "${CADENCE_DERIVED_DATA:-$PWD/.build/ci-derived-device}" \
   -clonedSourcePackagesDirPath "${CADENCE_SOURCE_PACKAGES:-$PWD/.build/ci-source-packages}" \
-  -showBuildTimingSummary CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$build_log"
+  -showBuildTimingSummary "${build_mode_args[@]+"${build_mode_args[@]}"}" \
+  CODE_SIGNING_ALLOWED=NO build 2>&1 | tee "$build_log"
 endstep
 
 step "Owned warning gate (app build)"

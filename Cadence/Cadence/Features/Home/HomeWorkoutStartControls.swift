@@ -86,7 +86,7 @@ struct HomeWorkoutStartControls: View {
     /// Increase Contrast.
     private func tint(for option: HomeWorkoutStartChoice) -> Color {
         switch option {
-        case .strength: return .green
+        case .strength, .cardio(.weights): return .green
         case .suggestedCardio: return .orange
         case .cardio(.hiit), .cardio(.boxing): return .red
         case .cardio(.swim): return .teal

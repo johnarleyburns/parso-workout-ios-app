@@ -35,7 +35,7 @@ extension WatchRootView {
 
     private func tint(for option: HomeWorkoutStartChoice) -> Color {
         switch option {
-        case .strength: return WatchTone.accent
+        case .strength, .cardio(.weights): return WatchTone.accent
         case .suggestedCardio: return WatchTone.gold
         case .cardio(.hiit), .cardio(.boxing): return WatchTone.heart
         case .cardio(.swim): return .teal

@@ -257,6 +257,35 @@ public enum WatchMesocycleCodec {
     }
 }
 
+/// Storage backend for `WatchMesocycleMirrorStore`, so tests can substitute an
+/// in-memory double instead of real file IO. Mirrors the existing
+/// `WatchSingleExerciseSuggestionContextStoring` pattern.
+public protocol WatchMesocycleMirrorStoring: AnyObject, Sendable {
+    func loadData() -> Data?
+    func saveData(_ data: Data) throws
+}
+
+public final class FileWatchMesocycleMirrorStorage:
+    WatchMesocycleMirrorStoring, @unchecked Sendable {
+    private let url: URL
+
+    public init(url: URL) {
+        self.url = url
+    }
+
+    public func loadData() -> Data? { try? Data(contentsOf: url) }
+    public func saveData(_ data: Data) throws { try data.write(to: url, options: [.atomic]) }
+}
+
+public final class InMemoryWatchMesocycleMirrorStorage:
+    WatchMesocycleMirrorStoring, @unchecked Sendable {
+    private var data: Data?
+
+    public init() {}
+    public func loadData() -> Data? { data }
+    public func saveData(_ data: Data) { self.data = data }
+}
+
 /// Durable Watch-side mirror. One file, atomically replaced only by a newer
 /// envelope. File IO is deliberately simple: this is a bounded value payload,
 /// not a second SwiftData store.
@@ -264,14 +293,18 @@ public struct WatchMesocycleMirrorStore {
     public static let fileName = "watch-mesocycle-mirror-v1.plist"
     public static let updatedNotification = Notification.Name("cadence.watchMesocycleMirrorUpdated")
 
-    private let url: URL
+    private let storage: WatchMesocycleMirrorStoring
 
     public init(url: URL = WatchMesocycleMirrorStore.defaultURL()) {
-        self.url = url
+        self.storage = FileWatchMesocycleMirrorStorage(url: url)
+    }
+
+    public init(storage: WatchMesocycleMirrorStoring) {
+        self.storage = storage
     }
 
     public func load() -> WatchMesocycleEnvelope? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
+        guard let data = storage.loadData() else { return nil }
         return WatchMesocycleCodec.decode(data)
     }
 
@@ -291,7 +324,7 @@ public struct WatchMesocycleMirrorStore {
         let existing = load()
         guard incoming.isNewer(than: existing) else { return false }
         do {
-            try data.write(to: url, options: [.atomic])
+            try storage.saveData(data)
             NotificationCenter.default.post(name: Self.updatedNotification, object: nil)
             return true
         } catch {

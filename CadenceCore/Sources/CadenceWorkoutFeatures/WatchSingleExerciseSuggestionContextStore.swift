@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// Storage backend for `WatchSingleExerciseSuggestionContextStore`, so tests can
 /// substitute an in-memory double instead of real `UserDefaults`/preferences-daemon
@@ -22,10 +23,10 @@ public final class InMemoryWatchSingleExerciseSuggestionContextStore:
 
 public final class UserDefaultsWatchSingleExerciseSuggestionContextStore:
     WatchSingleExerciseSuggestionContextStoring, @unchecked Sendable {
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
     private let key: String
 
-    public init(defaults: UserDefaults = .standard,
+    public init(defaults: DefaultsStoring = UserDefaults.standard,
                key: String = WatchSingleExerciseSuggestionContextStore.defaultsKey) {
         self.defaults = defaults
         self.key = key
@@ -52,7 +53,7 @@ public struct WatchSingleExerciseSuggestionContextStore {
 
     private let store: WatchSingleExerciseSuggestionContextStoring
 
-    public init(defaults: UserDefaults = .standard, key: String = defaultsKey) {
+    public init(defaults: DefaultsStoring = UserDefaults.standard, key: String = defaultsKey) {
         self.store = UserDefaultsWatchSingleExerciseSuggestionContextStore(defaults: defaults, key: key)
     }
 

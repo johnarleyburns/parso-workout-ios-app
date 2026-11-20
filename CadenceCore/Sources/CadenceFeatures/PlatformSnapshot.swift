@@ -1,5 +1,34 @@
 import Foundation
 
+/// `UserDefaults`-shaped storage seam for the platform transport contracts.
+/// Kept separate from `CadenceCore.DefaultsStoring` because this module is
+/// deliberately dependency-free (widgets/Live Activities only link it).
+public protocol PlatformDefaultsStoring: AnyObject {
+    func object(forKey defaultName: String) -> Any?
+    func string(forKey defaultName: String) -> String?
+    func data(forKey defaultName: String) -> Data?
+    func set(_ value: Any?, forKey defaultName: String)
+    func removeObject(forKey defaultName: String)
+}
+
+extension UserDefaults: PlatformDefaultsStoring {}
+
+/// Process-local test double for `PlatformDefaultsStoring`; no preferences
+/// daemon or plist file is touched.
+public final class InMemoryPlatformDefaultsStore: PlatformDefaultsStoring, @unchecked Sendable {
+    private var values: [String: Any] = [:]
+
+    public init() {}
+
+    public func object(forKey defaultName: String) -> Any? { values[defaultName] }
+    public func string(forKey defaultName: String) -> String? { values[defaultName] as? String }
+    public func data(forKey defaultName: String) -> Data? { values[defaultName] as? Data }
+    public func set(_ value: Any?, forKey defaultName: String) {
+        if let value { values[defaultName] = value } else { values.removeValue(forKey: defaultName) }
+    }
+    public func removeObject(forKey defaultName: String) { values.removeValue(forKey: defaultName) }
+}
+
 /// Small, privacy-preserving projection shared by the iPhone app and its
 /// platform surfaces. It deliberately contains presentation text and stable
 /// identifiers only; prescriptions and workout history remain in the app store.
@@ -115,23 +144,23 @@ public enum CadencePlatformRequestStore {
         }
     }
 
-    public static func requestStartWorkout(defaults: UserDefaults? = nil) {
+    public static func requestStartWorkout(defaults: PlatformDefaultsStoring? = nil) {
         store(defaults).set(Date(), forKey: startKey)
     }
 
-    public static func consumeStartWorkout(defaults: UserDefaults? = nil) -> Bool {
+    public static func consumeStartWorkout(defaults: PlatformDefaultsStoring? = nil) -> Bool {
         let defaults = store(defaults)
         guard defaults.object(forKey: startKey) != nil else { return false }
         defaults.removeObject(forKey: startKey)
         return true
     }
 
-    public static func requestLogSet(_ request: LogSetRequest, defaults: UserDefaults? = nil) {
+    public static func requestLogSet(_ request: LogSetRequest, defaults: PlatformDefaultsStoring? = nil) {
         guard let data = try? JSONEncoder().encode(request) else { return }
         store(defaults).set(data, forKey: logKey)
     }
 
-    public static func consumeLogSet(defaults: UserDefaults? = nil) -> LogSetRequest? {
+    public static func consumeLogSet(defaults: PlatformDefaultsStoring? = nil) -> LogSetRequest? {
         let defaults = store(defaults)
         guard let data = defaults.data(forKey: logKey),
               let request = try? JSONDecoder().decode(LogSetRequest.self, from: data) else { return nil }
@@ -146,11 +175,11 @@ public enum CadencePlatformRequestStore {
     /// weekly rings and consumed by the This Week surface as it appears, so the
     /// tab switch and the scroll/expand land together.
     public static func requestThisWeekSection(_ destination: ThisWeekDestination,
-                                              defaults: UserDefaults? = nil) {
+                                              defaults: PlatformDefaultsStoring? = nil) {
         store(defaults).set(destination.rawValue, forKey: thisWeekSectionKey)
     }
 
-    public static func consumeThisWeekSection(defaults: UserDefaults? = nil) -> ThisWeekDestination? {
+    public static func consumeThisWeekSection(defaults: PlatformDefaultsStoring? = nil) -> ThisWeekDestination? {
         let defaults = store(defaults)
         guard let raw = defaults.string(forKey: thisWeekSectionKey) else { return nil }
         defaults.removeObject(forKey: thisWeekSectionKey)
@@ -161,18 +190,18 @@ public enum CadencePlatformRequestStore {
 
     public static func requestLiveActivity(_ action: LiveActivityAction,
                                            token: String? = nil,
-                                           defaults: UserDefaults? = nil) {
+                                           defaults: PlatformDefaultsStoring? = nil) {
         guard let data = try? JSONEncoder().encode(LiveActivityRequest(action: action, token: token)) else {
             return
         }
         store(defaults).set(data, forKey: liveActivityActionKey)
     }
 
-    public static func consumeLiveActivity(defaults: UserDefaults? = nil) -> LiveActivityAction? {
+    public static func consumeLiveActivity(defaults: PlatformDefaultsStoring? = nil) -> LiveActivityAction? {
         consumeLiveActivityRequest(defaults: defaults)?.action
     }
 
-    public static func consumeLiveActivityRequest(defaults: UserDefaults? = nil) -> LiveActivityRequest? {
+    public static func consumeLiveActivityRequest(defaults: PlatformDefaultsStoring? = nil) -> LiveActivityRequest? {
         let defaults = store(defaults)
         guard let data = defaults.data(forKey: liveActivityActionKey),
               let request = try? JSONDecoder().decode(LiveActivityRequest.self, from: data) else {
@@ -185,8 +214,9 @@ public enum CadencePlatformRequestStore {
         return request
     }
 
-    private static func store(_ defaults: UserDefaults?) -> UserDefaults {
-        defaults ?? (UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard)
+    private static func store(_ defaults: PlatformDefaultsStoring?) -> PlatformDefaultsStoring {
+        if let defaults { return defaults }
+        return UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? UserDefaults.standard
     }
 }
 
@@ -199,18 +229,18 @@ public enum CadencePlatformSnapshotStore {
     public static let snapshotKey = "cadence.todaySnapshot.v1"
 
     public static func save(_ snapshot: CadenceTodaySnapshot,
-                            defaults: UserDefaults? = nil) {
+                            defaults: PlatformDefaultsStoring? = nil) {
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         (defaults ?? sharedDefaults()).set(data, forKey: snapshotKey)
     }
 
-    public static func load(defaults: UserDefaults? = nil) -> CadenceTodaySnapshot? {
+    public static func load(defaults: PlatformDefaultsStoring? = nil) -> CadenceTodaySnapshot? {
         guard let data = (defaults ?? sharedDefaults()).data(forKey: snapshotKey) else { return nil }
         return try? JSONDecoder().decode(CadenceTodaySnapshot.self, from: data)
     }
 
-    private static func sharedDefaults() -> UserDefaults {
-        UserDefaults(suiteName: appGroupIdentifier) ?? .standard
+    private static func sharedDefaults() -> PlatformDefaultsStoring {
+        UserDefaults(suiteName: appGroupIdentifier) ?? UserDefaults.standard
     }
 }
 
@@ -237,22 +267,22 @@ public enum CadenceWatchWidgetStore {
     public static let stateKey = "cadence.watchWidgetState.v1"
 
     public static func save(_ state: CadenceWatchWidgetState,
-                            defaults: UserDefaults? = nil) {
+                            defaults: PlatformDefaultsStoring? = nil) {
         guard let data = try? JSONEncoder().encode(state) else { return }
         (defaults ?? sharedDefaults()).set(data, forKey: stateKey)
     }
 
-    public static func load(defaults: UserDefaults? = nil) -> CadenceWatchWidgetState? {
+    public static func load(defaults: PlatformDefaultsStoring? = nil) -> CadenceWatchWidgetState? {
         guard let data = (defaults ?? sharedDefaults()).data(forKey: stateKey) else { return nil }
         return try? JSONDecoder().decode(CadenceWatchWidgetState.self, from: data)
     }
 
-    public static func clear(defaults: UserDefaults? = nil) {
+    public static func clear(defaults: PlatformDefaultsStoring? = nil) {
         (defaults ?? sharedDefaults()).removeObject(forKey: stateKey)
     }
 
-    private static func sharedDefaults() -> UserDefaults {
-        UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
+    private static func sharedDefaults() -> PlatformDefaultsStoring {
+        UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? UserDefaults.standard
     }
 }
 
@@ -278,8 +308,8 @@ public enum CadenceWatchComplicationState: Equatable, Sendable {
     /// Deep link used by the complication; lands on the live workout via the root routing.
     public static let deepLink = "cladiron://workout"
 
-    public static func current(defaults: UserDefaults? = nil, now: Date = Date()) -> Self {
-        let store = defaults ?? UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
+    public static func current(defaults: PlatformDefaultsStoring? = nil, now: Date = Date()) -> Self {
+        let store = resolvedStore(defaults)
         guard let data = store.data(forKey: activeKey),
               let marker = try? JSONDecoder().decode(CadenceWatchActiveWorkout.self, from: data),
               marker.startedAt <= now.addingTimeInterval(60),
@@ -287,12 +317,17 @@ public enum CadenceWatchComplicationState: Equatable, Sendable {
         return .active(workoutType: marker.workoutType, startedAt: marker.startedAt)
     }
 
-    public static func setActive(_ marker: CadenceWatchActiveWorkout?, defaults: UserDefaults? = nil) {
-        let store = defaults ?? UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? .standard
+    public static func setActive(_ marker: CadenceWatchActiveWorkout?, defaults: PlatformDefaultsStoring? = nil) {
+        let store = resolvedStore(defaults)
         if let marker, let data = try? JSONEncoder().encode(marker) {
             store.set(data, forKey: activeKey)
         } else {
             store.removeObject(forKey: activeKey)
         }
+    }
+
+    private static func resolvedStore(_ defaults: PlatformDefaultsStoring?) -> PlatformDefaultsStoring {
+        if let defaults { return defaults }
+        return UserDefaults(suiteName: CadencePlatformSnapshotStore.appGroupIdentifier) ?? UserDefaults.standard
     }
 }

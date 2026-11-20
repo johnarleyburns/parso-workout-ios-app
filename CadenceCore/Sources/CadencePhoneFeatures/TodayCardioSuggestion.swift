@@ -17,7 +17,7 @@ public struct TodayCardioSuggestionCache: Sendable {
     }
 
     public func load(now: Date = Date(), calendar: Calendar = .current,
-                     defaults: UserDefaults = .standard) -> CardioSuggestion? {
+                     defaults: DefaultsStoring = UserDefaults.standard) -> CardioSuggestion? {
         guard let data = defaults.data(forKey: Self.key),
               let env = try? JSONDecoder().decode(Envelope.self, from: data),
               env.dayKey == Self.dayKey(now, calendar: calendar) else { return nil }
@@ -25,7 +25,7 @@ public struct TodayCardioSuggestionCache: Sendable {
     }
 
     public func save(_ suggestion: CardioSuggestion, now: Date = Date(), calendar: Calendar = .current,
-                     defaults: UserDefaults = .standard) {
+                     defaults: DefaultsStoring = UserDefaults.standard) {
         let env = Envelope(dayKey: Self.dayKey(now, calendar: calendar), suggestion: suggestion)
         if let data = try? JSONEncoder().encode(env) { defaults.set(data, forKey: Self.key) }
     }

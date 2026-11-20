@@ -11,8 +11,8 @@ import CadencePhoneFeatures
 @MainActor
 struct WorkoutHeartbeatTests {
 
-    private func testDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "heartbeat-tests-\(UUID().uuidString)")!
+    private func testDefaults() -> InMemoryDefaultsStore {
+        InMemoryDefaultsStore()
     }
 
     @Test func writeReadRoundTrip() {

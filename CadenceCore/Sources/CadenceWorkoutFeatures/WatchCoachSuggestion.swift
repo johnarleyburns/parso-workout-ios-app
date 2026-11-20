@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// Phone→Watch transport envelope around the exact shared `CoachSuggestionSnapshot`.
 /// Transport and persistence only: the Watch evaluates it with `CoachSuggestionService`.
@@ -113,9 +114,9 @@ public protocol WatchCoachSuggestionStoring: AnyObject {
 public final class UserDefaultsWatchCoachSuggestionStore: WatchCoachSuggestionStoring, @unchecked Sendable {
     public static let envelopeKey = "watch.coachSuggestion.envelope.v1"
     public static let invalidatedKey = "watch.coachSuggestion.invalidatedAt.v1"
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
 
-    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    public init(defaults: DefaultsStoring = UserDefaults.standard) { self.defaults = defaults }
 
     public func loadData() -> Data? { defaults.data(forKey: Self.envelopeKey) }
     public func saveData(_ data: Data) throws { defaults.set(data, forKey: Self.envelopeKey) }

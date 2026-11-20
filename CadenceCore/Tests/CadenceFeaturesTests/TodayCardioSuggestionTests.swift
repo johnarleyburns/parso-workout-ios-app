@@ -18,8 +18,7 @@ struct TodayCardioSuggestionTests {
     }
 
     @Test func cacheIsSameDayOnly() {
-        let defaults = UserDefaults(suiteName: "TodayCardioSuggestionTests")!
-        defaults.removePersistentDomain(forName: "TodayCardioSuggestionTests")
+        let defaults = InMemoryDefaultsStore()
         let now = Date()
         TodayCardioSuggestionCache().save(make(25), now: now, defaults: defaults)
         #expect(TodayCardioSuggestionCache().load(now: now, defaults: defaults) == make(25))

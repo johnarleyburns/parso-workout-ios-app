@@ -267,7 +267,7 @@ final class CardioInactivityRegressionSuite {
         let s = WorkoutSession(title: "Push", date: t0)
         ctx.insert(s)
         ctx.insert(SetEntry(weight: 80, reps: 5, order: 0, completedAt: t0, session: s))
-        let m = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let m = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         #expect(m.startStrength(s, now: t0))
         var strengthFinalized = 0
         m.strengthFinalizer = { _, _ in strengthFinalized += 1 }

@@ -13,9 +13,14 @@ import CadenceCore
 /// nothing here uses SwiftUI (the `@Observable` macro comes from Observation).
 @Observable
 public final class AppSettings {
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
 
-    public init(defaults: UserDefaults = .standard) {
+    public convenience init(defaults: UserDefaults = .standard) {
+        self.init(storage: defaults)
+    }
+
+    public init(storage: DefaultsStoring) {
+        let defaults = storage
         self.defaults = defaults
         // In UI-test mode, start from a clean, deterministic preference set so
         // test order can never bleed through persisted UserDefaults.
@@ -305,7 +310,7 @@ public final class AppSettings {
         didSet { Self.writeWorkoutSettings(defaults, "settings.lastIntervalSettings", lastIntervalSettings) }
     }
 
-    private static func readWorkoutSettings(_ defaults: UserDefaults, _ key: String,
+    private static func readWorkoutSettings(_ defaults: DefaultsStoring, _ key: String,
                                             fallback: WorkoutSettings = .default) -> WorkoutSettings {
         guard let data = defaults.data(forKey: key),
               let ws = try? JSONDecoder().decode(WorkoutSettings.self, from: data)
@@ -313,7 +318,7 @@ public final class AppSettings {
         return ws
     }
 
-    private static func writeWorkoutSettings(_ defaults: UserDefaults, _ key: String, _ ws: WorkoutSettings) {
+    private static func writeWorkoutSettings(_ defaults: DefaultsStoring, _ key: String, _ ws: WorkoutSettings) {
         if let data = try? JSONEncoder().encode(ws) {
             defaults.set(data, forKey: key)
         }
@@ -334,7 +339,7 @@ public final class AppSettings {
         else { favoriteRoutineIDs.insert(id) }
     }
 
-    private static func read<T: RawRepresentable>(_ d: UserDefaults, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
+    private static func read<T: RawRepresentable>(_ d: DefaultsStoring, _ key: String, _ type: T.Type) -> T? where T.RawValue == String {
         guard let raw = d.string(forKey: key) else { return nil }
         return T(rawValue: raw)
     }

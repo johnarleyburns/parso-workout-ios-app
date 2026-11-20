@@ -96,9 +96,9 @@ public final class InMemoryPhoneLiveCardioStore: PhoneLiveCardioStoring {
 
 @MainActor
 public final class UserDefaultsPhoneLiveCardioStore: PhoneLiveCardioStoring {
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
     private let key: String
-    public init(defaults: UserDefaults = .standard, key: String = "phone.liveCardio.session") {
+    public init(defaults: DefaultsStoring = UserDefaults.standard, key: String = "phone.liveCardio.session") {
         self.defaults = defaults; self.key = key
     }
     public func load() -> PhoneLiveCardioSession? {

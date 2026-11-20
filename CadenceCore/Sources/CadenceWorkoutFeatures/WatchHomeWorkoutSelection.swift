@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// Watch-only launcher state. The picker offers exactly the phone's workout
 /// options, in the phone's order, with the phone's titles. Selection changes
@@ -22,14 +23,14 @@ public struct WatchHomeWorkoutSelection: Equatable, Sendable {
         } ?? HomeWorkoutStartChoice.defaultChoice
     }
 
-    public static func persisted(defaults: UserDefaults = .standard) -> Self {
+    public static func persisted(defaults: DefaultsStoring = UserDefaults.standard) -> Self {
         Self(savedID: defaults.string(forKey: storageKey),
              legacyStrengthID: defaults.string(forKey: legacyStrengthStorageKey),
              legacyCardioID: defaults.string(forKey: legacyCardioStorageKey),
              legacyChoiceID: defaults.string(forKey: HomeWorkoutStartChoice.selectionStorageKey))
     }
 
-    public func persist(defaults: UserDefaults = .standard) {
+    public func persist(defaults: DefaultsStoring = UserDefaults.standard) {
         defaults.set(choice.id, forKey: Self.storageKey)
     }
 

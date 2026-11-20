@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// The single progress question summarized at the top of the Progress tab.
 public enum ProgressQuestion: String, CaseIterable, Sendable, Identifiable {
@@ -104,14 +105,14 @@ public struct ProgressQuestionSelection: Equatable, Sendable {
         self.selected = selected == .workoutHistory ? .strengthOverTime : selected
     }
 
-    public static func persisted(defaults: UserDefaults = .standard) -> Self {
+    public static func persisted(defaults: DefaultsStoring = UserDefaults.standard) -> Self {
         let selected = defaults.string(forKey: persistenceKey)
             .flatMap(ProgressQuestion.init(rawValue:))
             ?? .strengthOverTime
         return Self(selected: selected)
     }
 
-    public func persist(defaults: UserDefaults = .standard) {
+    public func persist(defaults: DefaultsStoring = UserDefaults.standard) {
         defaults.set(selected.rawValue, forKey: Self.persistenceKey)
     }
 

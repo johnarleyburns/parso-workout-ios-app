@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// Versioned, acknowledged phone→Watch settings/context synchronization.
 ///
@@ -309,9 +310,9 @@ public protocol WatchSyncLedgerStore: AnyObject {
 }
 
 public final class UserDefaultsWatchSyncLedgerStore: WatchSyncLedgerStore, @unchecked Sendable {
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
     private let key: String
-    public init(defaults: UserDefaults = .standard, key: String = "watchSync.ledger.v1") {
+    public init(defaults: DefaultsStoring = UserDefaults.standard, key: String = "watchSync.ledger.v1") {
         self.defaults = defaults
         self.key = key
     }

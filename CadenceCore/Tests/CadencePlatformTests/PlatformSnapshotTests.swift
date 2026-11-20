@@ -4,9 +4,7 @@ import Testing
 
 struct PlatformSnapshotTests {
     @Test func snapshotRoundTripsThroughSharedStore() {
-        let suite = "cadence.platform.snapshot.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryPlatformDefaultsStore()
 
         let snapshot = CadenceTodaySnapshot(
             dayKey: "2026-09-11", planTitle: "Coach plan",
@@ -19,9 +17,7 @@ struct PlatformSnapshotTests {
     }
 
     @Test func watchWidgetStateRoundTripsAndClears() {
-        let suite = "cadence.platform.watch-widget.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryPlatformDefaultsStore()
 
         let state = CadenceWatchWidgetState(
             workoutTitle: "Upper strength",
@@ -34,9 +30,7 @@ struct PlatformSnapshotTests {
     }
 
     @Test func complicationStateIsActiveWhileWorkoutRunsAndIdleOtherwise() {
-        let suite = "cadence.platform.complication.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryPlatformDefaultsStore()
         let now = Date(timeIntervalSince1970: 100_000)
 
         #expect(CadenceWatchComplicationState.current(defaults: defaults, now: now) == .idle)
@@ -57,7 +51,7 @@ struct PlatformSnapshotTests {
 
 
     @Test func liveActivityActionIsConsumedOnce() {
-        let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.\(UUID().uuidString)")!
+        let defaults = InMemoryPlatformDefaultsStore()
         CadencePlatformRequestStore.requestLiveActivity(.logPlannedSet, token: "owner-2", defaults: defaults)
         #expect(CadencePlatformRequestStore.consumeLiveActivityRequest(defaults: defaults) ==
                        .init(action: .logPlannedSet, token: "owner-2"))
@@ -65,14 +59,14 @@ struct PlatformSnapshotTests {
     }
 
     @Test func latestLiveActivityActionReplacesStaleAction() {
-        let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.replace.\(UUID().uuidString)")!
+        let defaults = InMemoryPlatformDefaultsStore()
         CadencePlatformRequestStore.requestLiveActivity(.addRest, defaults: defaults)
         CadencePlatformRequestStore.requestLiveActivity(.skipRest, defaults: defaults)
         #expect(CadencePlatformRequestStore.consumeLiveActivityRequest(defaults: defaults)?.action == .skipRest)
     }
 
     @Test func legacyLiveActivityStringIsDiscarded() {
-        let defaults = UserDefaults(suiteName: "PlatformSnapshotTests.liveActivity.legacy.\(UUID().uuidString)")!
+        let defaults = InMemoryPlatformDefaultsStore()
         defaults.set(CadencePlatformRequestStore.LiveActivityAction.addRest.rawValue,
                      forKey: "cadence.platform.liveActivity.action")
         #expect(CadencePlatformRequestStore.consumeLiveActivityRequest(defaults: defaults) == nil)

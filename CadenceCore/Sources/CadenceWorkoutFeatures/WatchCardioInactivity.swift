@@ -112,9 +112,9 @@ public final class InMemoryWatchCardioInactivityStore: WatchCardioInactivityStor
 }
 
 public final class UserDefaultsWatchCardioInactivityStore: WatchCardioInactivityStoring, @unchecked Sendable {
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
     private let recordKey = "watch.cardioInactivity.record", noticeKey = "watch.cardioInactivity.notice"
-    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    public init(defaults: DefaultsStoring = UserDefaults.standard) { self.defaults = defaults }
     public func load() -> WatchCardioInactivityRecord? {
         defaults.data(forKey: recordKey).flatMap { try? JSONDecoder().decode(WatchCardioInactivityRecord.self, from: $0) }
     }

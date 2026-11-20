@@ -58,7 +58,7 @@ struct PhoneStrengthHRFinalizationTests {
     @Test func pendingStateAndRetryOnActiveModel() throws {
         let (ctx, s) = try makeSession()
         s.endedAt = nil
-        let active = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let active = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         active.startStrength(s)
         let recorder = try #require(active.heartRateRecorder)
         recorder.record(obs(60), now: start.addingTimeInterval(600))

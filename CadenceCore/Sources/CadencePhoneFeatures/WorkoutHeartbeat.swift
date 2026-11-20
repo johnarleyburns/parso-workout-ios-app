@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// A tiny UserDefaults-backed liveness record for the in-progress workout
 /// (launch-blockers plan, Phase 1e — crash/upgrade recovery, no schema change).
@@ -29,17 +30,17 @@ public struct WorkoutHeartbeat: Equatable, Codable, Sendable {
 public enum WorkoutHeartbeatStore {
     public static let key = "cadence.workoutHeartbeat"
 
-    public static func write(_ heartbeat: WorkoutHeartbeat, defaults: UserDefaults = .standard) {
+    public static func write(_ heartbeat: WorkoutHeartbeat, defaults: DefaultsStoring = UserDefaults.standard) {
         guard let data = try? JSONEncoder().encode(heartbeat) else { return }
         defaults.set(data, forKey: key)
     }
 
-    public static func read(defaults: UserDefaults = .standard) -> WorkoutHeartbeat? {
+    public static func read(defaults: DefaultsStoring = UserDefaults.standard) -> WorkoutHeartbeat? {
         guard let data = defaults.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(WorkoutHeartbeat.self, from: data)
     }
 
-    public static func clear(defaults: UserDefaults = .standard) {
+    public static func clear(defaults: DefaultsStoring = UserDefaults.standard) {
         defaults.removeObject(forKey: key)
     }
 }

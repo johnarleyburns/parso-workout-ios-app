@@ -83,9 +83,9 @@ public final class WatchSentWorkoutStore {
 
     public var sentWorkouts: [WatchSync.TodayPlan.Session] = []
     public private(set) var consumedIDs: Set<String>
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(defaults: DefaultsStoring = UserDefaults.standard) {
         self.defaults = defaults
         consumedIDs = Set(defaults.stringArray(forKey: Self.consumedKey) ?? [])
     }

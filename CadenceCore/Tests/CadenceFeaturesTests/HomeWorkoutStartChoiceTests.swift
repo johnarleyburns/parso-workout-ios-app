@@ -34,14 +34,11 @@ struct HomeWorkoutStartChoiceTests {
     }
 
     @Test func everyChoiceRestoresFromPersistedSelection() throws {
-        let suiteName = "HomeWorkoutStartChoiceTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suiteName))
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = InMemoryDefaultsStore()
         let key = HomeWorkoutStartChoice.selectionStorageKey
         for choice in HomeWorkoutStartChoice.allChoices {
             defaults.set(choice.id, forKey: key)
-            let reopened = try #require(UserDefaults(suiteName: suiteName))
-            let saved = try #require(reopened.string(forKey: key))
+            let saved = try #require(defaults.string(forKey: key))
             #expect(HomeWorkoutStartChoice.restored(from: saved) == choice)
         }
     }

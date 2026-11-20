@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CadenceCore
 import CadencePhoneFeatures
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
@@ -51,9 +52,7 @@ struct WeeklyDetailSelectionTests {
     }
 
     @Test func persistedSelectionRoundTripsIndependentExpansion() {
-        let suiteName = "WeeklyDetailSelectionTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = InMemoryDefaultsStore()
 
         let original = WeeklyDetailSelection(expanded: [.muscleGroupVolume, .cardio])
         original.persist(defaults: defaults)
@@ -71,9 +70,7 @@ struct WeeklyDetailSelectionTests {
     }
 
     @Test func thisWeekSectionRequestRoundTripsAndClears() {
-        let suiteName = "ThisWeekDestinationTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = InMemoryPlatformDefaultsStore()
 
         #expect(CadencePlatformRequestStore.consumeThisWeekSection(defaults: defaults) == nil)
         CadencePlatformRequestStore.requestThisWeekSection(.cardio, defaults: defaults)
@@ -82,9 +79,7 @@ struct WeeklyDetailSelectionTests {
     }
 
     @Test func persistedSelectionIgnoresUnknownModes() {
-        let suiteName = "WeeklyDetailSelectionTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let defaults = InMemoryDefaultsStore()
 
         defaults.set(["muscleMap", "not-a-real-section"],
                      forKey: WeeklyDetailSelection.persistenceKey)

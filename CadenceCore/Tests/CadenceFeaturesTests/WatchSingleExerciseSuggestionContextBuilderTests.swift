@@ -17,7 +17,7 @@ struct WatchSingleExerciseSuggestionContextBuilderTests {
 
     @MainActor
     private func settings() -> AppSettings {
-        AppSettings(defaults: UserDefaults(suiteName: "wsescb-\(UUID().uuidString)")!)
+        AppSettings(storage: InMemoryDefaultsStore())
     }
 
     @MainActor

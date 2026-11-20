@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
@@ -38,9 +39,7 @@ struct ProgressQuestionSelectionTests {
     }
 
     @Test func persistedRawValuesRestoreSelection() {
-        let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryDefaultsStore()
         for (raw, expected) in [("workoutHistory", ProgressQuestion.strengthOverTime),
                                 ("observations", .observations),
                                 ("bogus", .strengthOverTime)] {
@@ -50,9 +49,7 @@ struct ProgressQuestionSelectionTests {
     }
 
     @Test func selectionPersistsAndDefaultsToStrengthOverTime() {
-        let suite = "ProgressQuestionSelectionTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryDefaultsStore()
 
         #expect(ProgressQuestionSelection.persisted(defaults: defaults).selected
                        == .strengthOverTime)

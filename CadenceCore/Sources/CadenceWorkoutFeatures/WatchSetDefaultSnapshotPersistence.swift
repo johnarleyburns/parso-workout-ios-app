@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// Durable, validated storage for the phone's set-default snapshot. The Watch's
 /// `WatchSetDefaultSnapshotStore` wraps this; it lives here so it is headlessly testable.
@@ -20,10 +21,10 @@ public struct WatchSetDefaultSnapshotPersistence {
         var snapshot: Data
     }
 
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
     private let key: String
 
-    public init(defaults: UserDefaults = .standard, key: String = defaultsKey) {
+    public init(defaults: DefaultsStoring = UserDefaults.standard, key: String = defaultsKey) {
         self.defaults = defaults
         self.key = key
     }

@@ -104,7 +104,7 @@ struct WatchWeekRingsTests {
 
     @Test func sameStrengthCompletionIDReplacesInsteadOfDoubleCounting() {
         let id = UUID(), date = Date(timeIntervalSince1970: 1_800_000_000)
-        let defaults = UserDefaults(suiteName: "ring-\(UUID().uuidString)")!
+        let defaults = InMemoryDefaultsStore()
         let store = WatchWeekLocalOverlayStore(defaults: defaults)
         for _ in 0..<2 {
             store.record(WatchWeekLocalOverlay(id: id, weekKey: "w", kind: .strength, sets: 4,

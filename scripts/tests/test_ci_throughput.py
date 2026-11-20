@@ -66,13 +66,23 @@ class ThroughputTests(unittest.TestCase):
         triggers = workflow('ios.yml')['true']
         self.assertIn('pull_request', triggers)
         self.assertIn('push', triggers)
-        seeds = [step for step in jobs['app-build']['steps']
-                 if step.get('name') == 'iPhone and embedded Watch build with guardrails']
-        self.assertEqual(len(seeds), 1)
+        steps = jobs['app-build']['steps']
+        names = [step.get('name') or step.get('uses', '') for step in steps]
+        build = steps[names.index('iPhone and embedded Watch build with guardrails')]
         # main may skip the rebuild when the shared seed already exists.
-        self.assertIn("steps.cache.outputs.matched-key == ''", seeds[0]['if'])
-        cache = next(step for step in jobs['app-build']['steps'] if step.get('uses', '').endswith('build-cache'))
-        self.assertIn("github.ref == 'refs/heads/main'", cache['with']['save'])
+        self.assertIn("steps.cache.outputs.matched-key == ''", build['if'])
+        save = steps[names.index('Save the shared device cache')]
+        self.assertIn("github.ref == 'refs/heads/main'", save['if'])
+        # Regression: a composite action finishes before the caller's build, so
+        # saving inside it captured an empty directory and seeded nothing.
+        self.assertGreater(names.index('Save the shared device cache'),
+                           names.index('iPhone and embedded Watch build with guardrails'))
+        restore = next(step for step in steps if step.get('uses', '').endswith('build-cache'))
+        self.assertNotIn('save', restore.get('with', {}))
+        host = jobs['host-tests']['steps']
+        host_names = [step.get('name') or step.get('uses', '') for step in host]
+        self.assertGreater(host_names.index('Save the shared host cache'),
+                           host_names.index('Run static checks and SwiftPM package tests'))
 
     def test_tree_attestation_skips_only_an_identical_tree_with_both_checks_green(self):
         script = ROOT / '.github/scripts/tree-validation-attestation.sh'

@@ -60,7 +60,10 @@ struct HomeWorkoutStartControls: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.tertiary)
             }
+            .padding(.horizontal, 8)
             .frame(minHeight: 48)
+            .background(tint(for: option).opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

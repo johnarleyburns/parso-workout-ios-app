@@ -35,15 +35,21 @@ public enum PartnerPlanResolver {
         /// The performer's rep pattern across ALL exercises, oldest first — used
         /// when they have never trained THIS movement.
         public let generalRepLadders: [[Int]]
+        /// The performer's most recent loaded working set on any movement, used
+        /// only as an educated starting-load guess when this movement has no
+        /// history at all.
+        public let generalLastWeightKg: Double?
 
         public init(lastSets: [LoggedSet] = [],
                     repLadders: [[Int]] = [],
                     firstWorkingWeightKg: Double? = nil,
-                    generalRepLadders: [[Int]] = []) {
+                    generalRepLadders: [[Int]] = [],
+                    generalLastWeightKg: Double? = nil) {
             self.lastSets = lastSets
             self.repLadders = repLadders
             self.firstWorkingWeightKg = firstWorkingWeightKg
             self.generalRepLadders = generalRepLadders
+            self.generalLastWeightKg = generalLastWeightKg
         }
 
         public static let empty = ExerciseHistory()

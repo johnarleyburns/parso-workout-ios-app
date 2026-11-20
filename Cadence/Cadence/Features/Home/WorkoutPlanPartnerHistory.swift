@@ -30,7 +30,8 @@ enum WorkoutPlanPartnerHistory {
                      people: [Person]) -> PartnerPlanResolver.ExerciseHistory {
             guard let exercise = exercisesByName[name.lowercased()] else {
                 return PartnerPlanResolver.ExerciseHistory(
-                    generalRepLadders: generalRepLadders(performerID: performerID))
+                    generalRepLadders: generalRepLadders(performerID: performerID),
+                    generalLastWeightKg: generalLastWeight(performerID: performerID))
             }
             let person = performerID.flatMap { id in people.first { $0.id == id } }
             let last = WorkoutRepository.lastTimeSets(for: exercise, performedBy: person, excluding: nil)
@@ -41,7 +42,20 @@ enum WorkoutPlanPartnerHistory {
                 firstWorkingWeightKg: WorkoutRepository.firstWorkingSetWeight(for: exercise,
                                                                                performedBy: person,
                                                                                excluding: nil),
-                generalRepLadders: generalRepLadders(performerID: performerID))
+                generalRepLadders: generalRepLadders(performerID: performerID),
+                generalLastWeightKg: generalLastWeight(performerID: performerID))
+        }
+
+        /// The most recent loaded working set on ANY exercise by this performer.
+        /// Used only when the planned movement has no history of its own.
+        private func generalLastWeight(performerID: UUID?) -> Double? {
+            for session in sessions.sorted(by: { $0.date > $1.date }) {
+                let sets = session.orderedSets.filter {
+                    !$0.isWarmup && matches($0, performerID: performerID) && $0.weight > 0
+                }
+                if let last = sets.last { return last.weight }
+            }
+            return nil
         }
 
         private func generalRepLadders(performerID: UUID?) -> [[Int]] {

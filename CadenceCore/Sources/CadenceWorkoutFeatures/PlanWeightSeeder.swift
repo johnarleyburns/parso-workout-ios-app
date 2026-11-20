@@ -5,7 +5,9 @@ import CadenceCore
 /// Fills planned working loads before the user starts a workout, using the same
 /// cascade as set entry: an exact rep-match from history first, then an inverse
 /// e1RM estimate from the best recent set, then the performer's literal last
-/// working weight. Explicit loads, percentages and bodyweight sets are kept.
+/// working weight. If the movement has no history at all, their most recent
+/// loaded working set on any movement is used as an educated starting guess.
+/// Explicit loads, percentages and bodyweight sets are kept.
 public enum PlanWeightSeeder {
     public static func fillMissingLoads(_ sets: [EditableSet],
                                         history: PartnerPlanResolver.ExerciseHistory,
@@ -13,6 +15,7 @@ public enum PlanWeightSeeder {
         let samples = historySamples(history)
         let lastWeight = history.lastSets.last(where: { $0.reps > 0 && $0.weightKg > 0 })?.weightKg
             ?? history.firstWorkingWeightKg
+            ?? history.generalLastWeightKg
         return sets.map { original in
             guard original.targetWeight == nil, original.loadMode == .straight else { return original }
             var set = original

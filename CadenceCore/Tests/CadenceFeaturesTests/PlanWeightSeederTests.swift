@@ -33,4 +33,12 @@ struct PlanWeightSeederTests {
             history: .empty)
         #expect(filled[0].targetWeight == nil)
     }
+
+    @Test func generalLastWeightIsUsedAsAnEducatedGuessWhenTheMovementIsNew() {
+        let history = PartnerPlanResolver.ExerciseHistory(generalLastWeightKg: 42)
+        let filled = PlanWeightSeeder.fillMissingLoads(
+            [EditableSet(targetReps: 10, targetWeight: nil)],
+            history: history)
+        #expect(filled[0].targetWeight == 42)
+    }
 }

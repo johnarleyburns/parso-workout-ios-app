@@ -28,11 +28,6 @@ extension WorkoutPlanEditor {
     /// Start the reviewed draft; the sheet owns dismissal.
     @ViewBuilder var suggestedStrengthActions: some View {
         if let hooks = suggestedStrength {
-            CadenceActionButton(title: String(localized: "Start this Workout"), systemImage: "play.fill") {
-                saveAndStart()
-            }
-            .disabled(hooks.isRegenerating)
-            .accessibilityIdentifier(SuggestedStrengthActionContract.startIdentifier)
             if hooks.isRegenerating {
                 ProgressView(String(localized: "Finding another workout\u{2026}"))
                     .accessibilityIdentifier("suggestedStrength.loading")
@@ -43,6 +38,11 @@ extension WorkoutPlanEditor {
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("suggestedStrength.message")
             }
+            CadenceActionButton(title: String(localized: "Start This Workout"), systemImage: "play.fill") {
+                saveAndStart()
+            }
+            .disabled(hooks.isRegenerating)
+            .accessibilityIdentifier(SuggestedStrengthActionContract.startIdentifier)
         }
     }
 
@@ -65,15 +65,6 @@ extension WorkoutPlanEditor {
         sendToWatchResultPresented = true
     }
 
-
-    var settingsButton: some View {
-        CadenceActionButton(title: String(localized: "Show workout settings\u{2026}"),
-                            systemImage: "gearshape",
-                            emphasis: .secondary) {
-            settingsPresented = true
-        }
-        .accessibilityIdentifier("editor.showSettings")
-    }
 
     /// Planned volume is intentionally cheap and synchronous: it only reduces
     /// the exercises currently being edited. This keeps typing, swapping, and

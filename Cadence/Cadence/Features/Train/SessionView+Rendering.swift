@@ -9,13 +9,6 @@ extension SessionView {
     @ViewBuilder
     var scrollContent: some View {
         VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-            sessionTitleHeader
-            if isActiveSession {
-                LiveWorkoutVolumeSummary(state: liveVolumeState,
-                                         expanded: $liveVolumeExpanded,
-                                         performers: liveVolumePerformers,
-                                         performerStates: liveVolumePerformerStates)
-            }
             if isManualLog { loggedDateBanner }
             if active.strengthSession?.id != session.id && !isManualLog {
                 editableMetadataRow
@@ -30,7 +23,7 @@ extension SessionView {
                              onChange: { syncRestAlarm(to: $0) })
             }
             if let plan { planBanner(plan) }
-            partnerBar
+            if hasPartners { partnerDisclosure }
             if isEmptySession {
                 CadenceActionButton(title: String(localized: "Use Previous Workout"),
                                     systemImage: "clock.arrow.circlepath",
@@ -51,13 +44,6 @@ extension SessionView {
                 plannedCard(name)
             }
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                CadenceActionButton(title: String(localized: "Add Exercise"),
-                                    systemImage: "plus.circle.fill",
-                                    emphasis: .secondary) {
-                    pickerPresented = true
-                }
-                .accessibilityIdentifier("session.addExercise")
-
                 suggestExerciseButton
 
                 if !isActiveSession && isManualLog {
@@ -66,6 +52,12 @@ extension SessionView {
                     }
                     .accessibilityIdentifier("log.done")
                 }
+            }
+            if isActiveSession {
+                LiveWorkoutVolumeSummary(state: liveVolumeState,
+                                         expanded: $liveVolumeExpanded,
+                                         performers: liveVolumePerformers,
+                                         performerStates: liveVolumePerformerStates)
             }
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
@@ -91,14 +83,12 @@ extension SessionView {
                 .padding(.bottom, 8)
             }
         }
-        .navigationTitle("")
+        .navigationTitle("Workout")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .top, spacing: 0) {
             if isActiveSession {
-                VStack(spacing: 0) {
-                    WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused, timers: $timers)
-                    SessionLiveHRBand(sessionID: session.id)
-                }
+                WorkoutElapsedHeader(clock: active.clock, isPaused: active.isPaused, timers: $timers,
+                                     trailing: AnyView(SessionLiveHRInline()))
             }
         }
         .toolbar { toolbarContent }

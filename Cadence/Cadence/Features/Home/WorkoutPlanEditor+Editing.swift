@@ -21,6 +21,16 @@ extension WorkoutPlanEditor {
         }
     }
 
+    /// Every planned working set gets a load before the workout starts, using
+    /// the same exact-rep / inverse-e1RM / last-weight cascade as set entry.
+    /// Explicit loads and percentage/bodyweight modes are never overwritten.
+    func seedPlanWeights() {
+        guard let historyIndex, !plan.exercises.isEmpty else { return }
+        plan = PlanWeightSeeder.fill(plan: plan, formula: settings.formula) { name, performerID in
+            historyIndex.history(forExerciseNamed: name, performerID: performerID, people: allPeople)
+        }
+    }
+
     /// Fills every partner's plan from *their* history for the owner's
     /// exercises. Runs on appear, roster changes, and after exercise changes.
     func resolvePartnerPlans() {
@@ -60,7 +70,16 @@ extension WorkoutPlanEditor {
         case .swap(let id):
             guard let index = plan.exercises.firstIndex(where: { $0.id == id }) else { return }
             plan.exercises[index].name = exercise.name
+            // A swapped movement must not inherit the previous movement's load;
+            // re-seed from this exercise's own history.
+            plan.exercises[index].sets = plan.exercises[index].sets.map { set in
+                guard set.loadMode == .straight else { return set }
+                var updated = set
+                updated.targetWeight = nil
+                return updated
+            }
         }
+        seedPlanWeights()
         resolvePartnerPlans()
     }
 

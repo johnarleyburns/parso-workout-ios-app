@@ -54,6 +54,7 @@ struct WorkoutPlanEditor: View {
     @Query(sort: \Person.name) var allPeople: [Person]
     @Query(sort: \Exercise.name) private var allExercises: [Exercise]
     @State var repStructurePerformer: EditablePerformerPlan?
+    @State var showRepStructureInfo = false
     @State var exercisePickerIntent: ExercisePickerIntent?
 
     @State private var restSeconds: Int
@@ -106,13 +107,6 @@ struct WorkoutPlanEditor: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                if suggestedStrength != nil {
-                    suggestedStrengthActions
-                } else if allowsStart {
-                    startButton
-                    sendToWatchButton
-                }
-
                 if let rationale = plan.recommendationRationale {
                     RecommendationRationaleDisclosure(rationale: rationale)
                         .workoutPlanCard()
@@ -146,7 +140,6 @@ struct WorkoutPlanEditor: View {
                             onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
                             .workoutPlanCard()
                     }
-                    settingsButton
                 }
                 suggestExerciseButton
                 LiveWorkoutVolumeSummary(state: planVolumeState,
@@ -156,6 +149,12 @@ struct WorkoutPlanEditor: View {
                                          performers: planVolumePerformers,
                                          performerStates: planVolumePerformerStates)
 
+                if suggestedStrength != nil {
+                    suggestedStrengthActions
+                } else if allowsStart {
+                    sendToWatchButton
+                    startButton
+                }
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
         }
@@ -172,7 +171,9 @@ struct WorkoutPlanEditor: View {
                 if suggestedStrength != nil || plan.suggestedWorkoutStyle != nil {
                     seedSuggestedOwnerDefaults()
                 }
+                seedPlanWeights()
                 resolvePartnerPlans()
+                seedPlanWeights()
                 didResolvePartnerPlans = true
             }
             refreshPlanVolume()
@@ -195,7 +196,12 @@ struct WorkoutPlanEditor: View {
                 .accessibilityLabel("Close workout plan")
                 .accessibilityIdentifier("editor.close")
             }
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button { settingsPresented = true } label: {
+                    Image(systemName: "gearshape")
+                }
+                .accessibilityLabel("Workout settings")
+                .accessibilityIdentifier("editor.showSettings")
                 Button { withAnimation { isEditing.toggle() } } label: {
                     Image(systemName: isEditing ? "list.bullet" : "pencil")
                 }
@@ -247,7 +253,14 @@ struct WorkoutPlanEditor: View {
                                 exerciseForName: { name in
                                     exerciseIndex[name.lowercased()]
                                 },
-                                onAdd: addSuggestedExercise)
+                                onAdd: addSuggestedExercise,
+                                onFindExercise: {
+                                    suggestExerciseRequest = nil
+                                    Task { @MainActor in
+                                        await Task.yield()
+                                        exercisePickerIntent = .add
+                                    }
+                                })
         }
         .overlay {
             if isRegeneratingAfterExclusion {

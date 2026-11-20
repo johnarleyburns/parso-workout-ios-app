@@ -73,6 +73,7 @@ struct ProgressStrengthChartView: View {
             }
             .chartForegroundStyleScale(range: [CadenceTheme.accent, CadenceTheme.link,
                                                 CadenceTheme.attention, .purple])
+            .chartLegend(.hidden)
             .chartXSelection(value: $selectedDate)
             .chartYScale(domain: .automatic(includesZero: false))
             .frame(height: 175)
@@ -90,6 +91,14 @@ struct ProgressStrengthChartView: View {
             }
 
             VStack(spacing: 5) {
+                HStack(spacing: 8) {
+                    Text("Lift").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("e1RM").frame(minWidth: 88, alignment: .trailing)
+                    Text("Trend").frame(minWidth: 82, alignment: .trailing)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
                 ForEach(selectedSeries) { series in
                     HStack(spacing: 8) {
                         Circle()
@@ -98,14 +107,16 @@ struct ProgressStrengthChartView: View {
                             .accessibilityHidden(true)
                         Text(series.exercise)
                             .font(.subheadline)
-                        Spacer()
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                         Text(series.points.isEmpty
                              ? "—"
                              : Format.weight(series.current, unit: unit, decimals: 0))
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
-                        trendTag(series.trend, delta: series.delta,
-                                 isPR: data.prExercises.contains(series.exercise))
+                            .frame(minWidth: 88, alignment: .trailing)
+                        trendTag(series.trend, delta: series.delta)
+                            .frame(minWidth: 82, alignment: .trailing)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(series.exercise): \(Format.weight(series.current, unit: unit, decimals: 0)), \(trendLabel(series.trend, delta: series.delta))")
@@ -208,18 +219,12 @@ struct ProgressStrengthChartView: View {
     }
 
     @ViewBuilder
-    private func trendTag(_ trend: TrendDirection, delta: Double, isPR: Bool) -> some View {
+    private func trendTag(_ trend: TrendDirection, delta: Double) -> some View {
         switch trend {
         case .rising:
-            HStack(spacing: 6) {
-                if isPR {
-                    Label("PR", systemImage: "trophy.fill")
-                        .foregroundStyle(CadenceTheme.achievement)
-                }
-                Label("+" + Format.weight(abs(delta), unit: unit, decimals: 0), systemImage: "arrow.up.right")
-                    .foregroundStyle(.secondary)
-            }
-            .font(.caption)
+            Label("+" + Format.weight(abs(delta), unit: unit, decimals: 0), systemImage: "arrow.up.right")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         case .declining:
             Label("−" + Format.weight(abs(delta), unit: unit, decimals: 0), systemImage: "arrow.down.right")
                 .font(.caption)

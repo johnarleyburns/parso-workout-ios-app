@@ -20,6 +20,8 @@ struct WorkoutElapsedHeader: View {
     let clock: WorkoutClock
     let isPaused: Bool
     @Binding var timers: WorkoutTimersModel
+    /// Right-aligned live metric (heart rate) on the elapsed-time line.
+    var trailing: AnyView? = nil
 
     @State private var now = Date()
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
@@ -52,6 +54,12 @@ struct WorkoutElapsedHeader: View {
                         .background(.orange.opacity(0.18), in: Capsule())
                         .accessibilityIdentifier("session.elapsed.paused")
                 }
+                Spacer(minLength: 8)
+                if let trailing {
+                    trailing
+                }
+            }
+            HStack {
                 Spacer()
                 workRestControl
             }

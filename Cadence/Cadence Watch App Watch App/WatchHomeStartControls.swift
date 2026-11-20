@@ -16,8 +16,9 @@ extension WatchRootView {
             } label: {
                 HStack(spacing: 10) {
                     Image(systemName: option.symbol)
-                        .foregroundStyle(.tint)
-                        .frame(width: 22)
+                        .foregroundStyle(tint(for: option))
+                        .frame(width: 26, height: 26)
+                        .background(tint(for: option).opacity(0.16), in: Circle())
                     Text(LocalizedStringKey(option.title))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     Image(systemName: "chevron.right")
@@ -26,8 +27,22 @@ extension WatchRootView {
                 }
             }
             .buttonStyle(.plain)
+            .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(tint(for: option).opacity(0.12)))
             .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             .accessibilityHint("Starts or opens \(option.title)")
+        }
+    }
+
+    private func tint(for option: HomeWorkoutStartChoice) -> Color {
+        switch option {
+        case .strength, .cardio(.weights): return WatchTone.accent
+        case .suggestedCardio: return WatchTone.gold
+        case .cardio(.hiit), .cardio(.boxing): return WatchTone.heart
+        case .cardio(.swim): return .teal
+        case .cardio(.rowing): return WatchTone.cardio
+        case .cardio(.cycle), .cardio(.elliptical), .cardio(.stairClimber): return .indigo
+        case .cardio(.run), .cardio(.walk): return .orange
+        case .cardio(.other): return .pink
         }
     }
 }
@@ -51,12 +66,8 @@ struct WatchHomeStartNavigation: ViewModifier {
     @ViewBuilder
     private func destination(for choice: HomeWorkoutStartChoice) -> some View {
         switch choice {
-        case .strength(.quickStart):
-            WatchStrengthPreview(launch: WatchLiftLaunch(title: "Custom Strength", exerciseNames: [], repLadder: []))
         case .strength(.suggested):
             WatchHomeSuggestedStrengthView()
-        case .strength(.previous):
-            WatchPreviousListView()
         case .cardio(let type):
             if let cardio = type.cardioType { cardioDestination(cardio) }
         case .suggestedCardio:

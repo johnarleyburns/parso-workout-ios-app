@@ -14,9 +14,9 @@ extension HomeView {
             WeeklyIntentRingsCard(
                 display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
                 tabSelection: rootTabSelection)
-                .frame(maxHeight: .infinity)
+                .frame(minHeight: 260)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceCard()
         if resumeSession != nil {
             todayHeroCard
@@ -25,9 +25,7 @@ extension HomeView {
 
     var workoutStartControls: some View {
         HomeWorkoutStartControls(
-            onQuickStart: { startQuickStartStrength() },
             onSuggested: { openTodaySuggestion() },
-            onPreviousStart: handleEditorStart,
             onCardio: { start($0) },
             onCustomCardio: { startOtherCardio(description: $0, gps: $1) },
             onSuggestedCardio: requestSuggestedCardio)

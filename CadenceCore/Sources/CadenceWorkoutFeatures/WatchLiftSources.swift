@@ -9,40 +9,32 @@ import CadenceCore
 /// Pure presenters; Suggest evaluates only the shared Coach snapshot (see `WatchSuggestResolver`).
 public enum WatchLiftSources {
     public enum Source: String, CaseIterable, Sendable {
-        case suggest, previous, custom
+        case suggest
         public var title: String {
             switch self {
-            case .suggest: "Personalized"
-            case .previous: "Previous"
-            case .custom: "Custom"
+            case .suggest: "Lift"
             }
         }
         public var systemImage: String {
             switch self {
             case .suggest: "sparkles"
-            case .previous: "clock.arrow.circlepath"
-            case .custom: "plus.circle.fill"
             }
         }
         public var accessibilityIdentifier: String { "watchStrength.\(rawValue)" }
         public var accessibilityLabel: String {
             switch self {
-            case .suggest: "Personalized, the strength workout synced from iPhone"
-            case .previous: "Previous, your last five strength workouts"
-            case .custom: "Custom, choose reps, rest and partners"
+            case .suggest: "Lift, the strength workout synced from iPhone"
             }
         }
         public var accessibilityHint: String {
             switch self {
             case .suggest: "Opens a review. Nothing starts until you confirm."
-            case .previous: "Opens a list. Starting one creates a new workout from its template."
-            case .custom: "Opens setup."
             }
         }
     }
 
     /// Rows shown before Prescriptions, in order.
-    public static let menuOrder: [Source] = [.suggest, .previous, .custom]
+    public static let menuOrder: [Source] = [.suggest]
     public static let menuTitle = "Lift"
     public static let previousLimit = 5
     public static let previewExerciseLimit = 3

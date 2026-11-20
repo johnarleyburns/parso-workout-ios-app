@@ -38,7 +38,6 @@ struct GuidedPhaseOverlay: View {
     @State private var countdown: PhaseCountdownClock
     @State private var now = Date()
     @State private var finished = false
-    @State private var showSkipConfirmation = false
     private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(title: String, minutes: Int, tint: Color = .green,
@@ -88,7 +87,7 @@ struct GuidedPhaseOverlay: View {
                         .accessibilityIdentifier("\(idPrefix).liveHR")
                 }
                 Spacer()
-                HStack(spacing: 16) {
+                HStack(spacing: 10) {
                     Button {
                         let ref = Date()
                         if countdown.isPaused { countdown.resume(now: ref) }
@@ -107,28 +106,26 @@ struct GuidedPhaseOverlay: View {
                         countdown.addTime(60, now: ref)
                         now = ref
                     } label: {
-                        Label("+1 min", systemImage: "plus")
+                        Label("1 min", systemImage: "plus")
                             .frame(maxWidth: .infinity)
                     }
                     .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("\(idPrefix).addMinute")
 
                     Button {
-                        showSkipConfirmation = true
+                        (onSkip ?? onFinish)(consumedSeconds)
                     } label: {
                         Label("Skip", systemImage: "forward.fill").frame(maxWidth: .infinity)
                     }
                     .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
                     .accessibilityIdentifier("\(idPrefix).skip")
                 }
-                .glassGroup(spacing: 16)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+                .glassGroup(spacing: 10)
             }
             .foregroundStyle(.white)
             .padding()
-        }
-        .confirmationDialog("Skip \(title.lowercased())?", isPresented: $showSkipConfirmation, titleVisibility: .visible) {
-            Button("Skip", role: .destructive) { (onSkip ?? onFinish)(consumedSeconds) }
-            Button("Cancel", role: .cancel) {}
         }
         // Keep the screen awake through the whole warm-up / cool-down timer.
         .keepAwake()

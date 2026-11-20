@@ -25,17 +25,21 @@ struct WatchWarmUpView: View {
                     .foregroundStyle(.white)
                     .accessibilityLabel("Warm-up time remaining")
                 WatchLiveHeartRateBadge(bpm: watchManager.currentBPM)
-                HStack(spacing: 16) {
+                HStack(spacing: 10) {
                     Button("+1m") {
                         WatchHaptics.tap()
                         model.warmupTimerModel.add(60)
                     }
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
                     .foregroundStyle(.white)
                     .accessibilityIdentifier("watchWarmup.add")
                     Button("Skip") {
                         WatchHaptics.success()
                         model.endWarmup()
                     }
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
                     .foregroundStyle(.white)
                     .accessibilityIdentifier("watchWarmup.skip")
                 }

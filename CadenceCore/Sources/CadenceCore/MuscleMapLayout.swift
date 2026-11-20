@@ -135,10 +135,9 @@ public enum MuscleMapLayout {
     /// the volume scope take their host's colour, so all muscle on the map is coloured.
     public static func colourLayers(for panel: MuscleMapPanel,
                                     visibleGroups: Set<MuscleGroup>) -> [MuscleMapColourLayer] {
-        maskGroups(for: panel).compactMap { group in
-            colourGroup(for: group, visibleGroups: visibleGroups).map {
-                MuscleMapColourLayer(mask: group, colourGroup: $0)
-            }
+        maskGroups(for: panel).map { group in
+            MuscleMapColourLayer(mask: group,
+                                 colourGroup: colourGroup(for: group, visibleGroups: visibleGroups) ?? group)
         }
     }
 

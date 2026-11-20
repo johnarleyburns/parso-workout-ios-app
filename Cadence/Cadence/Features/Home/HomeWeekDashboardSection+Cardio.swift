@@ -32,10 +32,12 @@ extension HomeWeekDashboardSection {
     private var guidelineCreditRow: some View {
         HStack {
             Text("Guideline credit")
+                .font(.headline)
             Spacer()
             Text(CardioMinutesDisplay.guidelineCreditFraction(
                 dashboard.cardioDetail.moderateEquivalentMinutes,
                 target: dashboard.cardioDetail.targetMinutes))
+                .font(.headline)
                 .monospacedDigit()
                 .foregroundStyle(cardioTint)
         }
@@ -86,6 +88,7 @@ extension HomeWeekDashboardSection {
     private var cardioMinutes: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Cardio Minutes")
+                .font(.headline)
                 .foregroundStyle(cardioTint)
                 .accessibilityIdentifier("home.week.cardioHeading")
             HStack {

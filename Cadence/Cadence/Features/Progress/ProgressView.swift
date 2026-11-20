@@ -282,28 +282,29 @@ struct ProgressAnalyticsView: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
-    // MARK: - Strength over time
+    // MARK: - Lifts
 
     @ViewBuilder private var strengthCard: some View {
-        card(title: String(localized: "Strength over time"), subtitle: "estimated 1RM \u{00b7} last 12 weeks",
-             citation: CitationRegistry.oneRMEstimation, tint: .blue) {
+        VStack(alignment: .leading, spacing: 10) {
             if let preparedStrengthData {
-                VStack(alignment: .leading, spacing: 8) {
-                    ProgressStrengthChartView(data: preparedStrengthData,
-                                              unit: settings.unit,
-                                              selectedNames: $selectedStrengthNames,
-                                              onAddLift: addLift)
-                    Text("Estimates use the \(settings.formula.displayName) formula selected in Settings.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
+                ProgressStrengthChartView(data: preparedStrengthData,
+                                          unit: settings.unit,
+                                          selectedNames: $selectedStrengthNames,
+                                          onAddLift: addLift)
+                Text("Estimated 1RM trends use the \(settings.formula.displayName) formula selected in Settings, over the last 12 weeks.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 110)
-                    .accessibilityLabel("Preparing strength chart")
+                    .accessibilityLabel("Preparing lifts chart")
             }
+            Divider().padding(.top, 2)
+            CitationLink(citation: CitationRegistry.oneRMEstimation, compact: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cadenceCard()
     }
 
     private func addLift(_ name: String) {

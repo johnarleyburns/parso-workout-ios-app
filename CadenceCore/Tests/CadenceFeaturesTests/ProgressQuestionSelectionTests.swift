@@ -29,6 +29,7 @@ struct ProgressQuestionSelectionTests {
     @Test func historyLivesOutsideProgress() {
         #expect(!ProgressQuestion.alphabetical.contains(.workoutHistory))
         #expect(ProgressQuestionSelection(selected: .workoutHistory).selected == .strengthOverTime)
+        #expect(ProgressQuestion.strengthOverTime.displayName == "Lifts")
     }
 
     @Test func alphabeticalIsLocalizedLabelSorted() {

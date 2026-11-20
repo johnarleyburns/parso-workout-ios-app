@@ -142,54 +142,56 @@ struct LiveWorkoutVolumeSummary: View {
                 Text(presentation == .planned ? "Planned" : "This workout")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            if performers.count > 1 {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(performers) { performer in
-                            Button {
-                                withAnimation(.easeInOut(duration: 0.15)) {
-                                    selectedPerformerKey = performer.id
+            Button(expanded ? "Hide details" : "Details…") {
+                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+            }
+            .font(.subheadline.weight(.semibold))
+            .accessibilityIdentifier(expanded
+                                     ? "\(accessibilityPrefix).volume.showLess"
+                                     : "\(accessibilityPrefix).volume.showMore")
+            if expanded {
+                if performers.count > 1 {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(performers) { performer in
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.15)) {
+                                        selectedPerformerKey = performer.id
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: selectedPerformerKey == performer.id
+                                              ? "largecircle.fill.circle" : "circle")
+                                        Text(performer.name)
+                                    }
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .frame(minHeight: 44)
+                                    .background(selectedPerformerKey == performer.id
+                                                ? Color.accentColor.opacity(0.14)
+                                                : Color.secondary.opacity(0.08),
+                                                in: Capsule())
+                                    .contentShape(Capsule())
                                 }
-                            } label: {
-                                HStack(spacing: 6) {
-                                    Image(systemName: selectedPerformerKey == performer.id
-                                          ? "largecircle.fill.circle" : "circle")
-                                    Text(performer.name)
-                                }
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 10)
-                                .frame(minHeight: 44)
-                                .background(selectedPerformerKey == performer.id
-                                            ? Color.accentColor.opacity(0.14)
-                                            : Color.secondary.opacity(0.08),
-                                            in: Capsule())
-                                .contentShape(Capsule())
+                                .buttonStyle(.plain)
+                                .foregroundStyle(selectedPerformerKey == performer.id
+                                                 ? Color.accentColor : .secondary)
+                                .accessibilityIdentifier("\(accessibilityPrefix).volume.performer.\(performer.id)")
                             }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(selectedPerformerKey == performer.id
-                                             ? Color.accentColor : .secondary)
-                            .accessibilityIdentifier("\(accessibilityPrefix).volume.performer.\(performer.id)")
                         }
                     }
+                    .accessibilityIdentifier("\(accessibilityPrefix).volume.performers")
                 }
-                .accessibilityIdentifier("\(accessibilityPrefix).volume.performers")
-            }
-            if displayedState.groups.isEmpty {
-                Text(presentation == .planned
-                     ? "Add a volume-eligible strength exercise to see planned muscle-group volume here."
-                     : "Save a working set to see muscle-group volume here.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } else {
-                ForEach(expanded ? groupsForDisplay : Array(groupsForDisplay.prefix(4)), id: \.self) { group in
-                    row(group)
+                if displayedState.groups.isEmpty {
+                    Text(presentation == .planned
+                         ? "Add a volume-eligible strength exercise to see planned muscle-group volume here."
+                         : "Save a working set to see muscle-group volume here.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ForEach(groupsForDisplay, id: \.self) { group in
+                        row(group)
+                    }
                 }
-                Button(expanded ? "Show less" : "Show more…") {
-                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
-                }
-                .font(.subheadline.weight(.semibold))
-                .accessibilityIdentifier(expanded
-                                         ? "\(accessibilityPrefix).volume.showLess"
-                                         : "\(accessibilityPrefix).volume.showMore")
             }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))

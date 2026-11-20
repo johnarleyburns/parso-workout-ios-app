@@ -184,9 +184,8 @@ extension HomeView {
     }
 
     private func presentSuggestedWorkout(_ request: SuggestedWorkoutRequest) {
-        if workoutControlsPresented || strengthDraftPresented || cardioPickerPresented {
+        if strengthDraftPresented || cardioPickerPresented {
             pendingSuggestedWorkoutRequest = request
-            workoutControlsPresented = false
             strengthDraftPresented = false
             cardioPickerPresented = false
         } else {
@@ -195,9 +194,8 @@ extension HomeView {
     }
 
     func presentSuggestedCardio(_ input: CardioSuggestionInput) {
-        if workoutControlsPresented || strengthDraftPresented || cardioPickerPresented {
+        if strengthDraftPresented || cardioPickerPresented {
             pendingSuggestedCardioInput = input
-            workoutControlsPresented = false
             strengthDraftPresented = false
             cardioPickerPresented = false
         } else {
@@ -209,7 +207,7 @@ extension HomeView {
     /// where a queued suggestion becomes presentable, so the old sheet and its
     /// NavigationStack are gone before the chooser is constructed.
     func presentPendingSuggestedWorkout() {
-        guard !workoutControlsPresented, !strengthDraftPresented, !cardioPickerPresented else { return }
+        guard !strengthDraftPresented, !cardioPickerPresented else { return }
         if let request = pendingSuggestedWorkoutRequest {
             pendingSuggestedWorkoutRequest = nil
             generateAndOpenPersonalizedWorkout(request)

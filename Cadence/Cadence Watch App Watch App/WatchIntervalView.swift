@@ -155,7 +155,7 @@ struct WatchIntervalView: View {
                                 identifier: "watchInterval.end") { isShowingConfirmEnd = true }
                     controlTile("Skip phase", systemImage: "forward.end.fill",
                                 identifier: "watchInterval.skip") { skipPhase(); page = .main }
-                    controlTile("+1 min", systemImage: "plus",
+                    controlTile("1 min", systemImage: "plus",
                                 identifier: "watchInterval.addMinute") { addOneMinute(); page = .main }
                 }
             }

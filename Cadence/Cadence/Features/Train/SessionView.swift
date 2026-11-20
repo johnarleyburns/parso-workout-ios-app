@@ -42,6 +42,7 @@ struct SessionView: View {
     @AppStorage("dumbbellInfoShown") var dumbbellInfoShown = false
     @AppStorage("kettlebellInfoShown") var kettlebellInfoShown = false
     @State var showDeleteConfirm = false
+    @State var showPartnerDetails = false
 
     @State var healthSaved = false
     @Query(sort: \Person.name) var allPeople: [Person]

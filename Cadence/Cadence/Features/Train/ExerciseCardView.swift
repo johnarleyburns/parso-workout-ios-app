@@ -91,6 +91,7 @@ struct ExerciseCardView: View {
                             if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
                         }
                         if !isExpanded { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(context.hasPartners ? 3 : 2) }
+                        if !isExpanded, let defaultsLine { Text(defaultsLine).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1).accessibilityIdentifier("exercise.defaults.\(context.name)") }
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -312,8 +313,13 @@ struct ExerciseCardView: View {
                         String(pending.setIndex + 1),
                         isWarmup: pending.kind == .warmup)
                 }
-                Text("\(pending.targetReps) reps · \(pending.kind.displayName)")
+                let weightText: String = {
+                    guard let kg = pending.targetWeightKg else { return "—" }
+                    return isNonWeighted ? "—" : Format.weightValue(kg, unit: unit)
+                }()
+                Text("\(weightText) × \(pending.targetReps) · \(pending.kind.displayName)")
                     .font(.subheadline).foregroundStyle(.tertiary)
+                    .lineLimit(1)
                     .frame(maxWidth: .infinity)
                 Color.clear.frame(width: SetCol.reps)
                 Color.clear.frame(width: SetCol.rpe)

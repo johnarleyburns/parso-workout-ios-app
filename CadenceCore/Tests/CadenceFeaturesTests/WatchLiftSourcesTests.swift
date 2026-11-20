@@ -14,7 +14,7 @@ struct WatchLiftSourcesTests {
     }
 
     @Test func menuOrder() {
-        #expect(WatchLiftSources.menuOrder.map(\.title) == ["Personalized", "Previous", "Custom"])
+        #expect(WatchLiftSources.menuOrder.map(\.title) == ["Lift"])
         #expect(WatchLiftSources.Source.suggest.accessibilityIdentifier == "watchStrength.suggest")
         #expect(WatchLiftSources.menuTitle == "Lift")
     }

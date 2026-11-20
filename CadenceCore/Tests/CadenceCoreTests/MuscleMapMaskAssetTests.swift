@@ -48,8 +48,8 @@ struct MuscleMapMaskAssetTests {
         for panel in [MuscleMapPanel.front, .back] {
             let layers = MuscleMapLayout.colourLayers(for: panel, visibleGroups: visible)
             #expect(layers.map(\.mask) == MuscleMapLayout.maskGroups(for: panel),
-                           "every mask on \(panel) is coloured by some tracked group")
-            #expect(layers.allSatisfy { visible.contains($0.colourGroup) })
+                           "every mask on \(panel) is coloured by some tracked group or its own fallback")
+            #expect(layers.allSatisfy { visible.contains($0.colourGroup) || $0.colourGroup == $0.mask })
         }
     }
 

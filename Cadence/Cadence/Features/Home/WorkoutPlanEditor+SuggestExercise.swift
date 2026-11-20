@@ -55,6 +55,7 @@ extension WorkoutPlanEditor {
         }
         if !isEditing { isEditing = true }
         plan.exercises.append(EditableExercise(name: suggestion.name, sets: sets, notes: ""))
+        seedPlanWeights()
         resolvePartnerPlans()
     }
 }

@@ -93,8 +93,8 @@ struct ProgressStrengthChartView: View {
             VStack(spacing: 5) {
                 HStack(spacing: 8) {
                     Text("Lift").frame(maxWidth: .infinity, alignment: .leading)
-                    Text("e1RM").frame(width: 88, alignment: .trailing)
-                    Text("Trend").frame(width: 82, alignment: .trailing)
+                    Text("e1RM").frame(minWidth: 88, alignment: .trailing)
+                    Text("Trend").frame(minWidth: 82, alignment: .trailing)
                 }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -114,9 +114,9 @@ struct ProgressStrengthChartView: View {
                              : Format.weight(series.current, unit: unit, decimals: 0))
                             .font(.subheadline.weight(.semibold))
                             .monospacedDigit()
-                            .frame(width: 88, alignment: .trailing)
+                            .frame(minWidth: 88, alignment: .trailing)
                         trendTag(series.trend, delta: series.delta)
-                            .frame(width: 82, alignment: .trailing)
+                            .frame(minWidth: 82, alignment: .trailing)
                     }
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(series.exercise): \(Format.weight(series.current, unit: unit, decimals: 0)), \(trendLabel(series.trend, delta: series.delta))")

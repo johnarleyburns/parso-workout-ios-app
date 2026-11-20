@@ -66,9 +66,8 @@ extension HomeView {
             extras: scheduledStamps)
         let store = HomeTodayCache.suggestionStore
         let snapshot = request.snapshot
-        // Publish the exact snapshot the shared service consumes; never rebuilt during sync.
-        model.updateWatchCoachSuggestion(WatchCoachSuggestionEnvelope.make(
-            snapshot: snapshot, issuedAt: snapshot.generatedAt))
+        // The Watch now generates from its own 12-week mirror; no Coach
+        // snapshot is published over WatchConnectivity.
         let unit = request.unit
         let warmup = request.warmupMinutes
         let cooldown = request.cooldownMinutes

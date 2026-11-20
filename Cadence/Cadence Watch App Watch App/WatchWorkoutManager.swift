@@ -177,9 +177,9 @@ final class WatchWorkoutManager: NSObject {
 
     @ObservationIgnored let coachSuggestionCoordinator = WatchCoachSuggestionCoordinator(store: UserDefaultsWatchCoachSuggestionStore())
     var coachSuggestionEnvelope: WatchCoachSuggestionEnvelope?; var coachHistoryState = WatchCoachHistoryState()
+    var mesocycleMirrorRevision: String? = WatchMesocycleMirrorStore().currentRevision; @ObservationIgnored var lastMesocycleMirrorSyncRequest: String?
     var cardioSuggestionEnvelope: WatchCardioSuggestionEnvelope?
     @ObservationIgnored var coachClock: @Sendable () -> Date = { Date() }; @ObservationIgnored var localHistoryObserver: NSObjectProtocol?
-
     init(simulatesHealthKit: Bool = false) {
         self.simulatesHealthKit = simulatesHealthKit
         self.healthAuthorizationGateActive = WatchHealthAuthorizationGate.initialGateActive()

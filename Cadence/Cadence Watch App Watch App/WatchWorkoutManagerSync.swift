@@ -97,6 +97,14 @@ extension WatchWorkoutManager: WCSessionDelegate {
         }
     }
 
+    nonisolated func session(_ session: WCSession, didReceive file: WCSessionFile) {
+        let url = file.fileURL
+        Task { @MainActor [weak self] in
+            _ = self?.applyMesocycleMirrorFile(at: url)
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         let message = UncheckedWatchPayload(value: userInfo)
         Task { @MainActor [weak self] in
@@ -239,6 +247,14 @@ extension WatchWorkoutManager: WCSessionDelegate {
             break
         }
         let commitEnvelope = decision == .apply ? envelope : nil
+        // A newer mirror may have been sent as a file transfer. If this context
+        // announces a revision we do not have, ask once for a resend.
+        if let revision = applicationContext[WatchSync.Key.mesocycleMirrorRevision] as? String,
+           revision != WatchMesocycleMirrorStore().currentRevision,
+           revision != lastMesocycleMirrorSyncRequest {
+            lastMesocycleMirrorSyncRequest = revision
+            requestSettingsSync()
+        }
         applyCardioSuggestion(context: applicationContext)
         phoneSyncState = .syncing(Date())
         let current = WatchSync.Preferences(

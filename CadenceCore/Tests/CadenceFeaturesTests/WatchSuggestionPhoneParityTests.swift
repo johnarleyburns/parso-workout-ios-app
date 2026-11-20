@@ -184,6 +184,36 @@ struct WatchSuggestionPhoneParityTests {
         assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
     }
 
+    /// The 12-week mirror must reproduce the phone's Personalized input and
+    /// output exactly, including candidates, weekly volume, counts, recent
+    /// exclusions, set count, and the generated movements.
+    @Test func watchMirrorMatchesThePhonePersonalizedPlan() async throws {
+        let context = try store(), s = settings()
+        for (i, n) in ["Bench Press", "Overhead Press", "Barbell Row", "Squat"].enumerated() {
+            try log(n, muscle: ["chest", "shoulders", "lats", "quadriceps"][i], daysAgo: Double(i + 1) * 2, in: context)
+        }
+        let phoneIn = try phoneInput(context, s)
+        let mirror = try WatchMesocycleMirrorBuilder.make(context: context, settings: s, now: now)
+        let request = try #require(WatchMesocycleInputBuilder.strengthRequest(from: mirror, now: now))
+        let watchIn = request.input
+        #expect(watchIn.completedSetsByMuscle == phoneIn.completedSetsByMuscle)
+        #expect(watchIn.candidates.map(\.id) == phoneIn.candidates.map(\.id))
+        #expect(watchIn.historyWorkoutCount == phoneIn.historyWorkoutCount)
+        #expect(watchIn.historyWorkingSetCount == phoneIn.historyWorkingSetCount)
+        #expect(watchIn.recentlyCompletedCandidateIDs == phoneIn.recentlyCompletedCandidateIDs)
+        #expect(watchIn.mostRecentExerciseWorkingSets == phoneIn.mostRecentExerciseWorkingSets)
+        #expect(watchIn.trackedGroups == phoneIn.trackedGroups)
+        #expect(watchIn.trainingGoal == phoneIn.trainingGoal)
+        #expect(watchIn.preferredStyle == phoneIn.preferredStyle)
+
+        let phoneOption = SuggestedWorkoutGenerator.generatePersonalized(input: phoneIn)
+        let watchOption = try #require(CoachSuggestionService.generate(
+            from: CoachSuggestionSnapshotBuilder.make(request: request, generatedAt: mirror.generatedAt)))
+        #expect(watchOption.exercises.map(\.candidateID) == phoneOption.exercises.map(\.candidateID))
+        #expect(watchOption.exercises.map(\.plannedSets) == phoneOption.exercises.map(\.plannedSets))
+        #expect(watchOption.exercises.map(\.repRange) == phoneOption.exercises.map(\.repRange))
+    }
+
     @Test func completedWorkoutChangingWeeklyVolumeMatchesNextSync() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 6, in: context)

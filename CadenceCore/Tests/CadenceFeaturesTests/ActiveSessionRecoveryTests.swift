@@ -20,10 +20,8 @@ struct ActiveSessionRecoveryTests {
         return ModelContext(container)
     }
 
-    private func testDefaults() -> UserDefaults {
-        let d = UserDefaults(suiteName: "recovery-tests-\(UUID().uuidString)")!
-        d.removePersistentDomain(forName: "recovery-tests")
-        return d
+    private func testDefaults() -> InMemoryDefaultsStore {
+        InMemoryDefaultsStore()
     }
 
     @Test func picksMostRecentUnfinished() throws {

@@ -12,7 +12,7 @@ struct WatchStrengthInactivityTests {
     private let sessionID = UUID()
 
     private func makeTracker() -> WatchStrengthInactivityTracker {
-        WatchStrengthInactivityTracker(store: .init(suiteName: "watch.inactivity.tests.\(UUID().uuidString)"))
+        WatchStrengthInactivityTracker(store: .init(defaults: InMemoryDefaultsStore()))
     }
 
     @Test func recordRoundTripsThroughDurableStoreAndUsesPolicyDeadline() throws {

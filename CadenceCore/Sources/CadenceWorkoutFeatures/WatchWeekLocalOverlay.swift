@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// A Watch-local strength or cardio completion the phone has not yet
 /// acknowledged. Added immediately so This Week reflects a disconnected
@@ -35,10 +36,10 @@ public struct WatchWeekLocalOverlay: Codable, Equatable, Sendable, Identifiable 
 /// Survives relaunch; malformed persisted data decodes as empty rather than
 /// crashing the Watch launcher.
 public final class WatchWeekLocalOverlayStore {
-    private let defaults: UserDefaults
+    private let defaults: DefaultsStoring
     private let key: String
 
-    public init(defaults: UserDefaults = .standard, key: String = "watch.week.localOverlays.v1") {
+    public init(defaults: DefaultsStoring = UserDefaults.standard, key: String = "watch.week.localOverlays.v1") {
         self.defaults = defaults
         self.key = key
     }

@@ -1,16 +1,14 @@
 import Foundation
 import Testing
+import CadenceCore
 @testable import CadenceFeatures
 @testable import CadenceWorkoutFeatures
 
 struct WatchSetDefaultSnapshotPersistenceTests {
     private let pid = "5B2C3E5A-1111-4222-8333-444455556666"
 
-    private func defaults() -> UserDefaults {
-        let name = "snapshot-tests-\(UUID().uuidString)"
-        let d = UserDefaults(suiteName: name)!
-        d.removePersistentDomain(forName: name)
-        return d
+    private func defaults() -> InMemoryDefaultsStore {
+        InMemoryDefaultsStore()
     }
 
     private func snapshot(at t: TimeInterval, kg: Double = 62.5) -> WatchSetDefaultSnapshot {

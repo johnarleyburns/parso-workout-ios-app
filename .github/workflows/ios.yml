@@ -35,10 +35,6 @@ jobs:
       actions: read
       checks: read
       pull-requests: read
-    env:
-      # Quarantines the synchronous-I/O/thread-blocking test seams in release
-      # CI only; PR validation still runs them. See ReleaseCITestSupport.
-      CADENCE_RELEASE_CI: ${{ github.event_name != 'pull_request' && '1' || '0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7

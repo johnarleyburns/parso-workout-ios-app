@@ -1,5 +1,6 @@
 import CadenceFeatures
 import Foundation
+import CadenceCore
 
 /// The This Week dashboard keeps disclosure state for each report independently.
 /// This is UI state only; it never changes or filters workout data.
@@ -20,7 +21,7 @@ public struct WeeklyDetailSelection: Equatable, Sendable {
         self.expanded = expanded
     }
 
-    public static func persisted(defaults: UserDefaults = .standard) -> Self {
+    public static func persisted(defaults: DefaultsStoring = UserDefaults.standard) -> Self {
         guard let rawValues = defaults.stringArray(forKey: persistenceKey) else {
             return Self()
         }
@@ -28,7 +29,7 @@ public struct WeeklyDetailSelection: Equatable, Sendable {
         return Self(expanded: values)
     }
 
-    public func persist(defaults: UserDefaults = .standard) {
+    public func persist(defaults: DefaultsStoring = UserDefaults.standard) {
         defaults.set(expanded.map(\.rawValue).sorted(), forKey: Self.persistenceKey)
     }
 

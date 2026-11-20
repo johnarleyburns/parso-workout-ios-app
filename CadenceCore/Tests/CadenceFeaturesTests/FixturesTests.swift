@@ -55,8 +55,7 @@ struct FixturesTests {
 
     @Test func twoADayPreferenceJSONDecodes() throws {
         let ctx = try makeContext()
-        let defaults = UserDefaults(suiteName: "FixturesTests.twoADay")!
-        defaults.removePersistentDomain(forName: "FixturesTests.twoADay")
+        let defaults = InMemoryDefaultsStore()
         Fixtures.coachTwoADayStrengthDone(into: ctx, defaults: defaults)
         let raw = defaults.data(forKey: "settings.coachSchedulePreferences")
         #expect(raw != nil)

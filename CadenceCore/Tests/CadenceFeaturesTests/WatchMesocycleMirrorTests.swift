@@ -72,10 +72,7 @@ struct WatchMesocycleMirrorTests {
 
     @Test func newerRevisionWinsAndOlderIsIgnored() throws {
         let now = Date(timeIntervalSince1970: 1_800_000_000)
-        let suite = FileManager.default.temporaryDirectory
-            .appendingPathComponent("mesocycle-\(UUID().uuidString).plist")
-        defer { try? FileManager.default.removeItem(at: suite) }
-        let store = WatchMesocycleMirrorStore(url: suite)
+        let store = WatchMesocycleMirrorStore(storage: InMemoryWatchMesocycleMirrorStorage())
         let first = WatchMesocycleEnvelope(revision: "first", mirror: mirror(now: now))
         let newer = WatchMesocycleEnvelope(revision: "newer", mirror: mirror(now: now.addingTimeInterval(60)))
         let older = WatchMesocycleEnvelope(revision: "older", mirror: mirror(now: now.addingTimeInterval(-60)))

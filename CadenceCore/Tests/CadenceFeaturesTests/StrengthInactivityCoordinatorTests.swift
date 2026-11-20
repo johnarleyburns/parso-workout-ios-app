@@ -16,7 +16,7 @@ struct StrengthInactivityCoordinatorTests {
         let ctx = ModelContext(container)
         let session = WorkoutSession(title: "Push", date: t0)
         ctx.insert(session)
-        let m = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let m = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         m.startStrength(session, now: t0)
         return (m, session, ctx)
     }
@@ -75,7 +75,7 @@ struct StrengthInactivityCoordinatorTests {
         s.lastMeaningfulActivityAt = t0.addingTimeInterval(120)
         ctx.insert(s)
         ctx.insert(SetEntry(weight: 100, reps: 5, order: 0, completedAt: t0, session: s))
-        let m = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let m = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         m.adopt(s, heartbeat: nil, now: t0.addingTimeInterval(7200))
         #expect(s.lastMeaningfulActivityAt == t0.addingTimeInterval(120), "adoption is not activity")
         #expect(m.reconcileStrengthInactivity(enabled: true, timeoutMinutes: 10, now: t0.addingTimeInterval(7200)) == .finalized)

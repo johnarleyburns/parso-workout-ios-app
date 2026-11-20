@@ -9,7 +9,7 @@ import CadenceCore
 
 /// Fixture-level phone ↔ Watch parity: the phone resolves `SuggestedWorkoutGenerator
 /// .suggestSingleExercise` from the same store inputs the request factory uses; the
-/// Watch resolves it from a JSON round-tripped context through the session.
+/// Watch resolves it from the production 12-week mirror seam through the session.
 @MainActor
 struct WatchSuggestionPhoneParityTests {
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
@@ -21,7 +21,9 @@ struct WatchSuggestionPhoneParityTests {
     }
 
     private func settings() -> AppSettings {
-        AppSettings(defaults: UserDefaults(suiteName: "wspp-\(UUID().uuidString)")!)
+        // In-memory settings keep the parity fixtures free of UserDefaults /
+        // preferences-daemon IPC while still exercising the real AppSettings type.
+        AppSettings(storage: InMemoryDefaultsStore())
     }
 
     @discardableResult
@@ -73,20 +75,23 @@ struct WatchSuggestionPhoneParityTests {
                 availableEquipment: Equipment.allCases, environment: "commercial_gym", asOf: now))
     }
 
-    /// Watch side: build, JSON round-trip (as transported), assemble.
-    private func watchContext(_ context: ModelContext, _ settings: AppSettings) throws -> WatchSingleExerciseSuggestionContext {
-        let built = try WatchSingleExerciseSuggestionContextBuilder.make(
-            context: context, settings: settings, now: now, historyIndexStorageURL: nil)
-        let data = try #require(built.propertyListValue)
-        return try #require(WatchSingleExerciseSuggestionContext.decodePayload(data))
+    /// Watch side: build the production 12-week mirror from the same store and
+    /// settings. `historyIndexStorageURL: nil` keeps the fixture hermetic.
+    private func watchMirror(_ context: ModelContext,
+                             _ settings: AppSettings) throws -> WatchMesocycleMirror {
+        try WatchMesocycleMirrorBuilder.make(
+            context: context, settings: settings, now: now,
+            historyIndexStorageURL: nil)
     }
 
-    private func watchInput(_ ctx: WatchSingleExerciseSuggestionContext, active: [String] = [],
+    private func watchInput(_ mirror: WatchMesocycleMirror, active: [String] = [],
                             transient: Set<String> = []) throws -> SuggestedWorkoutInput {
-        try #require(WatchSingleExerciseSuggestionAssembler.make(
-            context: ctx, activeExerciseNames: active,
+        try #require(WatchMesocycleInputBuilder.strengthInput(
+            from: mirror,
+            activeExerciseNames: active,
             activeWorkingSets: active.map { WatchSuggestionSet(exerciseName: $0) },
-            transientExcludedCandidateIDs: transient))
+            transientExcludedCandidateIDs: transient,
+            now: now))
     }
 
     private func watchResult(_ input: SuggestedWorkoutInput) async -> WatchSingleExerciseSuggestionSession.State {
@@ -110,29 +115,25 @@ struct WatchSuggestionPhoneParityTests {
         #expect(w.repRange == phone.repRange, sourceLocation: sourceLocation)
     }
 
-    // Release-CI quarantine (2026-11-20): these fixture tests create
-    // UserDefaults suites and in-memory SwiftData stores per test. Keep the
-    // new 12-week mirror parity test above enabled; replace the legacy context
-    // path with the mirror seam before re-enabling these.
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func noHistoryMatches() async throws {
+    @Test func noHistoryMatches() async throws {
         let context = try store(), s = settings()
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
         #expect(phone != nil)
-        assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
+        assertSame(phone, await watchResult(try watchInput(try watchMirror(context, s))))
     }
 
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func enoughHistoryMatches() async throws {
+    @Test func enoughHistoryMatches() async throws {
         let context = try store(), s = settings()
         for (i, n) in ["Bench Press", "Overhead Press", "Barbell Row", "Squat"].enumerated() {
             try log(n, muscle: ["chest", "shoulders", "lats", "quadriceps"][i], daysAgo: Double(i + 1) * 2, in: context)
         }
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
-        assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
+        assertSame(phone, await watchResult(try watchInput(try watchMirror(context, s))))
     }
 
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func currentWorkoutContainingBestCandidateIsExcludedByBoth() async throws {
+    @Test func currentWorkoutContainingBestCandidateIsExcludedByBoth() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 4, in: context)
         let phoneIn = try phoneInput(context, s)
@@ -140,9 +141,9 @@ struct WatchSuggestionPhoneParityTests {
             input: phoneIn, style: phoneIn.preferredStyle))
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(
             input: phoneIn, style: phoneIn.preferredStyle, excludingCandidateIDs: [first.candidateID])
-        let ctx = try watchContext(context, s)
+        let mirror = try watchMirror(context, s)
         let active = [first.name]
-        let state = await watchResult(try watchInput(ctx, active: active))
+        let state = await watchResult(try watchInput(mirror, active: active))
         #expect(phone?.candidateID != first.candidateID)
         guard case .ready(let w) = state else {
             Issue.record("\(state)")
@@ -154,7 +155,7 @@ struct WatchSuggestionPhoneParityTests {
         #expect(w.repRange == phone?.repRange)
     }
 
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func suggestAnotherExcludesOnlyFirstAndMatches() async throws {
+    @Test func suggestAnotherExcludesOnlyFirstAndMatches() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 3, in: context)
         let phoneIn = try phoneInput(context, s)
@@ -162,9 +163,9 @@ struct WatchSuggestionPhoneParityTests {
             input: phoneIn, style: phoneIn.preferredStyle))
         let phoneNext = SuggestedWorkoutGenerator.suggestSingleExercise(
             input: phoneIn, style: phoneIn.preferredStyle, excludingCandidateIDs: [first.candidateID])
-        let ctx = try watchContext(context, s)
+        let mirror = try watchMirror(context, s)
         let session = WatchSingleExerciseSuggestionSession()
-        let input = try watchInput(ctx)
+        let input = try watchInput(mirror)
         session.suggest(input: input)
         await session.pendingTask?.value
         assertSame(first, session.state)
@@ -173,7 +174,7 @@ struct WatchSuggestionPhoneParityTests {
         assertSame(phoneNext, session.state)
     }
 
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func permanentExclusionHonoredByBoth() async throws {
+    @Test func permanentExclusionHonoredByBoth() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 3, in: context)
         let before = try phoneInput(context, s)
@@ -185,7 +186,7 @@ struct WatchSuggestionPhoneParityTests {
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
         #expect(phone?.candidateID != top.candidateID)
-        assertSame(phone, await watchResult(try watchInput(try watchContext(context, s))))
+        assertSame(phone, await watchResult(try watchInput(try watchMirror(context, s))))
     }
 
     /// The 12-week mirror must reproduce the phone's Personalized input and
@@ -197,7 +198,7 @@ struct WatchSuggestionPhoneParityTests {
             try log(n, muscle: ["chest", "shoulders", "lats", "quadriceps"][i], daysAgo: Double(i + 1) * 2, in: context)
         }
         let phoneIn = try phoneInput(context, s)
-        let mirror = try WatchMesocycleMirrorBuilder.make(context: context, settings: s, now: now)
+        let mirror = try watchMirror(context, s)
         let request = try #require(WatchMesocycleInputBuilder.strengthRequest(from: mirror, now: now))
         let watchIn = request.input
         #expect(watchIn.completedSetsByMuscle == phoneIn.completedSetsByMuscle)
@@ -218,56 +219,54 @@ struct WatchSuggestionPhoneParityTests {
         #expect(watchOption.exercises.map(\.repRange) == phoneOption.exercises.map(\.repRange))
     }
 
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func completedWorkoutChangingWeeklyVolumeMatchesNextSync() async throws {
+    @Test func completedWorkoutChangingWeeklyVolumeMatchesNextSync() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 6, in: context)
-        let stale = try watchContext(context, s)
+        let stale = try watchMirror(context, s)
         for d in [1.0, 2.0] { try log("Bench Press", muscle: "chest", daysAgo: d, in: context) }
-        let fresh = try watchContext(context, s)
-        #expect(stale.baseInput.completedSetsByMuscle != fresh.baseInput.completedSetsByMuscle)
+        let fresh = try watchMirror(context, s)
+        let staleIn = try #require(WatchMesocycleInputBuilder.strengthRequest(from: stale, now: now)?.input)
+        let freshIn = try #require(WatchMesocycleInputBuilder.strengthRequest(from: fresh, now: now)?.input)
+        #expect(staleIn.completedSetsByMuscle != freshIn.completedSetsByMuscle)
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
-        #expect(try watchInput(fresh).completedSetsByMuscle == phoneIn.completedSetsByMuscle)
+        #expect(freshIn.completedSetsByMuscle == phoneIn.completedSetsByMuscle)
         assertSame(phone, await watchResult(try watchInput(fresh)))
     }
 
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func cachedContextSurvivesRelaunchWithoutPhone() async throws {
+    @Test func cachedMirrorSurvivesRelaunchWithoutPhone() async throws {
         let context = try store(), s = settings()
         try log("Bench Press", muscle: "chest", daysAgo: 3, in: context)
         let phoneIn = try phoneInput(context, s)
         let phone = SuggestedWorkoutGenerator.suggestSingleExercise(input: phoneIn, style: phoneIn.preferredStyle)
-        let suite = UserDefaults(suiteName: "wspp-store-\(UUID().uuidString)")!
-        let first = WatchSingleExerciseSuggestionContextStore(defaults: suite)
-        #expect(first.replace(try watchContext(context, s)) == .replaced)
-        // "Relaunch": a new store instance reads only the persisted defaults.
-        let reopened = try #require(WatchSingleExerciseSuggestionContextStore(defaults: suite).load())
-        assertSame(phone, await watchResult(try watchInput(reopened)))
+        let storage = InMemoryWatchMesocycleMirrorStorage()
+        let first = WatchMesocycleMirrorStore(storage: storage)
+        let envelope = WatchMesocycleEnvelope(revision: "rev-1", mirror: try watchMirror(context, s))
+        #expect(first.apply(envelope))
+        // "Relaunch": a new store instance reads only the persisted storage.
+        let reopened = try #require(WatchMesocycleMirrorStore(storage: storage).load())
+        #expect(reopened == envelope)
+        assertSame(phone, await watchResult(try watchInput(reopened.mirror)))
     }
 
-    // Wall-clock boundedness was dropped from this test: it measures real
-    // CPU-bound work (not a race against an injectable fake-clock timeout), so
-    // under the full CI suite's concurrent load there is no fixed ceiling that
-    // is safe -- observed failing at both 30s and a widened 90s. A genuine hang
-    // is already caught by the job's own CI timeout; this test's job is the
-    // regressions below, which don't depend on wall-clock time.
-    @Test(.enabled(if: !ReleaseCITestSupport.isReleaseCI)) func buildIsDeterministicAndOffMain() async throws {
+    @Test func buildIsDeterministicAndOffMain() async throws {
         let container = try CadenceStore.makeModelContainer(inMemory: true)
         let seed = ModelContext(container)
         for i in 0..<30 { try log("Bench Press", muscle: "chest", daysAgo: Double(i + 1), in: seed) }
         try seed.save()
         let now = self.now
-        let (a, b, onMain) = try await Task.detached { () -> (WatchSingleExerciseSuggestionContext, WatchSingleExerciseSuggestionContext, Bool) in
+        let (a, b, onMain) = try await Task.detached { () -> (WatchMesocycleMirror, WatchMesocycleMirror, Bool) in
             let c = ModelContext(container)
-            let settings = AppSettings(defaults: UserDefaults(suiteName: "wspp-bg-\(UUID().uuidString)")!)
-            let x = try WatchSingleExerciseSuggestionContextBuilder.make(
+            let settings = AppSettings(storage: InMemoryDefaultsStore())
+            let x = try WatchMesocycleMirrorBuilder.make(
                 context: c, settings: settings, now: now, historyIndexStorageURL: nil)
-            let y = try WatchSingleExerciseSuggestionContextBuilder.make(
+            let y = try WatchMesocycleMirrorBuilder.make(
                 context: c, settings: settings, now: now, historyIndexStorageURL: nil)
             return (x, y, pthread_main_np() != 0)
         }.value
         #expect(!onMain)
-        #expect(a == b, "unchanged inputs must produce an identical context (no revision churn)")
-        #expect(a.baseInput.candidates.count <= WatchSingleExerciseSuggestionContextBuilder.maxCandidates)
+        #expect(a == b, "unchanged inputs must produce an identical mirror (no revision churn)")
+        #expect(a.candidates.count <= WatchMesocycleMirror.maxCandidates)
     }
 }
 #endif

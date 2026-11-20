@@ -59,8 +59,8 @@ struct ActiveWorkoutModelTests {
 
     // MARK: Launch-blockers Phase 1b — root cover surface
 
-    private func testDefaults() -> UserDefaults {
-        UserDefaults(suiteName: "awm-tests-\(UUID().uuidString)")!
+    private func testDefaults() -> InMemoryDefaultsStore {
+        InMemoryDefaultsStore()
     }
 
     @Test func startPresentsCover() throws {

@@ -8,18 +8,7 @@ import SwiftData
 /// every launch and foreground. These pin when it must still run.
 @MainActor
 @Suite final class StarterLibraryReconciliationTests {
-    private var suiteName = ""
-    private nonisolated(unsafe) var defaults: UserDefaults!
-
-    init() {
-        suiteName = "StarterLibraryReconciliationTests.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)
-    }
-
-    deinit {
-        defaults.removePersistentDomain(forName: suiteName)
-        defaults = nil
-    }
+    private let defaults = InMemoryDefaultsStore()
 
     private func makeContext() throws -> ModelContext {
         ModelContext(try CadenceStore.makeModelContainer(inMemory: true))

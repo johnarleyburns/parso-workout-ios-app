@@ -26,7 +26,7 @@ struct PhoneStrengthHeartRateRecorderTests {
 
     @Test func captureSurvivesViewlessLifecycleAndRecreation() throws {
         let (ctx, session) = try makeSession()
-        let active = ActiveWorkoutModel(defaults: UserDefaults(suiteName: UUID().uuidString)!)
+        let active = ActiveWorkoutModel(defaults: InMemoryDefaultsStore())
         active.startStrength(session)
         let now = start.addingTimeInterval(3700)
         for i in 0..<720 { // 60 minutes at 5s, no SessionView anywhere

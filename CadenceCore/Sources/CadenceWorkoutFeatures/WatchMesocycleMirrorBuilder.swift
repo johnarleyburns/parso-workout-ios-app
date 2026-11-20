@@ -9,10 +9,13 @@ import SwiftData
 /// strength/cardio generation. History is pruned to the mesocycle window, while
 /// all-time counts and the candidate catalog are carried as parity metadata.
 public enum WatchMesocycleMirrorBuilder {
-    public static func make(context: ModelContext,
-                            settings: AppSettings,
-                            now: Date = Date(),
-                            activeSessionID: UUID? = nil) throws -> WatchMesocycleMirror {
+    public static func make(
+        context: ModelContext,
+        settings: AppSettings,
+        now: Date = Date(),
+        activeSessionID: UUID? = nil,
+        historyIndexStorageURL: URL? = ExerciseHistoryIndexStore.defaultStorageURL()
+    ) throws -> WatchMesocycleMirror {
         let allStrength = try WorkoutRepository.allSessions(context)
             .filter { $0.id != activeSessionID && $0.countsAsStrengthHistory }
         let allTimeWorkoutCount = allStrength.filter { $0.completedOwnerWorkingSetCount > 0 }.count
@@ -55,7 +58,9 @@ public enum WatchMesocycleMirrorBuilder {
                 sets: Array(sets)))
         }
 
-        let candidates = try candidates(context: context, sessions: allStrength, settings: settings)
+        let candidates = try candidates(context: context, sessions: allStrength,
+                                        settings: settings,
+                                        historyIndexStorageURL: historyIndexStorageURL)
         let cardio = try cardioSessions(context: context, now: now, windowStart: windowStart)
         let latest = allStrength
             .filter { $0.completedOwnerWorkingSetCount > 0 }
@@ -110,10 +115,11 @@ public enum WatchMesocycleMirrorBuilder {
     /// flags, starter fallback, and permanent exclusions the phone uses.
     private static func candidates(context: ModelContext,
                                    sessions: [WorkoutSession],
-                                   settings: AppSettings) throws -> [SuggestedExerciseCandidate] {
+                                   settings: AppSettings,
+                                   historyIndexStorageURL: URL?) throws -> [SuggestedExerciseCandidate] {
         let historyKeys = try ExerciseHistoryIndexStore.personalizedExerciseKeys(
             sessions: sessions,
-            storageURL: ExerciseHistoryIndexStore.defaultStorageURL())
+            storageURL: historyIndexStorageURL)
         let exercises = try WorkoutRepository.allExercises(context)
         let persisted = exercises.map { exercise -> SuggestedExerciseCandidate in
             let id = ExerciseSuggestionExclusionKey.forExercise(exercise)

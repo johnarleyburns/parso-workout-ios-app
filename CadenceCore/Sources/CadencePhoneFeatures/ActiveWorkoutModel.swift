@@ -134,7 +134,7 @@ public final class ActiveWorkoutModel {
     public private(set) var pauseOrigin: PauseOrigin?
 
     /// Heartbeat + recovery bookkeeping storage (injectable for tests).
-    @ObservationIgnored private let defaults: UserDefaults
+    @ObservationIgnored private let defaults: DefaultsStoring
 
     /// Side effects owned by the app (stop the phone-owned Watch HR workout once, flush HR,
     /// Health save, linked scheduled workout, Live Activity). Invoked exactly once per
@@ -144,7 +144,7 @@ public final class ActiveWorkoutModel {
     /// Set when a session was auto-ended for inactivity; the UI shows it, then clears it.
     public var inactivityNotice: StrengthInactivityNotice?
 
-    public init(defaults: UserDefaults = .standard) {
+    public init(defaults: DefaultsStoring = UserDefaults.standard) {
         self.defaults = defaults
     }
 

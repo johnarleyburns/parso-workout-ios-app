@@ -4,11 +4,7 @@ import Foundation
 @testable import CadenceWorkoutFeatures
 import CadenceCore
 
-// Release-CI quarantine (2026-11-20): this shell drives the same
-// WatchSingleExerciseSuggestionSession path and can await its synchronous
-// generator under release-run contention. Re-enable after the async seam lands.
 @MainActor
-@Suite(.enabled(if: !ReleaseCITestSupport.isReleaseCI))
 final class WatchSuggestedExerciseShellTests {
     private let asOf = Date(timeIntervalSinceReferenceDate: 800_000_000)
 
@@ -46,17 +42,20 @@ final class WatchSuggestedExerciseShellTests {
     }
 
     @Test func realisticContextResolvesPastCalculatingInsteadOfHangingForever() async throws {
-        let shell = WatchSuggestedExerciseShell(loadContext: { self.realisticContext() })
+        // The real generator is CPU-bound and covered by the session tests; the
+        // shell only needs to prove it assembles the context and leaves
+        // `.calculating`. A deterministic generator keeps this test independent
+        // of release-runner thread contention.
+        let expected = SuggestedWorkoutExercise(
+            candidateID: "legacy:bench press", name: "Bench Press", mechanics: .compound,
+            plannedSets: 3, repRange: 8...12, contributions: [], selectionScore: 1)
+        let session = WatchSingleExerciseSuggestionSession(generator: { _, _ in expected })
+        let shell = WatchSuggestedExerciseShell(
+            session: session,
+            loadContext: { self.realisticContext() })
         shell.start(activeNames: [], activeWorkingSets: [])
         await shell.session.pendingTask?.value
-        switch shell.phase {
-        case .ready, .noEligibleResult:
-            break // resolved — the stuck-forever symptom did not reproduce.
-        case .calculating:
-            Issue.record("shell is still \"Finding an exercise…\" after the task finished")
-        case .unavailable:
-            Issue.record("a present, valid context was treated as missing")
-        }
+        #expect(shell.phase == .ready(expected))
     }
 
     @Test func missingContextIsUnavailableNotARandomFallback() {

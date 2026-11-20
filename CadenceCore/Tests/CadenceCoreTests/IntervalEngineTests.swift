@@ -21,7 +21,10 @@ struct IntervalEngineTests {
         let plan = IntervalPlan.norwegian4x4()
         #expect(plan.phases.filter { $0.kind == .work }.count == 4)
         // warmup 600 + 4×240 + 3×180 recover + 300 cooldown.
-        let nwTotal: TimeInterval = 600 + 4 * 240 + 3 * 180 + 300
+        // Keep the arithmetic in explicit Double terms: the mixed literal
+        // expression is slow enough for the Linux Swift 6.1 type checker to
+        // reject it as "unable to type-check in reasonable time".
+        let nwTotal: TimeInterval = 600.0 + (4.0 * 240.0) + (3.0 * 180.0) + 300.0
         #expect(abs(plan.totalDuration - nwTotal) <= 0.001)
         #expect(plan.phases.first(where: { $0.kind == .work })?.duration == 240)
     }

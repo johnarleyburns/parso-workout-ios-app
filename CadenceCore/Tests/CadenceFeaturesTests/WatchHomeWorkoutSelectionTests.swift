@@ -44,9 +44,7 @@ struct WatchHomeWorkoutSelectionTests {
     }
 
     @Test func persistedChoiceRoundTripsAndLegacyPerModeKeysStillRestore() throws {
-        let suite = "WatchHomeWorkoutSelectionTests.\(UUID().uuidString)"
-        let defaults = try #require(UserDefaults(suiteName: suite))
-        defer { defaults.removePersistentDomain(forName: suite) }
+        let defaults = InMemoryDefaultsStore()
 
         var state = WatchHomeWorkoutSelection.persisted(defaults: defaults)
         state.select(.cardio(.rowing))

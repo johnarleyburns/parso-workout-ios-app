@@ -98,18 +98,7 @@ final class WatchCustomExerciseStoreTests {
 /// The Watch's first-screen Heart Rate Access boundary follows HealthKit's
 /// request status instead of a one-way UserDefaults flag.
 final class WatchHealthAuthorizationGateTests {
-    private var suiteName = ""
-    private nonisolated(unsafe) var defaults: UserDefaults!
-
-    init() {
-        suiteName = "WatchHealthAuthorizationGateTests.\(UUID().uuidString)"
-        defaults = UserDefaults(suiteName: suiteName)
-    }
-
-    deinit {
-        defaults.removePersistentDomain(forName: suiteName)
-        defaults = nil
-    }
+    private let defaults = InMemoryDefaultsStore()
 
     typealias Gate = WatchHealthAuthorizationGate
 

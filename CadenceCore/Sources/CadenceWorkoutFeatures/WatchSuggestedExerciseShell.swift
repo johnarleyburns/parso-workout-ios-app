@@ -21,15 +21,19 @@ public final class WatchSuggestedExerciseShell {
     public static let noResultMessage = "No suitable exercise found for this workout"
 
     public let session: WatchSingleExerciseSuggestionSession
-    private let loadContext: () -> WatchSingleExerciseSuggestionContext?
+    private let loadMirror: () -> WatchMesocycleMirror?
+    /// Legacy test seam: production loads the 12-week mirror instead.
+    private let loadContext: (() -> WatchSingleExerciseSuggestionContext?)?
     private var contextMissing = false
     private var started = false
 
     public init(session: WatchSingleExerciseSuggestionSession = WatchSingleExerciseSuggestionSession(),
-                loadContext: @escaping () -> WatchSingleExerciseSuggestionContext? = {
-                    WatchSingleExerciseSuggestionContextStore().load()
-                }) {
+                loadMirror: @escaping () -> WatchMesocycleMirror? = {
+                    WatchMesocycleMirrorStore().load()?.mirror
+                },
+                loadContext: (() -> WatchSingleExerciseSuggestionContext?)? = nil) {
         self.session = session
+        self.loadMirror = loadMirror
         self.loadContext = loadContext
     }
 
@@ -56,10 +60,7 @@ public final class WatchSuggestedExerciseShell {
 
     /// Excludes the shown candidate and visibly returns to `.calculating`.
     public func suggestAnother(activeNames: [String], activeWorkingSets: [WatchSuggestionSet]) {
-        guard let context = loadContext(),
-              let input = WatchSingleExerciseSuggestionAssembler.make(
-                context: context, activeExerciseNames: activeNames,
-                activeWorkingSets: activeWorkingSets, transientExcludedCandidateIDs: []) else {
+        guard let input = makeInput(activeNames: activeNames, activeWorkingSets: activeWorkingSets) else {
             contextMissing = true
             session.cancel()
             return
@@ -74,15 +75,29 @@ public final class WatchSuggestedExerciseShell {
     }
 
     private func calculate(activeNames: [String], activeWorkingSets: [WatchSuggestionSet]) {
-        guard let context = loadContext(),
-              let input = WatchSingleExerciseSuggestionAssembler.make(
-                context: context, activeExerciseNames: activeNames,
-                activeWorkingSets: activeWorkingSets, transientExcludedCandidateIDs: []) else {
+        guard let input = makeInput(activeNames: activeNames, activeWorkingSets: activeWorkingSets) else {
             contextMissing = true
             session.cancel()
             return
         }
         contextMissing = false
         session.suggest(input: input)
+    }
+
+    private func makeInput(activeNames: [String],
+                           activeWorkingSets: [WatchSuggestionSet]) -> SuggestedWorkoutInput? {
+        if let loadContext {
+            guard let context = loadContext() else { return nil }
+            return WatchSingleExerciseSuggestionAssembler.make(
+                context: context,
+                activeExerciseNames: activeNames,
+                activeWorkingSets: activeWorkingSets,
+                transientExcludedCandidateIDs: [])
+        }
+        guard let mirror = loadMirror() else { return nil }
+        return WatchMesocycleInputBuilder.strengthInput(
+            from: mirror,
+            activeExerciseNames: activeNames,
+            activeWorkingSets: activeWorkingSets)
     }
 }

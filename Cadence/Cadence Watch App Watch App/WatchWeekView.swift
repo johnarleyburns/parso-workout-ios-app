@@ -16,7 +16,9 @@ struct WatchWeekView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let side = min(proxy.size.width, proxy.size.height * 0.62)
+            // Slightly smaller than the width-limited maximum so the ring keeps
+            // visible breathing room above and below on every Watch size.
+            let side = min(proxy.size.width * 0.92, proxy.size.height * 0.55)
             VStack(spacing: 4) {
                 ZStack {
                     ring(rings[0], diameter: side, lineWidth: max(8, side * 0.11))

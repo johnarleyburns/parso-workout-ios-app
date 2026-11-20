@@ -76,6 +76,12 @@ public enum WatchSync {
         /// JSON `Data` of `WatchSingleExerciseSuggestionContext`; persisted on the Watch, not yet used by any UI.
         public static let singleExerciseSuggestionContext = "suggestion.singleExerciseContext"
 
+        /// Metadata for the phone-built 12-week Watch mirror. The mirror itself
+        /// travels as a file transfer; these small keys let the Watch detect a
+        /// newer revision and request a resend if the file was missed.
+        public static let mesocycleMirrorRevision = "mesocycle.revision"
+        public static let mesocycleMirrorGeneratedAt = "mesocycle.generatedAt"
+
         public static let weekSets = "week.sets"
         public static let weekSetsMinimum = "week.setsMinimum"
         public static let weekSetsTarget = "week.setsTarget"

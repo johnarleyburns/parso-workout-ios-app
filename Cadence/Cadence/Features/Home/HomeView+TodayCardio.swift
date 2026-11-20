@@ -114,7 +114,8 @@ extension HomeView {
             }
             todayCardio = fresh
             pendingTodayCardio = nil
-            model.updateWatchCardioSuggestion(WatchCardioSuggestionEnvelope.make(suggestion: fresh, issuedAt: Date()))
+            // The Watch generates cardio locally from its 12-week mirror; no
+            // cardio suggestion envelope is published anymore.
             TodayCardioSuggestionCache().save(fresh)
             cardioRequestState = .result
         }

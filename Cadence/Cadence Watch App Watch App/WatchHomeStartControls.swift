@@ -3,40 +3,32 @@ import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 
-struct WatchHomeStartControls: View {
-    @Binding var selection: WatchHomeWorkoutSelection
-
-    var body: some View {
-        VStack(spacing: 8) {
-            // One picker, exactly the phone's options/order/titles. There is no
-            // Strength/Cardio mode switch: scrolling the wheel reaches every
-            // workout and Start opens whatever is selected.
-            Picker("Workout type", selection: Binding(
-                get: { selection.choice },
-                set: { selection.select($0) })) {
-                ForEach(selection.choices) { option in
-                    Label(LocalizedStringKey(option.title), systemImage: option.symbol)
-                        .tag(option)
+extension WatchRootView {
+    /// One scrollable-list row per phone workout choice. Tapping a row both
+    /// selects and launches it; the parent `List` owns the scrolling.
+    @ViewBuilder
+    func homeWorkoutChoiceRows(selection: Binding<WatchHomeWorkoutSelection>) -> some View {
+        ForEach(selection.wrappedValue.choices) { option in
+            Button {
+                WatchHaptics.tap()
+                selection.wrappedValue.selectAndStart(option)
+                selection.wrappedValue.persist()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: option.symbol)
+                        .foregroundStyle(.tint)
+                        .frame(width: 22)
+                    Text(LocalizedStringKey(option.title))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Image(systemName: "chevron.right")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
                 }
             }
-            .pickerStyle(.wheel)
-            .labelsHidden()
-            .frame(height: 80)
-            .clipped()
-            .accessibilityLabel("Workout type")
-            .accessibilityValue(Text(LocalizedStringKey(selection.choice.title)))
-            .accessibilityIdentifier("watch.workoutPicker")
-
-            WatchPrimaryStartButton(title: "Start Workout") {
-                WatchHaptics.tap()
-                selection.start()
-            }
-            .accessibilityHint("Opens the selected workout")
-            .accessibilityIdentifier("watch.startWorkout")
+            .buttonStyle(.plain)
+            .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
+            .accessibilityHint("Starts or opens \(option.title)")
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 5)
-        .onChange(of: selection.choice) { _, _ in selection.persist() }
     }
 }
 

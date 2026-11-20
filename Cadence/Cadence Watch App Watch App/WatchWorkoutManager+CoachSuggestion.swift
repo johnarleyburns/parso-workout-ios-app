@@ -3,6 +3,18 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 
 extension WatchWorkoutManager {
+    /// Applies a phone-transferred 12-week mirror. Older/duplicate files are
+    /// ignored by the store; a newer one refreshes the locally generated plan.
+    @discardableResult
+    func applyMesocycleMirrorFile(at url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url) else { return false }
+        let applied = WatchMesocycleMirrorStore().apply(data: data)
+        if applied {
+            mesocycleMirrorRevision = WatchMesocycleMirrorStore().currentRevision
+        }
+        return applied
+    }
+
     /// The envelope only if unexpired and well-formed right now; expired data is diagnostic only.
     var startableCoachSuggestion: WatchCoachSuggestionEnvelope? {
         coachSuggestionCoordinator.startable(now: coachClock())

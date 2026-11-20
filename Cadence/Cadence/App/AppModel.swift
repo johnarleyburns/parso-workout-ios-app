@@ -379,6 +379,10 @@ final class AppModel: NSObject, @unchecked Sendable {
     private(set) var cachedCoachSuggestionSnapshot: WatchCoachSuggestionEnvelope?
     /// The cardio suggestion envelope last published by Home's explicit "Suggest cardio".
     private(set) var cachedCardioSuggestionSnapshot: WatchCardioSuggestionEnvelope?
+    /// Last 12-week mirror revision the Watch successfully accepted, plus any
+    /// file transfers currently in flight. The mirror itself is a file transfer.
+    private var cachedMesocycleMirrorRevision: String?
+    private var inFlightMesocycleRevisions: Set<String> = []
     /// Workouts the user chose to send to the Watch; mirrored in the application context.
     private var cachedSentWorkouts: [WatchSync.TodayPlan.Session] = []
     private var watchPayloadTask: Task<Void, Never>?
@@ -394,7 +398,7 @@ final class AppModel: NSObject, @unchecked Sendable {
         let recentPartnerNames: [String]
         let cardioHistory: WatchSync.CardioHistorySnapshot?
         let setDefaultSnapshot: WatchSetDefaultSnapshot?
-        let singleExerciseSuggestionContext: WatchSingleExerciseSuggestionContext?
+        let mesocycleMirror: WatchMesocycleMirror?
         var cardioIntensityProfile: CardioIntensityProfile?
     }
 
@@ -426,10 +430,6 @@ final class AppModel: NSObject, @unchecked Sendable {
             maximumHROverride: settings.cardioMaximumHROverride,
             age: settings.userAge, updatedAt: Date())
     }
-
-    /// Last suggestion context published; reused when only its timestamps differ so the
-    /// handshake revision does not churn.
-    private var cachedSuggestionContext: WatchSingleExerciseSuggestionContext?
 
     /// Last default snapshot published; reused when a rebuild has identical content so the
     /// `generatedAt` stamp alone never churns the handshake revision.
@@ -664,6 +664,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             recentPartnerNames: []
         )
         let container = _modelContainer
+        let activeSessionID = _active?.strengthSession?.id
         let previousCardioIDs = Set(cachedCardioHistory?.liveItems.map(\.id) ?? [])
         let hrMaxOverride = settings.cardioMaximumHROverride
         let hrAge = settings.userAge
@@ -685,7 +686,7 @@ final class AppModel: NSObject, @unchecked Sendable {
             let basePayload = await Task.detached(priority: .utility) {
                 guard let container else {
                     return WatchPayloadSnapshot(customExercises: [], recentPartnerNames: [], cardioHistory: nil,
-                                               setDefaultSnapshot: nil, singleExerciseSuggestionContext: nil)
+                                               setDefaultSnapshot: nil, mesocycleMirror: nil)
                 }
                 let context = ModelContext(container)
                 // AppSettings is main-actor-owned and not Sendable; a fresh instance reads the
@@ -704,8 +705,9 @@ final class AppModel: NSObject, @unchecked Sendable {
                     recentPartnerNames: names,
                     cardioHistory: Self.buildCardioHistory(container: container, previous: previousCardioIDs, now: now),
                     setDefaultSnapshot: try? WatchSetDefaultSnapshotBuilder.make(context: context, now: now),
-                    singleExerciseSuggestionContext: try? WatchSingleExerciseSuggestionContextBuilder.make(
-                        context: context, settings: AppSettings(), now: now))
+                    mesocycleMirror: try? WatchMesocycleMirrorBuilder.make(
+                        context: context, settings: AppSettings(), now: now,
+                        activeSessionID: activeSessionID))
             }.value
             os_signpost(.end, log: Self.performanceLog, name: "watchPayloadBuild", signpostID: signpostID)
             guard !Task.isCancelled else { return }
@@ -749,17 +751,6 @@ final class AppModel: NSObject, @unchecked Sendable {
         if let snapshot = cachedSetDefaultSnapshot {
             context[WatchSync.Key.setDefaultSnapshot] = snapshot.propertyList
         }
-        if let fresh = payload.singleExerciseSuggestionContext {
-            if let cached = cachedSuggestionContext, cached.version == fresh.version,
-               Self.suggestionContent(cached) == Self.suggestionContent(fresh) {
-                // Identical content: keep the old stamp so the fingerprint is unchanged.
-            } else {
-                cachedSuggestionContext = fresh
-            }
-        }
-        if let data = cachedSuggestionContext?.propertyListValue {
-            context[WatchSync.Key.singleExerciseSuggestionContext] = data
-        }
         if let plan = cachedTodayPlan {
             context.merge(WatchSync.TodayPlan.contextDict(plan)) { _, new in new }
         } else {
@@ -768,11 +759,13 @@ final class AppModel: NSObject, @unchecked Sendable {
             context.removeValue(forKey: WatchSync.Key.todayPlanSessions)
             context.removeValue(forKey: WatchSync.Key.todayPlanUpdatedAt)
         }
-        // Built fresh, so an expired or invalidated envelope is omitted (= delivered removal),
-        // never resent as current.
-        if let envelope = cachedCoachSuggestionSnapshot, envelope.isStartable(now: date),
-           let coach = try? WatchSync.contextDict(envelope) {
-            context.merge(coach) { _, new in new }
+        // The Watch generates personalized strength/cardio locally from the
+        // 12-week mirror. No Coach/cardio suggestion snapshot is sent anymore.
+        if let mirror = payload.mesocycleMirror,
+           let revision = Self.mesocycleRevision(for: mirror) {
+            context[WatchSync.Key.mesocycleMirrorRevision] = revision
+            context[WatchSync.Key.mesocycleMirrorGeneratedAt] = mirror.generatedAt.timeIntervalSince1970
+            sendMesocycleMirrorIfNeeded(mirror, revision: revision, session: session)
         }
         // The context is built fresh, so carry workouts sent to the Watch along with it.
         if !cachedSentWorkouts.isEmpty {
@@ -791,13 +784,39 @@ final class AppModel: NSObject, @unchecked Sendable {
         enqueueWatchContextWrite(context, on: session, at: date, trigger: trigger)
     }
 
-    /// The context with its time stamps neutralized, for change detection.
-    nonisolated private static func suggestionContent(
-        _ value: WatchSingleExerciseSuggestionContext) -> WatchSingleExerciseSuggestionContext {
-        var copy = value
-        copy.generatedAt = .distantPast
-        copy.baseInput.engineContext.asOf = .distantPast
-        return copy
+    /// Stable content revision for the 12-week mirror. A changed history or
+    /// settings value produces a new revision; an unchanged one skips the file
+    /// transfer entirely.
+    nonisolated private static func mesocycleRevision(for mirror: WatchMesocycleMirror) -> String? {
+        guard let data = try? mirror.contentRevisionData() else { return nil }
+        return WatchMesocycleHash.make(data)
+    }
+
+    private func sendMesocycleMirrorIfNeeded(_ mirror: WatchMesocycleMirror,
+                                             revision: String,
+                                             session: WCSession) {
+        guard cachedMesocycleMirrorRevision != revision,
+              !inFlightMesocycleRevisions.contains(revision) else { return }
+        let envelope = WatchMesocycleEnvelope(revision: revision, mirror: mirror)
+        guard let data = try? WatchMesocycleCodec.encode(envelope) else { return }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("watch-mesocycle-\(revision).plist")
+        do {
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            return
+        }
+        inFlightMesocycleRevisions.insert(revision)
+        session.transferFile(url, metadata: [
+            WatchMesocycleTransfer.revisionMetadataKey: revision,
+            WatchMesocycleTransfer.generatedAtMetadataKey: mirror.generatedAt.timeIntervalSince1970
+        ])
+    }
+
+    func mesocycleTransferFinished(revision: String?, success: Bool, fileURL: URL?) {
+        if let revision { inFlightMesocycleRevisions.remove(revision) }
+        if success, let revision { cachedMesocycleMirrorRevision = revision }
+        if let fileURL { try? FileManager.default.removeItem(at: fileURL) }
     }
 
     nonisolated private static func buildCardioHistory(container: ModelContainer, previous: Set<UUID>,
@@ -2018,6 +2037,16 @@ private final class WatchSessionDelegateProxy: NSObject, WCSessionDelegate, @unc
         let payload = UncheckedWatchUserInfo(value: userInfo)
         Task { @MainActor [weak owner] in
             owner?.handleWatchUserInfo(payload.value)
+        }
+    }
+
+    func session(_ session: WCSession,
+                 didFinish fileTransfer: WCSessionFileTransfer,
+                 error: Error?) {
+        let revision = fileTransfer.file.metadata?[WatchMesocycleTransfer.revisionMetadataKey] as? String
+        let url = fileTransfer.file.fileURL
+        Task { @MainActor [weak owner] in
+            owner?.mesocycleTransferFinished(revision: revision, success: error == nil, fileURL: url)
         }
     }
 }

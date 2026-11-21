@@ -111,7 +111,6 @@ struct WorkoutPlanEditor: View {
                 }
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
-                                          isEditing: false,
                                           allPeople: allPeople,
                                           onRosterChanged: resolvePartnerPlans)
 

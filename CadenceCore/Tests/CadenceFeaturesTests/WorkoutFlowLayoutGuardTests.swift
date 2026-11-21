@@ -29,20 +29,25 @@ struct WorkoutFlowLayoutGuardTests {
         #expect(!add.contains("Suggest Exercise…"))
     }
 
+    private func position(of marker: String, in source: String) throws -> Int {
+        let range = try #require(source.range(of: marker), "\(marker) not found")
+        return source.distance(from: source.startIndex, to: range.lowerBound)
+    }
+
     @Test func addExerciseSitsBelowVolumeAndImmediatelyAboveStart() throws {
         let editor = try source("Cadence/Cadence/Features/Home/WorkoutPlanEditor.swift")
-        let volume = try #require(editor.range(of: "LiveWorkoutVolumeSummary"))
-        let add = try #require(editor.range(of: "suggestExerciseButton"))
-        let start = try #require(editor.range(of: "startButton"))
-        #expect(volume.lowerBound < add.lowerBound)
-        #expect(add.lowerBound < start.lowerBound)
+        let volume = try position(of: "LiveWorkoutVolumeSummary", in: editor)
+        let add = try position(of: "suggestExerciseButton", in: editor)
+        let start = try position(of: "startButton", in: editor)
+        #expect(volume < add)
+        #expect(add < start)
     }
 
     @Test func workoutAddExerciseFollowsVolumeSummary() throws {
         let session = try source("Cadence/Cadence/Features/Train/SessionView+Rendering.swift")
-        let volume = try #require(session.range(of: "LiveWorkoutVolumeSummary"))
-        let add = try #require(session.range(of: "suggestExerciseButton"))
-        #expect(volume.lowerBound < add.lowerBound)
+        let volume = try position(of: "LiveWorkoutVolumeSummary", in: session)
+        let add = try position(of: "suggestExerciseButton", in: session)
+        #expect(volume < add)
     }
 
     @Test func coolDownStartsWithoutASecondConfirmation() throws {

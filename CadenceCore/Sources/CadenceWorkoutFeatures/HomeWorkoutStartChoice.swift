@@ -49,9 +49,12 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
     /// Fixed cardio types first, then the coach's recommendation last. Putting
     /// Recommend at the bottom keeps the concrete choices predictable while
     /// still offering the personalized option.
-    public static let cardioChoices: [Self] = ([WorkoutType.hiit] + WorkoutType.allCases.filter {
-        $0 != .weights && $0 != .hiit
-    }).map { .cardio($0) } + [.suggestedCardio]
+    public static let cardioChoices: [Self] = {
+        let fixedTypes = [WorkoutType.hiit] + WorkoutType.allCases.filter {
+            $0 != .weights && $0 != .hiit
+        }
+        return fixedTypes.map { Self.cardio($0) } + [.suggestedCardio]
+    }()
     public static let allChoices = strengthChoices + cardioChoices
 
     public var id: String {

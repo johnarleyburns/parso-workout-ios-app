@@ -13,6 +13,9 @@ struct WatchMyWorkoutsView: View {
     /// Bumped by the manager only after a phone cardio-history snapshot is durably stored.
     var cardioHistoryRevision: Int = 0
     var distanceUnit: DistanceUnitPreference = .kilometers
+    /// A page-style TabView builds sibling pages eagerly. Only the visible page
+    /// may run its SwiftData load, so scrolling Today stays smooth.
+    var isActive: Bool = true
     let onStartSentCardio: (WatchSync.TodayPlan.Session) -> Void
     @Environment(\.modelContext) private var context
     @State private var history: [WatchMyWorkouts.HistoryInput] = []
@@ -21,6 +24,7 @@ struct WatchMyWorkoutsView: View {
     private var rows: [WatchMyWorkoutRow] { WatchMyWorkouts.rows(plan: plan, history: history, cardio: cardio) }
 
     var body: some View {
+        let rows = self.rows
         List {
             WatchSentWorkoutsSection(onStartCardio: onStartSentCardio)
             if rows.isEmpty && WatchSentWorkoutStore.shared.pending.isEmpty {
@@ -56,10 +60,14 @@ struct WatchMyWorkoutsView: View {
         .listStyle(.plain)
         .navigationTitle("My Workouts")
         .accessibilityIdentifier("watch.myWorkouts")
-        .task(id: "\(cardioHistoryRevision)|\(pendingCardioCompletions.map(\.id.uuidString).joined(separator: ","))") { load() }
+        .task(id: "\(isActive)|\(cardioHistoryRevision)|\(pendingCardioCompletions.map(\.id.uuidString).joined(separator: ","))") {
+            guard isActive else { return }
+            load()
+        }
         .onReceive(NotificationCenter.default.publisher(for: WatchLocalHistoryMutation.name)) { _ in
             // Strength is already in the Watch SwiftData store; refresh its local
             // projection immediately rather than waiting for the phone round trip.
+            guard isActive else { return }
             load()
         }
     }

@@ -37,7 +37,7 @@ public enum SuggestedStrengthActionContract {
     public static let anotherIdentifier = "suggestedStrength.another"
     public static let cancelIdentifier = "suggestedStrength.cancel"
 
-    public static let startTitle = "Start this Workout"
+    public static let startTitle = "Start Workout"
     public static let anotherTitle = "Suggest another"
     public static let cancelTitle = "Cancel"
 

@@ -15,7 +15,7 @@ struct SuggestedStrengthPreviewTests {
 
     @Test func actionsAreExposedInRequiredOrder() {
         let c = SuggestedStrengthActionContract.ordered
-        #expect(c.map(\.title) == ["Start this Workout", "Suggest another", "Cancel"])
+        #expect(c.map(\.title) == ["Start Workout", "Suggest another", "Cancel"])
         #expect(c.map(\.action) == [.start, .suggestAnother, .cancel])
     }
 

@@ -148,9 +148,14 @@ struct HomeMuscleMapView: View {
         .accessibilityIdentifier("home.week.muscle.\(callout.panel.rawValue).\(callout.group.rawValue)")
     }
 
+    /// Plain rows, not a nested `List`: this lives inside Home's ScrollView, and
+    /// a disabled second scroll container made the whole page stutter.
     private var muscleList: some View {
-        List {
-            ForEach(rows) { row in
+        LazyVStack(alignment: .leading, spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                if index > 0 {
+                    Divider()
+                }
                 Button { onSelect(row.group) } label: {
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
@@ -163,17 +168,14 @@ struct HomeMuscleMapView: View {
                             .tint(muscleColor(for: MuscleHeatPresenter.level(sets: row.sets, target: 12)))
                     }
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .padding(.vertical, 4)
                 .accessibilityLabel("\(row.displayName), \(WeeklySetProgress.formattedSets(row.sets)) of 12 sets this week")
                 .accessibilityIdentifier("home.week.muscleMap.list.\(row.group.rawValue)")
-                .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
-                .listRowBackground(Color.clear)
             }
         }
-        .listStyle(.plain)
-        .scrollDisabled(true)
-        .frame(height: CGFloat(max(1, rows.count) * 58))
         .accessibilityIdentifier("home.week.muscleMap.list")
     }
 

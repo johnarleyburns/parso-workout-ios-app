@@ -81,6 +81,15 @@ extension SessionView {
         coolingDown = true
     }
 
+    /// The end-confirmation dialog is still dismissing when its action runs.
+    /// Let that transaction finish before presenting the cool-down cover.
+    func startCooldownAfterDialog() {
+        Task { @MainActor in
+            await Task.yield()
+            startCooldown()
+        }
+    }
+
     func deleteSessionFromConfirmation() {
         let wasActive = active.strengthSession?.id == session.id
         if wasActive {
@@ -205,6 +214,7 @@ extension SessionView {
             tint: .teal,
             idPrefix: "cooldown",
             soundsEnabled: settings.workoutSounds,
+            finishTitle: String(localized: "End"),
             onFinish: finishCooldown,
             liveMetric: AnyView(SessionLiveHRBand(sessionID: session.id, showsEmptyState: true)))
     }
@@ -302,21 +312,6 @@ extension SessionView {
     }
 }
 
-
-struct SessionCooldownConfirmationModifier: ViewModifier {
-    @Binding var isPresented: Bool
-    let onStart: () -> Void
-
-    func body(content: Content) -> some View {
-        content.confirmationDialog("Start cool-down?", isPresented: $isPresented, titleVisibility: .visible) {
-            Button("Start Cool Down", action: onStart)
-                .accessibilityIdentifier("workout.coolDownConfirm")
-            Button("Cancel", role: .cancel) { }
-        } message: {
-            Text("This ends your workout and starts the cool-down timer.")
-        }
-    }
-}
 
 struct SuggestionFailureAlertModifier: ViewModifier {
     @Binding var isPresented: Bool

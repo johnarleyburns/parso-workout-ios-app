@@ -42,16 +42,17 @@ struct HomeWorkoutStartControls: View {
     }
 
     private func row(_ option: HomeWorkoutStartChoice) -> some View {
-        Button {
+        let tint = tint(for: option)
+        return Button {
             Haptics.selection()
             start(option)
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: option.symbol)
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(tint(for: option))
+                    .foregroundStyle(tint)
                     .frame(width: 34, height: 34)
-                    .background(tint(for: option).opacity(0.14), in: Circle())
+                    .background(tint.opacity(0.14), in: Circle())
                 Text(LocalizedStringKey(option.title))
                     .font(.body.weight(.medium))
                     .foregroundStyle(.primary)
@@ -62,7 +63,7 @@ struct HomeWorkoutStartControls: View {
             }
             .padding(.horizontal, 8)
             .frame(minHeight: 48)
-            .background(tint(for: option).opacity(0.08),
+            .background(tint.opacity(0.08),
                         in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             .contentShape(Rectangle())
         }

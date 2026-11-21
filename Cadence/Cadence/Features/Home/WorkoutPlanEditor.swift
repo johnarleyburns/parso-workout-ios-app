@@ -64,7 +64,6 @@ struct WorkoutPlanEditor: View {
     @State private var idleTimeoutMinutes: Int
     @State private var plateRounding: Bool
     @State private var useHR: Bool
-    @State var isEditing = false
     @State var settingsPresented = false
     @State var historyIndex: WorkoutPlanPartnerHistory.Index?
     @State private var didResolvePartnerPlans = false
@@ -84,7 +83,7 @@ struct WorkoutPlanEditor: View {
     @State var suggestExerciseFailed = false
     let allowsStart: Bool
 
-    init(plan: EditablePlan, startInEditMode: Bool = false, allowsStart: Bool = true,
+    init(plan: EditablePlan, allowsStart: Bool = true,
          onExcludeAndRegenerate: ((String) async -> EditablePlan?)? = nil,
          suggestedStrength: SuggestedStrengthEditorHooks? = nil,
          onStart: @escaping (EditablePlan) -> Void) {
@@ -92,7 +91,6 @@ struct WorkoutPlanEditor: View {
         self._plan = State(initialValue: plan)
         self.onStart = onStart
         self.onExcludeAndRegenerate = onExcludeAndRegenerate
-        self._isEditing = State(initialValue: startInEditMode)
         self.allowsStart = allowsStart
 
         let ws = WorkoutSettings.default
@@ -113,35 +111,20 @@ struct WorkoutPlanEditor: View {
                 }
 
                 WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
-                                          isEditing: isEditing,
                                           allPeople: allPeople,
                                           onRosterChanged: resolvePartnerPlans)
 
                 workoutRepStructureControls
 
-                if isEditing {
-                    ForEach($plan.exercises) { $exercise in
-                        WorkoutPlanExerciseSection(
-                            exercise: $exercise,
-                            unit: settings.unit,
-                            exerciseInfo: exerciseIndex[exercise.name.lowercased()],
-                            onSwap: { exercisePickerIntent = .swap(exercise.id) },
-                            onRemove: { removeExercise(id: exercise.id) },
-                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
-                    }
-                    addExerciseButton
-                } else {
-                    ForEach(plan.exercises) { exercise in
-                        CompactExerciseRow(
-                            exercise: exercise,
-                            unit: settings.unit,
-                            exerciseInfo: exerciseIndex[exercise.name.lowercased()],
-                            onSwap: { exercisePickerIntent = .swap(exercise.id) },
-                            onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
-                            .workoutPlanCard()
-                    }
+                ForEach(plan.exercises) { exercise in
+                    CompactExerciseRow(
+                        exercise: exercise,
+                        unit: settings.unit,
+                        exerciseInfo: exerciseIndex[exercise.name.lowercased()],
+                        onSwap: { exercisePickerIntent = .swap(exercise.id) },
+                        onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
+                        .workoutPlanCard()
                 }
-                suggestExerciseButton
                 LiveWorkoutVolumeSummary(state: planVolumeState,
                                          expanded: $planVolumeExpanded,
                                          presentation: .planned,
@@ -150,9 +133,13 @@ struct WorkoutPlanEditor: View {
                                          performerStates: planVolumePerformerStates)
 
                 if suggestedStrength != nil {
+                    // Add Exercise sits directly above Start. There is no
+                    // separate Edit mode on this screen.
+                    suggestExerciseButton
                     suggestedStrengthActions
                 } else if allowsStart {
                     sendToWatchButton
+                    suggestExerciseButton
                     startButton
                 }
             }
@@ -202,11 +189,6 @@ struct WorkoutPlanEditor: View {
                 }
                 .accessibilityLabel("Workout settings")
                 .accessibilityIdentifier("editor.showSettings")
-                Button { withAnimation { isEditing.toggle() } } label: {
-                    Image(systemName: isEditing ? "list.bullet" : "pencil")
-                }
-                .accessibilityLabel(isEditing ? "Preview workout plan" : "Edit workout plan")
-                .accessibilityIdentifier("editor.edit")
             }
         }
         .alert(sendToWatchSucceeded ? "Sent to your Watch" : "Couldn't send to Watch",
@@ -319,7 +301,6 @@ struct WorkoutPlanEditor: View {
     }
 
     func saveAndStart() {
-        isEditing = false
         let ws = WorkoutSettings(
             restSeconds: restSeconds,
             autoStartRest: autoStartRest,

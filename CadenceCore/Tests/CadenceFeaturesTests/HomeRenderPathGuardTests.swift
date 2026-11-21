@@ -57,6 +57,16 @@ struct HomeRenderPathGuardTests {
         try assertClean("var body: some View", file: "HomeMuscleMapView.swift")
     }
 
+    /// The muscle list used to be a disabled `List` nested inside the Home
+    /// scroll view. Nested scroll containers make Home scrolling stutter, so
+    /// the list must remain plain rows laid out by the outer scroll view.
+    @Test func muscleListNeverNestsASecondScrollContainer() throws {
+        let source = try body(of: "private var muscleList: some View", in: "HomeMuscleMapView.swift")
+        #expect(source.range(of: "\\bList\\s*\\{", options: .regularExpression) == nil,
+                "Home must not embed a List inside its ScrollView")
+        #expect(!source.contains(".scrollDisabled"))
+    }
+
     /// Both Home entry points into the start-mode picker (the Start Workout
     /// sheet and the Cardio tile sheet) pass the already-published dashboard
     /// credit rather than letting the picker compute its own. The lowercase

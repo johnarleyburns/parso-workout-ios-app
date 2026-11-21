@@ -48,4 +48,31 @@ struct RestTimerModelTests {
         #expect(!m.isRunning)
         #expect(m.progress == 0)
     }
+
+    @Test func pauseFreezesTheCountdownAndResumeContinuesIt() {
+        let m = RestTimerModel()
+        m.start(seconds: 90)
+        m.pause()
+        #expect(m.isPaused)
+        m.tick(); m.tick()
+        #expect(m.remaining == 90)
+        m.add(60)
+        #expect(m.remaining == 150)
+        m.resume()
+        #expect(!m.isPaused)
+        m.tick()
+        #expect(m.remaining == 149)
+    }
+
+    @Test func startingOrSkippingClearsAPause() {
+        let m = RestTimerModel()
+        m.start(seconds: 30)
+        m.pause()
+        m.start(seconds: 10)
+        #expect(!m.isPaused)
+        #expect(m.remaining == 10)
+        m.pause()
+        m.skip()
+        #expect(!m.isPaused)
+    }
 }

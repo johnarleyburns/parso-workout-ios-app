@@ -4,22 +4,11 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 
 extension WorkoutPlanEditor {
-    var addExerciseButton: some View {
+    /// The plan screen has one Add Exercise entry point. It opens the same
+    /// suggestion surface as before, renamed to match what it does.
+    var suggestExerciseButton: some View {
         CadenceActionButton(title: String(localized: "Add Exercise"),
                             systemImage: "plus.circle.fill",
-                            emphasis: .secondary) {
-            exercisePickerIntent = .add
-        }
-        .accessibilityIdentifier("editor.addExercise")
-    }
-
-    func removeExercise(id: UUID) {
-        plan.exercises.removeAll { $0.id == id }
-    }
-
-    var suggestExerciseButton: some View {
-        CadenceActionButton(title: String(localized: "Suggest Exercise…"),
-                            systemImage: "wand.and.stars",
                             emphasis: .secondary) {
             do {
                 suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
@@ -32,7 +21,7 @@ extension WorkoutPlanEditor {
                 suggestExerciseFailed = true
             }
         }
-        .accessibilityIdentifier("editor.suggestExercise")
+        .accessibilityIdentifier("editor.addExercise")
     }
 
     private func planAllocatedVolume() -> [String: Double] {
@@ -53,7 +42,7 @@ extension WorkoutPlanEditor {
         let sets = (0..<suggestion.plannedSets).map { _ in
             EditableSet(targetReps: suggestion.repRange.lowerBound, targetWeight: nil)
         }
-        if !isEditing { isEditing = true }
+        // Adding an exercise must never flip the plan into an editing mode.
         plan.exercises.append(EditableExercise(name: suggestion.name, sets: sets, notes: ""))
         seedPlanWeights()
         resolvePartnerPlans()

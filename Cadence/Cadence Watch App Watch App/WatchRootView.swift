@@ -30,6 +30,7 @@ struct WatchRootView: View {
     @State private var resumingSession: WorkoutSession?
     @State private var confirmDiscardResume = false
     @State private var startingQuickLift = false
+    @State private var launcherPage = 0
     @State private var homeSelection = WatchHomeWorkoutSelection.persisted()
     /// Bumped on every `returnToHome()` call so nested views with their own
     /// local navigation-gating state (e.g. `WatchSentWorkoutsSection`) can
@@ -45,6 +46,7 @@ struct WatchRootView: View {
         resumingSession = nil
         startingQuickLift = false
         plannedStrengthSession = nil
+        launcherPage = 0
         homeSelection.dismissStart()
         homeResetToken += 1
     }
@@ -129,14 +131,18 @@ struct WatchRootView: View {
     private var launcher: some View {
         NavigationStack {
             // Page 1 is Today; swipe left for This Week (HIG: peer pages in a page-style TabView).
-            TabView {
+            TabView(selection: $launcherPage) {
                 launcherList
+                    .tag(0)
                 WatchWeekView(summary: watchManager.weekSummary, overlays: watchManager.weekLocalOverlays, currentWeekKey: WatchWorkoutManager.currentWeekKey())
+                    .tag(1)
                 WatchMyWorkoutsView(plan: watchManager.todayPlan,
                                     pendingCardioCompletions: watchManager.pendingCardioCompletions,
                                     cardioHistoryRevision: watchManager.cardioHistoryRevision,
                                     distanceUnit: watchAppSettings.distanceUnit,
+                                    isActive: launcherPage == 2,
                                     onStartSentCardio: startPlannedCardio)
+                    .tag(2)
             }
             .tabViewStyle(.page)
             .navigationTitle(WatchHomeChrome.navigationTitle)
@@ -204,8 +210,6 @@ struct WatchRootView: View {
             }))
     }
 
-    private var presentation: WatchTodayHomePresentation { WatchTodayHomePresentation(hero: hero) }
-
     private func startRecommendation(_ row: WatchTodayRecommendations.Row) {
         switch row.modality {
         case .strength: plannedStrengthSession = row.session
@@ -227,7 +231,6 @@ struct WatchRootView: View {
             .accessibilityIdentifier("watch.todayHero")
         }
     }
-
 
     @ViewBuilder
     private var heroContent: some View {

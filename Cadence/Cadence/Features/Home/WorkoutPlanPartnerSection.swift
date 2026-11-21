@@ -5,11 +5,10 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-/// Training partners and performer order, as a Home-rhythm card
+/// Training partners, as a Home-rhythm card
 /// (field test 2026-08-18 #5 — the plan editor left `List` behind).
 struct WorkoutPlanPartnerSection: View {
     @Binding var partnerIDs: [UUID]
-    let isEditing: Bool
     let allPeople: [Person]
     /// Called whenever the roster changes, so the editor can re-resolve every
     /// partner's plan (field test 2026-08-18 #4).
@@ -17,15 +16,12 @@ struct WorkoutPlanPartnerSection: View {
 
     @Environment(\.modelContext) private var modelContext
     @State private var newPartnerName = ""
-    /// The full picker is always open in Edit mode; in view mode the user
-    /// reveals it with `+`, so a read-only plan is not a wall of controls.
+    /// The plan is read-first: the user reveals the picker with `+` instead of
+    /// being shown a permanent wall of controls.
     @State private var pickerRevealed = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-            partnerCard
-            if isEditing && !selectedPartnerPeople.isEmpty { orderCard }
-        }
+        partnerCard
     }
 
     private var partnerCard: some View {
@@ -48,7 +44,7 @@ struct WorkoutPlanPartnerSection: View {
     }
 
     /// `Training partners   Solo  +` / `Training partners   Alex x  +` — the
-    /// roster is editable from the plan itself, not only from Edit mode.
+    /// roster is editable from the read-first plan itself.
     private var heading: some View {
         HStack(spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             Text("Training partners").font(.headline)
@@ -61,22 +57,20 @@ struct WorkoutPlanPartnerSection: View {
                     partnerChip(person)
                 }
             }
-            if !isEditing {
-                Button {
-                    Haptics.selection()
-                    withAnimation { pickerRevealed.toggle() }
-                } label: {
-                    Image(systemName: pickerRevealed ? "minus.circle" : "plus.circle")
-                        .imageScale(.large)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.trailing, -8)
-                .padding(.vertical, -8)
-                .accessibilityIdentifier("editor.showPartnerPicker")
-                .accessibilityLabel(pickerRevealed ? "Hide partner picker" : "Add a training partner")
+            Button {
+                Haptics.selection()
+                withAnimation { pickerRevealed.toggle() }
+            } label: {
+                Image(systemName: pickerRevealed ? "minus.circle" : "plus.circle")
+                    .imageScale(.large)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .padding(.trailing, -8)
+            .padding(.vertical, -8)
+            .accessibilityIdentifier("editor.showPartnerPicker")
+            .accessibilityLabel(pickerRevealed ? "Hide partner picker" : "Add a training partner")
         }
     }
 
@@ -104,7 +98,7 @@ struct WorkoutPlanPartnerSection: View {
         .accessibilityIdentifier("editor.partnerChip.\(person.name)")
     }
 
-    private var showsPicker: Bool { isEditing || pickerRevealed }
+    private var showsPicker: Bool { pickerRevealed }
 
     private func partnerRow(_ person: Person) -> some View {
         let a11y = PartnerRowAccessibility(name: person.name,
@@ -137,44 +131,6 @@ struct WorkoutPlanPartnerSection: View {
                 .buttonStyle(.borderless)
                 .disabled(newPartnerName.trimmingCharacters(in: .whitespaces).isEmpty)
                 .accessibilityIdentifier("editor.addPartner")
-        }
-    }
-
-    private var orderCard: some View {
-        VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardHeadingSpacing)) {
-            Text("Performer order").font(.headline)
-            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
-                ForEach(Array(editorRoster.enumerated()), id: \.element.id) { index, person in
-                    orderRow(person, at: index)
-                }
-                Text("The logger rotates through this order after each saved set.")
-                    .font(.caption).foregroundStyle(.secondary)
-            }
-        }
-        .workoutPlanCard()
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("editor.performerOrder")
-    }
-
-    private func orderRow(_ person: Person, at index: Int) -> some View {
-        let name = person.isMe ? "Me" : person.name
-        return HStack {
-            Text(name)
-            Spacer()
-            Button { moveRosterMember(from: index, by: -1) } label: {
-                Image(systemName: "chevron.up")
-            }
-            .disabled(index == 0)
-            .buttonStyle(.borderless)
-            .accessibilityIdentifier("editor.partnerOrder.up.\(name)")
-            .accessibilityLabel("Move \(name) earlier")
-            Button { moveRosterMember(from: index, by: 1) } label: {
-                Image(systemName: "chevron.down")
-            }
-            .disabled(index >= editorRoster.count - 1)
-            .buttonStyle(.borderless)
-            .accessibilityIdentifier("editor.partnerOrder.down.\(name)")
-            .accessibilityLabel("Move \(name) later")
         }
     }
 
@@ -237,14 +193,5 @@ struct WorkoutPlanPartnerSection: View {
 
     private func normalizedPartnerIDs(_ ids: [UUID]) -> [UUID] {
         EditablePlan.normalizedPartnerIDs(ids, ownerID: owner?.id)
-    }
-
-    private func moveRosterMember(from index: Int, by offset: Int) {
-        var ids = explicitPartnerIDs()
-        let target = index + offset
-        guard ids.indices.contains(index), ids.indices.contains(target) else { return }
-        ids.swapAt(index, target)
-        partnerIDs = normalizedPartnerIDs(ids)
-        onRosterChanged()
     }
 }

@@ -61,12 +61,13 @@ public enum MuscleCoverageSuggestionLayout {
 
 public enum TransientStrengthEditorContent {
     public enum Item: Equatable, Sendable {
-        case startWorkout, sendToWatch, scheduleThisWorkout
-        case exerciseRows, addExercise, suggestExercise
+        case startWorkout, sendToWatch
+        case exerciseRows, addExercise
         case trainingPartners, volumeSummary
     }
+    /// The plan screen is read-first: exercises, volume, then Add Exercise
+    /// directly above Start. Adding an exercise never opens an edit mode.
     public static let order: [Item] = [
-        .startWorkout, .sendToWatch, .scheduleThisWorkout,
-        .exerciseRows, .addExercise, .suggestExercise,
-        .trainingPartners, .volumeSummary]
+        .trainingPartners, .exerciseRows, .volumeSummary,
+        .sendToWatch, .addExercise, .startWorkout]
 }

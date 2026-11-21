@@ -98,7 +98,7 @@ struct WatchStrengthHomeView: View {
                     row(item.exercise)
                 }
                 .buttonStyle(.plain)
-                .listRowBackground(RoundedRectangle(cornerRadius: 12).fill(isCurrent(item.exercise) ? WatchTone.accentSoft : WatchTone.surface))
+                .listRowBackground(Color.clear)
                 .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
                 .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in
                     WatchHaptics.tap()
@@ -165,7 +165,10 @@ struct WatchStrengthHomeView: View {
                 if pendingExerciseID == exercise.id { ProgressView().controlSize(.mini) }
             }
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, 3)
+        .padding(.horizontal, 4)
+        .background(RoundedRectangle(cornerRadius: 12)
+            .fill(isCurrent(exercise) ? WatchTone.accentSoft : WatchTone.surface))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(presentation.accessibilityLabel)
     }

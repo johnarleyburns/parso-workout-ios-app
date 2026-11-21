@@ -131,7 +131,7 @@ struct GuidedPhaseOverlay: View {
                             Label(finishTitle, systemImage: "stop.fill")
                                 .frame(maxWidth: .infinity)
                         }
-                        .cadenceGlassButton(prominent: true, tint: .black.opacity(0.4))
+                        .cadenceGlassButton(prominent: false, tint: .red)
                         .accessibilityIdentifier("\(idPrefix).skip")
                     }
                 }

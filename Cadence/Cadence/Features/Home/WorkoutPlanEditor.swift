@@ -137,10 +137,10 @@ struct WorkoutPlanEditor: View {
                     // separate Edit mode on this screen.
                     suggestExerciseButton
                     suggestedStrengthActions
-                } else if allowsStart {
-                    sendToWatchButton
+                } else {
+                    if allowsStart { sendToWatchButton }
                     suggestExerciseButton
-                    startButton
+                    if allowsStart { startButton }
                 }
             }
             .padding(CGFloat(LayoutMetrics.pagePadding))
@@ -258,12 +258,18 @@ struct WorkoutPlanEditor: View {
         .alert("Couldn't rebuild this workout", isPresented: $regenerationFailed) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("The exercise was excluded from future suggestions, but this plan could not be recalculated. You can remove it manually below.")
+            Text("The exercise was excluded from future suggestions, but this plan could not be recalculated. You can still start this workout as-is or close it and choose another.")
         }
         .alert("Couldn't suggest an exercise", isPresented: $suggestExerciseFailed) {
+            Button("Find Exercise") {
+                Task { @MainActor in
+                    await Task.yield()
+                    exercisePickerIntent = .add
+                }
+            }
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Exercise data could not be read. Try again after the catalog finishes loading.")
+            Text("Exercise data could not be read. You can still pick one from the catalog.")
         }
     }
 

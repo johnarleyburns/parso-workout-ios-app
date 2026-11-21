@@ -53,7 +53,8 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
         let fixedTypes = [WorkoutType.hiit] + WorkoutType.allCases.filter {
             $0 != .weights && $0 != .hiit
         }
-        return fixedTypes.map { HomeWorkoutStartChoice.cardio($0) } + [.suggestedCardio]
+        return fixedTypes.map { HomeWorkoutStartChoice.cardio($0) }
+            + [HomeWorkoutStartChoice.suggestedCardio]
     }()
     public static let allChoices = strengthChoices + cardioChoices
 

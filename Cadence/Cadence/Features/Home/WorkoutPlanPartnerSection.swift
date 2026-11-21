@@ -5,7 +5,7 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
-/// Training partners and performer order, as a Home-rhythm card
+/// Training partners, as a Home-rhythm card
 /// (field test 2026-08-18 #5 — the plan editor left `List` behind).
 struct WorkoutPlanPartnerSection: View {
     @Binding var partnerIDs: [UUID]
@@ -44,7 +44,7 @@ struct WorkoutPlanPartnerSection: View {
     }
 
     /// `Training partners   Solo  +` / `Training partners   Alex x  +` — the
-    /// roster is editable from the plan itself, not only from Edit mode.
+    /// roster is editable from the read-first plan itself.
     private var heading: some View {
         HStack(spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
             Text("Training partners").font(.headline)

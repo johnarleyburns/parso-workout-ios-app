@@ -25,7 +25,7 @@ struct WatchMyWorkoutsView: View {
 
     var body: some View {
         let rows = self.rows
-        return List {
+        List {
             WatchSentWorkoutsSection(onStartCardio: onStartSentCardio)
             if rows.isEmpty && WatchSentWorkoutStore.shared.pending.isEmpty {
                 Text("No workouts yet. Planned and completed workouts appear here.")

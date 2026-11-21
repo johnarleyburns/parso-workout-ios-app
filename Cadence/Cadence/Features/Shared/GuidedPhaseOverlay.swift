@@ -30,7 +30,7 @@ struct GuidedPhaseOverlay: View {
     var soundsEnabled: Bool = false
     /// The phase's second action matches the workout dock: warm-up skips ahead,
     /// cool-down ends the workout.
-    var finishTitle: String = "Skip"
+    var finishTitle: String = String(localized: "Skip")
     let onFinish: (_ elapsedSeconds: Int) -> Void
     let onSkip: ((_ elapsedSeconds: Int) -> Void)?
     /// Optional caller-owned live metric (e.g. heart rate), rendered under the
@@ -47,7 +47,7 @@ struct GuidedPhaseOverlay: View {
 
     init(title: String, minutes: Int, tint: Color = .green,
          idPrefix: String, soundsEnabled: Bool = false,
-         finishTitle: String = "Skip",
+         finishTitle: String = String(localized: "Skip"),
          onFinish: @escaping (_ elapsedSeconds: Int) -> Void,
          onSkip: ((_ elapsedSeconds: Int) -> Void)? = nil,
          liveMetric: AnyView? = nil) {

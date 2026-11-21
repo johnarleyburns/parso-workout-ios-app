@@ -55,7 +55,7 @@ struct WatchCoolDownView: View {
                         Button("End") {
                             endCooldown()
                         }
-                        .buttonStyle(WatchPillStyle(kind: .primary))
+                        .buttonStyle(WatchPillStyle(kind: .destructive))
                         .accessibilityIdentifier("watchCooldown.end")
                     }
                 }

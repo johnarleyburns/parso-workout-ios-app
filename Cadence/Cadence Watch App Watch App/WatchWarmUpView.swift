@@ -58,7 +58,7 @@ struct WatchWarmUpView: View {
                             WatchHaptics.success()
                             model.endWarmup()
                         }
-                        .buttonStyle(WatchPillStyle(kind: .primary))
+                        .buttonStyle(WatchPillStyle(kind: .destructive))
                         .accessibilityIdentifier("watchWarmup.skip")
                     }
                 }

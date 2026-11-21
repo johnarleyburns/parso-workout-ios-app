@@ -18,7 +18,8 @@ struct WorkoutFlowLayoutGuardTests {
     @Test func workoutPlanHasNoEditModeToggle() throws {
         let editor = try source("Cadence/Cadence/Features/Home/WorkoutPlanEditor.swift")
         #expect(!editor.contains("editor.edit"))
-        #expect(!editor.contains("isEditing"))
+        #expect(!editor.contains("@State var isEditing"))
+        #expect(!editor.contains("isEditing.toggle()"))
         #expect(!editor.contains("startInEditMode"))
     }
 

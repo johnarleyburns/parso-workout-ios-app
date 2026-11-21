@@ -45,7 +45,7 @@ extension SessionView {
                     Label("Workout settings", systemImage: "gearshape")
                 }
                 if active.strengthSession?.id == session.id {
-                    Button { startCooldown() } label: {
+                    Button { startCooldownAfterDialog() } label: {
                         Label("Start Cool Down", systemImage: "figure.cooldown")
                     }.accessibilityIdentifier("session.startCoolDown")
                 }

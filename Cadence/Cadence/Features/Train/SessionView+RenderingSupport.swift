@@ -81,11 +81,13 @@ extension SessionView {
         coolingDown = true
     }
 
-    /// The end-confirmation dialog is still dismissing when its action runs.
-    /// Let that transaction finish before presenting the cool-down cover.
+    /// The end-confirmation dialog or toolbar menu is still dismissing when
+    /// its action runs. Give that presentation transaction time to finish so
+    /// SwiftUI does not drop the cool-down cover.
     func startCooldownAfterDialog() {
         Task { @MainActor in
-            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(200))
+            guard !Task.isCancelled else { return }
             startCooldown()
         }
     }

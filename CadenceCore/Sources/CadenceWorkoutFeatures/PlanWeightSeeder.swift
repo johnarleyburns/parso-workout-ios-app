@@ -56,6 +56,10 @@ public enum PlanWeightSeeder {
     /// Converts the compact history into dated samples. Recent sets get later
     /// dates so `WeightSuggestion`'s exact-rep recency rule matches "last time".
     private static func historySamples(_ history: PartnerPlanResolver.ExerciseHistory) -> [SetSample] {
+        // The live session already chooses its default from every loaded set.
+        // Prefer that same full sample history so the plan cannot stay blank
+        // merely because the most recent session had no usable load.
+        if !history.weightSamples.isEmpty { return history.weightSamples }
         let base = Date(timeIntervalSince1970: 0)
         var samples = history.lastSets.enumerated().map { index, set in
             SetSample(weight: set.weightKg,

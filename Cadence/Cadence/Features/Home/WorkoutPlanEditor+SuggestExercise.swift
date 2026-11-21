@@ -44,7 +44,12 @@ extension WorkoutPlanEditor {
         }
         // Adding an exercise must never flip the plan into an editing mode.
         plan.exercises.append(EditableExercise(name: suggestion.name, sets: sets, notes: ""))
+        // Keep the new row consistent with the user's real history, exactly as
+        // the initial generated plan does.
+        seededHistoryNames.remove(suggestion.name)
+        seedMissingSuggestedHistory()
         seedPlanWeights()
         resolvePartnerPlans()
+        seedPlanWeights()
     }
 }

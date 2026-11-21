@@ -7,8 +7,8 @@ import Foundation
 /// How the user-entered weight maps to effective load for calculations.
 /// Stored as a String on Exercise (default) and SetEntry (snapshot).
 public enum LoadAccountingMode: String, CaseIterable, Codable, Sendable {
-    case barbell            // entered = added plate load; effective = (entered + barWeight) * multiplier
-    case bodyweight         // entered = added load only; effective = entered * multiplier
+    case barbell            // entered = added plate load; effective = entered + barWeight
+    case bodyweight         // entered = added load only; effective = entered
     case dualDumbbell       // entered total; no pairing multiplier
     case singleDumbbell     // entered = one dumbbell; effective = entered * 1
     case isolateralDumbbell // entered total; no comparison multiplier

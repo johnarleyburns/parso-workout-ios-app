@@ -43,6 +43,18 @@ struct PlanWeightSeederTests {
                 "a movement with no history must not inherit an unrelated lift's load")
     }
 
+    @Test func olderLoadedSetsFillWhenTheLatestSessionHadNoLoad() {
+        let history = PartnerPlanResolver.ExerciseHistory(
+            lastSets: [.init(weightKg: 0, reps: 8)],
+            weightSamples: [
+                SetSample(weight: 40, reps: 8, date: Date(timeIntervalSince1970: 10))
+            ])
+        let filled = PlanWeightSeeder.fillMissingLoads(
+            [EditableSet(targetReps: 8, targetWeight: nil)],
+            history: history)
+        #expect(filled[0].targetWeight == 40)
+    }
+
     @Test func eachExerciseUsesItsOwnHistoryRatherThanOneSharedDefault() {
         let plan = EditablePlan(title: "Plan", warmupMinutes: 0, cooldownMinutes: 0, exercises: [
             EditableExercise(name: "Bench Press",

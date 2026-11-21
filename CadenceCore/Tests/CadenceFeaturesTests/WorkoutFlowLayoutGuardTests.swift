@@ -62,4 +62,17 @@ struct WorkoutFlowLayoutGuardTests {
         #expect(overlay.contains("addFiveMinutes"))
         #expect(overlay.contains("finishTitle"))
     }
+
+    @Test func planHistoryUsesCatalogKeysAndAllWeightSamples() throws {
+        let planHistory = try source("Cadence/Cadence/Features/Home/WorkoutPlanPartnerHistory.swift")
+        #expect(planHistory.contains("historyLookupKeys"))
+        #expect(planHistory.contains("weightSamples"))
+        #expect(!planHistory.contains("exercisesByName[name.lowercased()]"))
+    }
+
+    @Test func watchSyncSendsTheEnteredWeightNotTheEffectiveLoad() throws {
+        let watch = try source("CadenceCore/Sources/CadenceWorkoutFeatures/WatchStrengthFlowModel.swift")
+        #expect(watch.contains("\"weight\": set.weight"))
+        #expect(!watch.contains("\"weight\": set.effectiveLoadKg"))
+    }
 }

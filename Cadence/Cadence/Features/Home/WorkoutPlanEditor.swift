@@ -52,7 +52,7 @@ struct WorkoutPlanEditor: View {
     // target from compiling these extensions even though SwiftPM exercises
     // their underlying core types.
     @Query(sort: \Person.name) var allPeople: [Person]
-    @Query(sort: \Exercise.name) private var allExercises: [Exercise]
+    @Query(sort: \Exercise.name) var allExercises: [Exercise]
     @State var repStructurePerformer: EditablePerformerPlan?
     @State var showRepStructureInfo = false
     @State var exercisePickerIntent: ExercisePickerIntent?
@@ -66,6 +66,10 @@ struct WorkoutPlanEditor: View {
     @State private var useHR: Bool
     @State var settingsPresented = false
     @State var historyIndex: WorkoutPlanPartnerHistory.Index?
+    /// Movements whose generated reps/loads already came from real history.
+    /// Late catalog/history arrivals only fill the names still missing here, so
+    /// a manual rep-structure choice is never overwritten.
+    @State var seededHistoryNames: Set<String> = []
     @State private var didResolvePartnerPlans = false
     @State var exerciseIndex: [String: Exercise] = [:]
     @State private var exclusionExercise: Exercise?
@@ -168,9 +172,13 @@ struct WorkoutPlanEditor: View {
         }
         .onChange(of: plan) { _, _ in refreshPlanVolume() }
         .onChange(of: allExercises.count) { _, _ in
-            exerciseIndex = Dictionary(allExercises.map { ($0.name.lowercased(), $0) },
-                                       uniquingKeysWith: { first, _ in first })
-            refreshPlanVolume()
+            refreshPlanHistory()
+        }
+        .onChange(of: allPeople.count) { _, _ in
+            refreshPlanHistory()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
+            refreshPlanHistory()
         }
         .navigationTitle("Workout Plan")
         .navigationBarTitleDisplayMode(.inline)

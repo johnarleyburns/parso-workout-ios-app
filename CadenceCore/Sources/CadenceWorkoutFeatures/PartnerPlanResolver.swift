@@ -38,20 +38,54 @@ public enum PartnerPlanResolver {
         /// Legacy cross-exercise guess. Plan loading deliberately ignores it:
         /// a movement that has never been trained keeps a blank load.
         public let generalLastWeightKg: Double?
+        /// Every loaded working set for THIS movement, oldest → newest. The
+        /// live session already resolves its default from the whole sample
+        /// history; the plan editor must use the same source so a blank plan can
+        /// never disagree with a filled-in set card.
+        public let weightSamples: [SetSample]
 
         public init(lastSets: [LoggedSet] = [],
                     repLadders: [[Int]] = [],
                     firstWorkingWeightKg: Double? = nil,
                     generalRepLadders: [[Int]] = [],
-                    generalLastWeightKg: Double? = nil) {
+                    generalLastWeightKg: Double? = nil,
+                    weightSamples: [SetSample] = []) {
             self.lastSets = lastSets
             self.repLadders = repLadders
             self.firstWorkingWeightKg = firstWorkingWeightKg
             self.generalRepLadders = generalRepLadders
             self.generalLastWeightKg = generalLastWeightKg
+            self.weightSamples = weightSamples
         }
 
         public static let empty = ExerciseHistory()
+
+        /// True when this movement has any usable history at all.
+        public var hasHistory: Bool {
+            !lastSets.isEmpty || !repLadders.isEmpty || firstWorkingWeightKg != nil
+                || !weightSamples.isEmpty
+        }
+
+        /// True when the history can supply real reps, not only a load.
+        public var hasRepHistory: Bool {
+            lastSets.contains { $0.reps > 0 } || repLadders.contains { !$0.isEmpty }
+        }
+    }
+
+    /// All name keys a stored exercise may use for a planned movement. The plan
+    /// editor previously compared one exact lowercased name, so a plan name with
+    /// surrounding whitespace or a singular/plural variant missed history that
+    /// the live session's `findOrCreateExercise` resolved through the catalog.
+    public static func historyLookupKeys(forExerciseNamed name: String) -> Set<String> {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        var keys: Set<String> = [trimmed.lowercased(), ExerciseLibrary.dedupKey(trimmed)]
+        if let template = ExerciseLibrary.template(matching: trimmed) {
+            keys.insert(template.name.lowercased())
+            keys.insert(ExerciseLibrary.dedupKey(template.name))
+        }
+        keys.remove("")
+        return keys
     }
 
     /// Resolve one performer's sets for one exercise.
@@ -141,21 +175,42 @@ public enum PartnerPlanResolver {
         }
     }
 
-    /// Fills only the missing loads on a generated owner prescription with the
-    /// owner's literal last working weight, the same reference the set logger
-    /// uses. Suggested reps are left exactly as generated; explicit loads,
-    /// bodyweight sets, and percentage-of-1RM sets are untouched. A movement
-    /// with no logged external load keeps `nil`, which the editor renders as BW
-    /// when the movement is bodyweight.
+    /// Fills a generated owner prescription from the owner's real history: the
+    /// last session's reps and per-set loads, then older loaded samples when the
+    /// latest session had no usable load. Explicit loads, bodyweight sets, and
+    /// percentage-of-1RM sets are untouched. If the movement has never been
+    /// trained, the generated reps stay and the load remains `nil`.
     public static func suggestedOwnerSets(_ sets: [EditableSet],
-                                          history: ExerciseHistory) -> [EditableSet] {
-        let lastWeight = history.lastSets.last(where: { $0.reps > 0 && $0.weightKg > 0 })?.weightKg
+                                          history: ExerciseHistory,
+                                          updateRepsWhenLoadPresent: Bool = false) -> [EditableSet] {
+        let logged = history.lastSets.filter { $0.reps > 0 }
+        let ladder = logged.isEmpty ? (history.repLadders.last ?? []).filter { $0 > 0 } : []
+        let reps = logged.isEmpty ? ladder : logged.map(\.reps)
+        let lastKnownWeight = logged.last(where: { $0.weightKg > 0 })?.weightKg
             ?? history.firstWorkingWeightKg
-        guard let lastWeight, lastWeight > 0 else { return sets }
-        return sets.map { original in
-            guard original.targetWeight == nil, original.loadMode == .straight else { return original }
+        return sets.enumerated().map { index, original in
+            let canSeedWeight = original.targetWeight == nil
+            guard original.loadMode == .straight,
+                  canSeedWeight || updateRepsWhenLoadPresent else { return original }
             var set = original
-            set.targetWeight = lastWeight
+            if !reps.isEmpty {
+                set.targetReps = reps[min(index, reps.count - 1)]
+            }
+            guard canSeedWeight else { return set }
+            if !logged.isEmpty {
+                let source = logged[min(index, logged.count - 1)]
+                if source.weightKg > 0 {
+                    set.targetWeight = source.weightKg
+                }
+            }
+            if set.targetWeight == nil,
+               let suggestion = WeightSuggestion.suggest(targetReps: set.targetReps,
+                                                         history: history.weightSamples) {
+                set.targetWeight = suggestion.weightKg
+            }
+            if set.targetWeight == nil, let lastKnownWeight, lastKnownWeight > 0 {
+                set.targetWeight = lastKnownWeight
+            }
             return set
         }
     }

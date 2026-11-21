@@ -517,6 +517,24 @@ final class WatchStrengthFlowModelTests {
         #expect(m.lastSyncPayload?["is_warmup"] as? Bool == true)
     }
 
+    @Test func logSetPayloadSendsTheEnteredWeightNotTheEffectiveAccountingLoad() {
+        let m = makeModel()
+        m.start()
+        let bench = simpleExercise(named: "Bench Press")
+        m.startLogSet(for: bench)
+        m.currentWeight = 60
+        m.currentReps = 5
+        guard let set = m.logSet() else {
+            Issue.record("Set did not log")
+            return
+        }
+        #expect(set.weight == 60)
+        #expect(set.effectiveLoadKg > set.weight,
+                "barbell accounting should add the bar for calculations")
+        #expect(m.lastSyncPayload?["weight"] as? Double == 60,
+                "the phone must receive the entered plate load, not the effective load")
+    }
+
     @Test func finish_withSets_transitionsToCooldown() {
         let m = makeModel()
         m.start()

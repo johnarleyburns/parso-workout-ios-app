@@ -31,7 +31,7 @@ struct WorkoutPlanRepStructureTests {
         #expect(plan.exercises.allSatisfy { $0.sets.map(\.targetReps) == [5, 5] && $0.performerPlans[0].sets == $0.sets })
     }
 
-    @Test func suggestedOwnerSetsFillMissingStraightLoadsWithoutChangingRepsOrExplicitLoads() {
+    @Test func suggestedOwnerSetsSeedRepsAndLoadsFromTheLastWorkout() {
         let original = (0..<3).map { _ in EditableSet(targetReps: 6, targetWeight: nil) }
         let history = PartnerPlanResolver.ExerciseHistory(lastSets: [
             .init(weightKg: 100, reps: 6),
@@ -39,11 +39,21 @@ struct WorkoutPlanRepStructureTests {
         ])
         let seeded = PartnerPlanResolver.suggestedOwnerSets(original, history: history)
         #expect(seeded.map(\.id) == original.map(\.id))
-        #expect(seeded.map(\.targetReps) == [6, 6, 6])
-        #expect(seeded.map(\.targetWeight) == [92.98643585, 92.98643585, 92.98643585])
+        #expect(seeded.map(\.targetReps) == [6, 8, 8],
+                "the plan must show the user's actual last-workout reps, not a flat goal lower bound")
+        #expect(seeded.map(\.targetWeight) == [100, 92.98643585, 92.98643585])
         #expect(PartnerPlanResolver.suggestedOwnerSets(original, history: .empty) == original)
 
+        let eightByThree = (0..<3).map { _ in EditableSet(targetReps: 6, targetWeight: nil) }
+        let eightHistory = PartnerPlanResolver.ExerciseHistory(lastSets: (0..<3).map { _ in
+            .init(weightKg: 40, reps: 8)
+        })
+        #expect(PartnerPlanResolver.suggestedOwnerSets(eightByThree, history: eightHistory)
+            .map(\.targetReps) == [8, 8, 8])
+
         let firstOnly = PartnerPlanResolver.ExerciseHistory(firstWorkingWeightKg: 50)
+        #expect(PartnerPlanResolver.suggestedOwnerSets(original, history: firstOnly)
+            .map(\.targetReps) == [6, 6, 6])
         #expect(PartnerPlanResolver.suggestedOwnerSets(original, history: firstOnly)
             .map(\.targetWeight) == [50, 50, 50])
 
@@ -52,6 +62,34 @@ struct WorkoutPlanRepStructureTests {
 
         let explicit = [EditableSet(targetReps: 12, targetWeight: 20)]
         #expect(PartnerPlanResolver.suggestedOwnerSets(explicit, history: history) == explicit)
+    }
+
+    @Test func lateHistoryCanUpdateRepsWithoutReplacingAnExistingLoad() {
+        let loaded = [EditableSet(targetReps: 6, targetWeight: 20)]
+        let history = PartnerPlanResolver.ExerciseHistory(lastSets: (0..<3).map { _ in
+            .init(weightKg: 40, reps: 8)
+        })
+        let seeded = PartnerPlanResolver.suggestedOwnerSets(
+            loaded, history: history, updateRepsWhenLoadPresent: true)
+        #expect(seeded[0].targetReps == 8)
+        #expect(seeded[0].targetWeight == 20)
+    }
+
+    @Test func suggestedOwnerSetsUseOlderWeightSamplesWhenTheLatestSessionWasUnloaded() {
+        let original = [EditableSet(targetReps: 6, targetWeight: nil)]
+        let history = PartnerPlanResolver.ExerciseHistory(
+            lastSets: [.init(weightKg: 0, reps: 8)],
+            weightSamples: [SetSample(weight: 45, reps: 8, date: Date(timeIntervalSince1970: 10))])
+        let seeded = PartnerPlanResolver.suggestedOwnerSets(original, history: history)
+        #expect(seeded[0].targetReps == 8)
+        #expect(seeded[0].targetWeight == 45)
+    }
+
+    @Test func historyLookupKeysNormalizeWhitespaceAndPluralVariants() {
+        let keys = PartnerPlanResolver.historyLookupKeys(
+            forExerciseNamed: "  Kettlebell Sumo High Pulls ")
+        #expect(keys.contains("kettlebell sumo high pull"))
+        #expect(keys.contains(ExerciseLibrary.dedupKey("Kettlebell Sumo High Pull")))
     }
 
     @Test func repSchemeOptionsAreSortedBySetCountThenFirstSetReps() {

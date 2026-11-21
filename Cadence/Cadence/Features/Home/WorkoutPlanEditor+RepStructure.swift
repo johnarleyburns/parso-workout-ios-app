@@ -52,6 +52,11 @@ extension WorkoutPlanEditor {
         .sheet(item: $repStructurePerformer) { person in
             RepSchemeSheet(current: person.sets.map(\.targetReps)) { reps in
                 plan.applyRepStructure(reps, performerID: person.performerID)
+                // A deliberate owner rep structure must not be replaced if
+                // catalog/history arrives after this point.
+                if person.performerID == nil {
+                    seededHistoryNames.formUnion(plan.exercises.map(\.name))
+                }
             }
         }
     }

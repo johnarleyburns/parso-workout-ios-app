@@ -6,19 +6,54 @@ import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
 extension WorkoutPlanEditor {
-    /// A generated Personalized plan carries reps and set count but no loads
-    /// (the generator deliberately has no load model). Seed the missing loads
-    /// from the owner's own last working set so the preview never shows a wall
-    /// of "—" for lifts they have already trained. Explicit plan loads and
+    /// A generated Personalized plan carries goal-range reps and set count but
+    /// no loads. Seed both the reps and loads from the owner's own last workout
+    /// so the preview shows what they actually did. Explicit plan loads and
     /// bodyweight movements are preserved.
     func seedSuggestedOwnerDefaults() {
         guard let historyIndex else { return }
         for index in plan.exercises.indices {
-            let history = historyIndex.history(forExerciseNamed: plan.exercises[index].name,
+            let name = plan.exercises[index].name
+            let history = historyIndex.history(forExerciseNamed: name,
                                                 performerID: nil, people: allPeople)
             plan.exercises[index].sets = PartnerPlanResolver.suggestedOwnerSets(
                 plan.exercises[index].sets, history: history)
+            if history.hasRepHistory { seededHistoryNames.insert(name) }
         }
+    }
+
+    /// The catalog and CloudKit history can arrive after this sheet appears.
+    /// Retry only movements that had no history the first time, so a late
+    /// imported exercise gets the same reps/loads the live session would use.
+    func seedMissingSuggestedHistory() {
+        guard suggestedStrength != nil || plan.suggestedWorkoutStyle != nil,
+              let historyIndex else { return }
+        for index in plan.exercises.indices {
+            let name = plan.exercises[index].name
+            guard !seededHistoryNames.contains(name) else { continue }
+            let history = historyIndex.history(forExerciseNamed: name,
+                                                performerID: nil, people: allPeople)
+            guard history.hasRepHistory else { continue }
+            plan.exercises[index].sets = PartnerPlanResolver.suggestedOwnerSets(
+                plan.exercises[index].sets, history: history,
+                updateRepsWhenLoadPresent: true)
+            seededHistoryNames.insert(name)
+        }
+    }
+
+    /// Rebuilds the history snapshot and fills anything that was unavailable
+    /// when the plan first opened. Never overwrites a load the user already has.
+    func refreshPlanHistory() {
+        exerciseIndex = Dictionary(allExercises.map { ($0.name.lowercased(), $0) },
+                                   uniquingKeysWith: { first, _ in first })
+        historyIndex = WorkoutPlanPartnerHistory.Index(context: modelContext)
+        seedMissingSuggestedHistory()
+        seedPlanWeights()
+        resolvePartnerPlans()
+        // Partner plans are rebuilt from their own set ladders; fill any loads
+        // those rows still leave blank from the same full sample history.
+        seedPlanWeights()
+        refreshPlanVolume()
     }
 
     /// Every planned working set gets a load before the workout starts, using
@@ -79,8 +114,13 @@ extension WorkoutPlanEditor {
                 return updated
             }
         }
+        // The picked movement has its own history; allow the history seed to
+        // fill it even if a same-named row was already resolved earlier.
+        seededHistoryNames.remove(exercise.name)
+        seedMissingSuggestedHistory()
         seedPlanWeights()
         resolvePartnerPlans()
+        seedPlanWeights()
     }
 
     private func ownerSeedSets(for name: String) -> [EditableSet] {

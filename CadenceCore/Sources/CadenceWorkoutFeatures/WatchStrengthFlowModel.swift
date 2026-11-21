@@ -1245,7 +1245,10 @@ public final class WatchStrengthFlowModel {
             "session_id": session.id.uuidString,
             "set_id": set.id.uuidString,
             "exercise": exercise.name,
-            "weight": set.effectiveLoadKg,
+            // The phone stores this as the user-entered weight and applies the
+            // exercise's accounting once. Sending effectiveLoadKg here made
+            // barbell bar weight (and legacy paired-bell multipliers) count twice.
+            "weight": set.weight,
             "reps": set.reps,
             "is_warmup": set.isWarmup,
             "timestamp": Date().timeIntervalSince1970,

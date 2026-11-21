@@ -937,7 +937,8 @@ public final class SetEntry {
     /// Snapshotted bar weight in kg for barbell exercises. The bar weight added to
     /// the user-entered plate load when computing effective load. Default 0.
     public var barWeightKg: Double = 0
-    /// Snapshotted load multiplier (default 1.0). Used for dumbbell pairing, etc.
+    /// Retained for export/schema compatibility. The app never applies a
+    /// pairing multiplier; calculations use the entered load as-is.
     public var loadMultiplier: Double = 1.0
     /// Snapshotted load-accounting mode. Raw `LoadAccountingMode`. nil = legacy set
     /// without accounting metadata (effective load = weight).
@@ -1039,9 +1040,9 @@ public final class SetEntry {
         guard let mode = loadAccountingModeValue else { return weight }
         switch mode {
         case .barbell:
-            return (weight + barWeightKg) * loadMultiplier
+            return weight + barWeightKg
         case .bodyweight:
-            return weight * loadMultiplier
+            return weight
         case .dualDumbbell:
             return weight
         case .singleDumbbell:

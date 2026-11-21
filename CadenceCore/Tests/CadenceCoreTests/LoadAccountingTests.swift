@@ -198,6 +198,19 @@ struct LoadAccountingTests {
         #expect(set.effectiveLoadKg == 50)
     }
 
+    @Test func legacyLoadMultiplierNeverDoublesOrHalvesAnySet() throws {
+        let ctx = try makeContext()
+        let barWeight = Exercise.defaultBarWeightKg
+        let barbell = SetEntry(weight: 40, reps: 5, barWeightKg: barWeight,
+                               loadMultiplier: 2,
+                               loadAccountingMode: LoadAccountingMode.barbell.rawValue)
+        let bodyweight = SetEntry(weight: 10, reps: 5, loadMultiplier: 2,
+                                  loadAccountingMode: LoadAccountingMode.bodyweight.rawValue)
+        ctx.insert(barbell); ctx.insert(bodyweight)
+        #expect(abs(barbell.effectiveLoadKg - (40 + barWeight)) <= 0.01)
+        #expect(bodyweight.effectiveLoadKg == 10)
+    }
+
     @Test func effectiveLoadKgBodyweight() throws {
         let ctx = try makeContext()
         let set = SetEntry(weight: 10, reps: 5, usesBodyweight: true,
@@ -286,6 +299,23 @@ struct LoadAccountingTests {
         #expect(abs(set.barWeightKg - Exercise.defaultBarWeightKg) <= 0.01)
         #expect(set.weight == 60)
         #expect(set.effectiveLoadKg > set.weight)
+    }
+
+    @Test func addSetNeverDoubleCountsDumbbellOrKettlebellWeight() throws {
+        let ctx = try makeContext()
+        _ = try WorkoutRepository.seedStarterLibraryIfNeeded(ctx)
+        let session = WorkoutSession(title: "Bells")
+        ctx.insert(session)
+        try ctx.save()
+
+        for name in ["Dumbbell Bench Press", "Kettlebell Clean"] {
+            let exercise = try #require(try WorkoutRepository.allExercises(ctx).first { $0.name == name })
+            let set = try WorkoutRepository.addSet(to: session, exercise: exercise,
+                                                    weightKg: 20, reps: 8, in: ctx)
+            #expect(set.weight == 20)
+            #expect(set.effectiveLoadKg == 20,
+                    "\(name) must use the entered total exactly once")
+        }
     }
 
     @Test func addSetNoAccountingForMachine() throws {

@@ -138,6 +138,24 @@ final class WatchStrengthSyncApplierTests {
         #expect(session.orderedSets.first?.rpe == 8)
     }
 
+    @Test func logSetStoresTheEnteredPlateLoadAndLetsThePhoneApplyAccounting() throws {
+        let sessionID = UUID()
+        try WatchStrengthSyncApplier.apply(userInfo: [
+            "action": "log_set",
+            "session_id": sessionID.uuidString,
+            "set_id": UUID().uuidString,
+            "exercise": "Bench Press",
+            "weight": 60.0,
+            "reps": 5,
+        ], in: context)
+
+        let session = try #require(fetchSessions().first { $0.id == sessionID })
+        let set = try #require(session.orderedSets.first)
+        #expect(set.weight == 60)
+        #expect(set.effectiveLoadKg > 60,
+                "the phone should add the bar exactly once, not accept an already-effective weight")
+    }
+
     @Test func logSetStoresIncomingSetIDSoReplayIsIgnored() throws {
         let sessionID = UUID()
         let setID = UUID()

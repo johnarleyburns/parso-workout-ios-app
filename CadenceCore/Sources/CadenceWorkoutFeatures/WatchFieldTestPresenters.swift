@@ -31,6 +31,7 @@ public struct WatchLiftWhyExercise: Equatable, Sendable, Identifiable {
 /// preview. No reasoning is recomputed on the Watch.
 public struct WatchLiftWhyPresentation: Equatable, Sendable {
     public static let title = "Why this workout"
+    public var title: String { Self.title }
 
     public let whyWorkout: String
     public let exercises: [WatchLiftWhyExercise]

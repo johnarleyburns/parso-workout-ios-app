@@ -171,13 +171,13 @@ struct WorkoutPlanEditor: View {
             refreshPlanWeeklyVolume()
         }
         .onChange(of: plan) { _, _ in refreshPlanVolume() }
-        .onChange(of: allExercises.count) { _, _ in
-            refreshPlanHistory()
-        }
-        .onChange(of: allPeople.count) { _, _ in
-            refreshPlanHistory()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged)) { _ in
+        // One bounded retry for a catalog/CloudKit history that lands just
+        // after the first frame. Do NOT refresh on every store notification:
+        // re-seeding the plan inside that notification loop made the screen
+        // flash and blocked every tap.
+        .task {
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled else { return }
             refreshPlanHistory()
         }
         .navigationTitle("Workout Plan")

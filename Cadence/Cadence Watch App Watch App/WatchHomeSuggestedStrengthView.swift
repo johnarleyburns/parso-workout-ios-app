@@ -12,6 +12,7 @@ struct WatchHomeSuggestedStrengthView: View {
     @State private var finished = false
     @State private var needsSync = false
     @State private var generatedRevision: String?
+    @State private var isGenerating = false
 
     var body: some View {
         Group {
@@ -41,12 +42,15 @@ struct WatchHomeSuggestedStrengthView: View {
 
     @MainActor
     private func generateIfNeeded() async {
+        guard !isGenerating else { return }
         let revision = manager.mesocycleMirrorRevision
         guard WatchSuggestedStrengthRefreshPolicy.shouldGenerate(
             lastRevision: generatedRevision,
             currentRevision: revision,
             hasLaunch: launch != nil) else { return }
         generatedRevision = revision
+        isGenerating = true
+        defer { isGenerating = false }
         await generate()
     }
 

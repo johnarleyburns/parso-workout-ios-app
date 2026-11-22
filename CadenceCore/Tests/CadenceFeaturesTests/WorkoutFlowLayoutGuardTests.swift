@@ -70,6 +70,14 @@ struct WorkoutFlowLayoutGuardTests {
         #expect(!planHistory.contains("exercisesByName[name.lowercased()]"))
     }
 
+    @Test func planEditorDoesNotRefreshOnEveryStoreNotification() throws {
+        let editor = try source("Cadence/Cadence/Features/Home/WorkoutPlanEditor.swift")
+        #expect(!editor.contains(".onReceive(NotificationCenter.default.publisher(for: .workoutHistoryChanged))"),
+                "refreshing the plan from every history notification caused a flashing, unusable sheet")
+        #expect(!editor.contains("onChange(of: allExercises.count)"))
+        #expect(!editor.contains("onChange(of: allPeople.count)"))
+    }
+
     @Test func watchSyncSendsTheEnteredWeightNotTheEffectiveLoad() throws {
         let watch = try source("CadenceCore/Sources/CadenceWorkoutFeatures/WatchStrengthFlowModel.swift")
         #expect(watch.contains("\"weight\": set.weight"))

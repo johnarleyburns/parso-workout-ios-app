@@ -66,6 +66,19 @@ final class WatchSuggestedExerciseShellTests {
         #expect(shell.session.state == .idle)
     }
 
+    @Test func aGeneratorThatReturnsAnActiveExerciseIsNeverPresentedAsNew() async {
+        let duplicate = SuggestedWorkoutExercise(
+            candidateID: "legacy:bench press", name: "bench press", mechanics: .compound,
+            plannedSets: 3, repRange: 8...12, contributions: [], selectionScore: 1)
+        let session = WatchSingleExerciseSuggestionSession(generator: { _, _ in duplicate })
+        let shell = WatchSuggestedExerciseShell(
+            session: session,
+            loadContext: { self.realisticContext() })
+        shell.start(activeNames: ["Bench Press"], activeWorkingSets: [])
+        await shell.session.pendingTask?.value
+        #expect(shell.phase == .noEligibleResult)
+    }
+
     @Test func retryReloadsContextAndStaysUnavailableWhileAbsent() {
         var loads = 0
         let shell = WatchSuggestedExerciseShell(loadContext: { loads += 1; return nil })

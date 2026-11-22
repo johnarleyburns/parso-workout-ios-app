@@ -12,7 +12,8 @@ public enum CoachSuggestionWatchBridge {
             warmupMinutes: request.warmupMinutes, cooldownMinutes: request.cooldownMinutes)
         guard let session = CoachWatchTodayBridge.suggestedStrengthSession(from: plan) else { return nil }
         return WatchLiftLaunch(title: session.label, exerciseNames: session.exerciseNames,
-                               repLadder: session.repLadder, planPayload: session.planPayload)
+                               repLadder: session.repLadder, planPayload: session.planPayload,
+                               rationale: option.rationale)
     }
 }
 

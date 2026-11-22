@@ -11,6 +11,7 @@ struct WatchHomeSuggestedStrengthView: View {
     @State private var citationIDs: [String] = []
     @State private var finished = false
     @State private var needsSync = false
+    @State private var generatedRevision: String?
 
     var body: some View {
         Group {
@@ -32,20 +33,35 @@ struct WatchHomeSuggestedStrengthView: View {
             }
         }
         .navigationTitle("Lift")
-        .task(id: manager.mesocycleMirrorRevision) {
-            await generate()
+        .task { await generateIfNeeded() }
+        .onChange(of: manager.mesocycleMirrorRevision) { _, _ in
+            Task { @MainActor in await generateIfNeeded() }
         }
     }
 
     @MainActor
+    private func generateIfNeeded() async {
+        let revision = manager.mesocycleMirrorRevision
+        guard WatchSuggestedStrengthRefreshPolicy.shouldGenerate(
+            lastRevision: generatedRevision,
+            currentRevision: revision,
+            hasLaunch: launch != nil) else { return }
+        generatedRevision = revision
+        await generate()
+    }
+
+    @MainActor
     private func generate() async {
-        launch = nil
-        citationIDs = []
+        // Deliberately keep an already visible preview on screen while a newer
+        // mirror is assembled. Blanking it here made the Lift screen flash and
+        // reload every time the phone refreshed its mirror.
         needsSync = false
-        finished = false
+        if launch == nil { finished = false }
         guard let envelope = WatchMesocycleMirrorStore().load() else {
-            needsSync = true
-            finished = true
+            if launch == nil {
+                needsSync = true
+                finished = true
+            }
             return
         }
         let mirror = envelope.mirror
@@ -56,6 +72,8 @@ struct WatchHomeSuggestedStrengthView: View {
         if let result {
             launch = result.launch
             citationIDs = result.citationIDs
+        } else if launch == nil {
+            needsSync = true
         }
         finished = true
     }

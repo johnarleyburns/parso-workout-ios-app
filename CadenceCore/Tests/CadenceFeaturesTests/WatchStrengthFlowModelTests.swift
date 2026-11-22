@@ -127,6 +127,23 @@ final class WatchStrengthFlowModelTests {
 
     private struct SaveBoom: Error {}
 
+    @Test func suggestionInputIncludesEveryExerciseAlreadyInTheWorkout() {
+        let m = makeModel()
+        m.start(title: "Test", plannedExerciseNames: ["Bench Press", "Squat"], createSession: true)
+        guard let bench = m.exerciseList.first(where: { $0.exercise.name == "Bench Press" })?.exercise else {
+            Issue.record("Missing bench")
+            return
+        }
+        m.startLogSet(for: bench)
+        m.currentWeight = 40
+        m.currentReps = 8
+        _ = m.logSet()
+
+        #expect(m.suggestionActiveExerciseNames.contains("Bench Press"))
+        #expect(m.suggestionActiveExerciseNames.contains("Squat"))
+        #expect(m.suggestionActiveWorkingSets.contains { $0.exerciseName == "Bench Press" })
+    }
+
     @Test func addExerciseResult_addsOnceToActiveSessionAndPersists() {
         let m = makeModel()
         m.start(createSession: true)

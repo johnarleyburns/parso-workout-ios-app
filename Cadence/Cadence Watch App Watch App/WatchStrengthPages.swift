@@ -8,9 +8,9 @@ import CadenceWorkoutFeatures
 struct WatchStrengthControlsPage: View {
     let model: WatchStrengthFlowModel
     let onFinish: () -> Void
-    let onPartners: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
     @State private var confirmDiscard = false
+    @State private var showingPartners = false
     /// Self-tracked feedback only: WatchKit exposes no reactive notification for
     /// the water-lock toggle, so this reflects "we just asked the system to
     /// engage it," not a live readback of the actual lock state.
@@ -19,21 +19,25 @@ struct WatchStrengthControlsPage: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 6) {
+                Text(LocalizedStringKey(WatchStrengthControlsPresentation.title))
+                    .font(.headline)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("watchStrength.summaryTitle")
                 TimelineView(.periodic(from: .now, by: 1)) { _ in
                     Text(Duration.seconds(watchManager.effectiveElapsed).formatted(.time(pattern: .hourMinuteSecond)))
                         .font(.headline.monospacedDigit())
                         .foregroundStyle(WatchTone.accent)
                 }
-                // Fixed-height reservation: this row was being inserted/removed as
-                // the pause-reason text appeared/disappeared, shifting the tile
-                // grid below it. Always occupy the space; only the text itself is
-                // conditional.
-                Text(watchManager.isPaused ? (watchManager.strengthPause.statusCopy ?? "") : "")
-                    .font(.caption2)
-                    .multilineTextAlignment(.center)
-                    .frame(minHeight: 28)
-                    .accessibilityIdentifier("watchStrength.pauseReason")
-                    .accessibilityHidden(!watchManager.isPaused || watchManager.strengthPause.statusCopy == nil)
+                // Show the explanation only while paused. The former fixed-height
+                // reservation left a large blank row under the elapsed time all
+                // the time; a small top margin is enough when text exists.
+                if watchManager.isPaused, let copy = watchManager.strengthPause.statusCopy {
+                    Text(copy)
+                        .font(.caption2)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, CGFloat(WatchStrengthControlsPresentation.pauseReasonTopPadding))
+                        .accessibilityIdentifier("watchStrength.pauseReason")
+                }
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 6) {
                     tile(watchManager.isPaused ? "Resume" : "Pause",
                          systemImage: watchManager.isPaused ? "play.fill" : "pause.fill",
@@ -51,13 +55,18 @@ struct WatchStrengthControlsPage: View {
                             waterLockEngaged = true
                         }
                     }
-                    tile("Partners", systemImage: "person.2.fill", identifier: "watchStrength.partners", action: onPartners)
+                    tile("Partners", systemImage: "person.2.fill", identifier: "watchStrength.partners") {
+                        showingPartners = true
+                    }
                 }
                 Button("Discard Workout", role: .destructive) { confirmDiscard = true }
                     .font(.footnote)
                     .accessibilityIdentifier("watchStrength.deleteWorkout")
             }
             .padding(.horizontal, 2)
+        }
+        .sheet(isPresented: $showingPartners) {
+            NavigationStack { WatchPartnersView(model: model) }
         }
         .alert("Delete Workout?", isPresented: $confirmDiscard) {
             Button("Delete", role: .destructive) {

@@ -159,9 +159,7 @@ struct WatchStrengthView: View {
 
     private func pager(_ model: WatchStrengthFlowModel) -> some View {
         TabView(selection: $page) {
-            WatchStrengthControlsPage(model: model, onFinish: { finishWorkout() }, onPartners: {
-                model.goToPartners()
-            })
+            WatchStrengthControlsPage(model: model, onFinish: { finishWorkout() })
             .tag(Page.controls)
 
             ZStack {

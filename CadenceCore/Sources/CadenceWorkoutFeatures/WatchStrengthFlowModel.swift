@@ -414,6 +414,22 @@ public final class WatchStrengthFlowModel {
         stage = .addExercise
     }
 
+    /// Names already in the workout, for the Add Exercise "Suggested" row and
+    /// any other suggestion surface that must never repeat an exercise.
+    public var suggestionActiveExerciseNames: [String] {
+        guard let session else { return exerciseList.map(\.exercise.name) }
+        return session.plannedExerciseNames + session.exercisesInOrder.map(\.name)
+    }
+
+    /// Completed sets in the active workout, used to credit volume before the
+    /// single-exercise suggestion is calculated.
+    public var suggestionActiveWorkingSets: [WatchSuggestionSet] {
+        (session?.orderedSets ?? []).compactMap { set in
+            guard let name = set.exercise?.name else { return nil }
+            return WatchSuggestionSet(exerciseName: name, isWarmup: set.isWarmup)
+        }
+    }
+
     /// Resolves a free-form name (Quick Talk, aliases) and adds it. A name that
     /// resolves to nothing is `.unavailable` and leaves the workout untouched.
     @discardableResult

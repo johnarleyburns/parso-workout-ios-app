@@ -26,6 +26,10 @@ public final class WatchSuggestedExerciseShell {
     private let loadContext: (() -> WatchSingleExerciseSuggestionContext?)?
     private var contextMissing = false
     private var started = false
+    /// Names already in the workout at the last start/retry/suggestAnother call.
+    /// The generator excludes them, and this guard makes the presentation side
+    /// equally strict so a stale generator result can never be shown twice.
+    private var activeNames: [String] = []
 
     public init(session: WatchSingleExerciseSuggestionSession = WatchSingleExerciseSuggestionSession(),
                 loadMirror: @escaping () -> WatchMesocycleMirror? = {
@@ -43,7 +47,10 @@ public final class WatchSuggestedExerciseShell {
         case .idle, .calculating: return .calculating
         case .failed: return .unavailable
         case .empty: return .noEligibleResult
-        case .ready(let exercise): return .ready(exercise)
+        case .ready(let exercise):
+            return WatchExerciseSuggestionGuard.isAlreadyInWorkout(exercise.name, activeNames: activeNames)
+                ? .noEligibleResult
+                : .ready(exercise)
         }
     }
 
@@ -51,15 +58,18 @@ public final class WatchSuggestedExerciseShell {
     public func start(activeNames: [String], activeWorkingSets: [WatchSuggestionSet]) {
         guard !started else { return }
         started = true
+        self.activeNames = activeNames
         calculate(activeNames: activeNames, activeWorkingSets: activeWorkingSets)
     }
 
     public func retry(activeNames: [String], activeWorkingSets: [WatchSuggestionSet]) {
+        self.activeNames = activeNames
         calculate(activeNames: activeNames, activeWorkingSets: activeWorkingSets)
     }
 
     /// Excludes the shown candidate and visibly returns to `.calculating`.
     public func suggestAnother(activeNames: [String], activeWorkingSets: [WatchSuggestionSet]) {
+        self.activeNames = activeNames
         guard let input = makeInput(activeNames: activeNames, activeWorkingSets: activeWorkingSets) else {
             contextMissing = true
             session.cancel()

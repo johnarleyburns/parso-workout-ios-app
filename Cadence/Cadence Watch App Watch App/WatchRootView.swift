@@ -201,7 +201,7 @@ struct WatchRootView: View {
                 homeWorkoutChoiceRows(selection: $homeSelection)
             }
         }
-        .listStyle(.plain)
+        .modifier(WatchCompactHomeList())
         .modifier(WatchHomeStartNavigation(
             selection: $homeSelection,
             cardioDestination: { AnyView(cardioSetupView(for: $0)) },

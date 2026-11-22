@@ -53,8 +53,10 @@ public struct WatchLiftWhyPresentation: Equatable, Sendable {
 public enum WatchExerciseSuggestionGuard {
     public static func isAlreadyInWorkout(_ name: String, activeNames: [String]) -> Bool {
         let key = ExerciseSuggestionExclusionKey.forName(name)
+        let dedup = ExerciseLibrary.dedupKey(name)
         return activeNames.contains {
             ExerciseSuggestionExclusionKey.forName($0) == key
+                || ExerciseLibrary.dedupKey($0) == dedup
         }
     }
 }

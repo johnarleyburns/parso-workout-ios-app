@@ -15,7 +15,7 @@ public enum WorkoutDockPresenter {
     public static let minimumTargetHeight: Double = 56
     /// Compact dock height matching the small bordered action buttons (e.g.
     /// Add Exercise) the field test asked Pause/End to match.
-    public static let compactTargetHeight: Double = 36
+    public static let compactTargetHeight: Double = 34
 
     public struct PauseContent: Equatable, Sendable {
         public let title: String

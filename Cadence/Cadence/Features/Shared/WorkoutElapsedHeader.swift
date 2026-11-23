@@ -74,15 +74,15 @@ struct WorkoutElapsedHeader: View {
         return Button {
             timers.toggle(mode, now: Date())
         } label: {
-            VStack(spacing: 0) {
+            HStack(spacing: 3) {
                 Text(label)
                     .font(.caption2.weight(.semibold))
                 Text(Format.duration(value))
                     .font(.caption2.monospacedDigit())
             }
-            .frame(minWidth: 44)
-            .padding(.vertical, 3)
-            .padding(.horizontal, 4)
+            .frame(minWidth: 58)
+            .padding(.vertical, 4)
+            .padding(.horizontal, 5)
             .background(active ? (mode == .work ? Color.green : Color.blue).opacity(0.22)
                               : Color.secondary.opacity(0.12),
                         in: RoundedRectangle(cornerRadius: 7, style: .continuous))

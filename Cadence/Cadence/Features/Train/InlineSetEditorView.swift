@@ -100,9 +100,7 @@ struct InlineSetEditorView: View {
         }
         // Leave the live workout header (elapsed / BPM / Work-Rest) visible
         // above the editor instead of covering it with a full-height sheet.
-        .presentationDetents([PresentationDetent.custom { context in
-            max(320, context.maxDetentValue - 96)
-        }])
+        .presentationDetents([.custom(SetEditorSheetDetent.self)])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("setEditor.sheet")
         // Performer selection changes attribution/history only. The current

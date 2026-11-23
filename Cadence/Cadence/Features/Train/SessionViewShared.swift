@@ -90,3 +90,11 @@ enum SetCol {
     static let check: CGFloat = 34
     static let gap: CGFloat = 5
 }
+
+
+/// Leaves the live workout header visible above the Add Set editor.
+struct SetEditorSheetDetent: CustomPresentationDetent {
+    static func height(in context: Context) -> CGFloat? {
+        max(320, context.maxDetentValue - 96)
+    }
+}

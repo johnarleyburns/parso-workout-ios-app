@@ -154,7 +154,9 @@ struct PhoneFieldTestLayoutGuardTests {
 
     @Test func addSetEditorIsFullHeightAndFocused() throws {
         let editor = try source("Cadence/Cadence/Features/Train/InlineSetEditorView.swift")
-        #expect(editor.contains("context.maxDetentValue - 96"))
+        #expect(editor.contains(".custom(SetEditorSheetDetent.self)"))
+        let shared = try source("Cadence/Cadence/Features/Train/SessionViewShared.swift")
+        #expect(shared.contains("context.maxDetentValue - 96"))
         #expect(editor.contains("historyLastTimeText"))
         #expect(!editor.contains("Who did this set?"))
         #expect(!editor.contains("How hard did the set feel?"))

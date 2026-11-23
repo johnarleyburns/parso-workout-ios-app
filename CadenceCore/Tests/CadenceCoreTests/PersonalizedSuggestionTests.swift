@@ -135,7 +135,7 @@ struct PersonalizedSuggestionTests {
         // four-set weekly gap. The personalized session must keep adding work
         // instead of declaring every gap covered after a single exercise.
         #expect(option.exercises.count == 2)
-        #expect(option.exercises.first?.candidateID == "broad")
+        #expect(Set(option.exercises.map(\.candidateID)) == ["broad", "accessory"])
         #expect(option.remainingDeficits["chest"] == 0)
         #expect(option.remainingDeficits["lats"] == 1)
         #expect(option.remainingDeficits["quadriceps"] == 1)

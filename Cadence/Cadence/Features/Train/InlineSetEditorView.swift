@@ -54,6 +54,15 @@ struct InlineSetEditorView: View {
                                                 bodyweight: config.bodyweight)
     }
     private var isPR: Bool { wouldBePR?(draft.canonicalWeightKg, draft.reps) ?? false }
+    private var effortValueText: String {
+        draft.effort.map { "\(Int($0.rounded()))" } ?? "—"
+    }
+    private var effortAccessibilityText: String {
+        if let effort = draft.effort {
+            return "\(draft.effortMode.displayName) \(Int(effort.rounded()))"
+        }
+        return String(localized: "No effort selected")
+    }
 
     var body: some View {
         NavigationStack {
@@ -279,14 +288,12 @@ struct InlineSetEditorView: View {
                 adjustmentButton("−") { adjustEffort(by: -1) }
                     .accessibilityLabel("Decrease effort")
                     .accessibilityIdentifier("setEditor.effort.minus")
-                Text(draft.effort.map { "\(Int($0.rounded()))" } ?? "—")
+                Text(effortValueText)
                     .scaledSystemFont(42, relativeTo: .title, weight: .bold, design: .rounded)
                     .monospacedDigit()
                     .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("setEditor.effort.value")
-                    .accessibilityLabel(draft.effort.map {
-                        "\(draft.effortMode.displayName) \(Int($0.rounded()))"
-                    } ?? String(localized: "No effort selected"))
+                    .accessibilityLabel(effortAccessibilityText)
                 adjustmentButton("+") { adjustEffort(by: 1) }
                     .accessibilityLabel("Increase effort")
                     .accessibilityIdentifier("setEditor.effort.plus")

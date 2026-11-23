@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CadenceCore
 import CadencePhoneFeatures
 
 /// Structural guards for the phone field-test batch. These cover SwiftUI

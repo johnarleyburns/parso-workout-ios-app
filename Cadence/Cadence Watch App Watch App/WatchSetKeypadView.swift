@@ -29,12 +29,12 @@ struct WatchSetKeypadView: View {
 
     var body: some View {
         if let card = model.setCardState {
-            VStack(spacing: 3) {
+            VStack(spacing: CGFloat(WatchSetEntryPresentation.headerSpacing)) {
                 HStack(spacing: 6) {
                     WatchExerciseProgressRing(presentation: card.exerciseProgress)
                     Text(card.exerciseName.localizedExerciseName)
                         .font(.footnote.weight(.semibold))
-                        .lineLimit(2, reservesSpace: true)
+                        .lineLimit(2)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .accessibilityLabel(card.exerciseProgress.accessibilityLabel)
                         .accessibilityAddTraits(.isHeader)
@@ -60,6 +60,9 @@ struct WatchSetKeypadView: View {
                 fields(card)
             }
             .padding(.horizontal, 4)
+            // Keep the title, exercise name, and fields together at the top;
+            // the default pager centering left a large empty band below them.
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             // "Last time" is a transient toast so it never pushes the weight/reps rows into the title.
             .overlay(alignment: .top) {
                 if let toastLastTime {
@@ -239,11 +242,18 @@ struct WatchSetKeypadView: View {
         Button {
             log()
         } label: {
-            if isLogging {
-                ProgressView()
-            } else {
-                Text("Log")
+            Group {
+                if isLogging {
+                    ProgressView()
+                } else {
+                    Image(systemName: WatchSetEntryPresentation.logButtonSystemImage)
+                        .font(.headline.weight(.bold))
+                }
             }
+            // A checkbox with real padding on both sides beats a cramped
+            // three-letter text button in the Watch bottom bar.
+            .frame(minWidth: CGFloat(WatchSetEntryPresentation.logButtonMinimumWidth),
+                   minHeight: 44)
         }
         .buttonStyle(.borderedProminent)
         .tint(WatchTone.accent)

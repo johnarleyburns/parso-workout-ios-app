@@ -25,6 +25,8 @@ struct WatchAddExerciseView: View {
     @State private var searchGeneration = 0
     /// Duplicate / failure feedback shown while the user stays in Add Exercise.
     @State private var feedback: String?
+    /// One personalized suggestion, calculated locally from the phone mirror.
+    @State private var suggestionShell = WatchSuggestedExerciseShell()
 
     init(model: WatchStrengthFlowModel) {
         self.model = model
@@ -41,8 +43,13 @@ struct WatchAddExerciseView: View {
                 picker
             }
         }
-        // No title: it only costs vertical space on the small screen.
+        // The screen still has one compact title/back row; the navigation bar
+        // itself stays out of the way on the small screen.
         .navigationTitle("")
+        .task {
+            suggestionShell.start(activeNames: model.suggestionActiveExerciseNames,
+                                  activeWorkingSets: model.suggestionActiveWorkingSets)
+        }
         .task(id: newestExercise.first?.updatedAt) {
             catalog = await ExerciseCatalogSnapshot.load(from: context.container, recentLimit: 0)
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -62,11 +69,23 @@ struct WatchAddExerciseView: View {
         }
         .onDisappear {
             searchTask?.cancel()
+            suggestionShell.cancel()
         }
     }
 
     private var picker: some View {
         List {
+            HStack(spacing: 4) {
+                WatchBackButton {
+                    WatchHaptics.tap()
+                    model.goBackToHome()
+                }
+                Text(LocalizedStringKey(WatchAddExerciseSuggestionPresentation.pageTitle))
+                    .font(.footnote.weight(.semibold))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
+                    .accessibilityIdentifier("watchAddExercise.title")
+            }
             if let feedback {
                 Text(feedback)
                     .font(.caption.bold())
@@ -80,6 +99,7 @@ struct WatchAddExerciseView: View {
                     .accessibilityIdentifier("watchAddExercise.search")
                 customExerciseButton
             }
+            suggestedExerciseSection
             if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 Section {
                     Button {
@@ -118,6 +138,42 @@ struct WatchAddExerciseView: View {
             }
         }
         .id(pickerBranchIdentity)
+    }
+
+    @ViewBuilder
+    private var suggestedExerciseSection: some View {
+        if case .ready(let exercise) = suggestionShell.phase,
+           !WatchExerciseSuggestionGuard.isAlreadyInWorkout(
+                exercise.name, activeNames: model.suggestionActiveExerciseNames),
+           let entry = WatchSuggestedExerciseCard.resolve(exercise, in: catalog) {
+            Section {
+                Button {
+                    WatchHaptics.tap()
+                    report(model.addSuggestedExercise(id: entry.id, name: entry.name,
+                                                      sets: exercise.plannedSets,
+                                                      repRange: exercise.repRange))
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(exercise.name.localizedExerciseName)
+                            .font(.body)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                        Text(WatchSuggestedExerciseCard.prescriptionText(exercise))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(Text(exercise.name.localizedExerciseName))
+                .accessibilityHint(Text(LocalizedStringKey(WatchAddExerciseSuggestionPresentation.rowAccessibilityHint)))
+                .accessibilityIdentifier(
+                    WatchAddExerciseSuggestionPresentation.rowIdentifierPrefix + exercise.candidateID)
+            } header: {
+                Text(LocalizedStringKey(WatchAddExerciseSuggestionPresentation.sectionTitle))
+            }
+        }
     }
 
     private var pickerBranchIdentity: String {

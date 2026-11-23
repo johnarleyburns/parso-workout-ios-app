@@ -25,45 +25,53 @@ struct WatchWarmUpView: View {
                     .foregroundStyle(.white)
                     .accessibilityLabel("Warm-up time remaining")
                 WatchLiveHeartRateBadge(bpm: watchManager.currentBPM)
-                VStack(spacing: 6) {
-                    Button("+1 min") {
+                Spacer()
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .bottomBar) {
+                HStack(spacing: 8) {
+                    Button {
+                        WatchHaptics.tap()
+                        if model.warmupTimerModel.isPaused {
+                            model.warmupTimerModel.resume()
+                        } else {
+                            model.warmupTimerModel.pause()
+                        }
+                    } label: {
+                        Image(systemName: WatchWarmUpControlPresentation.pauseSystemImage(
+                            isPaused: model.warmupTimerModel.isPaused))
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel(model.warmupTimerModel.isPaused ? Text("Resume") : Text("Pause"))
+                    .accessibilityIdentifier("watchWarmup.pause")
+
+                    Spacer(minLength: 0)
+
+                    Button {
+                        WatchHaptics.success()
+                        model.endWarmup()
+                    } label: {
+                        Image(systemName: WatchWarmUpControlPresentation.skipSystemImage)
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .accessibilityLabel(Text("Skip"))
+                    .accessibilityIdentifier("watchWarmup.skip")
+
+                    Spacer(minLength: 0)
+
+                    Button {
                         WatchHaptics.tap()
                         model.warmupTimerModel.add(60)
+                    } label: {
+                        Text(verbatim: WatchWarmUpControlPresentation.addOneMinuteLabel)
+                            .font(.headline.weight(.bold))
+                            .frame(minWidth: 44, minHeight: 44)
                     }
-                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
+                    .accessibilityLabel(Text("Add one minute"))
                     .accessibilityIdentifier("watchWarmup.add")
-
-                    Button("+5 min") {
-                        WatchHaptics.tap()
-                        model.warmupTimerModel.add(300)
-                    }
-                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-                    .accessibilityIdentifier("watchWarmup.addFiveMinutes")
-
-                    // Same two-action grammar as the workout: Pause/Resume on
-                    // the left, Skip (finish the phase) on the right.
-                    HStack(spacing: 6) {
-                        Button(model.warmupTimerModel.isPaused ? "Resume" : "Pause") {
-                            WatchHaptics.tap()
-                            if model.warmupTimerModel.isPaused {
-                                model.warmupTimerModel.resume()
-                            } else {
-                                model.warmupTimerModel.pause()
-                            }
-                        }
-                        .buttonStyle(WatchPillStyle(kind: .light))
-                        .accessibilityIdentifier("watchWarmup.pause")
-
-                        Button("Skip") {
-                            WatchHaptics.success()
-                            model.endWarmup()
-                        }
-                        .buttonStyle(WatchPillStyle(kind: .destructive))
-                        .accessibilityIdentifier("watchWarmup.skip")
-                    }
                 }
-                .padding(.top, 8)
-                Spacer()
+                .frame(maxWidth: .infinity)
             }
         }
         .onAppear {

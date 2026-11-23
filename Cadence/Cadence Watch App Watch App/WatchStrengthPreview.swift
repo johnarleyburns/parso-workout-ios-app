@@ -116,6 +116,16 @@ struct WatchStrengthPreview: View {
                 }
                 .textCase(nil)
             }
+            if let why = WatchLiftWhyPresentation(rationale: launch.rationale) {
+                Section {
+                    NavigationLink {
+                        WatchLiftWhyView(presentation: why, citationIDs: citationIDs)
+                    } label: {
+                        Label(LocalizedStringKey(why.title), systemImage: "questionmark.circle")
+                    }
+                    .accessibilityIdentifier("watchStrength.whyThisWorkout")
+                }
+            }
             if !citationIDs.isEmpty {
                 WatchCoachLineView(line: WatchCoachLine(text: "Workout sources", citationIDs: citationIDs))
             }

@@ -46,13 +46,18 @@ public struct WatchLiftLaunch: Equatable, Sendable {
     public var exerciseNames: [String]
     public var repLadder: [Int]
     public var planPayload: WatchPlanPayload?
+    /// The coach's auditable explanation, carried through from the shared
+    /// suggestion so the Watch can show "Why this workout" without recomputing.
+    public var rationale: SuggestedWorkoutRationale?
 
     public init(title: String, exerciseNames: [String], repLadder: [Int],
-                planPayload: WatchPlanPayload? = nil) {
+                planPayload: WatchPlanPayload? = nil,
+                rationale: SuggestedWorkoutRationale? = nil) {
         self.title = title
         self.exerciseNames = exerciseNames
         self.repLadder = repLadder
         self.planPayload = planPayload
+        self.rationale = rationale
     }
 }
 

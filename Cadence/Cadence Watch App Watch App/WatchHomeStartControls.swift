@@ -34,6 +34,7 @@ extension WatchRootView {
             }
             .buttonStyle(.plain)
             .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4))
             .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             .accessibilityHint("Starts or opens \(option.title)")
         }
@@ -50,6 +51,17 @@ extension WatchRootView {
         case .cardio(.run), .cardio(.walk): return .orange
         case .cardio(.other): return .pink
         }
+    }
+}
+
+/// The Watch List reserves a tall minimum row height by default. Home choices
+/// are compact cards, so their own padding defines the spacing instead of
+/// leaving a large gap between every row.
+struct WatchCompactHomeList: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .listStyle(.plain)
+            .environment(\.defaultMinListRowHeight, 0)
     }
 }
 

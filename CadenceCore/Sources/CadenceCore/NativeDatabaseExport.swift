@@ -146,6 +146,8 @@ private struct NativePerson: Codable, Equatable, Sendable {
     var id: UUID
     var name: String
     var isMe: Bool
+    /// Optional so archives written before the partner-roster change decode.
+    var isArchived: Bool? = nil
     var createdAt: Date
     var updatedAt: Date
     var originDevice: String
@@ -475,6 +477,7 @@ public enum NativeDatabaseExport {
         for row in try context.fetch(FetchDescriptor<Person>()) {
             try append("Person", id: row.id, updatedAt: row.updatedAt,
                         NativePerson(id: row.id, name: row.name, isMe: row.isMe,
+                                     isArchived: row.isArchived,
                                      createdAt: row.createdAt, updatedAt: row.updatedAt,
                                      originDevice: row.originDevice))
         }
@@ -665,10 +668,12 @@ public enum NativeDatabaseExport {
             if let existing = peopleByID[value.id] {
                 guard shouldApply(value.updatedAt, existing: existing.updatedAt) else { continue }
                 existing.name = value.name; existing.isMe = value.isMe
+                existing.isArchived = value.isArchived ?? existing.isArchived
                 existing.createdAt = value.createdAt; existing.updatedAt = value.updatedAt
                 existing.originDevice = value.originDevice
             } else {
                 let person = Person(id: value.id, name: value.name, isMe: value.isMe,
+                                    isArchived: value.isArchived ?? false,
                                     createdAt: value.createdAt, updatedAt: value.updatedAt,
                                     originDevice: value.originDevice)
                 context.insert(person); peopleByID[value.id] = person; changed += 1

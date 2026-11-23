@@ -51,10 +51,10 @@ final class HealthBackupCoordinator {
         return await drain()
     }
 
-    /// Queues every HealthKit-representable row from the legacy store before
-    /// the H5 split-store marker is written. This intentionally does not drain
-    /// yet: the durable outbox must survive the restart that switches the app
-    /// to the new local/sync configurations.
+    /// Queues every HealthKit-representable row after the one-time split-store
+    /// copy, so Apple Health still receives the pre-upgrade history. This
+    /// intentionally does not drain yet: the launch task drains the durable
+    /// outbox separately. HealthKit sync identifiers make a repeat safe.
     func enqueueMigrationBackfill(from context: ModelContext) async throws -> Int {
         let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
         let cardio = try context.fetch(FetchDescriptor<CardioWorkout>())

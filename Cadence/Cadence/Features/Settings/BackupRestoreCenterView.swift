@@ -42,43 +42,6 @@ struct BackupRestoreCenterView: View {
                 }
             }
 
-            if model.legacyStoreNeedsMigration {
-                Section("Private store upgrade") {
-                    Text("This device still has Cladiron’s older single iCloud store. Move local workout history and the sync-safe library into separate stores before the legacy format is retired. The old copy is retained for 30 days as a rollback safety net.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-
-                    Button {
-                        Task { await model.migrateLegacyStore() }
-                    } label: {
-                        if model.storeMigrationStatus.isInProgress {
-                            HStack { ProgressView(); Text("Preparing private store upgrade…") }
-                        } else {
-                            Label("Upgrade private store", systemImage: "arrow.triangle.2.circlepath.icloud")
-                        }
-                    }
-                    .disabled(model.storeMigrationStatus.isInProgress)
-                    .accessibilityIdentifier("backupCenter.migrateStore")
-
-                    switch model.storeMigrationStatus {
-                    case .needsHealthAccess:
-                        Text("Apple Health backup must be enabled and authorized before Cladiron can migrate this history safely.")
-                            .font(.caption)
-                            .foregroundStyle(CadenceTheme.attention)
-                    case .readyToRestart:
-                        Text("Migration is staged safely. Quit and reopen Cladiron to switch to the new stores.")
-                            .font(.caption)
-                            .foregroundStyle(CadenceTheme.positive)
-                    case .failed(let message):
-                        Text("Migration paused: \(message)")
-                            .font(.caption)
-                            .foregroundStyle(CadenceTheme.attention)
-                    case .notNeeded, .migrating:
-                        EmptyView()
-                    }
-                }
-            }
-
             Section("Apple Health") {
                 Text("Apple Health stores a private summary of your workouts and supported fitness tests. Detailed partner sets, readiness entries, plan snapshots, and imported-workout notes stay in Cladiron’s full archive.")
                     .font(.footnote)

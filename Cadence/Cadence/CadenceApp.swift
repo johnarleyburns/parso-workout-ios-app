@@ -58,9 +58,10 @@ struct CadenceApp: App {
         model.startCloudKitHistoryMonitoring()
     }
 
-    /// Moves aside (never deletes) whichever on-disk store files exist —
-    /// legacy single-store or split Local/Sync — into a timestamped recovery
-    /// directory, mirroring the Watch app's own `quarantineStore()`.
+    /// Moves aside (never deletes) whichever on-disk store files exist — the
+    /// pre-split store during a failed one-time copy, or the current split
+    /// Local/Sync — into a timestamped recovery directory, mirroring the Watch
+    /// app's own `quarantineStore()`.
     private static func quarantinePhoneStore() throws -> URL? {
         let fm = FileManager.default
         let directory = CadenceStore.applicationSupportDirectory()
@@ -89,6 +90,7 @@ struct CadenceApp: App {
                 .overlay(alignment: .top) { storeRecoveryBanner }
                 .task { model.activateWCSession() }
                 .task { model.refreshCloudKitAccountStatus() }
+                .task { await model.finishLegacyStoreUpgrade(container: container, settings: settings) }
                 .task { _ = await model.healthBackup.drain() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
                 .task { contributions.beginSession() }

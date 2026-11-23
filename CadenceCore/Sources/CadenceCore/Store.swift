@@ -3,19 +3,15 @@ import Foundation
 import SwiftData
 #endif
 
-/// Builds the shared SwiftData store. The iPhone mirrors the store to the user's
-/// **private** CloudKit database (`iCloud.guru.parso.ios-workout-app`). The watch
-/// uses a local-only store and syncs through WatchConnectivity so the phone is
-/// the sole CloudKit writer.
+/// Builds the shared SwiftData stores. The iPhone keeps health-bearing rows in
+/// an on-device `Local.store` and mirrors the library, roster, and plan slice to
+/// the user's **private** CloudKit database
+/// (`iCloud.guru.parso.cladiron.sync`). The watch uses a local-only store and
+/// syncs through WatchConnectivity so the phone is the sole CloudKit writer.
 #if canImport(SwiftData)
 public enum CadenceStore {
     /// Shared local-store compatibility marker used by iPhone and Watch.
     public static let schemaVersion = 3
-
-    /// The private CloudKit container backing the iPhone SwiftData store. Must
-    /// match the `com.apple.developer.icloud-container-identifiers` entitlement
-    /// on the iOS target.
-    public static let cloudKitContainerID = "iCloud.guru.parso.ios-workout-app"
 
     private static let sharedModelTypes: [any PersistentModel.Type] = [
         PlanningDraft.self,
@@ -84,13 +80,13 @@ public enum CadenceStore {
 
     public static let splitCloudKitContainerID = "iCloud.guru.parso.cladiron.sync"
 
+    /// The pre-split single store. It is read exactly once, by the automatic
+    /// upgrade copy, and is never opened as an application store again.
     public static let legacyStoreFileName = "default.store"
     public static let localStoreFileName = "Local.store"
     public static let syncStoreFileName = "Sync.store"
 
-    /// The default SwiftData location used by the legacy single-store app.
-    /// Keeping this explicit lets H5 inspect it without opening or deleting an
-    /// unknown path.
+    /// The default SwiftData location used by the current app.
     public static func applicationSupportDirectory(
         fileManager: FileManager = .default
     ) -> URL {
@@ -120,9 +116,11 @@ public enum CadenceStore {
             && fileManager.fileExists(atPath: urls.sync.path)
     }
 
-    /// Uses the split container for new installs and completed H5 migrations;
-    /// existing legacy installs remain on their original container until the
-    /// user explicitly completes the migration in Backup & Restore.
+    /// Opens the split container used by every current install. A pre-split
+    /// single store is copied into `Local.store`/`Sync.store` once, before the
+    /// first split launch, so retiring the legacy fallback never strands an
+    /// upgraded install. The copy is verified and the old file is left in place
+    /// untouched as the rollback copy.
     public static func makeApplicationModelContainer(
         cloudKitEnabled: Bool = true,
         directory: URL = applicationSupportDirectory(),
@@ -131,38 +129,29 @@ public enum CadenceStore {
             try makeSplitModelContainer(localURL: $0, syncURL: $1, cloudKitEnabled: $2)
         }
     ) throws -> ModelContainer {
+        try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
         let legacy = legacyStoreURL(in: directory)
         let urls = splitStoreURLs(in: directory)
-        let hasLegacy = fileManager.fileExists(atPath: legacy.path)
-        if splitStoreReady(in: directory, fileManager: fileManager) || !hasLegacy {
-            try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-            do {
-                return try splitFactory(urls.local, urls.sync, cloudKitEnabled)
-            } catch where cloudKitEnabled {
-                // A CloudKit mirroring setup failure (account, entitlement, or
-                // schema state) must not crash launch. Open the same on-disk
-                // stores local-only: no data is deleted or replaced, and
-                // mirroring resumes once CloudKit is usable again.
-                return try splitFactory(urls.local, urls.sync, false)
-            }
+        if fileManager.fileExists(atPath: legacy.path),
+           !splitStoreReady(in: directory, fileManager: fileManager) {
+            try StoreMigrationRuntime.migrateLegacyStoreAtLaunch(
+                legacyURL: legacy, localURL: urls.local, syncURL: urls.sync,
+                stateURL: directory.appendingPathComponent(StoreMigrationRuntime.stateFileName),
+                snapshotURL: directory.appendingPathComponent(StoreMigrationRuntime.snapshotFileName))
         }
-        return try makeModelContainer(inMemory: false, cloudKitEnabled: cloudKitEnabled)
+        do {
+            return try splitFactory(urls.local, urls.sync, cloudKitEnabled)
+        } catch where cloudKitEnabled {
+            // A CloudKit mirroring setup failure (account, entitlement, or
+            // schema state) must not crash launch. Open the same on-disk
+            // stores local-only: no data is deleted or replaced, and
+            // mirroring resumes once CloudKit is usable again.
+            return try splitFactory(urls.local, urls.sync, false)
+        }
     }
 
-    public static func activeCloudKitContainerID(
-        directory: URL = applicationSupportDirectory(),
-        fileManager: FileManager = .default
-    ) -> String {
-        let legacy = legacyStoreURL(in: directory)
-        return splitStoreReady(in: directory, fileManager: fileManager)
-            || !fileManager.fileExists(atPath: legacy.path)
-            ? splitCloudKitContainerID : cloudKitContainerID
-    }
-
-    /// Builds the two-configuration container used by H5 migration and new
-    /// installs after the production schema is deployed. Both URLs are
-    /// caller-owned so tests can use temporary local-only stores and the app
-    /// can retain an old store for the rollback window.
+    /// Builds the two-configuration container used by every current install.
+    /// Both URLs are caller-owned so tests can use temporary local-only stores.
     public static func makeSplitModelContainer(
         localURL: URL,
         syncURL: URL,
@@ -201,7 +190,7 @@ public enum CadenceStore {
             configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: false)
         } else {
             configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: false,
-                                               cloudKitDatabase: .private(cloudKitContainerID))
+                                               cloudKitDatabase: .private(splitCloudKitContainerID))
         }
         return try ModelContainer(for: activeSchema, configurations: [configuration])
     }

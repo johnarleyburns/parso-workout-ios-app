@@ -94,19 +94,6 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
-    enum StoreMigrationStatus: Equatable, Sendable {
-        case notNeeded
-        case needsHealthAccess
-        case migrating
-        case readyToRestart
-        case failed(String)
-
-        var isInProgress: Bool {
-            if case .migrating = self { return true }
-            return false
-        }
-    }
-
     let health: HealthDataProviding
     let healthBackup: HealthBackupCoordinator
     let phoneWorkoutMirror = PhoneWorkoutMirror()
@@ -198,7 +185,6 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var healthSyncStatus: HealthSyncStatus = .idle
     var healthRestoreStatus: HealthRestoreStatus = .idle
-    var storeMigrationStatus: StoreMigrationStatus = .notNeeded
     /// Published while Home recomputes its ephemeral coach projection so the
     /// operation is visible in Settings → Transparency & Control without
     /// inserting transient content into the Home layout.
@@ -248,49 +234,23 @@ final class AppModel: NSObject, @unchecked Sendable {
         }
     }
 
-    var legacyStoreNeedsMigration: Bool {
+    /// One-time follow-up to the launch copy of the retired single store. The
+    /// old interactive upgrade queued a HealthKit backfill before switching
+    /// stores; the launch copy records that the backfill is still owed.
+    /// HealthKit's sync identifiers make a repeat safe, and the marker is
+    /// removed only after every row has been queued.
+    func finishLegacyStoreUpgrade(container: ModelContainer, settings: AppSettings) async {
         let directory = CadenceStore.applicationSupportDirectory()
-        let legacyURL = CadenceStore.legacyStoreURL(in: directory)
-        return FileManager.default.fileExists(atPath: legacyURL.path)
-            && !CadenceStore.splitStoreReady(in: directory)
-    }
-
-    /// Runs the user-approved H5 migration. The old container remains active
-    /// for this launch; the ready marker deliberately makes the split store
-    /// selectable only on the next launch, after the HealthKit outbox is safe.
-    func migrateLegacyStore() async {
-        guard !storeMigrationStatus.isInProgress,
-              legacyStoreNeedsMigration, let oldContainer = _modelContainer,
-              let settings = _settings else {
-            storeMigrationStatus = .notNeeded
-            return
-        }
-        guard settings.autoSaveHealth else {
-            storeMigrationStatus = .needsHealthAccess
-            return
-        }
-
-        storeMigrationStatus = .migrating
-        let directory = CadenceStore.applicationSupportDirectory()
-        let legacyURL = CadenceStore.legacyStoreURL(in: directory)
-        let urls = CadenceStore.splitStoreURLs(in: directory)
-        let stateURL = directory.appendingPathComponent(StoreMigrationRuntime.stateFileName)
-        let snapshotURL = directory.appendingPathComponent(StoreMigrationRuntime.snapshotFileName)
-        do {
-            guard await health.requestAuthorization() == .authorized else {
-                storeMigrationStatus = .needsHealthAccess
-                return
-            }
-            _ = try StoreMigrationRuntime.migrate(
-                legacyURL: legacyURL, localURL: urls.local, syncURL: urls.sync,
-                stateURL: stateURL, snapshotURL: snapshotURL, cloudKitEnabled: true)
-            let context = ModelContext(oldContainer)
-            _ = try await healthBackup.enqueueMigrationBackfill(from: context)
-            try StoreMigrationRuntime.markHealthBackfillQueued(stateURL: stateURL)
-            storeMigrationStatus = .readyToRestart
-        } catch {
-            storeMigrationStatus = .failed(error.localizedDescription)
-        }
+        let marker = directory.appendingPathComponent(
+            StoreMigrationRuntime.pendingHealthBackfillFileName)
+        guard FileManager.default.fileExists(atPath: marker.path) else { return }
+        guard settings.autoSaveHealth else { return }
+        // Never consume the marker from the in-memory recovery container.
+        guard container.configurations.contains(where: { !$0.isStoredInMemoryOnly }) else { return }
+        guard await health.requestAuthorization() == .authorized else { return }
+        let context = ModelContext(container)
+        guard (try? await healthBackup.enqueueMigrationBackfill(from: context)) != nil else { return }
+        try? FileManager.default.removeItem(at: marker)
     }
 
     @MainActor
@@ -582,7 +542,7 @@ final class AppModel: NSObject, @unchecked Sendable {
     /// CloudKit account lookup is asynchronous and never blocks the first frame.
     func refreshCloudKitAccountStatus() {
         cloudKitAccountAvailability = .checking
-        CKContainer(identifier: CadenceStore.activeCloudKitContainerID()).accountStatus { [weak self] status, _ in
+        CKContainer(identifier: CadenceStore.splitCloudKitContainerID).accountStatus { [weak self] status, _ in
             Task { @MainActor [weak self] in
                 self?.cloudKitAccountAvailability = CloudKitAccountGate.availability(for: status.rawValue)
             }

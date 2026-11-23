@@ -10,7 +10,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONTRACT="$ROOT/scripts/cloudkit-schema-contract.tsv"
-CONTAINER_ID="iCloud.guru.parso.ios-workout-app"
+CONTAINER_ID="iCloud.guru.parso.cladiron.sync"
 TEAM_ID="3264Y8YUGV"
 TOKEN_FILE="${CLOUDKIT_MANAGEMENT_TOKEN_FILE:-${HOME}/.cloudkit-management-token}"
 

@@ -4,8 +4,8 @@ import Testing
 import SwiftData
 @testable import CadenceCore
 
-/// H5's privacy boundary must be constructible before the app is allowed to
-/// switch from the legacy single-store container.
+/// The split Local/Sync configurations must remain constructible on separate
+/// files; they are the only application store layout now.
 @MainActor
 struct SplitStoreConfigurationTests {
     @Test func localAndSyncConfigurationsOpenOnSeparateFiles() throws {

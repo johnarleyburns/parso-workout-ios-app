@@ -54,6 +54,37 @@ struct ExpandedSetDraftModelTests {
         #expect(model.effort == nil)
     }
 
+    @Test func effortStepperStartsAtSevenAndClearsAtMinimum() {
+        var model = ExpandedSetDraftModel(weight: 0, reps: 5, rpe: nil, unit: .kilograms)
+        #expect(model.effort == nil)
+        model.adjustEffort(by: 1)
+        #expect(model.effort == 7)
+        var lowered = ExpandedSetDraftModel(weight: 0, reps: 5, rpe: nil, unit: .kilograms)
+        lowered.adjustEffort(by: -1)
+        #expect(lowered.effort == 6)
+        model.adjustEffort(by: 1)
+        #expect(model.effort == 8)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 7)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 6)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 5)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 4)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 3)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 2)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == 1)
+        model.adjustEffort(by: -1)
+        #expect(model.effort == nil)
+        model.selectEffort(9)
+        model.adjustEffort(by: 100)
+        #expect(model.effort == 10)
+    }
+
     @Test func submitIsIdempotentAndNoneIsValid() {
         var model = ExpandedSetDraftModel(weight: 0, reps: 5, rpe: nil, unit: .kilograms)
         #expect(model.submit() != nil)

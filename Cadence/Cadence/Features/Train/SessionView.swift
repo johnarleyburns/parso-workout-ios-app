@@ -97,11 +97,17 @@ struct SessionView: View {
         active.strengthSession?.id == session.id
     }
     var rosterEntries: [RosterEntry] {
-        roster.map { person in
+        let entries = roster.map { person in
             RosterEntry(personID: person.isMe ? nil : person.id,
                         name: person.isMe ? "Me" : person.name,
                         isMe: person.isMe)
         }
+        // `allPeople` can briefly lack the owner row before the Me record is
+        // created or refreshed. The set editor resolves history/defaults from
+        // this value roster, so keep the owner present instead of falsely
+        // reporting "No previous history for Me".
+        guard !entries.contains(where: \.isMe) else { return entries }
+        return [RosterEntry(personID: nil, name: "Me", isMe: true)] + entries
     }
 
     var attributedPartnerIDs: [UUID] {

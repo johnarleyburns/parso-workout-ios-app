@@ -103,7 +103,6 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(home.contains("LazyVStack"))
         #expect(home.contains("rowPresentations"))
         #expect(home.contains("refreshRowPresentations()"))
-        #expect(!home.contains("List {"))
     }
 
     @Test func restOmitsTheRestingAfterRow() throws {

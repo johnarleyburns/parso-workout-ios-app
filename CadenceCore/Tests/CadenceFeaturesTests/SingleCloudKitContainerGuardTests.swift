@@ -44,10 +44,16 @@ struct SingleCloudKitContainerGuardTests {
         #expect(!model.contains("legacyStoreNeedsMigration"))
         #expect(!model.contains("migrateLegacyStore()"))
         #expect(!model.contains("StoreMigrationStatus"))
+        #expect(model.contains("CadenceStore.splitCloudKitContainerID"))
 
         let backup = try source("Cadence/Cadence/Features/Settings/BackupRestoreCenterView.swift")
         #expect(!backup.contains("Upgrade private store"))
         #expect(!backup.contains("backupCenter.migrateStore"))
+
+        let diagnostics = try source("Cadence/Cadence/Features/Settings/CloudKitSyncDiagnosticsView.swift")
+        #expect(diagnostics.contains("CadenceStore.splitCloudKitContainerID"))
+        #expect(!diagnostics.contains("activeCloudKitContainerID"))
+        #expect(!diagnostics.contains("CloudKitRecoveryService"))
 
         let app = try source("Cadence/Cadence/CadenceApp.swift")
         #expect(app.contains("makeApplicationModelContainer()"))

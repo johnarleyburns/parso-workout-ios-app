@@ -108,7 +108,10 @@ public enum StoreMigrationRuntime {
         // launch copy depend on Health authorization.
         let pending = stateURL.deletingLastPathComponent()
             .appendingPathComponent(pendingHealthBackfillFileName)
-        try Data("pending\n".utf8).write(to: pending, options: .atomic)
+        // Best-effort: the local copy is already safe and marked ready, and a
+        // marker write must never turn a successful migration into a launch
+        // failure (which would quarantine the new stores).
+        try? Data("pending\n".utf8).write(to: pending, options: .atomic)
     }
 
     private static func writeReadyMarker(stateURL: URL) throws {

@@ -74,7 +74,7 @@ struct PhoneFieldTestLayoutGuardTests {
         let actions = try source("Cadence/Cadence/Features/Train/SessionView+Actions.swift")
         #expect(actions.contains("showHRInfo = true"))
         let rendering = try source("Cadence/Cadence/Features/Train/SessionView+Rendering.swift")
-        #expect(rendering.contains(".alert(\"Heart Rate\""))
+        #expect(rendering.contains(".confirmationDialog(\"Heart Rate\""))
     }
 
     @Test func workoutDockButtonsUseTheCompactHeight() throws {

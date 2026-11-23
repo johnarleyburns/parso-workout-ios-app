@@ -15,7 +15,7 @@ struct NativeDatabaseExportTests {
         let date = Date(timeIntervalSince1970: 1_735_689_600)
 
         let person = Person(id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-                            name: "Partner", updatedAt: date)
+                            name: "Partner", isArchived: true, updatedAt: date)
         let exercise = Exercise(id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
                                 name: "Cable Press", updatedAt: date)
         let session = WorkoutSession(id: UUID(uuidString: "00000000-0000-0000-0000-000000000003")!,
@@ -102,6 +102,8 @@ struct NativeDatabaseExportTests {
         #expect(try NativeDatabaseExport.merge(decoded, in: destination) == original.records.count)
         #expect(try NativeDatabaseExport.merge(decoded, in: destination) == 0,
                        "re-importing the same v8 archive must be idempotent")
+        #expect(try destination.fetch(FetchDescriptor<Person>()).first?.isArchived == true,
+                "the partner archive flag must survive the copy")
 
         let roundTripped = try NativeDatabaseExport.build(from: destination)
         let expected = sorted(original.records)

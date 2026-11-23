@@ -10,6 +10,10 @@ public enum StoreMigrationRuntime {
     public static let stateFileName = "StoreMigrationProgress.json"
     public static let snapshotFileName = "pre-split-native-db-v8.json"
     public static let readyMarkerFileName = "split-store.ready"
+    /// Set when the launch copy ran, so the app can queue the same HealthKit
+    /// backfill the old interactive upgrade used to queue. HealthKit
+    /// identifiers make that backfill idempotent.
+    public static let pendingHealthBackfillFileName = "LegacyStoreHealthBackfill.pending"
 
     public enum Error: Swift.Error, Equatable, Sendable {
         case legacyStoreMissing
@@ -40,7 +44,6 @@ public enum StoreMigrationRuntime {
     /// Copies the legacy store by stable IDs into the split container. Every
     /// step is safe to rerun: the archive is regenerated, merge is timestamp
     /// aware, and the old store is never touched by this method.
-    @MainActor
     public static func migrate(legacyURL: URL, localURL: URL, syncURL: URL,
                                stateURL: URL, snapshotURL: URL,
                                cloudKitEnabled: Bool = true,
@@ -88,21 +91,30 @@ public enum StoreMigrationRuntime {
                       newCounts: newCounts, snapshotURL: snapshotURL)
     }
 
-    /// Completes the app-owned portion of migration after every HealthKit
-    /// backfill job has been durably queued. Only then may the app select the
-    /// split container on its next launch.
-    @MainActor
-    public static func markHealthBackfillQueued(stateURL: URL) throws {
-        guard var progress = try loadProgress(from: stateURL),
-              progress.completed.contains(.snapshot),
-              progress.completed.contains(.copy),
-              progress.completed.contains(.verify),
-              progress.completed.contains(.switchStore) else {
-            throw Error.migrationNotComplete
-        }
-        progress.completed.insert(.preflight)
-        progress.completed.insert(.healthBackfill)
-        try write(progress, to: stateURL)
+    /// One-time upgrade for an install that still has the pre-split
+    /// `default.store`. Runs before the first split container is opened. The
+    /// copy is local-only so a signed-out iCloud account can never block
+    /// launch; the split container's mirror uploads the copied rows afterwards.
+    public static func migrateLegacyStoreAtLaunch(legacyURL: URL, localURL: URL,
+                                                  syncURL: URL, stateURL: URL,
+                                                  snapshotURL: URL,
+                                                  now: Date = Date()) throws {
+        _ = try migrate(legacyURL: legacyURL, localURL: localURL, syncURL: syncURL,
+                        stateURL: stateURL, snapshotURL: snapshotURL,
+                        cloudKitEnabled: false, now: now)
+        try writeReadyMarker(stateURL: stateURL)
+        // The old interactive upgrade queued HealthKit backups before switching
+        // stores. Keep that behavior, one launch later, without making the
+        // launch copy depend on Health authorization.
+        let pending = stateURL.deletingLastPathComponent()
+            .appendingPathComponent(pendingHealthBackfillFileName)
+        // Best-effort: the local copy is already safe and marked ready, and a
+        // marker write must never turn a successful migration into a launch
+        // failure (which would quarantine the new stores).
+        try? Data("pending\n".utf8).write(to: pending, options: .atomic)
+    }
+
+    private static func writeReadyMarker(stateURL: URL) throws {
         let markerURL = stateURL.deletingLastPathComponent()
             .appendingPathComponent(readyMarkerFileName)
         try Data("ready\n".utf8).write(to: markerURL, options: .atomic)

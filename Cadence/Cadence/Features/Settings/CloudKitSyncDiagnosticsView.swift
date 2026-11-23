@@ -3,19 +3,16 @@ import SwiftData
 import CloudKit
 import CadenceCore
 
-/// A read-only view of the local store plus a guarded recovery path for the
-/// legacy, app-managed iCloud export blob. The current store is mirrored by
-/// SwiftData/Core Data, so this cannot force that managed mirror to run; it can
-/// still recover a blob created by the older backup implementation if it is
-/// still present in the user's private database.
+/// A read-only view of the current split store and the private CloudKit
+/// container that mirrors its library/roster/plan slice. Normal sync is managed
+/// by Apple's SwiftData/CloudKit mirror, so this screen reports state and never
+/// forces or rewrites it.
 struct CloudKitSyncDiagnosticsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.cadenceModelContainer) private var container
 
-    @State private var snapshot: CloudKitRecoverySnapshot?
+    @State private var snapshot: CloudKitDiagnosticsSnapshot?
     @State private var isRefreshing = false
-    @State private var isRecovering = false
-    @State private var message: String?
     @State private var storageUsage = StorageUsageSnapshot()
 
     var body: some View {
@@ -35,13 +32,8 @@ struct CloudKitSyncDiagnosticsView: View {
             Section("iCloud") {
                 if let snapshot {
                     diagnosticRow(String(localized: "Account"), value: snapshot.account.displayName)
-                    diagnosticRow(String(localized: "Container"), value: CadenceStore.activeCloudKitContainerID())
+                    diagnosticRow(String(localized: "Container"), value: CadenceStore.splitCloudKitContainerID)
                     diagnosticRow(String(localized: "Sync mode"), value: String(localized: "Automatic · incremental"))
-                    diagnosticRow(String(localized: "Legacy backup"), value: snapshot.legacyBackupFound ? String(localized: "Found") : String(localized: "Not found"))
-                    if snapshot.legacyBackupFound {
-                        diagnosticRow(String(localized: "Backup date"), value: dateText(snapshot.legacyBackupDate))
-                        diagnosticRow(String(localized: "Backup workouts"), value: snapshot.legacyBackupSessionCount.map(String.init) ?? String(localized: "Unknown"))
-                    }
                     if let remoteError = snapshot.remoteError {
                         Text(remoteError)
                             .font(.caption)
@@ -73,31 +65,12 @@ struct CloudKitSyncDiagnosticsView: View {
                         Label("Refresh Status", systemImage: "arrow.clockwise.icloud")
                     }
                 }
-                .disabled(isRefreshing || isRecovering)
+                .disabled(isRefreshing)
                 .accessibilityIdentifier("settings.sync.diagnostics.refresh")
-
-                Button {
-                    Task { await recover() }
-                } label: {
-                    if isRecovering {
-                        HStack { ProgressView(); Text("Recovering…") }
-                    } else {
-                        Label("Attempt Legacy Backup Recovery", systemImage: "arrow.down.icloud")
-                    }
-                }
-                .disabled(isRefreshing || isRecovering || !(snapshot?.legacyBackupFound ?? false))
-                .accessibilityIdentifier("settings.sync.diagnostics.recover")
-
-                if let message {
-                    Text(message)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("settings.sync.diagnostics.result")
-                }
             } header: {
                 Text("Actions")
             } footer: {
-                Text("Normal sync is managed by Apple’s SwiftData/CloudKit mirror and is incremental; this screen cannot force it. Recovery only merges records from the older Cladiron backup, if one exists. It never deletes or overwrites local history.")
+                Text("Normal sync is managed by Apple’s SwiftData/CloudKit mirror and is incremental; this screen cannot force it, and it never deletes or overwrites local history.")
             }
         }
         .navigationTitle("iCloud Diagnostics")
@@ -115,36 +88,13 @@ struct CloudKitSyncDiagnosticsView: View {
     private func refresh() async {
         guard !isRefreshing else { return }
         isRefreshing = true
-        message = nil
         guard let container else {
-            message = String(localized: "The local data store is unavailable.")
             isRefreshing = false
             return
         }
         model.refreshCloudKitAccountStatus()
-        snapshot = await CloudKitRecoveryService(container: container).inspect()
+        snapshot = await CloudKitDiagnosticsService(container: container).inspect()
         isRefreshing = false
-    }
-
-    private func recover() async {
-        guard !isRecovering else { return }
-        isRecovering = true
-        message = nil
-        guard let container else {
-            message = String(localized: "The local data store is unavailable.")
-            isRecovering = false
-            return
-        }
-        do {
-            let added = try await CloudKitRecoveryService(container: container).recoverLegacyBackup()
-            message = added == 0
-                ? String(localized: "Recovery completed; no new workouts were needed.")
-                : String(localized: "Recovery merged \(added) workouts.")
-            snapshot = await CloudKitRecoveryService(container: container).inspect()
-        } catch {
-            message = String(localized: "Recovery failed: \(error.localizedDescription)")
-        }
-        isRecovering = false
     }
 
     private func diagnosticRow(_ title: String, value: String) -> some View {
@@ -165,93 +115,29 @@ struct CloudKitSyncDiagnosticsView: View {
 }
 
 @MainActor
-final class CloudKitRecoveryService {
-    private static let legacyRecordName = "latest"
-    private static let legacyAssetKey = "payload"
-    private static let legacyCreatedAtKey = "createdAt"
-    private static let legacySessionCountKey = "sessionCount"
+struct CloudKitDiagnosticsService {
+    let container: ModelContainer
+    var cloud: CKContainer = CKContainer(identifier: CadenceStore.splitCloudKitContainerID)
 
-    private let modelContainer: ModelContainer
-    private let cloud: CKContainer
-
-    init(container: ModelContainer,
-         cloud: CKContainer = CKContainer(identifier: CadenceStore.activeCloudKitContainerID())) {
-        self.modelContainer = container
-        self.cloud = cloud
-    }
-
-    func inspect() async -> CloudKitRecoverySnapshot {
+    func inspect() async -> CloudKitDiagnosticsSnapshot {
         let local = localHistory()
-        let account: CloudKitAccountAvailability
         do {
             let status = try await cloud.accountStatus()
-            account = CloudKitAccountGate.availability(for: status.rawValue)
-        } catch {
-            return CloudKitRecoverySnapshot(localWorkoutCount: local.count,
-                                             localLatestWorkoutDate: local.latest,
-                                             account: .temporarilyUnavailable,
-                                             remoteError: String(localized: "Could not check iCloud: \(error.localizedDescription)"))
-        }
-
-        guard account == .available else {
-            return CloudKitRecoverySnapshot(localWorkoutCount: local.count,
-                                             localLatestWorkoutDate: local.latest,
-                                             account: account)
-        }
-
-        do {
-            let record = try await cloud.privateCloudDatabase.record(
-                for: CKRecord.ID(recordName: Self.legacyRecordName))
-            return CloudKitRecoverySnapshot(
+            return CloudKitDiagnosticsSnapshot(
                 localWorkoutCount: local.count,
                 localLatestWorkoutDate: local.latest,
-                account: account,
-                legacyBackupFound: true,
-                legacyBackupDate: record[Self.legacyCreatedAtKey] as? Date,
-                legacyBackupSessionCount: (record[Self.legacySessionCountKey] as? Int)
-                    ?? (record[Self.legacySessionCountKey] as? NSNumber)?.intValue)
-        } catch let error as CKError where error.code == .unknownItem {
-            return CloudKitRecoverySnapshot(localWorkoutCount: local.count,
-                                             localLatestWorkoutDate: local.latest,
-                                             account: account)
+                account: CloudKitAccountGate.availability(for: status.rawValue))
         } catch {
-            return CloudKitRecoverySnapshot(localWorkoutCount: local.count,
-                                             localLatestWorkoutDate: local.latest,
-                                             account: account,
-                                             remoteError: String(localized: "Could not inspect the legacy backup: \(error.localizedDescription)"))
+            return CloudKitDiagnosticsSnapshot(
+                localWorkoutCount: local.count,
+                localLatestWorkoutDate: local.latest,
+                account: .temporarilyUnavailable,
+                remoteError: String(localized: "Could not check iCloud: \(error.localizedDescription)"))
         }
-    }
-
-    /// Downloads and merges the old single-record export backup. This is
-    /// intentionally merge-only: `WorkoutRepository.merge` deduplicates stable
-    /// IDs and does not remove anything from the current store.
-    func recoverLegacyBackup() async throws -> Int {
-        let status = try await cloud.accountStatus()
-        guard CloudKitAccountGate.availability(for: status.rawValue) == .available else {
-            throw CloudKitRecoveryError.iCloudUnavailable
-        }
-
-        let record = try await cloud.privateCloudDatabase.record(
-            for: CKRecord.ID(recordName: Self.legacyRecordName))
-        guard let asset = record[Self.legacyAssetKey] as? CKAsset,
-              let fileURL = asset.fileURL else {
-            throw CloudKitRecoveryError.backupPayloadMissing
-        }
-        let container = modelContainer
-        return try await Task.detached(priority: .userInitiated) {
-            let values = try fileURL.resourceValues(forKeys: [.fileSizeKey])
-            if let fileSize = values.fileSize, fileSize > DataExport.maxImportBytes {
-                throw DataExport.ImportError.inputTooLarge
-            }
-            let data = try Data(contentsOf: fileURL)
-            let export = try DataExport.decodeAny(data)
-            let context = ModelContext(container)
-            return try WorkoutRepository.merge(export, in: context)
-        }.value
     }
 
     private func localHistory() -> (count: Int, latest: Date?) {
-        let context = ModelContext(modelContainer)
+        let context = ModelContext(container)
         let sessionPredicate = #Predicate<WorkoutSession> { $0.deletedAt == nil }
         let cardioPredicate = #Predicate<CardioWorkout> { $0.deletedAt == nil }
         let sessionCount = (try? context.fetchCount(FetchDescriptor<WorkoutSession>(
@@ -273,26 +159,9 @@ final class CloudKitRecoveryService {
     }
 }
 
-struct CloudKitRecoverySnapshot: Equatable {
+struct CloudKitDiagnosticsSnapshot: Equatable {
     let localWorkoutCount: Int
     let localLatestWorkoutDate: Date?
     let account: CloudKitAccountAvailability
-    var legacyBackupFound = false
-    var legacyBackupDate: Date?
-    var legacyBackupSessionCount: Int?
     var remoteError: String?
-}
-
-enum CloudKitRecoveryError: LocalizedError {
-    case iCloudUnavailable
-    case backupPayloadMissing
-
-    var errorDescription: String? {
-        switch self {
-        case .iCloudUnavailable:
-            return "iCloud is not currently available to Cladiron."
-        case .backupPayloadMissing:
-            return String(localized: "The legacy iCloud backup record has no recoverable payload.")
-        }
-    }
 }

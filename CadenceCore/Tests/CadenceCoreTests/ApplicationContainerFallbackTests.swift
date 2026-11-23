@@ -56,4 +56,45 @@ import SwiftData
         #expect(result.container != nil, "must still produce a usable (in-memory) container instead of leaving the app with none")
     }
 }
+
+@MainActor
+struct ApplicationContainerMigrationTests {
+    /// Retiring the legacy fallback must not strand an upgraded install: the
+    /// first launch copies the old single store into Local/Sync, marks the
+    /// split store ready, and leaves the old file untouched as a rollback copy.
+    @Test func preSplitStoreIsCopiedIntoTheSplitStoreOnFirstLaunch() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cladiron-migration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let legacyURL = dir.appendingPathComponent(CadenceStore.legacyStoreFileName)
+        let legacy = try CadenceStore.makeModelContainer(inMemory: false,
+                                                         cloudKitEnabled: false,
+                                                         storeURL: legacyURL)
+        let legacyContext = ModelContext(legacy)
+        let exercise = Exercise(name: "Row")
+        let session = WorkoutSession(title: "Legacy")
+        legacyContext.insert(exercise)
+        legacyContext.insert(session)
+        legacyContext.insert(SetEntry(weight: 40, reps: 8, session: session, exercise: exercise))
+        legacyContext.insert(Person(name: "Sam"))
+        try legacyContext.save()
+
+        let container = try CadenceStore.makeApplicationModelContainer(
+            directory: dir,
+            splitFactory: { local, sync, _ in
+                try CadenceStore.makeSplitModelContainer(
+                    localURL: local, syncURL: sync, cloudKitEnabled: false)
+            })
+        let context = ModelContext(container)
+        #expect(try context.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Exercise>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Person>()) == 1)
+        #expect(FileManager.default.fileExists(atPath: legacyURL.path),
+                "the old file stays as the rollback copy")
+        #expect(CadenceStore.splitStoreReady(in: dir))
+    }
+
+}
 #endif

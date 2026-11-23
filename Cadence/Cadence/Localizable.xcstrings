@@ -89343,6 +89343,59 @@
         }
       },
       "comment" : "UI text shown in: Exercise Picker filter menu (Cadence/Cadence/Features/Train/ExercisePickerView+Controls.swift)"
+    },
+    "Normal sync is managed by Apple’s SwiftData/CloudKit mirror and is incremental; this screen cannot force it, and it never deletes or overwrites local history." : {
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Normal sync is managed by Apple’s SwiftData/CloudKit mirror and is incremental; this screen cannot force it, and it never deletes or overwrites local history."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Die normale Synchronisierung wird von Apples SwiftData/CloudKit-Spiegel verwaltet und ist inkrementell; dieser Bildschirm kann sie nicht erzwingen, und er löscht oder überschreibt niemals den lokalen Verlauf."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La sincronización normal la gestiona el espejo SwiftData/CloudKit de Apple y es incremental; esta pantalla no puede forzarla y nunca elimina ni sobrescribe el historial local."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "La synchronisation normale est gérée par le miroir SwiftData/CloudKit d’Apple et est incrémentale ; cet écran ne peut pas la forcer et ne supprime ni n’écrase jamais l’historique local."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Normale synchronisatie wordt beheerd door Apple’s SwiftData/CloudKit-spiegel en is incrementeel; dit scherm kan die niet forceren en verwijdert of overschrijft nooit de lokale geschiedenis."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "A sincronização normal é gerenciada pelo espelho SwiftData/CloudKit da Apple e é incremental; esta tela não pode forçá-la e nunca exclui nem substitui o histórico local."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "常规同步由 Apple 的 SwiftData/CloudKit 镜像管理，并且是增量式的；此屏幕无法强制同步，也绝不会删除或覆盖本地历史记录。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "一般同步由 Apple 的 SwiftData/CloudKit 鏡像管理，並且是增量式的；此畫面無法強制同步，也絕不會刪除或覆寫本機歷史記錄。"
+          }
+        }
+      },
+      "comment" : "UI text shown in: Settings → iCloud Diagnostics (Cadence/Cadence/Features/Settings/CloudKitSyncDiagnosticsView.swift)"
     }
   },
   "version" : "1.0"

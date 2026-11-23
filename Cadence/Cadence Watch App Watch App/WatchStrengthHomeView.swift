@@ -14,6 +14,9 @@ struct WatchStrengthHomeView: View {
     /// Set when a long-press fires so the button's tap on finger-lift doesn't also navigate away.
     @State private var longPressHandled = false
     @State private var toastAddedName: String?
+    /// Cached per-exercise progress. Computing planned/completed sets inside a
+    /// scrolling row repeatedly made the Lift page sluggish on watch hardware.
+    @State private var rowPresentations: [UUID: WatchWorkoutExerciseRowPresentation] = [:]
 
     var body: some View {
         planList
@@ -61,44 +64,64 @@ struct WatchStrengthHomeView: View {
             model.lastAddedExerciseName = nil
             withAnimation { toastAddedName = nil }
         }
+        .onChange(of: model.setCount, initial: true) { _, _ in refreshRowPresentations() }
+        .onChange(of: model.exerciseList.count) { _, _ in refreshRowPresentations() }
+        .onChange(of: model.partners.count) { _, _ in refreshRowPresentations() }
+        .onChange(of: model.stage) { _, _ in refreshRowPresentations() }
+    }
+
+    private func refreshRowPresentations() {
+        var next: [UUID: WatchWorkoutExerciseRowPresentation] = [:]
+        next.reserveCapacity(model.exerciseList.count)
+        for item in model.exerciseList {
+            next[item.exercise.id] = WatchWorkoutExerciseRowPresentation(
+                exerciseName: item.exercise.name,
+                completedSetCount: model.completedWorkingSets(for: item.exercise),
+                plannedSetCount: model.plannedWorkingSets(for: item.exercise).count)
+        }
+        rowPresentations = next
     }
 
     private var planItems: some View {
-        List {
-            ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
-                Button {
-                    if longPressHandled { longPressHandled = false; return }
-                    WatchHaptics.tap()
-                    pendingExerciseID = item.exercise.id
-                    DispatchQueue.main.async {
-                        model.startLogSet(for: item.exercise)
-                        pendingExerciseID = nil
-                        onSelect()
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 4) {
+                ForEach(model.exerciseList, id: \.exercise.persistentModelID) { item in
+                    Button {
+                        if longPressHandled { longPressHandled = false; return }
+                        WatchHaptics.tap()
+                        pendingExerciseID = item.exercise.id
+                        DispatchQueue.main.async {
+                            model.startLogSet(for: item.exercise)
+                            pendingExerciseID = nil
+                            onSelect()
+                        }
+                    } label: {
+                        row(item.exercise)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
+                    .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in
+                        WatchHaptics.tap()
+                        longPressHandled = true
+                        exerciseToRemove = item.exercise
+                        // If no tap follows the long-press, don't swallow the user's next real tap.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { longPressHandled = false }
+                    })
+                    .accessibilityAction(named: Text("Remove exercise")) { exerciseToRemove = item.exercise }
+                }
+
+                Button {
+                    WatchHaptics.tap()
+                    model.goToAddExercise()
+                    onSelect()
                 } label: {
-                    row(item.exercise)
+                    Label("Add exercise", systemImage: "plus")
+                        .frame(maxWidth: .infinity, minHeight: 44)
                 }
                 .buttonStyle(.plain)
-                .listRowBackground(Color.clear)
-                .accessibilityIdentifier("watchStrength.exercise.\(item.exercise.name)")
-                .simultaneousGesture(LongPressGesture(minimumDuration: 0.6).onEnded { _ in
-                    WatchHaptics.tap()
-                    longPressHandled = true
-                    exerciseToRemove = item.exercise
-                    // If no tap follows the long-press, don't swallow the user's next real tap.
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) { longPressHandled = false }
-                })
-                .accessibilityAction(named: Text("Remove exercise")) { exerciseToRemove = item.exercise }
+                .accessibilityIdentifier("watchStrength.addExercise")
             }
-
-            Button {
-                WatchHaptics.tap()
-                model.goToAddExercise()
-                onSelect()
-            } label: {
-                Label("Add exercise", systemImage: "plus")
-            }
-            .accessibilityIdentifier("watchStrength.addExercise")
+            .padding(.horizontal, 4)
         }
         .alert("Remove \(exerciseToRemove?.name ?? "")?", isPresented: removeAlertBinding, presenting: exerciseToRemove) { exercise in
             Button("Remove exercise and its sets", role: .destructive) {
@@ -115,7 +138,7 @@ struct WatchStrengthHomeView: View {
     }
 
     private func row(_ exercise: Exercise) -> some View {
-        let presentation = WatchWorkoutExerciseRowPresentation(
+        let presentation = rowPresentations[exercise.id] ?? WatchWorkoutExerciseRowPresentation(
             exerciseName: exercise.name,
             completedSetCount: model.completedWorkingSets(for: exercise),
             plannedSetCount: model.plannedWorkingSets(for: exercise).count
@@ -131,8 +154,10 @@ struct WatchStrengthHomeView: View {
                 if pendingExerciseID == exercise.id { ProgressView().controlSize(.mini) }
             }
         }
-        .padding(.vertical, 3)
-        .padding(.horizontal, 4)
+        .frame(minHeight: 44, alignment: .leading)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .contentShape(Rectangle())
         .background(RoundedRectangle(cornerRadius: 12)
             .fill(isCurrent(exercise) ? WatchTone.accentSoft : WatchTone.surface))
         .accessibilityElement(children: .ignore)

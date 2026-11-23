@@ -82,9 +82,9 @@ public struct ExpandedSetDraftModel: Equatable, Sendable {
     public mutating func adjustEffort(by amount: Double) {
         guard amount != 0 else { return }
         guard let current = effort else {
-            // First tap opens at a conventional working effort. The direction
-            // still matters: "+" starts at 7, "−" at 6.
-            effort = amount > 0 ? 7 : 6
+            // First "+" opens at a conventional working effort. Once cleared,
+            // "−" is a no-op; do not jump back to a value.
+            if amount > 0 { effort = 7 }
             return
         }
         let next = current + amount

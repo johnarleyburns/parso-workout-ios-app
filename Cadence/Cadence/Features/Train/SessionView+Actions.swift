@@ -195,8 +195,13 @@ extension SessionView {
         }
     }
     func togglePause() {
-        if active.isPaused { active.resume() }
-        else { active.pause(origin: .manual) }
+        if active.isPaused {
+            active.resume()
+            timers.resume(now: Date())
+        } else {
+            timers.pause(now: Date())
+            active.pause(origin: .manual)
+        }
     }
     func endWorkout() {
         // The coordinator may already have ended this session at its inactivity deadline.
@@ -210,6 +215,7 @@ extension SessionView {
             Task { await saveToHealth() }
         }
         active.endStrength()
+        timers.stop(now: Date())
         if let scheduledID = session.scheduledWorkoutID,
            let scheduled = try? context.fetch(FetchDescriptor<ScheduledWorkout>(
                predicate: #Predicate { $0.id == scheduledID })).first {

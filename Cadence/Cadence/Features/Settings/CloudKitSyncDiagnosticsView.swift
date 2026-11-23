@@ -3,10 +3,10 @@ import SwiftData
 import CloudKit
 import CadenceCore
 
-/// A read-only view of the current split store and the private CloudKit
-/// container that mirrors its library/roster/plan slice. Normal sync is managed
-/// by Apple's SwiftData/CloudKit mirror, so this screen reports state and never
-/// forces or rewrites it.
+/// A read-only view of the current Cladiron store and the private CloudKit
+/// container that mirrors it. Normal sync is managed by Apple's
+/// SwiftData/CloudKit mirror, so this screen reports state and never forces or
+/// rewrites it.
 struct CloudKitSyncDiagnosticsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.cadenceModelContainer) private var container

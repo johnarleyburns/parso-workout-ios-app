@@ -65,8 +65,11 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(!header.contains("WallClockLabel"))
         #expect(!header.contains("Timer.publish"))
         #expect(header.contains(".font(.system(.title3"))
-        #expect(header.contains("timerButton(.work"))
-        #expect(header.contains("timerButton(.rest"))
+        #expect(header.contains("intervalTimer(now: now)"))
+        #expect(!header.contains("timerButton(.work"))
+        #expect(!header.contains("timerButton(.rest"))
+        #expect(!header.contains("Text(verbatim: \"/\")"))
+        #expect(header.contains("session.timer.interval"))
     }
 
     @Test func liveHRInfoLivesInTheWorkoutMenuOnlyOnce() throws {
@@ -135,7 +138,8 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(overlay.contains("enum Emphasis"))
         #expect(overlay.contains("case liveMetric"))
         #expect(overlay.contains("pauseShowsTitle"))
-        #expect(overlay.contains("Label(\"1 min\", systemImage: \"plus\")"))
+        #expect(overlay.contains("Image(systemName: \"plus\")"))
+        #expect(!overlay.contains("Label(\"1 min\""))
         #expect(!overlay.contains("Label(\"+1 min\""))
 
         let home = try source("Cadence/Cadence/Features/Home/HomeView+DashboardOverlays.swift")
@@ -150,7 +154,10 @@ struct PhoneFieldTestLayoutGuardTests {
 
     @Test func addSetEditorIsFullHeightAndFocused() throws {
         let editor = try source("Cadence/Cadence/Features/Train/InlineSetEditorView.swift")
-        #expect(editor.contains(".presentationDetents([.large])"))
+        #expect(editor.contains(".custom(SetEditorSheetDetent.self)"))
+        let shared = try source("Cadence/Cadence/Features/Train/SessionViewShared.swift")
+        #expect(shared.contains("context.maxDetentValue - 96"))
+        #expect(editor.contains("historyLastTimeText"))
         #expect(!editor.contains("Who did this set?"))
         #expect(!editor.contains("How hard did the set feel?"))
         #expect(!editor.contains("setEditor.weightSource"))

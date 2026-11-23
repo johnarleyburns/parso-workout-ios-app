@@ -56,7 +56,7 @@ struct WatchFieldTestBatch2Tests {
     }
 
     @Test func endWorkoutDialogCopyIsStable() {
-        #expect(WatchStrengthControlsPresentation.title == "Summary")
+        #expect(WatchStrengthControlsPresentation.title == "Workout")
         #expect(WatchStrengthControlsPresentation.finishConfirmationTitle == "End Workout?")
         #expect(WatchStrengthControlsPresentation.finishCoolDownTitle == "Cool Down")
         #expect(WatchStrengthControlsPresentation.finishCancelTitle == "Cancel")

@@ -98,7 +98,9 @@ struct InlineSetEditorView: View {
             .sheet(isPresented: $keypadPresented) { keypad }
             .sheet(isPresented: $repsKeypadPresented) { repsKeypad }
         }
-        .presentationDetents([.large])
+        // Leave the live workout header (elapsed / BPM / Work-Rest) visible
+        // above the editor instead of covering it with a full-height sheet.
+        .presentationDetents([.custom(SetEditorSheetDetent.self)])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("setEditor.sheet")
         // Performer selection changes attribution/history only. The current
@@ -130,7 +132,7 @@ struct InlineSetEditorView: View {
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("History").font(.headline)
-            if let lastTime = selectedDefault?.lastTimeText {
+            if let lastTime = historyLastTimeText {
                 Text("Last time: \(lastTime)")
                     .accessibilityIdentifier("setEditor.history.lastTime")
             } else {
@@ -153,6 +155,14 @@ struct InlineSetEditorView: View {
     private var selectedPerformerName: String {
         guard let performerID else { return "Me" }
         return config.roster.first(where: { $0.personID == performerID })?.name ?? String(localized: "Partner")
+    }
+
+    private var historyLastTimeText: String? {
+        if let text = selectedDefault?.lastTimeText { return text }
+        // The owner's card history is the page's source of truth. Use it when
+        // the per-performer default is missing rather than showing a false
+        // "No previous history".
+        return performerID == nil ? config.lastTimeText : nil
     }
 
     private var performerSection: some View {
@@ -188,7 +198,6 @@ struct InlineSetEditorView: View {
         .padding(12)
         .background(.background, in: RoundedRectangle(cornerRadius: 14))
     }
-
     private var weightSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(config.bodyweight ? "Added weight" : "Weight").font(.headline)
@@ -247,7 +256,6 @@ struct InlineSetEditorView: View {
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
-
     private var repsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Reps").font(.headline)
@@ -271,7 +279,6 @@ struct InlineSetEditorView: View {
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
-
     private var effortSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Effort").font(.headline)
@@ -300,12 +307,10 @@ struct InlineSetEditorView: View {
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
-
     private func adjustEffort(by delta: Double) {
         draft.adjustEffort(by: delta)
         Haptics.selection()
     }
-
     private var footer: some View {
         Button(action: {
             guard let result = draft.submit() else { return }
@@ -329,7 +334,6 @@ struct InlineSetEditorView: View {
         .accessibilityIdentifier(config.isEditing ? "setEditor.save" : "session.set.log")
         .padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
     }
-
     private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.bordered).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
     private func weightStepButton(_ title: String, label: LocalizedStringKey,
                                   identifier: String,
@@ -347,11 +351,9 @@ struct InlineSetEditorView: View {
     private func display(_ value: Double) -> String { value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression) }
     private func displayID(_ value: Double) -> String { display(value) }
     private func incrementLabel(_ value: Double) -> String { "\(value >= 10 ? "+" : "±")\(display(value))" }
-
     private var keypad: some View {
         NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(CadenceTheme.attention) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { hasExplicitWeightEntry = true; draft.setWeight(value); keypadError = nil; keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }
     }
-
     private var repsKeypad: some View {
         NavigationStack {
             VStack(spacing: 12) {

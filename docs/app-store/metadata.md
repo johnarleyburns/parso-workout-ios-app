@@ -203,7 +203,7 @@ contribution is one-time, unlocks nothing, and only adds the Supporter badge on
 Home after a successful Apple transaction. A full log → history → export loop
 works without purchase.
 
-HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored locally because HealthKit has no structured schema for it.
+HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored in the app's private on-device/private-iCloud store because HealthKit has no structured schema for it.
 
 Bluetooth is used only for standard heart-rate monitors that expose the Bluetooth Heart Rate Service. Location is used only for iPhone-recorded outdoor workouts. Motion is used only to improve workout context.
 

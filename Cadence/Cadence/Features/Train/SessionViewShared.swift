@@ -37,6 +37,9 @@ struct InlineEditorConfig: Equatable {
     var exerciseName: String = ""
     var setNumberText: String = ""
     var recordedText: String?
+    /// Owner history snapshot from the workout card, used when the per-performer
+    /// default is missing (e.g. the Me Person row has not loaded yet).
+    var lastTimeText: String? = nil
     var effortMode: WatchEffortMode = .rpe
 
     static func == (lhs: InlineEditorConfig, rhs: InlineEditorConfig) -> Bool {
@@ -86,4 +89,12 @@ enum SetCol {
     static let rpe: CGFloat = 42
     static let check: CGFloat = 34
     static let gap: CGFloat = 5
+}
+
+
+/// Leaves the live workout header visible above the Add Set editor.
+struct SetEditorSheetDetent: CustomPresentationDetent {
+    static func height(in context: Context) -> CGFloat? {
+        max(320, context.maxDetentValue - 96)
+    }
 }

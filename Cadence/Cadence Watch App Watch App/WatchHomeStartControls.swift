@@ -26,15 +26,17 @@ extension WatchRootView {
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
-                .padding(.vertical, 2)
-                .padding(.horizontal, 4)
+                .frame(minHeight: 52, alignment: .leading)
+                .padding(.vertical, 4)
+                .padding(.horizontal, 6)
+                .contentShape(Rectangle())
                 // Painterly row backgrounds inside the row are cheaper on the
                 // Watch than a custom `.listRowBackground` shape per row.
                 .background(RoundedRectangle(cornerRadius: 12).fill(tint.opacity(0.12)))
             }
             .buttonStyle(.plain)
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4))
+            .listRowInsets(EdgeInsets(top: 3, leading: 4, bottom: 3, trailing: 4))
             .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             .accessibilityHint("Starts or opens \(option.title)")
         }

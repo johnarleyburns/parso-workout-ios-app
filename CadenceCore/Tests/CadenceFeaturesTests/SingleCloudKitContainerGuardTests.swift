@@ -29,7 +29,9 @@ struct SingleCloudKitContainerGuardTests {
         let store = try source("CadenceCore/Sources/CadenceCore/Store.swift")
         #expect(store.contains("splitCloudKitContainerID = \"iCloud.guru.parso.cladiron.sync\""))
         #expect(!store.contains("cloudKitContainerID = \"iCloud.guru.parso.ios-workout-app\""))
-        #expect(store.contains("migrateLegacyStoreAtLaunch"))
+        #expect(store.contains("applicationStoreFileName = \"Cladiron.store\""))
+        #expect(store.contains("migrateToSingleStore"))
+        #expect(store.contains("makeSingleModelContainer"))
 
         let script = try source("scripts/check-cloudkit-schema.sh")
         #expect(script.contains("CONTAINER_ID=\"iCloud.guru.parso.cladiron.sync\""))

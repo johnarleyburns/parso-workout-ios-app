@@ -3,11 +3,13 @@ import Foundation
 import SwiftData
 #endif
 
-/// Builds the shared SwiftData stores. The iPhone keeps health-bearing rows in
-/// an on-device `Local.store` and mirrors the library, roster, and plan slice to
-/// the user's **private** CloudKit database
-/// (`iCloud.guru.parso.cladiron.sync`). The watch uses a local-only store and
-/// syncs through WatchConnectivity so the phone is the sole CloudKit writer.
+/// Builds the shared SwiftData stores. The iPhone uses one `Cladiron.store`
+/// (all models, including health-bearing rows) and mirrors it to the user's
+/// **private** CloudKit database (`iCloud.guru.parso.cladiron.sync`). A single
+/// store is required for SwiftData relationship integrity: the previous
+/// Local/Sync split could not encode a set's Exercise relationship during save.
+/// The Watch uses a local-only store and syncs through WatchConnectivity so the
+/// phone is the sole CloudKit writer.
 #if canImport(SwiftData)
 public enum CadenceStore {
     /// Shared local-store compatibility marker used by iPhone and Watch.
@@ -45,10 +47,9 @@ public enum CadenceStore {
     /// history projection. Never used for the phone or its CloudKit configurations.
     public static let watchSchema = Schema(sharedModelTypes + [WatchCardioHistoryRecord.self])
 
-    /// The H5 boundary. Health-bearing rows remain in an on-device
-    /// configuration; library, roster, plans, and schedule rows are the only
-    /// rows eligible for the new CloudKit container. The two schemas are kept
-    /// explicit so a new @Model cannot silently cross the privacy boundary.
+    /// The H5 boundary is retained for reading and migrating pre-Cladiron.store
+    /// installs. The live application store is now single, because SwiftData
+    /// cannot persist a set's Exercise relationship across two store configs.
     public static let localSchema = Schema([
         WorkoutSession.self,
         SetEntry.self,
@@ -80,11 +81,12 @@ public enum CadenceStore {
 
     public static let splitCloudKitContainerID = "iCloud.guru.parso.cladiron.sync"
 
-    /// The pre-split single store. It is read exactly once, by the automatic
-    /// upgrade copy, and is never opened as an application store again.
+    /// The pre-split single store and the later Local/Sync pair are read only by
+    /// the one-time copy into the current application store.
     public static let legacyStoreFileName = "default.store"
     public static let localStoreFileName = "Local.store"
     public static let syncStoreFileName = "Sync.store"
+    public static let applicationStoreFileName = "Cladiron.store"
 
     /// The default SwiftData location used by the current app.
     public static func applicationSupportDirectory(
@@ -97,6 +99,10 @@ public enum CadenceStore {
     public static func legacyStoreURL(
         in directory: URL = applicationSupportDirectory()
     ) -> URL { directory.appendingPathComponent(legacyStoreFileName) }
+
+    public static func applicationStoreURL(
+        in directory: URL = applicationSupportDirectory()
+    ) -> URL { directory.appendingPathComponent(applicationStoreFileName) }
 
     public static func splitStoreURLs(
         in directory: URL = applicationSupportDirectory()
@@ -116,38 +122,66 @@ public enum CadenceStore {
             && fileManager.fileExists(atPath: urls.sync.path)
     }
 
-    /// Opens the split container used by every current install. A pre-split
-    /// single store is copied into `Local.store`/`Sync.store` once, before the
-    /// first split launch, so retiring the legacy fallback never strands an
-    /// upgraded install. The copy is verified and the old file is left in place
-    /// untouched as the rollback copy.
+    public static func hasSplitStoreFiles(
+        in directory: URL = applicationSupportDirectory(),
+        fileManager: FileManager = .default
+    ) -> Bool {
+        let urls = splitStoreURLs(in: directory)
+        return fileManager.fileExists(atPath: urls.local.path)
+            && fileManager.fileExists(atPath: urls.sync.path)
+    }
+
+    public static func applicationStoreReady(
+        in directory: URL = applicationSupportDirectory(),
+        fileManager: FileManager = .default
+    ) -> Bool {
+        fileManager.fileExists(atPath: directory
+            .appendingPathComponent(StoreMigrationRuntime.singleStoreReadyMarkerFileName).path)
+            && fileManager.fileExists(atPath: applicationStoreURL(in: directory).path)
+    }
+
+    /// Opens the single application store. A pre-Cladiron.store legacy store or
+    /// Local/Sync pair is copied into it once, before the first launch, so the
+    /// store migration never strands history. The old files are left untouched
+    /// as rollback copies.
     public static func makeApplicationModelContainer(
         cloudKitEnabled: Bool = true,
         directory: URL = applicationSupportDirectory(),
         fileManager: FileManager = .default,
-        splitFactory: (URL, URL, Bool) throws -> ModelContainer = {
-            try makeSplitModelContainer(localURL: $0, syncURL: $1, cloudKitEnabled: $2)
+        singleFactory: (URL, Bool) throws -> ModelContainer = {
+            try makeSingleModelContainer(storeURL: $0, cloudKitEnabled: $1)
         }
     ) throws -> ModelContainer {
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
-        let legacy = legacyStoreURL(in: directory)
-        let urls = splitStoreURLs(in: directory)
-        if fileManager.fileExists(atPath: legacy.path),
-           !splitStoreReady(in: directory, fileManager: fileManager) {
-            try StoreMigrationRuntime.migrateLegacyStoreAtLaunch(
-                legacyURL: legacy, localURL: urls.local, syncURL: urls.sync,
+        let singleURL = applicationStoreURL(in: directory)
+        if !applicationStoreReady(in: directory, fileManager: fileManager) {
+            try StoreMigrationRuntime.migrateToSingleStore(
+                directory: directory, singleURL: singleURL,
                 stateURL: directory.appendingPathComponent(StoreMigrationRuntime.stateFileName),
-                snapshotURL: directory.appendingPathComponent(StoreMigrationRuntime.snapshotFileName))
+                snapshotURL: directory.appendingPathComponent(StoreMigrationRuntime.singleStoreSnapshotFileName))
         }
         do {
-            return try splitFactory(urls.local, urls.sync, cloudKitEnabled)
+            return try singleFactory(singleURL, cloudKitEnabled)
         } catch where cloudKitEnabled {
             // A CloudKit mirroring setup failure (account, entitlement, or
             // schema state) must not crash launch. Open the same on-disk
-            // stores local-only: no data is deleted or replaced, and
+            // store local-only: no data is deleted or replaced, and
             // mirroring resumes once CloudKit is usable again.
-            return try splitFactory(urls.local, urls.sync, false)
+            return try singleFactory(singleURL, false)
         }
+    }
+
+    /// Builds the single application store. The URL is caller-owned so tests can
+    /// use a temporary local-only store.
+    public static func makeSingleModelContainer(
+        storeURL: URL,
+        cloudKitEnabled: Bool = true
+    ) throws -> ModelContainer {
+        let config = ModelConfiguration(
+            "app", schema: schema, url: storeURL,
+            cloudKitDatabase: cloudKitEnabled
+                ? .private(splitCloudKitContainerID) : .none)
+        return try ModelContainer(for: schema, configurations: [config])
     }
 
     /// Builds the two-configuration container used by every current install.

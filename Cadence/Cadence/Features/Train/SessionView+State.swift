@@ -57,6 +57,7 @@ extension SessionView {
         pendingRepsOverride = repsOverride
         pendingPerformerID = performerID
         pendingPerformerWasProvided = performerID != nil || repsOverride != nil
+        timers.beginWork(now: Date())
         setEditorRoute = editingSetID.map { .edit(exerciseID: exercise.id, setID: $0) } ?? .add(exerciseID: exercise.id)
         if !dumbbellInfoShown, case .dumbbell = exercise.equipmentValue {
             dumbbellInfoShown = true
@@ -109,6 +110,13 @@ extension SessionView {
         let nonWeighted = SessionViewModel.isNonWeighted(exercise)
         let workingSets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
         let number = isEditing ? (workingSets.firstIndex(where: { $0.id == editingSet?.id }).map { $0 + 1 } ?? workingSets.count + 1) : workingSets.count + 1
+        let editorContext = cache.state.contexts.first { $0.exerciseID == exercise.id }
+            ?? cache.state.contexts.first {
+                ExerciseLibrary.dedupKey($0.name) == ExerciseLibrary.dedupKey(exercise.name)
+            }
+        let ownerLastTime = editorContext?.performerContexts.first(where: { $0.isMe })
+            .flatMap { SessionRenderModel.lastTimeSegment(
+                label: $0.label, sets: $0.lastTimeSets, unit: settings.unit) }
         return InlineEditorConfig(
             id: isEditing ? (editingSet?.id ?? setEditorIdentity) : setEditorIdentity,
             isEditing: isEditing,
@@ -127,10 +135,14 @@ extension SessionView {
             exerciseName: exercise.name,
             setNumberText: isEditing ? String(localized: "Editing set \(number)") : String(localized: "Set \(number) of \(max(number, session.plannedRepLadder.count))"),
             recordedText: isEditing ? String(localized: "Recorded") : nil,
+            lastTimeText: ownerLastTime,
             effortMode: lastEffortMode
         )
     }
     func closeInlineEditor() {
+        if timers.mode == .work {
+            timers.beginRest(now: Date())
+        }
         inlineExerciseID = nil
         inlineExercise = nil
         inlineEditingSetID = nil
@@ -169,6 +181,7 @@ extension SessionView {
         }
         expandedExerciseID = exercise.id
         pendingScrollExerciseID = exercise.id
+        timers.beginRest(now: Date())
         closeInlineEditor()
     }
 

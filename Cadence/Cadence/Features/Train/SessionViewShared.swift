@@ -37,6 +37,9 @@ struct InlineEditorConfig: Equatable {
     var exerciseName: String = ""
     var setNumberText: String = ""
     var recordedText: String?
+    /// Owner history snapshot from the workout card, used when the per-performer
+    /// default is missing (e.g. the Me Person row has not loaded yet).
+    var lastTimeText: String? = nil
     var effortMode: WatchEffortMode = .rpe
 
     static func == (lhs: InlineEditorConfig, rhs: InlineEditorConfig) -> Bool {

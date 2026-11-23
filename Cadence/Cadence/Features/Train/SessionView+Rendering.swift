@@ -180,6 +180,7 @@ extension SessionView {
         .fullScreenCover(isPresented: $coolingDown, content: cooldownOverlay)
         .task { _ = try? WorkoutRepository.me(in: context) }
         .onAppear(perform: startWatchIfNeeded)
+        .onAppear { timers.startRestIfNeeded(now: Date()) }
         .onReceive(NotificationCenter.default.publisher(for: .cadenceLiveActivityActionRequested), perform: handleLiveActivityRequest)
         .onDisappear(perform: handleSessionDisappear)
         // Keep the Date publisher closure explicit. Passing the method as a

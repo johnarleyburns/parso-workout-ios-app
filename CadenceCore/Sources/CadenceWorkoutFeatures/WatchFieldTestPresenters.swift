@@ -123,12 +123,12 @@ public enum WatchSetEntryPresentation {
     /// The Log action is a green checkbox with no surrounding button box.
     public static let logButtonSystemImage = "checkmark.square.fill"
     public static let repsUnit = "rps"
-    /// Title/exercise-name/fields sit together; no reserved empty row.
-    public static let headerSpacing: Double = 2
+    /// Breathing room below the exercise name and above the weight/reps fields.
+    public static let headerSpacing: Double = 8
 }
 
 public enum WatchStrengthControlsPresentation {
-    public static let title = "Summary"
+    public static let title = "Workout"
     /// Only a small margin when the pause explanation is actually present.
     public static let pauseReasonTopPadding: Double = 2
     public static let finishConfirmationTitle = "End Workout?"

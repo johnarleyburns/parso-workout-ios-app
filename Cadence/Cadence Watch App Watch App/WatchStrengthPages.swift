@@ -11,21 +11,19 @@ struct WatchStrengthControlsPage: View {
     let onFinish: () -> Void
     @Environment(WatchWorkoutManager.self) private var watchManager
     @Environment(AppSettings.self) private var watchSettings
-    @State private var confirmDiscard = false
     @State private var confirmFinish = false
     @State private var showingPartners = false
+    /// The HR coverage summary is intentionally refreshed every 5 seconds, not
+    /// on every wrist sample; recomputing it per sample made the whole pager
+    /// reevaluate while the user was scrolling another page.
+    @State private var summary = WatchLiveSummaryPresentation.make(
+        setsCompleted: 0, setsPlanned: 0, cardioMinutes: 0)
 
     var body: some View {
         GeometryReader { proxy in
-            let summary = liveSummary
             let side = min(proxy.size.width * 0.82, proxy.size.height * 0.48)
             let lineWidth = max(7, side * 0.10)
             VStack(spacing: 4) {
-                TimelineView(.periodic(from: .now, by: 1)) { _ in
-                    Text(Duration.seconds(watchManager.effectiveElapsed).formatted(.time(pattern: .hourMinuteSecond)))
-                        .font(.headline.monospacedDigit())
-                        .foregroundStyle(WatchTone.accent)
-                }
                 if watchManager.isPaused, let copy = watchManager.strengthPause.statusCopy {
                     Text(copy)
                         .font(.caption2)
@@ -46,12 +44,15 @@ struct WatchStrengthControlsPage: View {
                     legend("Cardio", value: "\(summary.cardioMinutes) min", tint: WatchTone.cardio)
                 }
                 Spacer(minLength: 0)
-                Button("Discard Workout", role: .destructive) { confirmDiscard = true }
-                    .font(.footnote)
-                    .accessibilityIdentifier("watchStrength.deleteWorkout")
             }
             .padding(.horizontal, 2)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .task {
+            while !Task.isCancelled {
+                summary = computeLiveSummary()
+                try? await Task.sleep(for: .seconds(5))
+            }
         }
         .navigationTitle(LocalizedStringKey(WatchStrengthControlsPresentation.title))
         .navigationBarTitleDisplayMode(.inline)
@@ -111,20 +112,9 @@ struct WatchStrengthControlsPage: View {
         .sheet(isPresented: $showingPartners) {
             NavigationStack { WatchPartnersView(model: model) }
         }
-        .alert("Delete Workout?", isPresented: $confirmDiscard) {
-            Button("Delete", role: .destructive) {
-                WatchHaptics.delete()
-                model.cancel()
-            }
-            .accessibilityIdentifier("watchStrength.deleteWorkout.confirm")
-            Button("Keep Workout", role: .cancel) {}
-                .accessibilityIdentifier("watchStrength.deleteWorkout.cancel")
-        } message: {
-            Text("This removes the workout and all sets logged on the watch.")
-        }
     }
 
-    private var liveSummary: WatchLiveSummaryPresentation {
+    private func computeLiveSummary() -> WatchLiveSummaryPresentation {
         let cardio = WatchStrengthHRCoverage.summary(
             samples: watchManager.currentHRSamplesForSummary,
             duration: watchManager.effectiveElapsed,

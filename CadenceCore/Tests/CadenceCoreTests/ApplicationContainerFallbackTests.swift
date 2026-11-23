@@ -15,11 +15,11 @@ import SwiftData
         var attempts: [Bool] = []
         _ = try CadenceStore.makeApplicationModelContainer(
             directory: dir,
-            splitFactory: { local, sync, cloudKit in
+            singleFactory: { url, cloudKit in
                 attempts.append(cloudKit)
                 if cloudKit { throw MirrorError() }
-                return try CadenceStore.makeSplitModelContainer(
-                    localURL: local, syncURL: sync, cloudKitEnabled: false)
+                return try CadenceStore.makeSingleModelContainer(
+                    storeURL: url, cloudKitEnabled: false)
             })
         #expect(attempts == [true, false])
     }
@@ -59,10 +59,9 @@ import SwiftData
 
 @MainActor
 struct ApplicationContainerMigrationTests {
-    /// Retiring the legacy fallback must not strand an upgraded install: the
-    /// first launch copies the old single store into Local/Sync, marks the
-    /// split store ready, and leaves the old file untouched as a rollback copy.
-    @Test func preSplitStoreIsCopiedIntoTheSplitStoreOnFirstLaunch() throws {
+    /// The legacy single store is copied into Cladiron.store once, and the old
+    /// file is retained as a rollback copy.
+    @Test func legacyStoreIsCopiedIntoTheSingleApplicationStore() throws {
         let dir = FileManager.default.temporaryDirectory
             .appendingPathComponent("cladiron-migration-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
@@ -83,9 +82,8 @@ struct ApplicationContainerMigrationTests {
 
         let container = try CadenceStore.makeApplicationModelContainer(
             directory: dir,
-            splitFactory: { local, sync, _ in
-                try CadenceStore.makeSplitModelContainer(
-                    localURL: local, syncURL: sync, cloudKitEnabled: false)
+            singleFactory: { url, _ in
+                try CadenceStore.makeSingleModelContainer(storeURL: url, cloudKitEnabled: false)
             })
         let context = ModelContext(container)
         #expect(try context.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
@@ -93,8 +91,52 @@ struct ApplicationContainerMigrationTests {
         #expect(try context.fetchCount(FetchDescriptor<Person>()) == 1)
         #expect(FileManager.default.fileExists(atPath: legacyURL.path),
                 "the old file stays as the rollback copy")
-        #expect(CadenceStore.splitStoreReady(in: dir))
+        #expect(CadenceStore.applicationStoreReady(in: dir))
     }
 
+    /// Devices that already migrated to Local/Sync must not lose that data when
+    /// the application moves back to one store.
+    @Test func splitStoreIsCopiedIntoTheSingleApplicationStore() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cladiron-split-to-single-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let urls = CadenceStore.splitStoreURLs(in: dir)
+        let split = try CadenceStore.makeSplitModelContainer(
+            localURL: urls.local, syncURL: urls.sync, cloudKitEnabled: false)
+        let splitContext = ModelContext(split)
+        let exercise = Exercise(name: "Press")
+        let session = WorkoutSession(title: "Split")
+        let person = Person(name: "Alex")
+        splitContext.insert(exercise)
+        splitContext.insert(session)
+        splitContext.insert(person)
+        splitContext.insert(SetEntry(weight: 60, reps: 6, session: session,
+                                     exercise: exercise, performedBy: person))
+        try splitContext.save()
+
+        let container = try CadenceStore.makeApplicationModelContainer(
+            directory: dir,
+            singleFactory: { url, _ in
+                try CadenceStore.makeSingleModelContainer(storeURL: url, cloudKitEnabled: false)
+            })
+        let context = ModelContext(container)
+        #expect(try context.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Exercise>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<SetEntry>()) == 1)
+        #expect(try context.fetchCount(FetchDescriptor<Person>()) == 1)
+        let restoredSession = try #require(try context.fetch(FetchDescriptor<WorkoutSession>()).first)
+        let restoredExercise = try #require(try context.fetch(FetchDescriptor<Exercise>()).first)
+        let added = try WorkoutRepository.addSet(to: restoredSession,
+                                                 exercise: restoredExercise,
+                                                 weightKg: 70, reps: 5,
+                                                 in: context)
+        #expect(added.exercise?.id == restoredExercise.id)
+        #expect(try context.fetchCount(FetchDescriptor<SetEntry>()) == 2)
+        #expect(FileManager.default.fileExists(atPath: urls.local.path))
+        #expect(FileManager.default.fileExists(atPath: urls.sync.path))
+        #expect(CadenceStore.applicationStoreReady(in: dir))
+    }
 }
 #endif

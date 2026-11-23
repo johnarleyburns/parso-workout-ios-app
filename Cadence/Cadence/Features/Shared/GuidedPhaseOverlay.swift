@@ -161,7 +161,9 @@ struct GuidedPhaseOverlay: View {
                     Button {
                         addTime(60)
                     } label: {
-                        Label("1 min", systemImage: "plus").frame(maxWidth: .infinity)
+                        Image(systemName: "plus")
+                            .font(.title3.weight(.semibold))
+                            .frame(maxWidth: .infinity)
                     }
                     .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("\(idPrefix).addMinute")

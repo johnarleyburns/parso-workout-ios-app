@@ -1,63 +1,76 @@
 import Foundation
 
-/// Tracks the strength session's **work** vs **rest** stopwatch (issue 9). Exactly
-/// one mode runs at a time; switching modes banks the elapsed span into the
-/// previous mode's accumulator and restarts the clock. Pure/derived so it's
-/// `swift test`-verifiable — the view drives it with a 1 Hz redraw tick and reads
-/// `elapsed(mode:now:)` for the live value.
+/// One always-on stopwatch for the strength session. It is either the current
+/// **work** interval or the **rest** interval — never idle during a live
+/// workout. Opening the set editor starts work; logging (or cancelling) starts
+/// rest again. Workout pause suspends the running interval.
 public struct WorkoutTimersModel: Equatable, Sendable {
     public enum Mode: String, Sendable, Equatable {
-        case idle
         case work
         case rest
     }
 
     public private(set) var mode: Mode
-    /// Banked elapsed time (seconds) per mode, excluding the currently-running span.
-    public private(set) var accumulated: [Mode: TimeInterval]
-    /// When the current running span started (nil when idle).
+    /// Seconds banked before the current running span.
+    public private(set) var accumulated: TimeInterval
+    /// When the current running span started (nil while the workout is paused).
     public private(set) var startedAt: Date?
 
-    public init(mode: Mode = .idle,
-                accumulated: [Mode: TimeInterval] = [:],
+    public init(mode: Mode = .rest,
+                accumulated: TimeInterval = 0,
                 startedAt: Date? = nil) {
         self.mode = mode
         self.accumulated = accumulated
         self.startedAt = startedAt
     }
 
-    /// Total elapsed seconds for `mode` at `now`, including any currently-running span.
-    public func elapsed(_ query: Mode, now: Date) -> TimeInterval {
-        var total = accumulated[query] ?? 0
-        if query == mode, let start = startedAt {
-            total += max(0, now.timeIntervalSince(start))
+    /// Total seconds in the current interval at `now`.
+    public func elapsed(now: Date) -> TimeInterval {
+        var total = accumulated
+        if let startedAt {
+            total += max(0, now.timeIntervalSince(startedAt))
         }
         return total
     }
 
-    /// Switches to `target`, banking the running span into the previous mode.
-    /// Tapping the already-active mode stops it (returns to `.idle`).
-    public mutating func toggle(_ target: Mode, now: Date) {
-        bankRunningSpan(now: now)
-        if mode == target {
-            mode = .idle
-            startedAt = nil
-        } else {
-            mode = target
-            startedAt = target == .idle ? nil : now
-        }
+    public var isRunning: Bool { startedAt != nil }
+
+    /// Starts the initial rest interval on first appearance.
+    public mutating func startRestIfNeeded(now: Date) {
+        guard startedAt == nil, accumulated == 0 else { return }
+        mode = .rest
+        startedAt = now
     }
 
-    /// Stops any running span (e.g. on pause / workout end), banking it.
+    /// Opening the Add Set editor starts the work interval from zero.
+    public mutating func beginWork(now: Date) {
+        guard mode != .work || startedAt == nil else { return }
+        mode = .work
+        accumulated = 0
+        startedAt = now
+    }
+
+    /// Logging a set (or leaving its editor) starts the rest interval from zero.
+    public mutating func beginRest(now: Date) {
+        guard mode != .rest || startedAt == nil else { return }
+        mode = .rest
+        accumulated = 0
+        startedAt = now
+    }
+
+    public mutating func pause(now: Date) {
+        guard let startedAt else { return }
+        accumulated += max(0, now.timeIntervalSince(startedAt))
+        self.startedAt = nil
+    }
+
+    public mutating func resume(now: Date) {
+        guard startedAt == nil else { return }
+        startedAt = now
+    }
+
+    /// Freezes the timer when the workout ends.
     public mutating func stop(now: Date) {
-        bankRunningSpan(now: now)
-        mode = .idle
-        startedAt = nil
-    }
-
-    private mutating func bankRunningSpan(now: Date) {
-        guard mode != .idle, let start = startedAt else { return }
-        accumulated[mode, default: 0] += max(0, now.timeIntervalSince(start))
-        startedAt = nil
+        pause(now: now)
     }
 }

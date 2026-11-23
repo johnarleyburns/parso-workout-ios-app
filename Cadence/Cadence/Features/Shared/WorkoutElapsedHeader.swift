@@ -3,21 +3,21 @@ import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
 
-/// A single live row for the strength session: elapsed time / live HR / Work /
-/// Rest. `TimelineView` drives every value from the same wall clock, so the
-/// Work and Rest stopwatches tick instead of freezing until another redraw.
+/// A single live row for the strength session: elapsed workout time, live HR,
+/// and one always-on Work-or-Rest interval. `TimelineView` drives every value
+/// from the same wall clock, so the interval ticks without another redraw.
 struct WorkoutElapsedHeader: View {
     let clock: WorkoutClock
     let isPaused: Bool
     @Binding var timers: WorkoutTimersModel
-    /// Live metric (heart rate) between the elapsed time and the timers.
+    /// Live metric (heart rate) between the elapsed time and the interval.
     var trailing: AnyView? = nil
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let now = context.date
             let time = Format.duration(clock.elapsed(now: now))
-            HStack(spacing: 6) {
+            HStack(spacing: 10) {
                 Image(systemName: "stopwatch")
                     .font(.subheadline)
                     .foregroundStyle(isPaused ? .secondary : .primary)
@@ -35,12 +35,10 @@ struct WorkoutElapsedHeader: View {
                         .foregroundStyle(.orange)
                         .accessibilityIdentifier("session.elapsed.paused")
                 }
-                separator
                 if let trailing {
                     trailing
-                    separator
                 }
-                workRestControl(now: now)
+                intervalTimer(now: now)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal)
@@ -50,46 +48,25 @@ struct WorkoutElapsedHeader: View {
         }
     }
 
-    private var separator: some View {
-        Text(verbatim: "/")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.tertiary)
-            .accessibilityHidden(true)
-    }
-
-    /// Work / Rest stopwatches on the same row as the workout timer and BPM.
-    private func workRestControl(now: Date) -> some View {
-        HStack(spacing: 4) {
-            timerButton(.work, label: String(localized: "Work"),
-                        symbol: "figure.strengthtraining.traditional", now: now)
-            timerButton(.rest, label: String(localized: "Rest"),
-                        symbol: "pause.circle", now: now)
+    /// The single Work/Rest stopwatch. It is display-only: opening the editor
+    /// starts work, and logging or leaving the editor starts rest.
+    private func intervalTimer(now: Date) -> some View {
+        let value = Format.duration(timers.elapsed(now: now))
+        let label = timers.mode == .work ? String(localized: "Work") : String(localized: "Rest")
+        let tint: Color = timers.mode == .work ? .green : .blue
+        return HStack(spacing: 3) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+            Text(value)
+                .font(.caption2.monospacedDigit())
         }
-    }
-
-    private func timerButton(_ mode: WorkoutTimersModel.Mode, label: String,
-                             symbol: String, now: Date) -> some View {
-        let active = timers.mode == mode
-        let value = timers.elapsed(mode, now: now)
-        return Button {
-            timers.toggle(mode, now: Date())
-        } label: {
-            HStack(spacing: 3) {
-                Text(label)
-                    .font(.caption2.weight(.semibold))
-                Text(Format.duration(value))
-                    .font(.caption2.monospacedDigit())
-            }
-            .frame(minWidth: 58)
-            .padding(.vertical, 4)
-            .padding(.horizontal, 5)
-            .background(active ? (mode == .work ? Color.green : Color.blue).opacity(0.22)
-                              : Color.secondary.opacity(0.12),
-                        in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-            .foregroundStyle(active ? (mode == .work ? Color.green : Color.blue) : Color.secondary)
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("session.timer.\(mode.rawValue)")
-        .accessibilityLabel("\(label) timer \(Format.duration(value))\(active ? ", running" : "")")
+        .frame(minWidth: 58)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 5)
+        .background(tint.opacity(timers.isRunning ? 0.22 : 0.10),
+                    in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+        .foregroundStyle(timers.isRunning ? tint : Color.secondary)
+        .accessibilityIdentifier("session.timer.interval")
+        .accessibilityLabel("\(label) interval \(value)\(timers.isRunning ? ", running" : ", paused")")
     }
 }

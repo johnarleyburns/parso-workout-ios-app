@@ -59,13 +59,14 @@ struct CadenceApp: App {
     }
 
     /// Moves aside (never deletes) whichever on-disk store files exist — the
-    /// pre-split store during a failed one-time copy, or the current split
-    /// Local/Sync — into a timestamped recovery directory, mirroring the Watch
-    /// app's own `quarantineStore()`.
+    /// pre-Cladiron.store layouts during a failed one-time copy, or the current
+    /// single store — into a timestamped recovery directory, mirroring the
+    /// Watch app's own `quarantineStore()`.
     private static func quarantinePhoneStore() throws -> URL? {
         let fm = FileManager.default
         let directory = CadenceStore.applicationSupportDirectory()
-        let baseNames = [CadenceStore.legacyStoreFileName, CadenceStore.localStoreFileName,
+        let baseNames = [CadenceStore.applicationStoreFileName,
+                         CadenceStore.legacyStoreFileName, CadenceStore.localStoreFileName,
                          CadenceStore.syncStoreFileName]
         let names = baseNames.flatMap { [$0, $0 + "-shm", $0 + "-wal"] }
         let existing = names.map { directory.appendingPathComponent($0) }

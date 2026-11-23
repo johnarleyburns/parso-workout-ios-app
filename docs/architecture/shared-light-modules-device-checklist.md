@@ -62,11 +62,11 @@ summary table in the PR description.
 - [ ] Device: force a WatchConnectivity drop mid-sync (airplane mode toggle),
       confirm durable completion reconciliation still delivers the session
       once connectivity returns, with no duplicate or dropped sets.
-- [ ] Old-store upgrade: `CadenceCoreTests/StoreMigrationRuntimeTests` already
-      exercises legacy `default.store` → split `Local.store`/`Sync.store`
-      migration end-to-end; confirm it still passes under `swift test`
-      (requires macOS/SwiftData — cannot run on Linux). No new fixture is
-      needed for phase 3; this phase touched no `@Model` types.
+- [ ] Old-store upgrade: `CadenceCoreTests/ApplicationContainerFallbackTests`
+      exercises both legacy `default.store` and interim `Local.store`/`Sync.store`
+      → single `Cladiron.store` migration end-to-end, including a post-migration
+      set save; confirm it still passes under `swift test` (requires
+      macOS/SwiftData — cannot run on Linux).
 
 ## 4. Coaching/catalog isolation (phase 4 — not yet started)
 

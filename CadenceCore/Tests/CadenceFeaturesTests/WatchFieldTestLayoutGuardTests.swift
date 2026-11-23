@@ -25,7 +25,8 @@ struct WatchFieldTestLayoutGuardTests {
         let rows = try watch("WatchHomeStartControls.swift")
         #expect(rows.contains("defaultMinListRowHeight"))
         #expect(rows.contains(".listRowInsets("))
-        #expect(rows.contains("bottom: 1"))
+        #expect(rows.contains("bottom: 3"))
+        #expect(rows.contains("minHeight: 52"))
     }
 
     @Test func liftDoesNotBlankAndReloadOnEveryBodyUpdate() throws {
@@ -86,6 +87,9 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(!pages.contains("Water Lock"))
         #expect(!pages.contains("watchStrength.waterLock"))
         #expect(!pages.contains("LazyVGrid"))
+        // Workout page: no discarding from inside the workout.
+        #expect(!pages.contains("deleteWorkout"))
+        #expect(!pages.contains("confirmDiscard"))
     }
 
     @Test func exercisePlanHasNoSuggestButton() throws {
@@ -93,6 +97,19 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(!home.contains("watchStrength.suggestExercise"))
         #expect(!home.contains("showingSuggestion"))
         #expect(!home.contains("WatchSuggestedExerciseView("))
+        // Lift scrolling: lazy rows and cached presentations, not a List that
+        // recomputes every planned/completed count while scrolling.
+        #expect(home.contains("ScrollView"))
+        #expect(home.contains("LazyVStack"))
+        #expect(home.contains("rowPresentations"))
+        #expect(home.contains("refreshRowPresentations()"))
+        #expect(!home.contains("List {"))
+    }
+
+    @Test func restOmitsTheRestingAfterRow() throws {
+        let rest = try watch("WatchRestView.swift")
+        #expect(!rest.contains("Resting after"))
+        #expect(rest.contains("Next ·"))
     }
 
     @Test func liftPreviewOpensAddExerciseInsteadOfSuggest() throws {

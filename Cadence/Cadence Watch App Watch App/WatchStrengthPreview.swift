@@ -12,7 +12,6 @@ struct WatchStrengthPreview: View {
     let launch: WatchLiftLaunch
     var citationIDs: [String] = []
     @Environment(WatchWorkoutManager.self) private var manager
-    @Query(filter: #Predicate<Person> { !$0.isMe }, sort: \Person.name) private var people: [Person]
     @AppStorage(WatchStrengthPreviewDefaults.repPatternKey) private var lastRepPattern = "8-8-8"
     @AppStorage(WatchStrengthPreviewDefaults.partnersKey) private var lastPartners = ""
     @AppStorage(WatchStrengthPreviewDefaults.restSecondsKey) private var lastRestSeconds = 60
@@ -200,7 +199,7 @@ struct WatchStrengthPreview: View {
     }
 
     private var partnerPicker: some View {
-        WatchPreviewPartnerPicker(setup: $setup, recentNames: people.map(\.name))
+        WatchPreviewPartnerPicker(setup: $setup)
     }
 
     private var restPicker: some View {
@@ -238,14 +237,14 @@ private struct WatchPreviewRepPicker: View {
 
 private struct WatchPreviewPartnerPicker: View {
     @Binding var setup: WatchStrengthPreviewSetup
-    let recentNames: [String]
+    @Query(filter: #Predicate<Person> { !$0.isMe }, sort: \Person.name) private var people: [Person]
     @State private var newPartner = ""
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         List {
             Button("No partner") { setup.partnerNames = []; dismiss() }
                 .accessibilityIdentifier("watchStrength.partner.none")
-            ForEach(setup.partnerOptions(recentNames: recentNames), id: \.self) { name in
+            ForEach(setup.partnerOptions(recentNames: people.map(\.name)), id: \.self) { name in
                 Button { setup.togglePartner(name); dismiss() } label: {
                     HStack {
                         Text(name)

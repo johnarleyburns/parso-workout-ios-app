@@ -240,6 +240,15 @@ public final class WatchStrengthFlowModel {
     public private(set) var volume: Double = 0
     public private(set) var setCount: Int = 0
     public private(set) var exerciseCount: Int = 0
+    /// Total planned working sets across every active performer, for the live
+    /// Summary rings. Falls back to the completed count when nothing is planned.
+    public var plannedWorkingSetTotal: Int {
+        exerciseList.reduce(0) { total, item in
+            total + performerIndices.reduce(0) { sum, performer in
+                sum + plannedWorkingSets(for: item.exercise, performerIndex: performer).count
+            }
+        }
+    }
     /// What the Set Card was pre-filled with (canonical kg / reps), so it can echo a change
     /// ("Log 100 × 4") and explain a planned value (watch redesign S1/S2/S5).
     public private(set) var prefillWeightKg: Double = 0

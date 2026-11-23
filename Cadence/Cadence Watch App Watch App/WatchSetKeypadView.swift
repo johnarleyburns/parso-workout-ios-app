@@ -167,7 +167,7 @@ struct WatchSetKeypadView: View {
                                       hint: Text("Select weight, then use the plus and minus buttons or turn the Digital Crown"),
                                       onFocus: { focus = .weight })
             .accessibilityIdentifier("watchWeight.current")
-        let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "reps"), isFocused: focus == .reps || card.isNonWeighted,
+        let reps = WatchMetricField(value: "\(card.reps)", unit: String(localized: "rps"), isFocused: focus == .reps || card.isNonWeighted,
                                     accessibilityName: Text("Reps"),
                                     hint: Text("Select reps, then use the plus and minus buttons or turn the Digital Crown"),
                                     onFocus: { focus = .reps })
@@ -247,16 +247,15 @@ struct WatchSetKeypadView: View {
                     ProgressView()
                 } else {
                     Image(systemName: WatchSetEntryPresentation.logButtonSystemImage)
-                        .font(.headline.weight(.bold))
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(WatchTone.accent)
                 }
             }
-            // A checkbox with real padding on both sides beats a cramped
-            // three-letter text button in the Watch bottom bar.
-            .frame(minWidth: CGFloat(WatchSetEntryPresentation.logButtonMinimumWidth),
-                   minHeight: 44)
+            // Bare green checkbox: the toolbar already gives it a 44 pt hit area,
+            // without a capsule/box around it.
+            .frame(minWidth: 44, minHeight: 44)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(WatchTone.accent)
+        .buttonStyle(.plain)
         .disabled(isLogging)
         .handGestureShortcut(.primaryAction)
         .accessibilityLabel(Text(card.logTitle))

@@ -112,6 +112,36 @@ struct PersonalizedSuggestionTests {
         #expect(option.exercises.contains { $0.candidateID == freshMovement.id })
     }
 
+    @Test func personalizedBuildsVolumeBeyondOneBroadCoverExercise() {
+        let groups: [MuscleGroup] = [.chest, .lats, .quadriceps, .hamstrings]
+        let broad = SuggestedExerciseCandidate(
+            id: "broad", name: "Broad Compound", mechanics: .compound,
+            primaryMuscles: groups.map(\.rawValue), isPersonalized: true)
+        let accessory = SuggestedExerciseCandidate(
+            id: "accessory", name: "Chest Accessory", mechanics: .isolation,
+            primaryMuscles: [MuscleGroup.chest.rawValue], isPersonalized: true)
+        let input = SuggestedWorkoutInput(
+            completedSetsByMuscle: Dictionary(uniqueKeysWithValues: groups.map { ($0.rawValue, 0.0) }),
+            candidates: [broad, accessory],
+            historyWorkoutCount: 5,
+            historyWorkingSetCount: 20,
+            trackedGroups: Set(groups),
+            preferredSetsPerExercise: 3,
+            trainingGoal: .hypertrophy)
+
+        let option = SuggestedWorkoutGenerator.generatePersonalized(input: input)
+
+        // One broad compound touches every group, but three sets cannot close a
+        // four-set weekly gap. The personalized session must keep adding work
+        // instead of declaring every gap covered after a single exercise.
+        #expect(option.exercises.count == 2)
+        #expect(Set(option.exercises.map(\.candidateID)) == ["broad", "accessory"])
+        #expect(option.remainingDeficits["chest"] == 0)
+        #expect(option.remainingDeficits["lats"] == 1)
+        #expect(option.remainingDeficits["quadriceps"] == 1)
+        #expect(option.remainingDeficits["hamstrings"] == 1)
+    }
+
     @Test func personalizedFillsGapsOutsideANarrowPreferredStyle() {
         let circusBell = SuggestedExerciseCandidate(
             id: "circus-bell", name: "Circus Bell Press", mechanics: .compound,

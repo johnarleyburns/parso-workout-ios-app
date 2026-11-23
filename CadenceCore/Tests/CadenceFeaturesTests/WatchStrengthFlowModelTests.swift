@@ -144,6 +144,14 @@ final class WatchStrengthFlowModelTests {
         #expect(m.suggestionActiveWorkingSets.contains { $0.exerciseName == "Bench Press" })
     }
 
+    @Test func plannedWorkingSetTotalFeedsTheLiveSummaryRings() {
+        let m = makeModel()
+        m.start(title: "Test", plannedExerciseNames: ["Bench Press"], repLadder: [8, 8, 8],
+                createSession: true)
+        #expect(m.setCount == 0)
+        #expect(m.plannedWorkingSetTotal == 3)
+    }
+
     @Test func addExerciseResult_addsOnceToActiveSessionAndPersists() {
         let m = makeModel()
         m.start(createSession: true)

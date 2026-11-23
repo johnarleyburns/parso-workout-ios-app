@@ -15844,6 +15844,165 @@
         }
       },
       "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExerciseView.swift); Watch Lift why (Cadence/Cadence Watch App Watch App/WatchStrengthPreview.swift)"
+    },
+    "Cool Down" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Abwärmen"
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cool Down"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Vuelta a la calma"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Retour au calme"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cooling-down"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Desaquecimento"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "放松"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "緩和"
+          }
+        }
+      },
+      "comment" : "UI text shown in: Workout Control Bar (Cadence/Cadence/Features/Shared/WorkoutControlBar.swift); Session Rendering Support (Cadence/Cadence/Features/Train/SessionView+RenderingSupport.swift)"
+    },
+    "Add Custom" : {
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Add Custom"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Eigene hinzufügen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Añadir personalizado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Ajouter personnalisé"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Aangepast toevoegen"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Adicionar personalizado"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "添加自定义"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "新增自訂"
+          }
+        }
+      },
+      "comment" : "UI text shown in: Watch Add Exercise (Cadence/Cadence Watch App Watch App/WatchAddExercisePicker.swift)"
+    },
+    "rps" : {
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rps"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Wdh"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "reps"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "rép"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "herh"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "reps"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "次"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "次"
+          }
+        }
+      },
+      "comment" : "UI text shown in: Watch Set Entry (Cadence/Cadence Watch App Watch App/WatchSetKeypadView.swift)"
     }
   },
   "version" : "1.0"

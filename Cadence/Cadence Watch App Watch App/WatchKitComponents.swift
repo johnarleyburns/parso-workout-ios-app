@@ -47,7 +47,7 @@ struct WatchMetricField: View {
 
     private var metricValue: some View {
         Text(value)
-            .font(.system(.title2, design: .rounded).weight(.bold))
+            .font(.system(.title3, design: .rounded).weight(.bold))
             .monospacedDigit()
             .lineLimit(1)
             .minimumScaleFactor(WatchSetCardMetricLayout.valueMinimumScaleFactor)
@@ -134,18 +134,17 @@ struct WatchPillStyle: ButtonStyle {
 /// workout pager. Those screens sit under a hidden navigation back button, so
 /// they must provide their own way out instead of trapping the user.
 struct WatchBackButton: View {
-    var title: LocalizedStringKey = "Back"
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: "chevron.left")
-                .font(.caption.weight(.semibold))
-                .labelStyle(.titleAndIcon)
+            Image(systemName: "chevron.left")
+                .font(.body.weight(.semibold))
                 .frame(minWidth: 44, minHeight: 44, alignment: .leading)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(Text("Back"))
         .accessibilityIdentifier("watch.back")
     }
 }

@@ -672,6 +672,7 @@ public enum SuggestedWorkoutGenerator {
                            preferredStyle: input.preferredStyle,
                            allowPersonalizedFallback: true,
                            excludedCandidateIDs: input.recentlyCompletedCandidateIDs,
+                           volumeAware: true,
                            index: index,
                            counters: &counters)
         _ = SuggestedWorkoutDiagnostics(
@@ -987,9 +988,14 @@ public enum SuggestedWorkoutGenerator {
                               preferredStyle: SuggestedWorkoutStyle = .fitness,
                               allowPersonalizedFallback: Bool = false,
                               excludedCandidateIDs: Set<String> = [],
+                              volumeAware: Bool = false,
                               index: SuggestedWorkoutVectorIndex,
                               counters: inout Counters) -> SuggestedWorkoutOption {
         let target = Double(suggestedWorkoutTargetSetsPerGroup)
+        let maxVolumeExercises = 8
+        // A personalized recommendation is a workout, not a single gap alert.
+        // Keep a normal session length when enough history movements exist.
+        let minPersonalizedExercises = 4
         let initial = index.muscleSpace.deficits(target: target, completed: completed)
         var deficits = initial
         var selected = Array(repeating: false, count: index.exercises.count)
@@ -1071,6 +1077,52 @@ public enum SuggestedWorkoutGenerator {
             }
         }
 
+        /// One broad movement can touch every deficient group without delivering
+        /// enough planned sets to close it. Continue with the personal-history
+        /// pool until the weekly dose is met or the editable session cap is
+        /// reached, without pulling in a movement the user has never trained.
+        func fillVolume(membership: [Bool]) {
+            var rounds = 0
+            while choices.count < maxVolumeExercises, rounds < maxVolumeExercises {
+                let current = recomputeDeficits(initial: initial, exercises: choices,
+                                                muscleSpace: index.muscleSpace)
+                let hasDeficit = current.contains(where: { $0 > epsilon })
+                if !hasDeficit && choices.count >= minPersonalizedExercises { return }
+                var best: Selection?
+                for candidateIndex in index.exercises.indices where !selected[candidateIndex] {
+                    guard membership[candidateIndex] else { continue }
+                    let exercise = index.exercises[candidateIndex]
+                    if style == .personalized,
+                       excludedCandidateIDs.contains(exercise.candidate.id) {
+                        continue
+                    }
+                    let policyStyle = style == .personalized ? preferredStyle : style
+                    if policyStyle != .olympic,
+                       (exercise.candidate.trainingTypes.contains(.olympicWeightlifting)
+                        || ExerciseTrainingType.isOlympicOnlyMovement(named: exercise.candidate.name)) {
+                        continue
+                    }
+                    let score = hasDeficit
+                        ? score(exercise, deficits: current, preferredSets: preferredSets)
+                        : Score(total: 0, credited: 0)
+                    if hasDeficit && score.total <= epsilon { continue }
+                    let selection = Selection(candidateIndex: candidateIndex,
+                                              score: score, isInStyle: true)
+                    if best == nil || isBetter(selection, than: best!, index: index) {
+                        best = selection
+                    }
+                }
+                guard let best else { return }
+                selected[best.candidateIndex] = true
+                let exercise = index.exercises[best.candidateIndex]
+                choices.append(outputExercise(exercise, preferredSets: preferredSets,
+                                              repRange: repRange, score: best.score.total,
+                                              isInStyle: membership[best.candidateIndex],
+                                              muscleSpace: index.muscleSpace))
+                rounds += 1
+            }
+        }
+
         fill(restrictedToStyle: true, membership: inStyle, outputMembership: inStyle)
         if style == .personalized && allowPersonalizedFallback,
            historyWorkoutCount >= minimumPersonalizedWorkouts {
@@ -1091,6 +1143,9 @@ public enum SuggestedWorkoutGenerator {
             // full eligible catalog complete those gaps just as the Fill the
             // Gaps workout does.
             fill(restrictedToStyle: false, membership: inStyle, outputMembership: inStyle)
+        }
+        if volumeAware {
+            fillVolume(membership: inStyle)
         }
 
         // A suggestion is an on-demand workout, not only a gap-filling alert.

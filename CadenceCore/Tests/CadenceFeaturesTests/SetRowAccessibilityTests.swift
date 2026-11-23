@@ -22,13 +22,14 @@ struct SetRowAccessibilityTests {
         #expect(descriptor.label.contains("57 kg"))
     }
 
-    @Test func currentPendingSetOffersLogAndEdit() {
+    @Test func currentPendingSetOffersEditOnly() {
         let descriptor = SetRowAccessibility.pending(
             exercise: "Bench Press", setNumber: 3, planned: 5, reps: 5,
             weight: "100 kg", performer: "Me", isCurrent: true)
 
         #expect(descriptor.label == "Set 3 of 5, Bench Press, Me, 100 kg, 5 reps, next set, not logged")
-        #expect(descriptor.actions == [.log, .edit])
+        #expect(descriptor.actions == [.edit])
+        #expect(!descriptor.hint.lowercased().contains("log"))
     }
 
     @Test func laterPendingSetDoesNotOfferLog() {

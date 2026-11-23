@@ -26,7 +26,6 @@ struct ExerciseCardView: View {
 
     let onTapSet: (SessionRenderModel.SetDisplay) -> Void
     let onTapPending: (SessionRenderModel.PendingSetDisplay) -> Void
-    let onLogPending: (SessionRenderModel.PendingSetDisplay) -> Void
     let onRepeat: () -> Void
     let onAddSet: () -> Void
     let onChangeExercise: () -> Void
@@ -311,43 +310,37 @@ struct ExerciseCardView: View {
         return HStack(spacing: SetCol.gap) {
             Button { onTapPending(pending) } label: {
                 HStack(spacing: SetCol.gap) {
-                if hasPartners {
-                    performerChipView(pending.performerID.flatMap { id in
-                        context.performerContexts.first { $0.performerID == id }.map {
-                            SessionRenderModel.PerformerRef(personID: id, isMe: $0.isMe, name: $0.label)
-                        }
-                    })
-                } else {
-                    setIndexBadge(
-                        String(pending.setIndex + 1),
-                        isWarmup: pending.kind == .warmup)
-                }
-                let weightText: String = {
-                    guard let kg = pending.targetWeightKg else { return "—" }
-                    return isNonWeighted ? "—" : Format.weightValue(kg, unit: unit)
-                }()
-                Text("\(weightText) × \(pending.targetReps) · \(pending.kind.displayName)")
-                    .font(.subheadline).foregroundStyle(.tertiary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity)
-                Color.clear.frame(width: SetCol.reps)
-                Color.clear.frame(width: SetCol.rpe)
-                    Image(systemName: "plus.circle").foregroundStyle(.tint).frame(width: SetCol.check)
+                    if hasPartners {
+                        performerChipView(pending.performerID.flatMap { id in
+                            context.performerContexts.first { $0.performerID == id }.map {
+                                SessionRenderModel.PerformerRef(personID: id, isMe: $0.isMe, name: $0.label)
+                            }
+                        })
+                    } else {
+                        setIndexBadge(
+                            String(pending.setIndex + 1),
+                            isWarmup: pending.kind == .warmup)
+                    }
+                    let weightText: String = {
+                        guard let kg = pending.targetWeightKg else { return "—" }
+                        return isNonWeighted ? "—" : Format.weightValue(kg, unit: unit)
+                    }()
+                    Text("\(weightText) × \(pending.targetReps) · \(pending.kind.displayName)")
+                        .font(.subheadline).foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                    Color.clear.frame(width: SetCol.reps)
+                    Color.clear.frame(width: SetCol.rpe)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                        .frame(width: SetCol.check)
                 }
                 .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)").accessibilityLabel(descriptor.label).accessibilityHint(descriptor.hint).accessibilityRotorEntry(id: "pending-\(pending.id)", in: rotorNamespace)
             .accessibilityAction(named: "Edit set") { onTapPending(pending) }
-            if isCurrentPending {
-                Button("Log") { onLogPending(pending) }
-                    .buttonStyle(.borderedProminent)
-                    .tint(CadenceTheme.accent)
-                    .controlSize(.small)
-                    .accessibilityIdentifier("session.set.log.\(context.name).\(pending.setIndex + 1)")
-                    .accessibilityHint("Logs the next uncompleted set.")
-                    .accessibilityAction(named: "Log set") { onLogPending(pending) }
-            }
         }
         .padding(.vertical, 2)
         .opacity(isCurrentPending ? 1 : 0.68)

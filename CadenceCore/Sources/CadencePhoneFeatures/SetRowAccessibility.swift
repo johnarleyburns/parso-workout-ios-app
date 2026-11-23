@@ -8,20 +8,12 @@ import Foundation
 /// across the phone and Watch surfaces.
 public enum SetRowAccessibility {
     public enum Action: String, CaseIterable, Sendable {
-        case log
         case edit
         case repeatSet
         case delete
 
         public var displayName: String {
             switch self {
-            case .log: return {
-                #if os(Linux)
-                "Log set"
-                #else
-                String(localized: "Log set", bundle: FeatureLocalization.bundle)
-                #endif
-            }()
             case .edit: return {
                 #if os(Linux)
                 "Edit set"
@@ -91,19 +83,13 @@ public enum SetRowAccessibility {
                 String(localized: "Set \(setNumber) of \(max(setNumber, planned)), \(exercise)\(performerText)\(weightText), \(reps) reps, \(state)", bundle: FeatureLocalization.bundle)
                 #endif
             }(),
-            hint: isCurrent ? {
-                #if os(Linux)
-                "Double tap to edit, or use Log set to save the next set."
-                #else
-                String(localized: "Double tap to edit, or use Log set to save the next set.", bundle: FeatureLocalization.bundle)
-                #endif
-            }() : {
+            hint: {
                 #if os(Linux)
                 "Double tap to edit this planned set."
                 #else
                 String(localized: "Double tap to edit this planned set.", bundle: FeatureLocalization.bundle)
                 #endif
             }(),
-            actions: isCurrent ? [.log, .edit] : [.edit])
+            actions: [.edit])
     }
 }

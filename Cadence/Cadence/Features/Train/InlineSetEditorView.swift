@@ -53,12 +53,6 @@ struct InlineSetEditorView: View {
                                                 hasExplicitEntry: hasExplicitWeightEntry,
                                                 bodyweight: config.bodyweight)
     }
-    private var effortValues: [Double] { Array(1...10).map(Double.init) }
-    private var effortDescription: String {
-        guard let value = draft.effort else { return draft.effortMode == .rpe ? String(localized: "How hard did the set feel?") : String(localized: "How many good reps remained?") }
-        if draft.effortMode == .rir { return String(localized: "\(Int(value)) good reps remained") }
-        switch value { case 10: return String(localized: "Maximum effort · no reps left"); case 9: return String(localized: "Very hard · about 1 rep left"); case 8: return String(localized: "Hard · about 2 reps left"); case 7: return String(localized: "Challenging · about 3 reps left"); default: return String(localized: "Comfortable effort") }
-    }
     private var isPR: Bool { wouldBePR?(draft.canonicalWeightKg, draft.reps) ?? false }
 
     var body: some View {
@@ -95,7 +89,7 @@ struct InlineSetEditorView: View {
             .sheet(isPresented: $keypadPresented) { keypad }
             .sheet(isPresented: $repsKeypadPresented) { repsKeypad }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .accessibilityIdentifier("setEditor.sheet")
         // Performer selection changes attribution/history only. The current
@@ -114,8 +108,8 @@ struct InlineSetEditorView: View {
     }
 
     /// The roster entry for whoever is currently selected. The History card reads
-    /// this, so it re-derives by SwiftUI recompute whenever "Who did this set?"
-    /// changes — the field-test issue 3 requirement.
+    /// this, so it re-derives by SwiftUI recompute whenever the performer
+    /// changes.
     private var selectedDefault: InlineEditorConfig.PerformerDefault? {
         config.performerDefaults.first { $0.performerID == performerID }
     }
@@ -153,8 +147,7 @@ struct InlineSetEditorView: View {
     }
 
     private var performerSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Who did this set?").font(.headline)
+        VStack(alignment: .leading, spacing: 4) {
             Menu {
                 Button("Me") { performerID = nil }
                 ForEach(config.roster.filter { !$0.isMe && $0.personID != nil }) { person in
@@ -191,45 +184,58 @@ struct InlineSetEditorView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(config.bodyweight ? "Added weight" : "Weight").font(.headline)
             if config.bodyweight { Text("Bodyweight movement · enter added load only").font(.caption).foregroundStyle(.secondary) }
-            if let source = selectedDefault?.weightSourceText ?? config.weightSourceText {
-                Label(source, systemImage: "wand.and.stars")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("setEditor.weightSource")
-            }
-            Button { typedWeight = weightText; keypadPresented = true } label: {
-                HStack(alignment: .lastTextBaseline, spacing: 6) { Text(weightText).scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded).monospacedDigit(); Text(config.unit.abbreviation).font(.title3.weight(.semibold)); Text("Type").font(.caption).foregroundStyle(.tint) }
+            HStack(spacing: 12) {
+                weightStepButton("−", label: "Decrease weight",
+                                 identifier: "setEditor.weight.minus") {
+                    hasExplicitWeightEntry = true
+                    draft.adjustWeight(by: -increment)
+                    Haptics.selection()
+                }
+                Button { typedWeight = weightText; keypadPresented = true } label: {
+                    HStack(alignment: .lastTextBaseline, spacing: 6) {
+                        Text(weightText)
+                            .scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded)
+                            .monospacedDigit()
+                        Text(config.unit.abbreviation).font(.title3.weight(.semibold))
+                    }
                     .frame(maxWidth: .infinity)
-            }.buttonStyle(.plain).accessibilityIdentifier("setEditor.weightValue").accessibilityValue("\(weightText) \(config.unit.abbreviation)")
-            HStack(spacing: 10) {
-                adjustmentButton("− \(display(increment)) \(config.unit.abbreviation)") { hasExplicitWeightEntry = true; draft.adjustWeight(by: -increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.minus")
-                adjustmentButton("+ \(display(increment)) \(config.unit.abbreviation)") { hasExplicitWeightEntry = true; draft.adjustWeight(by: increment); Haptics.selection() }.accessibilityIdentifier("setEditor.weight.plus")
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("setEditor.weightValue")
+                .accessibilityValue("\(weightText) \(config.unit.abbreviation)")
+                weightStepButton("+", label: "Increase weight",
+                                 identifier: "setEditor.weight.plus") {
+                    hasExplicitWeightEntry = true
+                    draft.adjustWeight(by: increment)
+                    Haptics.selection()
+                }
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
-                        Button { increment = value; Haptics.selection() } label: {
-                            Text(incrementLabel(value))
-                                .fixedSize(horizontal: true, vertical: false)
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
+                            Button { increment = value; Haptics.selection() } label: {
+                                Text(incrementLabel(value))
+                                    .fixedSize(horizontal: true, vertical: false)
+                                    .frame(minHeight: 48)
+                                    .padding(.horizontal, 10)
+                            }.buttonStyle(.bordered).tint(increment == value ? .green : .secondary)
+                                .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
+                                .id(value)
+                        }
+                        Button { typedWeight = weightText; keypadPresented = true } label: {
+                            Text("Type")
                                 .frame(minHeight: 48)
                                 .padding(.horizontal, 10)
-                        }.buttonStyle(.bordered).tint(increment == value ? .green : .secondary)
-                            .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
+                                .accessibilityLabel("Type weight")
+                        }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
                     }
-                    Button { typedWeight = weightText; keypadPresented = true } label: {
-                        Text("Type")
-                            .frame(minHeight: 48)
-                            .padding(.horizontal, 10)
-                            .accessibilityLabel("Type weight")
-                    }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
+                    .padding(.horizontal, 2)
                 }
-                .padding(.horizontal, 2)
+                .contentMargins(.horizontal, 2, for: .scrollContent)
+                .onAppear { proxy.scrollTo(increment, anchor: .center) }
             }
-            .contentMargins(.horizontal, 2, for: .scrollContent)
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
-            if selectedDefault?.weightSourceText != nil || config.weightSourceText != nil {
-                CitationLink(citation: CitationRegistry.oneRMEstimation,
-                             context: String(localized: "How personalized loads are estimated"), compact: true)
-            }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
 
@@ -269,12 +275,28 @@ struct InlineSetEditorView: View {
                         .accessibilityAddTraits(draft.effortMode == mode ? .isSelected : [])
                 }
             }.background(.background, in: RoundedRectangle(cornerRadius: 10)).clipShape(RoundedRectangle(cornerRadius: 10))
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 5), spacing: 8) {
-                Button("None") { draft.selectEffort(nil); Haptics.selection() }.buttonStyle(.bordered).tint(draft.effort == nil ? .green : .secondary).frame(minHeight: 48).accessibilityIdentifier("setEditor.effort.none").accessibilityAddTraits(draft.effort == nil ? .isSelected : [])
-                ForEach(effortValues, id: \.self) { value in Button("\(Int(value))") { draft.selectEffort(value); Haptics.selection() }.buttonStyle(.bordered).tint(draft.effort == value ? .green : .secondary).frame(minHeight: 48).accessibilityIdentifier("setEditor.effort.value.\(Int(value))").accessibilityAddTraits(draft.effort == value ? .isSelected : []) }
+            HStack(spacing: 12) {
+                adjustmentButton("−") { adjustEffort(by: -1) }
+                    .accessibilityLabel("Decrease effort")
+                    .accessibilityIdentifier("setEditor.effort.minus")
+                Text(draft.effort.map { "\(Int($0.rounded()))" } ?? "—")
+                    .scaledSystemFont(42, relativeTo: .title, weight: .bold, design: .rounded)
+                    .monospacedDigit()
+                    .frame(maxWidth: .infinity)
+                    .accessibilityIdentifier("setEditor.effort.value")
+                    .accessibilityLabel(draft.effort.map {
+                        "\(draft.effortMode.displayName) \(Int($0.rounded()))"
+                    } ?? String(localized: "No effort selected"))
+                adjustmentButton("+") { adjustEffort(by: 1) }
+                    .accessibilityLabel("Increase effort")
+                    .accessibilityIdentifier("setEditor.effort.plus")
             }
-            Text(effortDescription).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .center)
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func adjustEffort(by delta: Double) {
+        draft.adjustEffort(by: delta)
+        Haptics.selection()
     }
 
     private var footer: some View {
@@ -302,6 +324,19 @@ struct InlineSetEditorView: View {
     }
 
     private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.bordered).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
+    private func weightStepButton(_ title: String, label: LocalizedStringKey,
+                                  identifier: String,
+                                  action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.title2.weight(.bold))
+                .frame(width: 52, height: 56)
+        }
+        .buttonStyle(.bordered)
+        .tint(.green)
+        .accessibilityLabel(label)
+        .accessibilityIdentifier(identifier)
+    }
     private func display(_ value: Double) -> String { value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression) }
     private func displayID(_ value: Double) -> String { display(value) }
     private func incrementLabel(_ value: Double) -> String { "\(value >= 10 ? "+" : "±")\(display(value))" }

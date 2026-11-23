@@ -74,6 +74,27 @@ public struct ExpandedSetDraftModel: Equatable, Sendable {
         effort = value.map(Self.clampEffort)
     }
 
+    /// Stepper entry used by the phone set editor. `nil` means "no effort
+    /// selected"; the first tap opens at a conventional working effort (7) and
+    /// subsequent taps move one point. Decrementing below 1 clears the value
+    /// again, so the section can return to its default "none" state without a
+    /// separate row of choices.
+    public mutating func adjustEffort(by amount: Double) {
+        guard amount != 0 else { return }
+        guard let current = effort else {
+            // First tap opens at a conventional working effort. The direction
+            // still matters: "+" starts at 7, "−" at 6.
+            effort = amount > 0 ? 7 : 6
+            return
+        }
+        let next = current + amount
+        if next < 1 {
+            effort = nil
+        } else {
+            effort = Self.clampEffort(next)
+        }
+    }
+
     public mutating func selectMode(_ mode: WatchEffortMode) {
         guard mode != effortMode else { return }
         if let currentEffort = effort {

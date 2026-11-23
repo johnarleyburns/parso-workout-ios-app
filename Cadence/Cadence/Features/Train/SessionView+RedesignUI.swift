@@ -165,10 +165,6 @@ extension SessionView {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 openInlineEditor(for: ex, repsOverride: pending.targetReps, performerID: pending.performerID)
             },
-            onLogPending: { pending in
-                guard let ex = exerciseForID(ctx.exerciseID) else { return }
-                logPendingSet(pending, for: ex)
-            },
             onRepeat: {
                 guard let ex = exerciseForID(ctx.exerciseID) else { return }
                 let sets = session.orderedSets.filter { $0.exercise?.id == ex.id }

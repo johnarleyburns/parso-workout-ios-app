@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import CadencePhoneFeatures
 
 /// Structural guards for the phone field-test batch. These cover SwiftUI
 /// composition and notification wiring that the headless suite cannot render.
@@ -126,5 +127,71 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(partners.contains("Query(filter: #Predicate<Person>"))
         let model = try source("CadenceCore/Sources/CadenceCore/Models.swift")
         #expect(model.contains("var isArchived: Bool = false"))
+    }
+
+    @Test func warmupUsesCardioLayoutAndSinglePlusButtons() throws {
+        let overlay = try source("Cadence/Cadence/Features/Shared/GuidedPhaseOverlay.swift")
+        #expect(overlay.contains("enum Emphasis"))
+        #expect(overlay.contains("case liveMetric"))
+        #expect(overlay.contains("pauseShowsTitle"))
+        #expect(overlay.contains("Label(\"1 min\", systemImage: \"plus\")"))
+        #expect(!overlay.contains("Label(\"+1 min\""))
+
+        let home = try source("Cadence/Cadence/Features/Home/HomeView+DashboardOverlays.swift")
+        #expect(home.contains("emphasis: .liveMetric"))
+        #expect(home.contains("pauseShowsTitle: false"))
+        #expect(home.contains("GuidedPhaseLiveHRView(idPrefix: \"warmup\")"))
+
+        let hr = try source("Cadence/Cadence/Features/Train/GuidedPhaseLiveHRView.swift")
+        #expect(hr.contains("LiveHRBigView("))
+        #expect(hr.contains("CardioMath.hrZone"))
+    }
+
+    @Test func addSetEditorIsFullHeightAndFocused() throws {
+        let editor = try source("Cadence/Cadence/Features/Train/InlineSetEditorView.swift")
+        #expect(editor.contains(".presentationDetents([.large])"))
+        #expect(!editor.contains("Who did this set?"))
+        #expect(!editor.contains("How hard did the set feel?"))
+        #expect(!editor.contains("setEditor.weightSource"))
+        #expect(!editor.contains("CitationLink("))
+        #expect(!editor.contains("Button(\"None\")"))
+        #expect(!editor.contains("Text(\"Type\").font(.caption)"))
+
+        // Weight steppers sit beside the value; the plate row scrolls to the
+        // selected increment (5 lb is the pounds default).
+        let minus = try #require(editor.range(of: "weightStepButton(\"−\""))
+        let value = try #require(editor.range(of: "setEditor.weightValue"))
+        let plus = try #require(editor.range(of: "weightStepButton(\"+\""))
+        #expect(minus.lowerBound < value.lowerBound && value.lowerBound < plus.lowerBound)
+        #expect(editor.contains("ScrollViewReader"))
+        #expect(editor.contains("proxy.scrollTo(increment, anchor: .center)"))
+        #expect(editor.contains("config.unit == .pounds ? 5 : 2.5"))
+
+        // Effort is one number with +/- and no chooser grid or helper prose.
+        #expect(editor.contains("setEditor.effort.minus"))
+        #expect(editor.contains("setEditor.effort.plus"))
+        #expect(editor.contains("setEditor.effort.value"))
+        #expect(!editor.contains("LazyVGrid"))
+
+        #expect(ExpandedSetDraftModel.increments(for: .pounds).contains(5))
+    }
+
+    @Test func pendingSetRowsUseAChevronAndNeverLogDirectly() throws {
+        let card = try source("Cadence/Cadence/Features/Train/ExerciseCardView.swift")
+        #expect(card.contains("Image(systemName: \"chevron.right\")"))
+        #expect(card.contains("accessibilityAction(named: \"Edit set\")"))
+        #expect(!card.contains("onLogPending"))
+        #expect(!card.contains("session.set.log"))
+        #expect(!card.contains("plus.circle"))
+
+        let redesign = try source("Cadence/Cadence/Features/Train/SessionView+RedesignUI.swift")
+        #expect(!redesign.contains("onLogPending"))
+        #expect(!redesign.contains("logPendingSet("))
+    }
+
+    @Test func setEditorRosterAlwaysKeepsTheOwnerForHistory() throws {
+        let session = try source("Cadence/Cadence/Features/Train/SessionView.swift")
+        #expect(session.contains("guard !entries.contains(where: \\.isMe) else { return entries }"))
+        #expect(session.contains("RosterEntry(personID: nil, name: \"Me\", isMe: true)"))
     }
 }

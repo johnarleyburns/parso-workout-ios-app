@@ -2,12 +2,14 @@ import SwiftUI
 import Combine
 import CadenceCore
 
-/// A guided warm-up / cool-down countdown shown over a workout (feedback batch 4).
-/// Generalizes the get-ready countdown: a big `mm:ss` clock, the phase name,
-/// +1 minute, Pause/Resume, and the phase's finish action (Skip for
-/// warm-up, End for cool-down). When the timer reaches zero — or the user taps
-/// that finish action — `onFinish` fires (warm-up → opens the session; cool-down
-/// → finishes it).
+/// A guided warm-up / cool-down timer shown over a workout (feedback batch 4).
+/// Generalizes the get-ready countdown: the phase name, +1 minute,
+/// Pause/Resume, and the phase's finish action (Skip for warm-up, End for
+/// cool-down). When the timer reaches zero — or the user taps that finish
+/// action — `onFinish` fires (warm-up → opens the session; cool-down →
+/// finishes it). Warm-up promotes a caller-owned live metric (BPM) above a
+/// smaller countdown because the phase is primarily cardio; cool-down keeps
+/// the countdown as the hero.
 ///
 /// Timing is wall-clock based via `PhaseCountdownClock`, so the countdown **keeps
 /// running while the app is backgrounded** and is correct on return; it only
@@ -22,12 +24,23 @@ import CadenceCore
 /// was left when it ended) so history can show the real warm-up/cool-down time —
 /// e.g. skipping a 10:00 cool-down at 3:00 reports 180 (feedback batch 6).
 struct GuidedPhaseOverlay: View {
+    /// Warm-up is primarily a cardio task, so it promotes the live metric and
+    /// demotes the countdown. Cool-down keeps the timer as the hero.
+    enum Emphasis: Equatable {
+        case timer
+        case liveMetric
+    }
+
     let title: String
     let minutes: Int
     var tint: Color = .green
     var idPrefix: String
     /// Play a transition bell when this phase begins (batch 7 item 9).
     var soundsEnabled: Bool = false
+    var emphasis: Emphasis = .timer
+    /// Warm-up's pause action is the universally understood glyph; cool-down
+    /// keeps its label.
+    var pauseShowsTitle: Bool = true
     /// The phase's second action matches the workout dock: warm-up skips ahead,
     /// cool-down ends the workout.
     var finishTitle: String = String(localized: "Skip")
@@ -51,6 +64,8 @@ struct GuidedPhaseOverlay: View {
 
     init(title: String, minutes: Int, tint: Color = .green,
          idPrefix: String, soundsEnabled: Bool = false,
+         emphasis: Emphasis = .timer,
+         pauseShowsTitle: Bool = true,
          finishTitle: String = String(localized: "Skip"),
          finishSystemImage: String = "stop.fill",
          finishTint: Color = .red,
@@ -63,6 +78,8 @@ struct GuidedPhaseOverlay: View {
         self.tint = tint
         self.idPrefix = idPrefix
         self.soundsEnabled = soundsEnabled
+        self.emphasis = emphasis
+        self.pauseShowsTitle = pauseShowsTitle
         self.finishTitle = finishTitle
         self.finishSystemImage = finishSystemImage
         self.finishTint = finishTint
@@ -89,19 +106,28 @@ struct GuidedPhaseOverlay: View {
     var body: some View {
         ZStack {
             tint.ignoresSafeArea()
-            VStack(spacing: 24) {
-                Spacer()
+            VStack(spacing: 20) {
+                Spacer(minLength: 0)
                 Text(title).scaledSystemFont(34, relativeTo: .largeTitle, weight: .heavy, design: .rounded)
                     .accessibilityIdentifier("\(idPrefix).title")
-                Text(clock)
-                    .scaledSystemFont(96, relativeTo: .largeTitle, weight: .black, design: .rounded)
-                    .monospacedDigit().contentTransition(.numericText())
-                    .accessibilityIdentifier("\(idPrefix).remaining")
-                if let liveMetric {
+                if emphasis == .liveMetric, let liveMetric {
                     liveMetric
                         .accessibilityIdentifier("\(idPrefix).liveHR")
+                    Text(clock)
+                        .scaledSystemFont(44, relativeTo: .title, weight: .bold, design: .rounded)
+                        .monospacedDigit().contentTransition(.numericText())
+                        .accessibilityIdentifier("\(idPrefix).remaining")
+                } else {
+                    Text(clock)
+                        .scaledSystemFont(96, relativeTo: .largeTitle, weight: .black, design: .rounded)
+                        .monospacedDigit().contentTransition(.numericText())
+                        .accessibilityIdentifier("\(idPrefix).remaining")
+                    if let liveMetric {
+                        liveMetric
+                            .accessibilityIdentifier("\(idPrefix).liveHR")
+                    }
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 HStack(spacing: 10) {
                     Button {
                         let ref = Date()
@@ -109,12 +135,19 @@ struct GuidedPhaseOverlay: View {
                         else { countdown.pause(now: ref) }
                         now = ref
                     } label: {
-                        Label(paused ? "Resume" : "Pause",
-                              systemImage: paused ? "play.fill" : "pause.fill")
-                            .frame(maxWidth: .infinity)
+                        if pauseShowsTitle {
+                            Label(paused ? "Resume" : "Pause",
+                                  systemImage: paused ? "play.fill" : "pause.fill")
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Image(systemName: paused ? "play.fill" : "pause.fill")
+                                .font(.title3.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("\(idPrefix).pause")
+                    .accessibilityLabel(paused ? "Resume" : "Pause")
 
                     Button {
                         (onSkip ?? onFinish)(consumedSeconds)
@@ -128,15 +161,17 @@ struct GuidedPhaseOverlay: View {
                     Button {
                         addTime(60)
                     } label: {
-                        Label("+1 min", systemImage: "plus").frame(maxWidth: .infinity)
+                        Label("1 min", systemImage: "plus").frame(maxWidth: .infinity)
                     }
                     .cadenceGlassButton(tint: .white)
                     .accessibilityIdentifier("\(idPrefix).addMinute")
+                    .accessibilityLabel("Add 1 minute")
                 }
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
                 .glassGroup(spacing: 10)
             }
+            .multilineTextAlignment(.center)
             .foregroundStyle(.white)
             .padding()
         }

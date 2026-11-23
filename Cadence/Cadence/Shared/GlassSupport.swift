@@ -72,11 +72,12 @@ extension View {
 
     /// Glass button on iOS 26+, matching bordered button style elsewhere.
     @ViewBuilder
-    func cadenceGlassButton(prominent: Bool = false, tint: Color? = nil) -> some View {
+    func cadenceGlassButton(prominent: Bool = false, tint: Color? = nil,
+                            compact: Bool = false) -> some View {
         if GlassFeature.isEnabled, #available(iOS 26.0, *) {
-            glassButtonStyled(prominent: prominent, tint: tint)
+            glassButtonStyled(prominent: prominent, tint: tint, compact: compact)
         } else {
-            borderedButtonStyled(prominent: prominent, tint: tint)
+            borderedButtonStyled(prominent: prominent, tint: tint, compact: compact)
         }
     }
 
@@ -91,27 +92,27 @@ extension View {
 
     @available(iOS 26.0, *)
     @ViewBuilder
-    private func glassButtonStyled(prominent: Bool, tint: Color?) -> some View {
+    private func glassButtonStyled(prominent: Bool, tint: Color?, compact: Bool) -> some View {
         if prominent {
             buttonStyle(.glassProminent)
-                .controlSize(.large)
+                .controlSize(compact ? .small : .large)
                 .tint(tint)
         } else {
             buttonStyle(.glass)
-                .controlSize(.large)
+                .controlSize(compact ? .small : .large)
                 .tint(tint)
         }
     }
 
     @ViewBuilder
-    private func borderedButtonStyled(prominent: Bool, tint: Color?) -> some View {
+    private func borderedButtonStyled(prominent: Bool, tint: Color?, compact: Bool) -> some View {
         if prominent {
             buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                .controlSize(compact ? .small : .large)
                 .tint(tint)
         } else {
             buttonStyle(.bordered)
-                .controlSize(.large)
+                .controlSize(compact ? .small : .large)
                 .tint(tint)
         }
     }

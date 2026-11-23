@@ -21,6 +21,13 @@ public enum WorkoutPlanRepSchemeOptions {
         guard !reps.isEmpty else { return name }
         return "\(name): \(reps.map(String.init).joined(separator: "-"))"
     }
+
+    /// A blank (load-less) set template following the plan's rep structure. The
+    /// plan weight seeder fills each target load from the exercise's own history
+    /// without collapsing the row back to a single historical set.
+    public static func templateSets(following reps: [Int]) -> [EditableSet] {
+        reps.map { EditableSet(targetReps: $0, targetWeight: nil) }
+    }
 }
 
 extension EditablePlan {

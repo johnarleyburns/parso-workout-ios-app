@@ -16,7 +16,6 @@ import CadenceWorkoutFeatures
 /// than occupying rows on the workout page.
 struct SessionLiveHRInline: View {
     @Environment(AppModel.self) private var model
-    @State private var showingInfo = false
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 5)) { context in
@@ -27,24 +26,7 @@ struct SessionLiveHRInline: View {
                 Text(bpmText(now: context.date))
                     .font(.caption.weight(.semibold))
                     .monospacedDigit()
-                Button { showingInfo = true } label: {
-                    Image(systemName: "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 44, height: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("session.hr.info")
-                .accessibilityLabel("Heart rate status and reconnect")
             }
-        }
-        .alert("Receiving live HR", isPresented: $showingInfo) {
-            Button("Reconnect Apple Watch HR") { model.reconnectWatchHR() }
-                .accessibilityIdentifier("session.watch.reconnect")
-            Button("Done", role: .cancel) {}
-        } message: {
-            Text(model.watchHRStatusText)
         }
     }
 

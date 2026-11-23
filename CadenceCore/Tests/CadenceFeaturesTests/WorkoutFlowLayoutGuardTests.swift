@@ -57,10 +57,12 @@ struct WorkoutFlowLayoutGuardTests {
         #expect(session.contains("onCoolDown: startCooldownAfterDialog"))
     }
 
-    @Test func guidedPhasesOfferFiveMinutesAndAnEndAction() throws {
+    @Test func guidedPhasesUseThreeEvenBottomActions() throws {
         let overlay = try source("Cadence/Cadence/Features/Shared/GuidedPhaseOverlay.swift")
-        #expect(overlay.contains("addFiveMinutes"))
         #expect(overlay.contains("finishTitle"))
+        #expect(overlay.contains("finishSystemImage"))
+        #expect(overlay.contains(".accessibilityIdentifier("))
+        #expect(!overlay.contains("addFiveMinutes"))
     }
 
     @Test func planHistoryUsesCatalogKeysAndAllWeightSamples() throws {

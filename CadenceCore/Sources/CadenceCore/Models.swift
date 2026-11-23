@@ -1077,6 +1077,10 @@ public final class Person {
     /// The device owner. Exactly one Person should be `isMe`; nil attribution
     /// also means the owner.
     public var isMe: Bool = false
+    /// A partner the user removed from their active training roster. Archived
+    /// people stay attached to historical sets (so those sets keep their real
+    /// attribution) but are hidden from partner pickers and new plans.
+    public var isArchived: Bool = false
     public var createdAt: Date = Date()
     public var updatedAt: Date = Date()
     public var originDevice: String = ""
@@ -1089,12 +1093,14 @@ public final class Person {
     public init(id: UUID = UUID(),
                 name: String = "",
                 isMe: Bool = false,
+                isArchived: Bool = false,
                 createdAt: Date = Date(),
                 updatedAt: Date = Date(),
                 originDevice: String = "") {
         self.id = id
         self.name = name
         self.isMe = isMe
+        self.isArchived = isArchived
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.originDevice = originDevice

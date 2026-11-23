@@ -6,25 +6,10 @@ import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
 extension ExercisePickerView {
-    /// Browse / Recents / Popular: the single primary scope. Hidden while searching,
-    /// because a query always searches the full catalog (see `searchScopeNote`).
-    var tabPicker: some View {
-        HStack(spacing: 8) {
-            chip("Browse", active: selectedTab == .browse) { selectedTab = .browse }
-                .accessibilityIdentifier("picker.tab.browse")
-            chip("Recents", active: selectedTab == .recents) { selectedTab = .recents }
-                .accessibilityIdentifier("picker.tab.recents")
-            chip("Popular", active: selectedTab == .popular) { selectedTab = .popular }
-                .accessibilityIdentifier("picker.tab.popular")
-        }
-        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 4, trailing: 16))
-        .listRowBackground(Color.clear)
-    }
-
     /// At most ONE horizontally scrolling row (the active dimension's values) plus
     /// wrapping removable chips. Mode and the secondary dimension live in `filterMenu`.
     var browseControls: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 4) {
             if isFind {
                 primaryFacetRow
             } else if trimmedQuery.isEmpty && selectedTab == .browse { primaryFacetRow }
@@ -39,7 +24,7 @@ extension ExercisePickerView {
                 .accessibilityIdentifier("picker.searchAll")
             }
         }
-        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 8, trailing: 16))
+        .listRowInsets(EdgeInsets(top: 1, leading: 16, bottom: 2, trailing: 16))
         .listRowBackground(Color.clear)
     }
 
@@ -118,7 +103,8 @@ extension ExercisePickerView {
         .accessibilityAddTraits(.isSelected)
     }
 
-    /// Find has one scope menu; modal pickers retain their existing facet controls.
+    /// The picker's scope and facets live in one menu instead of carving a
+    /// dedicated row out of the screen. Browse is the default checked scope.
     var filterMenu: some View {
         Menu {
             if isFind {
@@ -130,6 +116,13 @@ extension ExercisePickerView {
                 }
                 .pickerStyle(.inline)
             } else {
+                Picker("Show", selection: $selectedTab) {
+                    Text("Browse").tag(PickerTab.browse)
+                    Text("Recents").tag(PickerTab.recents)
+                    Text("Popular").tag(PickerTab.popular)
+                }
+                .pickerStyle(.inline)
+                Divider()
                 if trimmedQuery.isEmpty && selectedTab == .browse {
                     Picker("Browse by", selection: $browseMode) {
                         Text("Muscle Group").tag(BrowseMode.byMuscleGroup)
@@ -137,14 +130,16 @@ extension ExercisePickerView {
                     }
                 }
                 if !trimmedQuery.isEmpty || browseMode == .byEquipment, selectedTab == .browse || !trimmedQuery.isEmpty {
-                    Picker("Muscle group", selection: $selectedGroup) {
-                        Text("Any").tag(MuscleGroup?.none)
+                    Picker("Muscle group", selection: Binding(
+                        get: { selectedGroup },
+                        set: { selectedGroup = $0 })) {
                         ForEach(menuGroups) { Text($0.displayName).tag(Optional($0)) }
                     }
                 }
                 if !trimmedQuery.isEmpty || (browseMode == .byMuscleGroup && selectedGroup != nil) {
-                    Picker("Equipment", selection: $selectedEquipment) {
-                        Text("Any").tag(Equipment?.none)
+                    Picker("Equipment", selection: Binding(
+                        get: { selectedEquipment },
+                        set: { selectedEquipment = $0 })) {
                         ForEach(menuEquipment) { Text($0.displayName).tag(Optional($0)) }
                     }
                 }

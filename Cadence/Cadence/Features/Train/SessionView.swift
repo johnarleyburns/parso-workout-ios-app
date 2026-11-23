@@ -35,6 +35,7 @@ struct SessionView: View {
     @State var pendingPerformerWasProvided = false
     @State var lastEffortMode: WatchEffortMode = .rpe
     @State var showWeightInfo = false
+    @State var showHRInfo = false
     @State var showDumbbellInfo = false
     @State var showKettlebellInfo = false
     @State var workoutSettingsPresented = false

@@ -46,7 +46,8 @@ struct HistoryView: View {
             if let control = paging?.deletedControl {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { withAnimation { paging?.toggleDeleted() } } label: {
-                        Image(systemName: showDeleted ? "archivebox.fill" : "archivebox")
+                        Text(control.title)
+                            .font(.subheadline.weight(.semibold))
                     }
                         .accessibilityLabel(control.title)
                         .accessibilityIdentifier("history.toggleDeleted")
@@ -85,6 +86,7 @@ struct HistoryView: View {
             Button("Delete", role: .destructive) {
                 try? WorkoutRepository.softDeleteSession(session, in: context)
                 sessionToDelete = nil
+                notifyHistoryChanged()
             }
         } message: { _ in Text("This removes the session. You can restore it from the Archive button.") }
         .confirmationDialog("Delete this cardio workout?",
@@ -94,6 +96,7 @@ struct HistoryView: View {
             Button("Delete", role: .destructive) {
                 try? WorkoutRepository.softDeleteCardio(c, in: context)
                 cardioToDelete = nil
+                notifyHistoryChanged()
             }
         } message: { _ in Text("This removes the cardio workout. You can restore it from the Archive button.") }
     }
@@ -117,7 +120,7 @@ struct HistoryView: View {
                     HomeWeekWorkoutRow(entry: entry, showsTimestamp: true) { open(entry) }
                         .contextMenu { timelineActions(for: entry) }
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { delete(entry) } label: {
+                            Button(role: .destructive) { deleteImmediately(entry) } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
@@ -142,13 +145,24 @@ struct HistoryView: View {
         .accessibilityIdentifier("history.myWorkouts")
     }
 
-    private func delete(_ entry: TodayActivityPresenter.Entry) {
+    /// Slide-to-delete acts immediately (the row remains recoverable from the
+    /// Archive / Show deleted surface). No confirmation dialog on a swipe.
+    private func deleteImmediately(_ entry: TodayActivityPresenter.Entry) {
         switch entry.kind {
         case .strength:
-            if let session = sessions.first(where: { $0.id == entry.sourceId }) { sessionToDelete = session }
+            if let session = sessions.first(where: { $0.id == entry.sourceId }) {
+                try? WorkoutRepository.softDeleteSession(session, in: context)
+            }
         case .cardio:
-            if let workout = cardio.first(where: { $0.id == entry.sourceId }) { cardioToDelete = workout }
+            if let workout = cardio.first(where: { $0.id == entry.sourceId }) {
+                try? WorkoutRepository.softDeleteCardio(workout, in: context)
+            }
         }
+        notifyHistoryChanged()
+    }
+
+    private func notifyHistoryChanged() {
+        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
     }
 
     private var legacyDeletedList: some View {
@@ -266,6 +280,7 @@ struct HistoryView: View {
             if session.deletedAt != nil {
                 Button(role: .destructive) {
                     try? WorkoutRepository.deleteSession(session, in: context)
+                    notifyHistoryChanged()
                 } label: { Label("Purge", systemImage: "trash.slash") }
                     .accessibilityIdentifier("history.purge")
             } else {
@@ -320,6 +335,7 @@ struct HistoryView: View {
             if c.deletedAt != nil {
                 Button(role: .destructive) {
                     try? WorkoutRepository.deleteCardio(c, in: context)
+                    notifyHistoryChanged()
                 } label: { Label("Purge", systemImage: "trash.slash") }
             } else {
                 Button(role: .destructive) { cardioToDelete = c } label: {
@@ -350,10 +366,12 @@ struct HistoryView: View {
 
     private func restore(_ s: WorkoutSession) {
         try? WorkoutRepository.restoreSession(s, in: context)
+        notifyHistoryChanged()
     }
 
     private func restoreCardio(_ c: CardioWorkout) {
         try? WorkoutRepository.restoreCardio(c, in: context)
+        notifyHistoryChanged()
     }
 }
 

@@ -299,6 +299,10 @@ struct RootTabView: View {
     }
 
     private func showWatchSyncToast(for state: WatchSyncState) {
+        // A successful confirmation is ambient status, not an event: the Watch
+        // heartbeat re-confirms repeatedly, and toasting every time made the
+        // screen flash "Watch confirmed" every few seconds.
+        if case .upToDate = state { return }
         guard let text = state.toastText else { return }
         let toast = WatchSyncToast(text: text, isFailure: state.isFailure)
         withAnimation(.easeInOut(duration: 0.18)) {

@@ -75,6 +75,8 @@ struct HomeView: View {
     @State var hrGateKind: PendingWorkout.Kind?
     @State var startWarmupAfterHRGate = false
     @State var warmupActive = false
+    @State var pendingWarmupSeconds: Int?
+    @State var pendingWarmupCue: WorkoutStartCue = .none
     @State var today: DayActivity?
     @State var activityTrend: [DayActivity] = []
     @State var passiveSamples: [PassiveReadinessSample] = []
@@ -340,7 +342,6 @@ struct HomeView: View {
         settings.coachPlanOverrideWeekKey = AppSettings.weekKey(for: Date())
         pendingAddGapsDeficits = nil
     }
-
     @ViewBuilder
     var testRecommendationCard: some View {
         if let rec = testRecommendation {
@@ -373,7 +374,6 @@ struct HomeView: View {
             testCardOverride = candidates.first { $0.kind != current.kind } ?? current
         }
     }
-
     func snoozeTest(_ kind: AssessmentKind) {
         let until = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date()
         var snoozes = settings.testRecommendationSnoozes

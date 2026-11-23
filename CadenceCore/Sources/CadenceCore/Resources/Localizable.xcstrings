@@ -30153,6 +30153,59 @@
         }
       },
       "comment" : "UI text shown in: Cardio Intensity (CadenceCore/Sources/CadenceCore/CardioIntensity.swift)"
+    },
+    "This session covers %@. " : {
+      "localizations" : {
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "This session covers %@. "
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Diese Einheit trainiert %@. "
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Esta sesión trabaja %@. "
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cette séance travaille %@. "
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Deze sessie traint %@. "
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Esta sessão trabalha %@. "
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "本次训练涵盖 %@。 "
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "本次訓練涵蓋 %@。 "
+          }
+        }
+      },
+      "comment" : "Workout rationale coverage line (CadenceCore/Sources/CadenceCore/SuggestedWorkoutGenerator.swift)"
     }
   },
   "version" : "1.0"

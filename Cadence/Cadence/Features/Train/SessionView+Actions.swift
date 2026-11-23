@@ -44,6 +44,10 @@ extension SessionView {
                 Button { workoutSettings = settings.lastStrengthSettings; workoutSettingsPresented = true } label: {
                     Label("Workout settings", systemImage: "gearshape")
                 }
+                Button { showHRInfo = true } label: {
+                    Label("Receiving live HR", systemImage: "heart.text.square")
+                }
+                .accessibilityIdentifier("session.hrInfo")
                 if active.strengthSession?.id == session.id {
                     Button { startCooldownAfterDialog() } label: {
                         Label("Start Cool Down", systemImage: "figure.cooldown")
@@ -319,7 +323,7 @@ extension SessionView {
         let valid = Set(allPeople.map { $0.id.uuidString })
         var seen = Set<String>()
         let cleaned = ids.filter { valid.contains($0) && seen.insert($0).inserted }
-        let partnerIDs = Set(allPeople.filter { !$0.isMe }.map { $0.id.uuidString })
+        let partnerIDs = Set(allPeople.filter { !$0.isMe && !$0.isArchived }.map { $0.id.uuidString })
         return cleaned.contains(where: { partnerIDs.contains($0) }) ? cleaned : []
     }
 

@@ -104,7 +104,7 @@ struct CloudKitSchemaCoverageTests {
                                   "statusRaw", "timeZoneIdentifier", "title", "updatedAt"],
             "PlanningDraft": ["createdAt", "deletedAt", "id", "originDevice", "payloadData",
                                "payloadVersion", "title", "updatedAt"],
-            "Person": ["createdAt", "id", "isMe", "name", "originDevice", "updatedAt"],
+            "Person": ["createdAt", "id", "isMe", "isArchived", "name", "originDevice", "updatedAt"],
             "ReadinessEntry": ["date", "fatigueEnergy", "hasPainOrIllnessConcern", "id",
                                 "muscleSoreness", "sleepQuality", "stressMood", "updatedAt"],
             "RouteSample": ["elevation", "id", "lat", "lon", "t"],

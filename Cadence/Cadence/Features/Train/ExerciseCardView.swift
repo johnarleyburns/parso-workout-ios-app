@@ -199,7 +199,16 @@ struct ExerciseCardView: View {
                 .frame(width: SetCol.reps, alignment: .center)
             Text("RPE")
                 .frame(width: SetCol.rpe, alignment: .center)
-            Color.clear.frame(width: SetCol.check)
+            if isEditing {
+                Color.clear.frame(width: SetCol.check)
+            } else {
+                Button { onAddSet() } label: {
+                    Image(systemName: "plus").font(.caption.weight(.bold))
+                        .frame(width: SetCol.check, height: 24).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).foregroundStyle(.tint)
+                .accessibilityIdentifier("set.add.\(context.name)")
+            }
         }
         .font(.caption2).textCase(.uppercase).foregroundStyle(.tertiary)
         .lineLimit(1)
@@ -330,7 +339,6 @@ struct ExerciseCardView: View {
             .buttonStyle(.plain)
             .accessibilityIdentifier("set.pending.\(context.name).\(pending.setIndex + 1)").accessibilityLabel(descriptor.label).accessibilityHint(descriptor.hint).accessibilityRotorEntry(id: "pending-\(pending.id)", in: rotorNamespace)
             .accessibilityAction(named: "Edit set") { onTapPending(pending) }
-
             if isCurrentPending {
                 Button("Log") { onLogPending(pending) }
                     .buttonStyle(.borderedProminent)
@@ -344,27 +352,24 @@ struct ExerciseCardView: View {
         .padding(.vertical, 2)
         .opacity(isCurrentPending ? 1 : 0.68)
     }
-
     private var actionButtons: some View {
         HStack(spacing: CGFloat(LayoutMetrics.cardRowSpacing)) {
-            Button { onAddSet() } label: {
-                Label("Add set", systemImage: "plus").frame(maxWidth: .infinity).lineLimit(1)
+            if context.sets.isEmpty && context.pendingCount == 0 {
+                Button { onAddSet() } label: {
+                    Label("Add set", systemImage: "plus").frame(maxWidth: .infinity).lineLimit(1)
+                }
+                .buttonStyle(.bordered).accessibilityIdentifier("set.add.\(context.name)")
             }
-            .buttonStyle(.bordered)
-            .accessibilityIdentifier("set.add.\(context.name)")
-
             if !context.sets.isEmpty {
                 Button { onRepeat() } label: {
                     Label("Repeat", systemImage: "arrow.clockwise").frame(maxWidth: .infinity).lineLimit(1)
                 }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("set.repeat.\(context.name)")
+                .buttonStyle(.bordered).accessibilityIdentifier("set.repeat.\(context.name)")
             }
         }
         .controlSize(.regular)
         .padding(.top, CGFloat(LayoutMetrics.cardRowSpacing))
     }
-
     @ViewBuilder
     private func setRowMenu(_ set: SessionRenderModel.SetDisplay) -> some View {
         Button { onTapSet(set) } label: {
@@ -378,7 +383,6 @@ struct ExerciseCardView: View {
                   systemImage: set.isWarmup ? "flame" : "flame.fill")
         }
     }
-
     @ViewBuilder
     private func performerChipView(_ ref: SessionRenderModel.PerformerRef?) -> some View {
         let label = ref?.isMe ?? true ? "M" : String((ref?.name ?? "?").prefix(1)).uppercased()

@@ -15,12 +15,21 @@ extension HomeView {
     /// system's blank warning destination for workout history routes.
     @ViewBuilder
     var dashboardNavigationRoot: some View {
-        if usesExternalNavigation {
-            homeNavigationDestinations(dashboardScrollContent)
-        } else {
-            NavigationStack(path: pathBinding) {
+        Group {
+            if usesExternalNavigation {
                 homeNavigationDestinations(dashboardScrollContent)
+            } else {
+                NavigationStack(path: pathBinding) {
+                    homeNavigationDestinations(dashboardScrollContent)
+                }
             }
+        }
+        // Warm-up is part of the workout, so it is an immersive full-screen
+        // cover rather than an overlay that leaves the app tab bar visible.
+        .fullScreenCover(isPresented: $warmupActive,
+                         onDismiss: completePendingWarmupLaunch) {
+            warmupPhaseOverlay
+                .interactiveDismissDisabled()
         }
     }
 

@@ -234,11 +234,6 @@ struct ExercisePickerView: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 List {
-                    // The tab and browse-mode segmented controls live in the
-                    // List so they share the rows' horizontal margins; outside
-                    // it they spanned wider than the exercise rows.
-                    if !isFind && trimmedQuery.isEmpty { tabPicker }
-
                     if !catalog.isLoaded {
                         Section {
                             HStack(spacing: 8) {
@@ -320,6 +315,7 @@ struct ExercisePickerView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .listSectionSpacing(.compact)
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
                 if isFind { draftSummaryBar }
@@ -332,9 +328,7 @@ struct ExercisePickerView: View {
                         prompt: "Search name, muscle, or equipment")
             .navigationDestination(for: ExerciseDetailRoute.self) { routeDestination($0) }
             .toolbar {
-                if isFind || selectedTab == .browse || !trimmedQuery.isEmpty {
-                    ToolbarItem(placement: .topBarTrailing) { filterMenu }
-                }
+                ToolbarItem(placement: .topBarTrailing) { filterMenu }
                 if !isFind {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel") { dismiss() }.accessibilityIdentifier("picker.cancel")

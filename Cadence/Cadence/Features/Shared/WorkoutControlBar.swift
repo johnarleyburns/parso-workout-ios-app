@@ -73,18 +73,18 @@ struct WorkoutControlBar: View {
         let pause = WorkoutDockPresenter.pauseContent(isPaused: isPaused)
         Button(action: onPauseToggle) {
             Label(LocalizedStringKey(pause.title), systemImage: pause.systemImage)
-                .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.minimumTargetHeight)
+                .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.compactTargetHeight)
         }
-        .cadenceGlassButton(tint: pauseTint)
+        .cadenceGlassButton(tint: pauseTint, compact: true)
         .accessibilityIdentifier("\(idPrefix).pause")
 
         Button(role: .destructive) {
             if confirmEnd { confirming = true } else { onEnd() }
         } label: {
             Label(endTitle, systemImage: WorkoutDockPresenter.endSystemImage)
-                .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.minimumTargetHeight)
+                .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.compactTargetHeight)
         }
-        .cadenceGlassButton(prominent: false, tint: endTint)
+        .cadenceGlassButton(prominent: false, tint: endTint, compact: true)
         .accessibilityIdentifier("\(idPrefix).end")
     }
 }

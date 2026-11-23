@@ -81,9 +81,10 @@ extension WorkoutPlanEditor {
         let credits = planVolumeCreditsByName()
         var performers: [VolumeSummaryPerformer] = [.owner]
         for id in plan.partnerIDs {
-            let name = allPeople.first(where: { $0.id == id })?.name ?? String(localized: "Partner")
+            guard let person = allPeople.first(where: { $0.id == id }),
+                  !person.isArchived else { continue }
             performers.append(VolumeSummaryPerformer(id: id.uuidString,
-                                                     name: name,
+                                                     name: person.name,
                                                      personID: id))
         }
         let prescriptionsByPerformer = Dictionary(uniqueKeysWithValues:

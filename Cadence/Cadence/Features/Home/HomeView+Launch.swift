@@ -237,14 +237,25 @@ extension HomeView {
     }
 
     func finishWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {
+        // Dismiss the immersive warm-up cover first; the session cover is
+        // presented from its onDismiss handler so two full-screen covers never
+        // race each other.
+        pendingWarmupSeconds = secs
+        pendingWarmupCue = startCue
+        warmupActive = false
+    }
+
+    /// Runs after the warm-up full-screen cover has finished dismissing.
+    func completePendingWarmupLaunch() {
+        guard let secs = pendingWarmupSeconds else { return }
+        pendingWarmupSeconds = nil
         var t = Transaction(); t.disablesAnimations = true
         withTransaction(t) {
-            launch(.strength, startCue: startCue)
+            launch(.strength, startCue: pendingWarmupCue)
             // Record the actual warm-up time on the session just created
             // (feedback batch 6).
             active.strengthSession?.warmupSeconds = Double(secs)
             try? context.save()
-            warmupActive = false
         }
     }
 

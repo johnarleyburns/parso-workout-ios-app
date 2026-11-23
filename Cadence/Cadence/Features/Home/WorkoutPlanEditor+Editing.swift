@@ -86,7 +86,7 @@ extension WorkoutPlanEditor {
     func rosterMembers() -> [PartnerPlanResolver.RosterMember] {
         let peopleByID = Dictionary(allPeople.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         let ordered = plan.partnerIDs.compactMap { id -> PartnerPlanResolver.RosterMember? in
-            guard let person = peopleByID[id] else { return nil }
+            guard let person = peopleByID[id], !person.isArchived else { return nil }
             return PartnerPlanResolver.RosterMember(performerID: person.isMe ? nil : person.id,
                                                     name: person.isMe ? "Me" : person.name)
         }
@@ -99,9 +99,22 @@ extension WorkoutPlanEditor {
     func applyPickedExercise(_ exercise: Exercise, for intent: ExercisePickerIntent) {
         switch intent {
         case .add:
+            // A newly added movement follows the plan's shared rep structure,
+            // not one historical set (or a lone ×10 placeholder). The weight
+            // seeder below fills each set's load from this movement's history.
+            let structure = plan.exercises.first(where: { !$0.sets.isEmpty })?
+                .sets.map(\.targetReps) ?? []
+            let sets = structure.isEmpty
+                ? ownerSeedSets(for: exercise.name)
+                : WorkoutPlanRepSchemeOptions.templateSets(following: structure)
             plan.exercises.append(EditableExercise(name: exercise.name,
-                                                    sets: ownerSeedSets(for: exercise.name),
+                                                    sets: sets,
                                                     notes: ""))
+            // Keep the chosen structure for this new row. Suggested plans must
+            // not replace it with a previous session's reps.
+            if !structure.isEmpty {
+                seededHistoryNames.insert(exercise.name)
+            }
         case .swap(let id):
             guard let index = plan.exercises.firstIndex(where: { $0.id == id }) else { return }
             plan.exercises[index].name = exercise.name
@@ -113,10 +126,10 @@ extension WorkoutPlanEditor {
                 updated.targetWeight = nil
                 return updated
             }
+            // The picked movement has its own history; allow the history seed to
+            // fill it even if a same-named row was already resolved earlier.
+            seededHistoryNames.remove(exercise.name)
         }
-        // The picked movement has its own history; allow the history seed to
-        // fill it even if a same-named row was already resolved earlier.
-        seededHistoryNames.remove(exercise.name)
         seedMissingSuggestedHistory()
         seedPlanWeights()
         resolvePartnerPlans()

@@ -289,6 +289,7 @@ struct WatchPreviewAddExerciseView: View {
     @Binding var existingNames: [String]
     @Binding var addedPrescriptions: [String: PlannedExercisePrescription]
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
 
     var body: some View {
         WatchAddExercisePicker(
@@ -308,8 +309,8 @@ struct WatchPreviewAddExerciseView: View {
                 }
                 return result
             },
-            onCreateCustom: { name, _ in
-                add(name: name)
+            onCreateCustom: { name, attribution in
+                addCustom(name: name, attribution: attribution)
             },
             onBack: { dismiss() },
             onAdded: { dismiss() })
@@ -323,5 +324,23 @@ struct WatchPreviewAddExerciseView: View {
         }) else { return .alreadyPresent(name: trimmed) }
         existingNames.append(trimmed)
         return .added(name: trimmed)
+    }
+
+    private func addCustom(name: String,
+                           attribution: WatchCustomExerciseMuscleAttribution) -> WatchExerciseAddResult {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, attribution.hasPrimaryMuscle,
+              let exercise = try? context.findOrCreateExercise(
+                named: trimmed,
+                category: WatchCustomExerciseDefinition.category(for: attribution.primary),
+                primaryMuscles: attribution.primaryIDs,
+                secondaryMuscles: attribution.secondaryIDs) else {
+            return .unavailable(name: trimmed)
+        }
+        guard !existingNames.contains(where: {
+            $0.caseInsensitiveCompare(exercise.name) == .orderedSame
+        }) else { return .alreadyPresent(name: exercise.name) }
+        existingNames.append(exercise.name)
+        return .added(name: exercise.name)
     }
 }

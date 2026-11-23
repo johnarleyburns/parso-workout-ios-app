@@ -102,7 +102,8 @@ extension WorkoutPlanEditor {
             // A newly added movement follows the plan's shared rep structure,
             // not one historical set (or a lone ×10 placeholder). The weight
             // seeder below fills each set's load from this movement's history.
-            let structure = plan.exercises.first?.sets.map(\.targetReps) ?? []
+            let structure = plan.exercises.first(where: { !$0.sets.isEmpty })?
+                .sets.map(\.targetReps) ?? []
             let sets = structure.isEmpty
                 ? ownerSeedSets(for: exercise.name)
                 : WorkoutPlanRepSchemeOptions.templateSets(following: structure)
@@ -111,7 +112,9 @@ extension WorkoutPlanEditor {
                                                     notes: ""))
             // Keep the chosen structure for this new row. Suggested plans must
             // not replace it with a previous session's reps.
-            seededHistoryNames.insert(exercise.name)
+            if !structure.isEmpty {
+                seededHistoryNames.insert(exercise.name)
+            }
         case .swap(let id):
             guard let index = plan.exercises.firstIndex(where: { $0.id == id }) else { return }
             plan.exercises[index].name = exercise.name

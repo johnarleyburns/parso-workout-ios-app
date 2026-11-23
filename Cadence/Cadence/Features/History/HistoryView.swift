@@ -47,6 +47,7 @@ struct HistoryView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { withAnimation { paging?.toggleDeleted() } } label: {
                         Text(control.title)
+                            .font(.subheadline.weight(.semibold))
                     }
                         .accessibilityLabel(control.title)
                         .accessibilityIdentifier("history.toggleDeleted")

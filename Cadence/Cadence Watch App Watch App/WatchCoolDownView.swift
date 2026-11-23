@@ -10,59 +10,31 @@ struct WatchCoolDownView: View {
     @Environment(WatchWorkoutManager.self) private var watchManager
 
     var body: some View {
-        ZStack {
-            Color.blue.ignoresSafeArea(.all)
-
-            VStack(spacing: 8) {
-                // `minLength` (not a plain Spacer) guarantees this never
-                // shrinks to zero and lets the caption sit under the system
-                // clock/status area at the top of the screen.
-                Spacer(minLength: 20)
-                Text("COOL-DOWN").font(.caption2.bold()).foregroundStyle(.white.opacity(0.8))
-                Text(formatTime(TimeInterval(model.cooldownTimerModel.remaining)))
-                    .font(.system(size: 52, weight: .heavy, design: .monospaced))
-                    .foregroundStyle(.white)
-                WatchLiveHeartRateBadge(bpm: watchManager.currentBPM)
-                VStack(spacing: 6) {
-                    Button("+1 min") {
-                        WatchHaptics.tap()
-                        model.cooldownTimerModel.add(60)
-                    }
-                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-                    .accessibilityIdentifier("watchCooldown.add")
-
-                    Button("+5 min") {
-                        WatchHaptics.tap()
-                        model.cooldownTimerModel.add(300)
-                    }
-                    .buttonStyle(WatchPillStyle(kind: .secondary, small: true))
-                    .accessibilityIdentifier("watchCooldown.addFiveMinutes")
-
-                    // Same two-action grammar as the workout: Pause/Resume on
-                    // the left, End on the right. End finishes immediately.
-                    HStack(spacing: 6) {
-                        Button(model.cooldownTimerModel.isPaused ? "Resume" : "Pause") {
-                            WatchHaptics.tap()
-                            if model.cooldownTimerModel.isPaused {
-                                model.cooldownTimerModel.resume()
-                            } else {
-                                model.cooldownTimerModel.pause()
-                            }
-                        }
-                        .buttonStyle(WatchPillStyle(kind: .light))
-                        .accessibilityIdentifier("watchCooldown.pause")
-
-                        Button("End") {
-                            endCooldown()
-                        }
-                        .buttonStyle(WatchPillStyle(kind: .destructive))
-                        .accessibilityIdentifier("watchCooldown.end")
-                    }
+        WatchPhaseTimerView(
+            title: WatchPhasePresentation.coolDownTitle,
+            tint: .orange,
+            remaining: model.cooldownTimerModel.remaining,
+            isPaused: model.cooldownTimerModel.isPaused,
+            bpm: watchManager.currentBPM,
+            centerSystemImage: WatchPhasePresentation.endSystemImage,
+            centerAccessibilityLabel: Text("End"),
+            identifierPrefix: "watchCooldown",
+            centerAccessibilityIdentifier: "watchCooldown.end",
+            onPause: {
+                WatchHaptics.tap()
+                if model.cooldownTimerModel.isPaused {
+                    model.cooldownTimerModel.resume()
+                } else {
+                    model.cooldownTimerModel.pause()
                 }
-                .padding(.top, 8)
-                Spacer()
-            }
-        }
+            },
+            onCenter: {
+                endCooldown()
+            },
+            onAddOneMinute: {
+                WatchHaptics.tap()
+                model.cooldownTimerModel.add(60)
+            })
         .onAppear {
             timerController.start(model: model, watchManager: watchManager)
         }
@@ -74,11 +46,6 @@ struct WatchCoolDownView: View {
         let samples = watchManager.finalizeStrengthHRCapture().samples
         model.skipCooldown()
         watchManager.completeStrengthWorkout(model: model, capture: samples)
-    }
-
-    private func formatTime(_ interval: TimeInterval) -> String {
-        let total = max(0, Int(interval))
-        return String(format: "%d:%02d", total / 60, total % 60)
     }
 }
 

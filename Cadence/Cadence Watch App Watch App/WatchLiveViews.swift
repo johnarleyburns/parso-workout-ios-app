@@ -185,14 +185,18 @@ extension CardioType {
 /// `WatchWorkoutManager.currentBPM`; adds no query, timer, or session.
 struct WatchLiveHeartRateBadge: View {
     let bpm: Double?
+    var zoneCode: String? = nil
 
     var body: some View {
         let display = LiveHeartRateDisplay(bpm: bpm)
-        Label(display.hasSample ? "\(display.valueText) BPM" : "-- BPM", systemImage: "heart.fill")
+        let text = display.hasSample
+            ? "\(display.valueText) BPM" + (zoneCode.map { " · \($0)" } ?? "")
+            : "-- BPM"
+        Label(text, systemImage: "heart.fill")
             .font(.footnote.monospacedDigit())
             .foregroundStyle(.white)
             .accessibilityLabel(display.hasSample
-                ? Text("Heart rate \(display.valueText) beats per minute")
+                ? Text("Heart rate \(display.valueText) beats per minute" + (zoneCode.map { ", zone \($0)" } ?? ""))
                 : Text("Heart rate unavailable"))
             .accessibilityIdentifier("watchLiveHeartRateBadge")
     }

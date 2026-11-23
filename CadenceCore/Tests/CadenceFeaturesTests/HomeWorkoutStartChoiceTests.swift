@@ -17,7 +17,7 @@ struct HomeWorkoutStartChoiceTests {
         #expect(choices.map(\.title) == [
             "Lift", "HIIT",
             "Run", "Walk", "Cycle", "Rowing", "Swim", "Elliptical", "Stairs", "Boxing", "Other",
-            "Recommend"
+            "Cardio"
         ])
         #expect(Set(choices.map(\.id)).count == choices.count)
         for type in WorkoutType.allCases where type != .weights {
@@ -28,10 +28,11 @@ struct HomeWorkoutStartChoiceTests {
         #expect(choices.allSatisfy { !$0.symbol.isEmpty })
     }
 
-    @Test func recommendedCardioIsTitledRecommendAndComesLast() {
+    @Test func recommendedCardioIsTitledCardioWithAHeartAndComesLast() {
         let choices = HomeWorkoutStartChoice.allChoices
         #expect(choices.last == .suggestedCardio)
-        #expect(HomeWorkoutStartChoice.suggestedCardio.title == "Recommend")
+        #expect(HomeWorkoutStartChoice.suggestedCardio.title == "Cardio")
+        #expect(HomeWorkoutStartChoice.suggestedCardio.symbol == "heart.fill")
         #expect(HomeWorkoutStartChoice.suggestedCardio.id == "cardio.suggested")
         #expect(HomeWorkoutStartChoice.cardio(.other).title == "Other")
     }

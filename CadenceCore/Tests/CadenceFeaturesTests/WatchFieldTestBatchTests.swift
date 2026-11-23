@@ -83,9 +83,9 @@ struct WatchFieldTestBatchTests {
 
     // MARK: - Set entry / Summary / partners
 
-    @Test func setEntryLogControlIsAWideCheckbox() {
+    @Test func setEntryLogControlIsAnUnboxedGreenCheckbox() {
         #expect(WatchSetEntryPresentation.logButtonSystemImage == "checkmark.square.fill")
-        #expect(WatchSetEntryPresentation.logButtonMinimumWidth >= 64)
+        #expect(WatchSetEntryPresentation.repsUnit == "rps")
         #expect(WatchSetEntryPresentation.headerSpacing <= 3)
     }
 

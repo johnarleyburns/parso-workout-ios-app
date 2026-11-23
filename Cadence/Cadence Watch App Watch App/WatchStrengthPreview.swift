@@ -19,8 +19,8 @@ struct WatchStrengthPreview: View {
     @AppStorage(WatchStrengthPreviewDefaults.partnersChosenKey) private var partnersChosen = false
     @State private var setup: WatchStrengthPreviewSetup
     @State private var exerciseNames: [String]
+    @State private var addedPrescriptions: [String: PlannedExercisePrescription] = [:]
     @State private var appliedDefaults = false
-    @State private var showingSuggestion = false
     @State private var startedLaunch: WatchLiftLaunch?
     @State private var startedPartners: [String] = []
     @State private var startedRest: Int?
@@ -79,7 +79,7 @@ struct WatchStrengthPreview: View {
             }
             Section {
                 if exerciseNames.isEmpty {
-                    Text("No exercises yet. Add one with Suggest, or start and add during the workout.")
+                    Text("No exercises yet. Add one with Add exercise, or start and add during the workout.")
                         .font(.footnote)
                 }
                 ForEach(exerciseNames, id: \.self) { name in
@@ -92,14 +92,14 @@ struct WatchStrengthPreview: View {
                         .accessibilityLabel("\(name) details")
                     }
                 }
-                Button {
-                    WatchHaptics.tap()
-                    showingSuggestion = true
+                NavigationLink {
+                    WatchPreviewAddExerciseView(
+                        existingNames: $exerciseNames,
+                        addedPrescriptions: $addedPrescriptions)
                 } label: {
-                    Label("Suggest", systemImage: "wand.and.stars")
+                    Label("Add exercise", systemImage: "plus")
                 }
-                .accessibilityIdentifier("watchStrength.preview.suggest")
-                .accessibilityHint("Finds another exercise for this workout")
+                .accessibilityIdentifier("watchStrength.preview.addExercise")
             } header: {
                 HStack {
                     Text("Exercises")
@@ -108,6 +108,7 @@ struct WatchStrengthPreview: View {
                         Button("Clear") {
                             WatchHaptics.tap()
                             exerciseNames = []
+                            addedPrescriptions = [:]
                         }
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.red)
@@ -143,14 +144,6 @@ struct WatchStrengthPreview: View {
         }
         .navigationTitle(launch.title)
         .onAppear(perform: applyStoredDefaults)
-        .sheet(isPresented: $showingSuggestion) {
-            NavigationStack {
-                WatchPreviewExerciseSuggestionView(existingNames: exerciseNames) { name in
-                    guard !exerciseNames.contains(where: { $0.caseInsensitiveCompare(name) == .orderedSame }) else { return }
-                    exerciseNames.append(name)
-                }
-            }
-        }
         .navigationDestination(isPresented: Binding(get: { startedLaunch != nil },
             set: { if !$0 { startedLaunch = nil } })) {
                 if let started = startedLaunch {
@@ -180,7 +173,7 @@ struct WatchStrengthPreview: View {
     }
 
     /// Applies the review choices to the launch value and keeps the visible
-    /// exercise list authoritative after Clear/Suggest edits.
+    /// exercise list authoritative after Clear/Add exercise edits.
     private func preparedLaunch() -> WatchLiftLaunch {
         var prepared = setup.preparedLaunch(from: launch)
         prepared.exerciseNames = exerciseNames
@@ -189,7 +182,8 @@ struct WatchStrengthPreview: View {
         let existing = strength.prescriptions
         strength.exerciseNames = exerciseNames
         strength.prescriptions = exerciseNames.map { name in
-            existing.first { $0.exerciseName.caseInsensitiveCompare(name) == .orderedSame }
+            addedPrescriptions[name]
+                ?? existing.first { $0.exerciseName.caseInsensitiveCompare(name) == .orderedSame }
                 ?? PlannedExercisePrescription(
                     exerciseName: name,
                     sets: prepared.repLadder.map { PlannedSetPrescription(targetReps: $0) })
@@ -289,75 +283,45 @@ private struct WatchPreviewRestPicker: View {
     }
 }
 
-/// Pre-start "Suggest another exercise" sheet. It reads the phone's persisted
-/// suggestion context, adds nothing until the explicit Add tap, and works
-/// offline once that context has synced.
-struct WatchPreviewExerciseSuggestionView: View {
-    let existingNames: [String]
-    let onAdd: (String) -> Void
+/// Pre-start Add Exercise. It uses the same search-first picker as the live
+/// workout and appends to the preview list only when the user taps a result.
+struct WatchPreviewAddExerciseView: View {
+    @Binding var existingNames: [String]
+    @Binding var addedPrescriptions: [String: PlannedExercisePrescription]
     @Environment(\.dismiss) private var dismiss
-    @State private var shell = WatchSuggestedExerciseShell()
 
     var body: some View {
-        Group {
-            switch shell.phase {
-            case .calculating:
-                ProgressView(WatchSuggestedExerciseShell.calculatingTitle)
-            case .unavailable:
-                message(WatchSuggestedExerciseShell.unavailableMessage, retry: true)
-            case .noEligibleResult:
-                message(WatchSuggestedExerciseShell.noResultMessage, retry: false)
-            case .ready(let exercise):
-                ready(exercise)
-            }
-        }
-        .task { shell.start(activeNames: existingNames, activeWorkingSets: []) }
-        .onDisappear { shell.cancel() }
-        .navigationTitle("Suggest")
+        WatchAddExercisePicker(
+            existingNames: existingNames,
+            activeWorkingSets: [],
+            onAddCatalog: { entry in
+                add(name: entry.name)
+            },
+            onAddSuggested: { exercise, entry in
+                let result = add(name: entry.name)
+                if case .added = result {
+                    addedPrescriptions[entry.name] = PlannedExercisePrescription(
+                        exerciseName: entry.name,
+                        sets: (0..<max(1, exercise.plannedSets)).map { _ in
+                            PlannedSetPrescription(targetReps: exercise.repRange.lowerBound)
+                        })
+                }
+                return result
+            },
+            onCreateCustom: { name, _ in
+                add(name: name)
+            },
+            onBack: { dismiss() },
+            onAdded: { dismiss() })
     }
 
-    private func ready(_ exercise: SuggestedWorkoutExercise) -> some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                Text(exercise.name.localizedExerciseName)
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-                Text(WatchSuggestedExerciseCard.prescriptionText(exercise))
-                    .font(.footnote)
-                Button {
-                    WatchHaptics.tap()
-                    onAdd(exercise.name)
-                    dismiss()
-                } label: {
-                    Label("Add", systemImage: "plus.circle.fill")
-                        .frame(maxWidth: .infinity, minHeight: 44)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                .accessibilityIdentifier("watchPreviewSuggest.add")
-                Button("Suggest another") {
-                    WatchHaptics.tap()
-                    shell.suggestAnother(activeNames: existingNames, activeWorkingSets: [])
-                }
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("watchPreviewSuggest.another")
-                Button("Cancel") { dismiss() }
-                    .accessibilityIdentifier("watchPreviewSuggest.cancel")
-            }
-        }
-    }
-
-    private func message(_ text: String, retry: Bool) -> some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                Text(text).font(.footnote)
-                if retry {
-                    Button("Retry") {
-                        shell.retry(activeNames: existingNames, activeWorkingSets: [])
-                    }
-                }
-                Button("Back") { dismiss() }
-            }
-        }
+    private func add(name: String) -> WatchExerciseAddResult {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return .unavailable(name: trimmed) }
+        guard !existingNames.contains(where: {
+            $0.caseInsensitiveCompare(trimmed) == .orderedSame
+        }) else { return .alreadyPresent(name: trimmed) }
+        existingNames.append(trimmed)
+        return .added(name: trimmed)
     }
 }

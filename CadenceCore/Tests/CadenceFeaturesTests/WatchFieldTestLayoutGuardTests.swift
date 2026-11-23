@@ -40,31 +40,52 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(preview.contains("WatchLiftWhyView"))
     }
 
-    @Test func warmUpUsesOneBottomToolbarWithPauseSkipAndAddOne() throws {
+    @Test func warmUpAndCoolDownShareOneBottomToolbarWithZoneText() throws {
+        let phase = try watch("WatchPhaseTimerView.swift")
+        #expect(phase.contains(".bottomBar"))
+        #expect(phase.contains("WatchHeartRateZoneText.code"))
+        #expect(phase.contains(".navigationTitle"))
+        #expect(!phase.contains("WARM-UP"))
+        #expect(!phase.contains("COOL-DOWN"))
+
         let warmUp = try watch("WatchWarmUpView.swift")
-        #expect(warmUp.contains(".bottomBar"))
-        #expect(warmUp.contains("WatchWarmUpControlPresentation.pauseSystemImage"))
-        #expect(warmUp.contains("WatchWarmUpControlPresentation.skipSystemImage"))
-        #expect(warmUp.contains("WatchWarmUpControlPresentation.addOneMinuteLabel"))
+        #expect(warmUp.contains("WatchPhaseTimerView"))
+        #expect(warmUp.contains("WatchPhasePresentation.warmUpTitle"))
         #expect(!warmUp.contains("+5 min"))
         #expect(!warmUp.contains("watchWarmup.addFiveMinutes"))
         #expect(!warmUp.contains("Button(\"Skip\")"))
+
+        let coolDown = try watch("WatchCoolDownView.swift")
+        #expect(coolDown.contains("WatchPhaseTimerView"))
+        #expect(coolDown.contains("WatchPhasePresentation.coolDownTitle"))
+        #expect(coolDown.contains("WatchPhasePresentation.endSystemImage"))
+        #expect(!coolDown.contains("+5 min"))
+        #expect(!coolDown.contains("watchCooldown.addFiveMinutes"))
     }
 
-    @Test func setEntryIsTightAndLogsWithAWideCheckbox() throws {
+    @Test func setEntryIsTightAndLogsWithAnUnboxedCheckbox() throws {
         let set = try watch("WatchSetKeypadView.swift")
         #expect(set.contains("WatchSetEntryPresentation.logButtonSystemImage"))
-        #expect(set.contains("WatchSetEntryPresentation.logButtonMinimumWidth"))
+        #expect(set.contains("String(localized: \"rps\")"))
         #expect(set.contains("WatchSetEntryPresentation.headerSpacing"))
+        let components = try watch("WatchKitComponents.swift")
+        #expect(components.contains(".font(.system(.title3"))
+        #expect(!set.contains(".borderedProminent"))
         #expect(!set.contains("Text(\"Log\")"))
         #expect(!set.contains("lineLimit(2, reservesSpace: true)"))
     }
 
-    @Test func summaryPageIsTitledAndHasNoReservedEmptyRow() throws {
+    @Test func summaryPageIsTitledAndShowsRingsInsteadOfActionTiles() throws {
         let pages = try watch("WatchStrengthPages.swift")
         #expect(pages.contains("WatchStrengthControlsPresentation.title"))
+        #expect(pages.contains("WatchLiveSummaryPresentation"))
+        #expect(pages.contains(".bottomBar"))
+        #expect(pages.contains("WatchStrengthControlsPresentation.finishConfirmationTitle"))
+        #expect(pages.contains("WatchPhasePresentation.endSystemImage"))
         #expect(!pages.contains(".frame(minHeight: 28)"))
-        #expect(pages.contains("showingPartners"))
+        #expect(!pages.contains("Water Lock"))
+        #expect(!pages.contains("watchStrength.waterLock"))
+        #expect(!pages.contains("LazyVGrid"))
     }
 
     @Test func exercisePlanHasNoSuggestButton() throws {
@@ -74,13 +95,34 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(!home.contains("WatchSuggestedExerciseView("))
     }
 
-    @Test func addExerciseIsTitledHasABackPathAndListsTheSuggestion() throws {
-        let add = try watch("WatchAddExerciseView.swift")
+    @Test func liftPreviewOpensAddExerciseInsteadOfSuggest() throws {
+        let preview = try watch("WatchStrengthPreview.swift")
+        #expect(preview.contains("WatchPreviewAddExerciseView"))
+        #expect(preview.contains("Add exercise"))
+        #expect(!preview.contains("Label(\"Suggest\""))
+        #expect(!preview.contains("WatchPreviewExerciseSuggestionView"))
+    }
+
+    @Test func addExerciseUsesANavTitleBackBarAndSearchFirstList() throws {
+        let add = try watch("WatchAddExercisePicker.swift")
         #expect(add.contains("WatchAddExerciseSuggestionPresentation.pageTitle"))
-        #expect(add.contains("WatchAddExerciseSuggestionPresentation.sectionTitle"))
+        #expect(add.contains(".navigationTitle"))
         #expect(add.contains("WatchBackButton"))
+        #expect(add.contains("WatchAddExerciseSuggestionPresentation.customRowTitle"))
         #expect(add.contains("WatchAddExerciseSuggestionPresentation.rowIdentifierPrefix"))
         #expect(add.contains("WatchExerciseSuggestionGuard"))
+        #expect(add.contains("queryIsEmpty"))
+        #expect(!add.contains("watchAddExercise.cancel"))
+        #expect(add.contains("TextField(\"Search\""))
+        #expect(add.contains(".frame(maxWidth: .infinity, minHeight: 44)"))
+        #expect(!add.contains("customExerciseButton"))
+    }
+
+    @Test func addExerciseSearchPrecomputesRowsOffTheMainThread() throws {
+        let add = try watch("WatchAddExercisePicker.swift")
+        #expect(add.contains("Task.detached"))
+        #expect(add.contains("WatchAddExerciseSearchRow"))
+        #expect(add.contains("displayName: $0.name.localizedExerciseName"))
     }
 
     @Test func partnersShowsKnownPartnersAndOffersAWayBack() throws {

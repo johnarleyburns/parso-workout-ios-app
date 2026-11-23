@@ -64,8 +64,50 @@ public enum WatchExerciseSuggestionGuard {
 public enum WatchAddExerciseSuggestionPresentation {
     public static let pageTitle = "Add Exercise"
     public static let sectionTitle = "Suggested"
+    public static let customRowTitle = "Add Custom"
     public static let rowAccessibilityHint = "Add exercise"
     public static let rowIdentifierPrefix = "watchAddExercise.suggested."
+}
+
+/// "Z1"…"Z5" for the live HR badge, using the same shared zone bands as every
+/// other cardio surface. nil when there is no sample or no usable max HR.
+public enum WatchHeartRateZoneText {
+    public static func code(bpm: Double?, maxHR: Double) -> String? {
+        guard let bpm, bpm > 0, maxHR > 0 else { return nil }
+        return "Z\(CardioMath.hrZone(bpm: bpm, maxHR: maxHR))"
+    }
+}
+
+public enum WatchPhasePresentation {
+    public static let warmUpTitle = "Warm-up"
+    public static let coolDownTitle = "Cool Down"
+    public static let endSystemImage = "xmark"
+}
+
+/// Sets and cardio values shown as the two rings on the active-workout Summary
+/// page. Progress is clamped and division-safe so an empty session is stable.
+public struct WatchLiveSummaryPresentation: Equatable, Sendable {
+    public let setsCompleted: Int
+    public let setsPlanned: Int
+    public let cardioMinutes: Int
+    public let setsProgress: Double
+    public let cardioProgress: Double
+
+    public static func make(setsCompleted: Int, setsPlanned: Int,
+                            cardioMinutes: Double,
+                            cardioTargetMinutes: Double = 30) -> Self {
+        let completed = max(0, setsCompleted)
+        let planned = max(0, setsPlanned)
+        let setTarget = max(planned, completed, 1)
+        let minutes = max(0, cardioMinutes)
+        let cardioTarget = max(cardioTargetMinutes, 1)
+        return Self(
+            setsCompleted: completed,
+            setsPlanned: planned,
+            cardioMinutes: Int(minutes.rounded()),
+            setsProgress: min(1, Double(completed) / Double(setTarget)),
+            cardioProgress: min(1, minutes / cardioTarget))
+    }
 }
 
 public enum WatchWarmUpControlPresentation {
@@ -78,10 +120,9 @@ public enum WatchWarmUpControlPresentation {
 }
 
 public enum WatchSetEntryPresentation {
-    /// The Log action is a checkbox, not a text button. The extra width keeps
-    /// obvious padding on both sides inside the Watch bottom bar.
+    /// The Log action is a green checkbox with no surrounding button box.
     public static let logButtonSystemImage = "checkmark.square.fill"
-    public static let logButtonMinimumWidth: Double = 72
+    public static let repsUnit = "rps"
     /// Title/exercise-name/fields sit together; no reserved empty row.
     public static let headerSpacing: Double = 2
 }
@@ -90,6 +131,9 @@ public enum WatchStrengthControlsPresentation {
     public static let title = "Summary"
     /// Only a small margin when the pause explanation is actually present.
     public static let pauseReasonTopPadding: Double = 2
+    public static let finishConfirmationTitle = "End Workout?"
+    public static let finishCoolDownTitle = "Cool Down"
+    public static let finishCancelTitle = "Cancel"
 }
 
 public enum WatchPartnerDirectory {

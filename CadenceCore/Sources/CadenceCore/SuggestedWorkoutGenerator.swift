@@ -993,6 +993,9 @@ public enum SuggestedWorkoutGenerator {
                               counters: inout Counters) -> SuggestedWorkoutOption {
         let target = Double(suggestedWorkoutTargetSetsPerGroup)
         let maxVolumeExercises = 8
+        // A personalized recommendation is a workout, not a single gap alert.
+        // Keep a normal session length when enough history movements exist.
+        let minPersonalizedExercises = 4
         let initial = index.muscleSpace.deficits(target: target, completed: completed)
         var deficits = initial
         var selected = Array(repeating: false, count: index.exercises.count)
@@ -1083,7 +1086,8 @@ public enum SuggestedWorkoutGenerator {
             while choices.count < maxVolumeExercises, rounds < maxVolumeExercises {
                 let current = recomputeDeficits(initial: initial, exercises: choices,
                                                 muscleSpace: index.muscleSpace)
-                guard current.contains(where: { $0 > epsilon }) else { return }
+                let hasDeficit = current.contains(where: { $0 > epsilon })
+                if !hasDeficit && choices.count >= minPersonalizedExercises { return }
                 var best: Selection?
                 for candidateIndex in index.exercises.indices where !selected[candidateIndex] {
                     guard membership[candidateIndex] else { continue }
@@ -1098,8 +1102,10 @@ public enum SuggestedWorkoutGenerator {
                         || ExerciseTrainingType.isOlympicOnlyMovement(named: exercise.candidate.name)) {
                         continue
                     }
-                    let score = score(exercise, deficits: current, preferredSets: preferredSets)
-                    guard score.total > epsilon else { continue }
+                    let score = hasDeficit
+                        ? score(exercise, deficits: current, preferredSets: preferredSets)
+                        : Score(total: 0, credited: 0)
+                    if hasDeficit && score.total <= epsilon { continue }
                     let selection = Selection(candidateIndex: candidateIndex,
                                               score: score, isInStyle: true)
                     if best == nil || isBetter(selection, than: best!, index: index) {

@@ -14,7 +14,9 @@ public enum TodaySuggestedWorkoutFingerprint {
                             cooldownMinutes: Int,
                             extras: [String] = []) -> String {
         var h = Hasher64()
-        h.add("v1")
+        // v2: personalized Lift now fills session volume. Bumping the version
+        // invalidates cached single-exercise plans produced by v1.
+        h.add("v2")
         h.add(unitRaw); h.add(warmupMinutes); h.add(cooldownMinutes)
         for e in extras.sorted() { h.add("x:" + e) }
         for (k, v) in input.completedSetsByMuscle.sorted(by: { $0.key < $1.key }) {

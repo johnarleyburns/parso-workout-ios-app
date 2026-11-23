@@ -32,21 +32,23 @@ extension HomeView {
                 .transition(.identity)
                 .zIndex(1)
         }
-        if warmupActive {
-            GuidedPhaseOverlay(
-                title: String(localized: "Warm Up"),
-                minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
-                tint: .orange,
-                idPrefix: "warmup",
-                soundsEnabled: settings.workoutSounds,
-                onFinish: { secs in finishWarmup(elapsedSeconds: secs, startCue: .countdown) },
-                onSkip: { secs in
-                    WorkoutCues.cancelPendingSounds()
-                    finishWarmup(elapsedSeconds: secs, startCue: .single)
-                },
-                liveMetric: AnyView(SessionLiveHRBand(showsEmptyState: true)))
-                .transition(.identity)
-                .zIndex(1)
-        }
+    }
+
+    /// Immersive warm-up cover. It is intentionally not an overlay: workout
+    /// phases must hide the app tab bar and cannot be swiped away.
+    var warmupPhaseOverlay: some View {
+        GuidedPhaseOverlay(
+            title: String(localized: "Warm Up"),
+            minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
+            tint: .orange,
+            idPrefix: "warmup",
+            soundsEnabled: settings.workoutSounds,
+            finishSystemImage: "chevron.forward.2",
+            onFinish: { secs in finishWarmup(elapsedSeconds: secs, startCue: .countdown) },
+            onSkip: { secs in
+                WorkoutCues.cancelPendingSounds()
+                finishWarmup(elapsedSeconds: secs, startCue: .single)
+            },
+            liveMetric: AnyView(SessionLiveHRBand(showsEmptyState: true)))
     }
 }

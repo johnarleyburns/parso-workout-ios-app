@@ -59,6 +59,8 @@ struct SettingsView: View {
 
             }
 
+            TrainingPartnersSettingsSection()
+
             settingsSection(String(localized: "Health & Sensors"),
                               identifier: "settings.section.health") {
                 Button {

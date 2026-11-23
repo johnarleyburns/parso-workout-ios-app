@@ -10,7 +10,7 @@ extension ExercisePickerView {
         var id: Self { self }
         var title: String {
             switch self {
-            case .all: String(localized: "All")
+            case .all: String(localized: "Browse")
             case .recents: String(localized: "Recents")
             case .popular: String(localized: "Popular")
             case .equipment: String(localized: "Equipment")

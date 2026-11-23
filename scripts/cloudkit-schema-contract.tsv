@@ -173,6 +173,7 @@ CD_Person	CD_createdAt	TIMESTAMP
 CD_Person	CD_entityName	STRING
 CD_Person	CD_id	STRING
 CD_Person	CD_isMe	INT64
+CD_Person	CD_isArchived	INT64
 CD_Person	CD_name	STRING
 CD_Person	CD_originDevice	STRING
 CD_Person	CD_updatedAt	TIMESTAMP

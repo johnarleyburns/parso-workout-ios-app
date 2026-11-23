@@ -200,6 +200,13 @@ extension SessionView {
                                                      onDelete: deleteSessionFromConfirmation))
         .sheet(isPresented: $datePickerPresented, content: sessionDatePickerSheet)
         .sheet(isPresented: $endDatePickerPresented, content: sessionEndDatePickerSheet)
+        .alert("Heart Rate", isPresented: $showHRInfo) {
+            Button("Reconnect Apple Watch HR") { model.reconnectWatchHR() }
+                .accessibilityIdentifier("session.watch.reconnect")
+            Button("Done", role: .cancel) {}
+        } message: {
+            Text(model.watchHRStatusText)
+        }
         .modifier(ExerciseRemovalConfirmationModifier(isPresented: exerciseRemovalPresented,
                                                        onRemove: removeExerciseFromConfirmation))
     }

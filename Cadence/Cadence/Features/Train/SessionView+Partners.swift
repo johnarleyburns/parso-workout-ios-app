@@ -35,7 +35,7 @@ extension SessionView {
                 }
 
                 Section {
-                    ForEach(allPeople.filter { !$0.isMe }) { p in
+                    ForEach(allPeople.filter { !$0.isMe && !$0.isArchived }) { p in
                         Button { togglePartnerScope(p) } label: {
                             HStack {
                                 Text(p.name).foregroundStyle(.primary)
@@ -117,7 +117,7 @@ extension SessionView {
                 }
 
                 Section {
-                    ForEach(allPeople.filter { !$0.isMe }) { p in
+                    ForEach(allPeople.filter { !$0.isMe && !$0.isArchived }) { p in
                         Button { togglePartnerScope(p) } label: {
                             HStack {
                                 Text(p.name).foregroundStyle(.primary)

@@ -283,8 +283,7 @@ extension SessionView {
             .filter { $0.countsAsStrengthHistory }
             .flatMap { LiveWorkoutVolumeCalculator.sets(from: $0, credits: &credits) }
         let creditsByName = plannedCreditsByName()
-        let volumePerformers = volumeSummaryPerformers(currentSets: currentSets,
-                                                       weeklySets: weeklySets)
+        let volumePerformers = volumeSummaryPerformers(currentSets: currentSets)
         let plannedByPerformer = Dictionary(uniqueKeysWithValues: volumePerformers.map { performer in
             (performer.id, session.plannedPrescriptions(forPerformerID: performer.personID))
         })
@@ -311,8 +310,7 @@ extension SessionView {
         }
     }
 
-    private func volumeSummaryPerformers(currentSets: [LiveWorkoutVolumeSet],
-                                         weeklySets: [LiveWorkoutVolumeSet])
+    private func volumeSummaryPerformers(currentSets: [LiveWorkoutVolumeSet])
     -> [VolumeSummaryPerformer] {
         var result: [VolumeSummaryPerformer] = [.owner]
         for entry in rosterEntries where !entry.isMe {
@@ -322,7 +320,7 @@ extension SessionView {
                                                  personID: id))
         }
         let known = Set(result.map(\.id))
-        let unknownKeys = Set((currentSets + weeklySets).map(\.performerKey))
+        let unknownKeys = Set(currentSets.map(\.performerKey))
             .subtracting(known)
             .subtracting([VolumeSummaryPerformer.ownerKey])
         for key in unknownKeys.sorted() {

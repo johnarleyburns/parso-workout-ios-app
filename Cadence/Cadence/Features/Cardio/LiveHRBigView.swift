@@ -109,6 +109,12 @@ struct LiveHRBigView: View {
                 }
             }
         }
+        // A neutral dark plate keeps every Apple-Fitness zone colour readable
+        // on the interval screens' green/red/yellow phase backgrounds.
+        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .background(bpm == nil ? Color.clear : Color.black.opacity(0.55),
+                    in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         .accessibilityElement(children: .contain)
         .accessibilityLabel(accessibilityText)
         .frame(maxWidth: .infinity)

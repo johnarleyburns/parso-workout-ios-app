@@ -161,7 +161,7 @@ struct WorkoutPlanPartnerSection: View {
 
     private var owner: Person? { allPeople.first(where: \.isMe) }
 
-    private var partnerPeople: [Person] { allPeople.filter { !$0.isMe } }
+    private var partnerPeople: [Person] { allPeople.filter { !$0.isMe && !$0.isArchived } }
 
     private var selectedPartnerPeople: [Person] {
         let ids = Set(partnerIDs)

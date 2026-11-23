@@ -1250,12 +1250,10 @@ public enum SuggestedWorkoutGenerator {
                 return MuscleGroup.canonical(lhs.key).map(MuscleGroup.massPriority(for:))
                     ?? Int.max < (MuscleGroup.canonical(rhs.key).map(MuscleGroup.massPriority(for:)) ?? Int.max)
             }
-        let startingGapByID = Dictionary(uniqueKeysWithValues: startingGaps)
         let gapText: String = {
             guard !startingGaps.isEmpty else { return "your tracked muscle coverage is on target" }
-            let names = startingGaps.prefix(3).map { displayName($0.key) }
-            let suffix = startingGaps.count > names.count ? " and \(startingGaps.count - names.count) more areas" : ""
-            return "the biggest gaps in \(names.joined(separator: ", "))\(suffix)"
+            let names = startingGaps.map { displayName($0.key) }
+            return "the biggest gaps in \(names.formatted(.list(type: .and)))"
         }()
         let styleText = option.style == .personalized
             ? "your history-first Personalized style"
@@ -1267,6 +1265,23 @@ public enum SuggestedWorkoutGenerator {
             String(localized: "Built to address \(gapText) with \(styleText). ", bundle: .module)
             #endif
         }()
+            + {
+                let covered = Set(option.exercises.flatMap { exercise in
+                    exercise.contributions
+                        .filter { $0.plannedSetContribution > epsilon }
+                        .map(\.muscleID)
+                })
+                let names = covered
+                    .compactMap { MuscleGroup.canonical($0)?.displayName }
+                    .sorted()
+                guard !names.isEmpty else { return "" }
+                #if os(Linux)
+                return "This session covers \(names.formatted(.list(type: .and))). "
+                #else
+                return String(localized: "This session covers \(names.formatted(.list(type: .and))). ",
+                              bundle: .module)
+                #endif
+            }()
             + {
                 #if os(Linux)
                 "It prioritizes the largest need first and covers each group below its weekly dose at least once, for \(option.plannedSetTotal) working sets (an editable estimate, not a cap) for your \(input.trainingGoal.displayName.lowercased()) goal."
@@ -1285,10 +1300,27 @@ public enum SuggestedWorkoutGenerator {
             }()
             + option.unsupportedCoverage.map(\.explanation).joined(separator: " ")
         let exerciseReasons = option.exercises.map { exercise in
-            let relevant = exercise.contributions.filter { startingGapByID[$0.muscleID] ?? 0 > epsilon }
-            let gapReasons = relevant.isEmpty
+            let contributions = exercise.contributions.filter {
+                $0.plannedSetContribution > epsilon
+            }
+            let direct = contributions
+                .filter { $0.weight >= 0.99 }
+                .map { displayName($0.muscleID) }
+            let secondary = contributions
+                .filter { $0.weight < 0.99 }
+                .map { displayName($0.muscleID) }
+            let directText = direct.isEmpty
+                ? ""
+                : "direct work for \(direct.formatted(.list(type: .and)))"
+            let secondaryText = secondary.isEmpty
+                ? ""
+                : "secondary work for \(secondary.formatted(.list(type: .and)))"
+            let coveredText = [directText, secondaryText]
+                .filter { !$0.isEmpty }
+                .joined(separator: " and ")
+            let gapReasons = coveredText.isEmpty
                 ? "a maintenance option after the main gaps were covered"
-                : "the open target for \(displayName(relevant[0].muscleID))"
+                : "\(coveredText) toward the open targets"
             let styleReason = exercise.isInStyle
                 ? {
                     #if os(Linux)

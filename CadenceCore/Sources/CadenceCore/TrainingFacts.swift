@@ -188,12 +188,13 @@ public extension TrainingFacts {
         // Mesocycle-length memory window: no session older than this contributes to
         // ANY output, including the cold-start gate.
         let historyFloor = now.addingTimeInterval(-historyWindow)
-        let windowedSessions = sessions.filter { $0.date >= historyFloor }
+        let liveSessions = sessions.filter { $0.deletedAt == nil }
+        let windowedSessions = liveSessions.filter { $0.date >= historyFloor }
 
         // One flat list of (session, owner working set) for the trailing week.
         struct WorkingSet { let date: Date; let set: SetEntry; let exercise: Exercise }
         var weekSets: [WorkingSet] = []
-        for session in sessions where session.date >= weekStart && session.date <= now {
+        for session in liveSessions where session.date >= weekStart && session.date <= now {
             for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
                 guard let ex = set.exercise else { continue }
                 weekSets.append(WorkingSet(date: session.date, set: set, exercise: ex))
@@ -315,7 +316,7 @@ public extension TrainingFacts {
 
         // Prior-week volume → weekly volume trend, per group.
         var priorSetsByGroup: [MuscleGroup: Double] = [:]
-        for session in sessions where session.date >= priorStart && session.date < weekStart {
+        for session in liveSessions where session.date >= priorStart && session.date < weekStart {
             for set in session.orderedSets where !set.isWarmup && set.isOwnerSet && set.reps > 0 {
                 guard let ex = set.exercise else { continue }
                 for (group, weight) in creditedGroups(for: ex) {

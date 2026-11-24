@@ -174,7 +174,7 @@ enum CloudKitRecovery {
         let schema = CadenceStore.schema
         let configuration = ModelConfiguration(schema: schema,
                                                url: directory.appendingPathComponent("CloudRecovery.store"),
-                                               cloudKitDatabase: .private(containerID))
+                                               cloudKitDatabase: .private(recoveryContainerID))
         let scratch: ModelContainer
         do {
             scratch = try ModelContainer(for: schema, configurations: [configuration])

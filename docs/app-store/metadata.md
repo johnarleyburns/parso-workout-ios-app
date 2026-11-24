@@ -16,7 +16,7 @@ Core promise:
 Differentiators:
 
 - Cited coaching: every recommendation links to published training research.
-- Private by design: no account, no ads, no telemetry, and optional backup only through the user's private iCloud.
+- Private by design: no account, no ads, no telemetry, and no developer-operated server; your log stays on your device with full export/import.
 - Strength-first: fast set logging, PR context, routines, and progress trends.
 - Companion Apple Watch app: phone-free strength (with partner rotation),
   HIIT/boxing rounds, and a full cardio suite (run, walk, cycle, swim, rowing)
@@ -37,9 +37,9 @@ Avoid:
 
 - Claims that imply medical advice, diagnosis, treatment, or guaranteed results.
 - Claims that imply generative AI, cloud AI, or a black-box model.
-- Claims that imply cloud sync, social feeds, or nutrition coaching. (The
-  automatic iCloud backup lives in the user's own private database — call it
-  "backup", never "sync".)
+- Claims that imply cloud sync, social feeds, or nutrition coaching. The App
+  Store submission build is local-only; use "on-device" and "export/import", not
+  "iCloud" or "sync".
 - "Donation" language for in-app purchases. Use "support" or "contribute".
 
 ## App Store Fields
@@ -119,7 +119,7 @@ The full tracker is free with no ads, no account, and no tracking:
 - Strength and cardio assessments with cited protocols
 - Apple Health import (steps, heart rate, Apple Watch workouts) and summary write-back
 - Companion Apple Watch app: phone-free strength, HIIT/boxing rounds, and cardio (run, walk, cycle, swim, rowing) with live wrist heart rate
-- Full JSON export/import so your data stays portable, plus automatic backup to your own private iCloud
+- Full JSON export/import so your data stays portable and can move to a fresh install
 - Live coach insights: Cladiron continuously reads your logs and tells you what it notices about your training — free
 
 THE COACH
@@ -128,8 +128,8 @@ program, prescribes exact sets and reps, autoregulates from logged performance
 and recovery, plans deloads, and cites the research behind every call.
 
 PRIVACY BY DESIGN
-- No account, no ads, no telemetry, no developer-operated server; optional private-iCloud backup
-- Health, Bluetooth, Location, and Motion data stay on your device
+- No account, no ads, no telemetry, no developer-operated server; all training data stays on your device
+- Health, Bluetooth, and Location data stay on your device
 - Open-source and privacy-first, with no developer-operated server or tracking
 
 APPLE WATCH INCLUDED
@@ -151,7 +151,7 @@ Terms (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Initial release:
 
 ```text
-Cladiron launches as an open-source, privacy-first strength app for iPhone and Apple Watch: fast logging, PRs, progress trends, Apple Health import/write, assessments, routines, a phone-free Watch app (strength, HIIT, cardio with live wrist HR), cited coach planning, and full export/import with private-iCloud backup — all free. An optional $9.99 contribution supports development and unlocks nothing. Cladiron is released under GPLv3-or-later with the Cladiron App Store Exception and built on the open free-exercise-db-plusplus project; its exercise database, annotations, and related tooling remain freely available for use by other applications under their own license.
+Cladiron launches as an open-source, privacy-first strength app for iPhone and Apple Watch: fast logging, PRs, progress trends, Apple Health import/write, assessments, routines, a phone-free Watch app (strength, HIIT, cardio with live wrist HR), cited coach planning, and full export/import — all free. An optional $9.99 contribution supports development and unlocks nothing. Cladiron is released under GPLv3-or-later with the Cladiron App Store Exception and built on the open free-exercise-db-plusplus project; its exercise database, annotations, and related tooling remain freely available for use by other applications under their own license.
 ```
 
 ## Screenshot Storyboard
@@ -174,7 +174,7 @@ Use seeded, credible workout data. Do not show debug text or placeholder values.
    - Caption: `Published research behind every insight`
    - Show: citation detail or "The science" link from a coach output.
 6. Privacy + Export
-   - Caption: `No account. Private iCloud. Export anytime.`
+   - Caption: `No account. On-device. Export anytime.`
    - Show: Backup & Restore / About privacy section.
 7. Programs
    - Caption: `Built-in routines with cited rationale`
@@ -193,7 +193,7 @@ Connect will not submit without at least one Apple Watch screenshot):
 ## Review Notes
 
 ```text
-Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; private iCloud backup is optional. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md.
+Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; training data stays on the device and a complete JSON export/import is available. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md. Exercise data/images from free-exercise-db (CC0) and Wikimedia assets (CC BY-SA) are attributed in Settings → About.
 
 The tracker is free: logging, history, PRs, analytics, assessments, routines, Apple Health import/write, and JSON export/import. Free users also see the coach's live insights (observations about their training).
 
@@ -203,13 +203,13 @@ contribution is one-time, unlocks nothing, and only adds the Supporter badge on
 Home after a successful Apple transaction. A full log → history → export loop
 works without purchase.
 
-HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored in the app's private on-device/private-iCloud store because HealthKit has no structured schema for it.
+HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored only on the device because HealthKit has no structured schema for it; it is never mirrored to iCloud.
 
-Bluetooth is used only for standard heart-rate monitors that expose the Bluetooth Heart Rate Service. Location is used only for iPhone-recorded outdoor workouts. Motion is used only to improve workout context.
+Bluetooth is used only for standard heart-rate monitors that expose the Bluetooth Heart Rate Service. Location is used only for iPhone-recorded outdoor workouts and continues in the background only while that workout is active. The audio background mode is used only for short spoken/tone workout cues and timers during an active workout; the app does not play continuous audio.
 
-This version includes a companion Apple Watch app for phone-free workouts (strength, HIIT/boxing, and cardio including swim). The watch app runs an HKWorkoutSession for live heart rate, saves workouts to Apple Health, and relays completed sessions to the iPhone over WatchConnectivity. Like the phone app, it has no accounts and no networking.
+This version includes a companion Apple Watch app for phone-free workouts (strength, HIIT/boxing, and cardio including swim). The watch app runs an HKWorkoutSession for live heart rate, saves workouts to Apple Health, and relays completed sessions to the iPhone over WatchConnectivity. Like the phone app, it has no accounts and no developer server.
 
-The app can back up the user's local data to the user's own private CloudKit database (hence the iCloud entitlement). This is user-owned storage processed by Apple; the developer operates no server and cannot access the data, so App Privacy remains "Data Not Collected".
+This build has no iCloud entitlement and never opens a CloudKit store. Health-bearing workout history stays on the device. The developer operates no server and cannot access the data, so App Privacy remains "Data Not Collected". A complete JSON export/import is the backup and device-migration path.
 ```
 
 ## Privacy Answers
@@ -225,9 +225,9 @@ Rationale:
 - No account or profile is created on a developer server.
 - No analytics, telemetry, advertising SDK, crash reporter, or third-party SDK is
   present.
-- Health, Bluetooth, Location, and Motion data stay on device.
-- The automatic backup is stored in the user's own private CloudKit database;
-  the developer operates no server and cannot access it.
+- Health, Bluetooth, and Location data stay on device.
+- Training data stays on the user's device; the developer operates no server
+  and cannot access it. Export/import is user-initiated.
 - In-app purchases are processed by Apple; the app only stores local supporter
   state in UserDefaults.
 - User data can be exported/imported locally through the app.

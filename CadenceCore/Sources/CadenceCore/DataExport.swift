@@ -532,7 +532,7 @@ public extension CoachPreferenceProfile {
 public enum DataExport {
 
     /// Maximum encoded backup accepted by the import boundary. The same limit
-    /// is applied to plain JSON, gzip, and the legacy CloudKit asset path.
+    /// is applied to plain JSON, gzip, and the legacy asset path.
     public static let maxImportBytes = 256 * 1024 * 1024
 
     public enum ImportError: Error, Equatable, LocalizedError {

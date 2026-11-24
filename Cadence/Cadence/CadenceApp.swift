@@ -41,6 +41,9 @@ struct CadenceApp: App {
         // on-disk store, so the "never delete or replace stored workout
         // history" guarantee still holds even after this change.
         let policy = WatchStoreBootstrapPolicy<ModelContainer>(
+            // App Store submission is local-only: no cloud store or cloud entitlement.
+            // The single store still preserves every local relation, including
+            // SetEntry.exercise, and export/import remains the backup path.
             createPersistent: { try CadenceStore.makeApplicationModelContainer() },
             createInMemory: { try CadenceStore.makeModelContainer(inMemory: true) },
             quarantine: { try Self.quarantinePhoneStore() },
@@ -53,9 +56,6 @@ struct CadenceApp: App {
         }
         container = resolvedContainer
         _storeRecoveryState = State(initialValue: outcome.state)
-        // Attach before the first scene task so an import that starts during
-        // ModelContainer setup can still surface its restore state in the UI.
-        model.startCloudKitHistoryMonitoring()
     }
 
     /// Moves aside (never deletes) whichever on-disk store files exist — the
@@ -90,7 +90,6 @@ struct CadenceApp: App {
                 .environment(\.cadenceModelContainer, container)
                 .overlay(alignment: .top) { storeRecoveryBanner }
                 .task { model.activateWCSession() }
-                .task { model.refreshCloudKitAccountStatus() }
                 .task { await model.finishLegacyStoreUpgrade(container: container, settings: settings) }
                 .task { _ = await model.healthBackup.drain() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }
@@ -140,7 +139,7 @@ struct CadenceApp: App {
         let catalogRevision = StarterLibraryReconciliation.revision()
         // A detached task does not inherit cancellation from the scene task. If
         // the user backgrounds during this store work, explicitly cancel it so
-        // a SwiftData context cannot keep the SQLite/CloudKit store open while
+        // a SwiftData context cannot keep the SQLite store open while
         // iOS suspends the process (RUNNINGBOARD 0xdead10cc).
         let preparation = Task.detached(priority: .utility) {
             guard !Task.isCancelled else { return nil as UUID? }

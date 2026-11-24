@@ -7,7 +7,7 @@ import SwiftData
 
 /// Normalized SwiftData rows for the unified value graph. The existing
 /// `PersistedPlan` envelope remains the compatibility/read-recovery path; these
-/// rows make the hierarchy addressable by stable IDs for CloudKit and future
+/// rows make the hierarchy addressable by stable IDs for store and future
 /// client relationship queries without putting execution data in a second
 /// domain model.
 #if canImport(SwiftData)

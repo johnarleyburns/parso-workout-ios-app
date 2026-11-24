@@ -9,7 +9,7 @@ import SwiftData
 /// samples, routes, notes, calories, source bundle identifiers or device identifiers.
 ///
 /// It belongs to `CadenceStore.watchSchema` only, never to `schema`, `localSchema`
-/// or the phone's CloudKit `syncSchema`.
+/// or the phone's legacy `syncSchema`.
 #if canImport(SwiftData)
 @Model
 #endif

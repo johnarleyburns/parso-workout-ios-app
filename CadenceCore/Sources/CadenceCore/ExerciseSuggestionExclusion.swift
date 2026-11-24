@@ -17,7 +17,7 @@ public final class ExerciseSuggestionExclusion {
     /// Keeps the Settings list understandable if catalog metadata changes.
     public var exerciseNameSnapshot: String = ""
     public var reasonRaw: String = ExerciseSuggestionExclusionReason.personalPreference.rawValue
-    /// Kept as a tombstone instead of deleting the row so a stale CloudKit
+    /// Kept as a tombstone instead of deleting the row so a stale store
     /// device cannot resurrect an old exclusion after the user re-enables it.
     public var isActive: Bool = true
     public var createdAt: Date = Date()

@@ -5,8 +5,8 @@ import SwiftData
 
 /// Additive SwiftData envelope for the unified value model. The domain model
 /// remains a Codable value graph; this record is deliberately boring so it can
-/// be mirrored by SwiftData/CloudKit without making every associated-value enum
-/// a separate persistence entity before the planner migration is complete.
+/// be persisted by SwiftData without making every associated-value enum a
+/// separate persistence entity before the planner migration is complete.
 #if canImport(SwiftData)
 @Model
 #endif
@@ -60,7 +60,7 @@ public enum UnifiedPlanStore {
     /// Coach projections are rebuilt with a fresh generation timestamp even
     /// when their user-visible content did not change. Treat that timestamp as
     /// a revision marker, not content, so rebuilding a projection does not
-    /// rewrite the SwiftData record or enqueue another CloudKit export.
+    /// rewrite the SwiftData record or enqueue another store export.
     public static func contentEquivalent(_ lhs: Plan, _ rhs: Plan) -> Bool {
         var lhs = lhs
         var rhs = rhs

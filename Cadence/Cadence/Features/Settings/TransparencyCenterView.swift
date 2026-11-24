@@ -27,12 +27,8 @@ struct TransparencyCenterView: View {
                           value: model.healthRestoreStatus.detailText)
                 statusRow(String(localized: "Watch"), systemImage: "applewatch",
                           value: model.watchSyncState.settingsText(lastSyncAt: model.lastWatchSyncAt))
-                statusRow("iCloud", systemImage: "icloud",
-                          value: model.isRestoringCloudKitHistory
-                            ? AppModel.CloudKitImportStatus.updating.detailText
-                            : (model.cloudKitImportStatus == .idle
-                                ? model.cloudKitAccountAvailability.displayName
-                                : model.cloudKitImportStatus.detailText))
+                statusRow(String(localized: "Storage"), systemImage: "iphone",
+                          value: String(localized: "On this device only"))
                 statusRow(String(localized: "Coach"), systemImage: "wand.and.stars",
                           value: model.coachRefreshInProgress
                             ? String(localized: "Updating coaching guidance…")
@@ -63,9 +59,9 @@ struct TransparencyCenterView: View {
                     control: String(localized: "Edit the source plan on iPhone, use Sync to Watch Now to retry, and inspect the Watch status and error in Settings."))
 
                 explanationRow(
-                    title: String(localized: "Private iCloud mirror"),
-                    detail: String(localized: "SwiftData and Apple’s private CloudKit mirror exchange local changes incrementally. Apple schedules the transfer; Cladiron does not operate a server or inspect the data."),
-                    control: String(localized: "The app cannot stop an individual Apple-managed transfer. Use iCloud Details & Diagnostics for status, refresh, export, and legacy recovery; local history is never replaced by a failed recovery."))
+                    title: String(localized: "On-device history"),
+                    detail: String(localized: "Your workout, heart-rate, readiness, and assessment data are stored only on this iPhone. Cladiron does not send them to a server."),
+                    control: String(localized: "Use Backup & Restore to export a complete JSON backup or move your data to a new device. Nothing is uploaded automatically."))
 
                 explanationRow(
                     title: String(localized: "Supporter prompt"),
@@ -78,7 +74,7 @@ struct TransparencyCenterView: View {
                     get: { settings.autoSaveHealth },
                     set: { settings.autoSaveHealth = $0 }))
                     .accessibilityIdentifier("transparency.autoSaveHealth")
-                Text("When enabled, a completed workout may write its summary to Apple Health. The setting is off/on at your direction; detailed sets remain in Cladiron’s local/private-iCloud data.")
+                Text("When enabled, a completed workout may write its summary to Apple Health. The setting is off/on at your direction; detailed sets remain on this device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -95,11 +91,6 @@ struct TransparencyCenterView: View {
                 }
                 .disabled(model.healthRestoreStatus.isInProgress)
                 .accessibilityIdentifier("settings.restoreHealth")
-                NavigationLink {
-                    CloudKitSyncDiagnosticsView()
-                } label: {
-                    Label("Open iCloud Details & Diagnostics", systemImage: "stethoscope")
-                }
                 NavigationLink {
                     BackupRestoreCenterView()
                 } label: {

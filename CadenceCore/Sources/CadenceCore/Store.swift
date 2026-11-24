@@ -3,13 +3,15 @@ import Foundation
 import SwiftData
 #endif
 
-/// Builds the shared SwiftData stores. The iPhone uses one `Cladiron.store`
-/// (all models, including health-bearing rows) and mirrors it to the user's
-/// **private** CloudKit database (`iCloud.guru.parso.cladiron.sync`). A single
-/// store is required for SwiftData relationship integrity: the previous
+/// Builds the shared SwiftData stores. The shipping iPhone app uses one
+/// local-only `Cladiron.store` (all models, including health-bearing rows). A
+/// single store is required for SwiftData relationship integrity: the previous
 /// Local/Sync split could not encode a set's Exercise relationship during save.
-/// The Watch uses a local-only store and syncs through WatchConnectivity so the
-/// phone is the sole CloudKit writer.
+///
+/// All stores are local-only. There is no iCloud or CloudKit access: App Review
+/// Guideline 5.1.3(ii) prohibits storing personal health information in iCloud,
+/// and the workout model carries heart-rate and other health data. Export/import
+/// is the portable backup path. The Watch syncs through WatchConnectivity.
 #if canImport(SwiftData)
 public enum CadenceStore {
     /// Shared local-store compatibility marker used by iPhone and Watch.
@@ -44,7 +46,7 @@ public enum CadenceStore {
     public static let schema = Schema(sharedModelTypes)
 
     /// The Watch's local-only store: the shared schema plus the phone-mirrored cardio
-    /// history projection. Never used for the phone or its CloudKit configurations.
+    /// history projection.
     public static let watchSchema = Schema(sharedModelTypes + [WatchCardioHistoryRecord.self])
 
     /// The H5 boundary is retained for reading and migrating pre-Cladiron.store
@@ -78,8 +80,6 @@ public enum CadenceStore {
         ExerciseSuggestionExclusion.self,
         ScheduledWorkout.self
     ])
-
-    public static let splitCloudKitContainerID = "iCloud.guru.parso.cladiron.sync"
 
     /// The pre-split single store and the later Local/Sync pair are read only by
     /// the one-time copy into the current application store.
@@ -140,16 +140,15 @@ public enum CadenceStore {
             && fileManager.fileExists(atPath: applicationStoreURL(in: directory).path)
     }
 
-    /// Opens the single application store. A pre-Cladiron.store legacy store or
-    /// Local/Sync pair is copied into it once, before the first launch, so the
-    /// store migration never strands history. The old files are left untouched
-    /// as rollback copies.
+    /// Opens the single local application store. A pre-Cladiron.store legacy
+    /// store or Local/Sync pair is copied into it once, before the first launch,
+    /// so the store migration never strands history. The old files are left
+    /// untouched as rollback copies.
     public static func makeApplicationModelContainer(
-        cloudKitEnabled: Bool = true,
         directory: URL = applicationSupportDirectory(),
         fileManager: FileManager = .default,
-        singleFactory: (URL, Bool) throws -> ModelContainer = {
-            try makeSingleModelContainer(storeURL: $0, cloudKitEnabled: $1)
+        singleFactory: (URL) throws -> ModelContainer = {
+            try makeSingleModelContainer(storeURL: $0)
         }
     ) throws -> ModelContainer {
         try fileManager.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -160,71 +159,50 @@ public enum CadenceStore {
                 stateURL: directory.appendingPathComponent(StoreMigrationRuntime.stateFileName),
                 snapshotURL: directory.appendingPathComponent(StoreMigrationRuntime.singleStoreSnapshotFileName))
         }
-        do {
-            return try singleFactory(singleURL, cloudKitEnabled)
-        } catch where cloudKitEnabled {
-            // A CloudKit mirroring setup failure (account, entitlement, or
-            // schema state) must not crash launch. Open the same on-disk
-            // store local-only: no data is deleted or replaced, and
-            // mirroring resumes once CloudKit is usable again.
-            return try singleFactory(singleURL, false)
-        }
+        return try singleFactory(singleURL)
     }
 
-    /// Builds the single application store. The URL is caller-owned so tests can
-    /// use a temporary local-only store.
+    /// Builds the single local application store. The URL is caller-owned so
+    /// tests can use a temporary store.
     public static func makeSingleModelContainer(
-        storeURL: URL,
-        cloudKitEnabled: Bool = true
+        storeURL: URL
     ) throws -> ModelContainer {
-        let config = ModelConfiguration(
-            "app", schema: schema, url: storeURL,
-            cloudKitDatabase: cloudKitEnabled
-                ? .private(splitCloudKitContainerID) : .none)
+        let config = ModelConfiguration("app", schema: schema, url: storeURL,
+                                       cloudKitDatabase: .none)
         return try ModelContainer(for: schema, configurations: [config])
     }
 
-    /// Builds the two-configuration container used by every current install.
-    /// Both URLs are caller-owned so tests can use temporary local-only stores.
+    /// Builds the legacy two-configuration container used only to read a pre-split
+    /// Local/Sync pair during migration. Both URLs are caller-owned and local-only.
     public static func makeSplitModelContainer(
         localURL: URL,
-        syncURL: URL,
-        cloudKitEnabled: Bool = true
+        syncURL: URL
     ) throws -> ModelContainer {
         let local = ModelConfiguration("local", schema: localSchema, url: localURL,
                                        cloudKitDatabase: .none)
-        let syncDatabase: ModelConfiguration.CloudKitDatabase = cloudKitEnabled
-            ? .private(splitCloudKitContainerID)
-            : .none
         let sync = ModelConfiguration("sync", schema: syncSchema, url: syncURL,
-                                      cloudKitDatabase: syncDatabase)
+                                      cloudKitDatabase: .none)
         return try ModelContainer(for: schema, configurations: [local, sync])
     }
 
     /// - Parameters:
-    ///   - inMemory: pass `true` for previews/tests — that store never touches CloudKit.
-    ///   - cloudKitEnabled: pass `false` for the watch app; the phone remains the
-    ///     sole CloudKit writer and watch data moves over WatchConnectivity.
+    ///   - inMemory: pass `true` for previews/tests.
+    ///   - storeURL: an explicit local store URL for persistence tests.
+    ///   - includesWatchCardioHistory: adds the Watch's local cardio projection.
     public static func makeModelContainer(inMemory: Bool = false,
-                                          cloudKitEnabled: Bool = true,
                                           storeURL: URL? = nil,
                                           includesWatchCardioHistory: Bool = false) throws -> ModelContainer {
-        // Only the Watch asks for the phone-mirrored cardio projection, and it is local-only.
-        let activeSchema = includesWatchCardioHistory && !cloudKitEnabled ? watchSchema : schema
+        let activeSchema = includesWatchCardioHistory ? watchSchema : schema
         let configuration: ModelConfiguration
         if inMemory {
-            configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: inMemory)
+            configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: true,
+                                               cloudKitDatabase: .none)
         } else if let storeURL {
-            // Explicit URLs are used by persistence regression tests and by the
-            // isolated UI-test store. They are always local-only: a test must
-            // never touch the user's CloudKit database.
             configuration = ModelConfiguration(schema: activeSchema, url: storeURL,
                                                cloudKitDatabase: .none)
-        } else if !cloudKitEnabled {
-            configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: false)
         } else {
             configuration = ModelConfiguration(schema: activeSchema, isStoredInMemoryOnly: false,
-                                               cloudKitDatabase: .private(splitCloudKitContainerID))
+                                               cloudKitDatabase: .none)
         }
         return try ModelContainer(for: activeSchema, configurations: [configuration])
     }

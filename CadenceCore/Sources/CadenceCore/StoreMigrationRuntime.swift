@@ -48,7 +48,6 @@ public enum StoreMigrationRuntime {
     /// aware, and the old store is never touched by this method.
     public static func migrate(legacyURL: URL, localURL: URL, syncURL: URL,
                                stateURL: URL, snapshotURL: URL,
-                               cloudKitEnabled: Bool = true,
                                now: Date = Date()) throws -> Result {
         guard FileManager.default.fileExists(atPath: legacyURL.path) else {
             throw Error.legacyStoreMissing
@@ -58,7 +57,6 @@ public enum StoreMigrationRuntime {
         try createParentDirectory(for: snapshotURL)
 
         let legacy = try CadenceStore.makeModelContainer(inMemory: false,
-                                                         cloudKitEnabled: false,
                                                          storeURL: legacyURL)
         let oldContext = ModelContext(legacy)
         let archive = try NativeDatabaseExport.build(from: oldContext)
@@ -70,7 +68,7 @@ public enum StoreMigrationRuntime {
         }
 
         let split = try CadenceStore.makeSplitModelContainer(
-            localURL: localURL, syncURL: syncURL, cloudKitEnabled: cloudKitEnabled)
+            localURL: localURL, syncURL: syncURL)
         let splitContext = ModelContext(split)
         _ = try NativeDatabaseExport.merge(archive, in: splitContext)
 
@@ -95,15 +93,13 @@ public enum StoreMigrationRuntime {
 
     /// One-time upgrade for an install that still has the pre-split
     /// `default.store`. Runs before the first split container is opened. The
-    /// copy is local-only so a signed-out iCloud account can never block
-    /// launch; the split container's mirror uploads the copied rows afterwards.
+    /// copy is local-only and never depends on a cloud account.
     public static func migrateLegacyStoreAtLaunch(legacyURL: URL, localURL: URL,
                                                   syncURL: URL, stateURL: URL,
                                                   snapshotURL: URL,
                                                   now: Date = Date()) throws {
         _ = try migrate(legacyURL: legacyURL, localURL: localURL, syncURL: syncURL,
-                        stateURL: stateURL, snapshotURL: snapshotURL,
-                        cloudKitEnabled: false, now: now)
+                        stateURL: stateURL, snapshotURL: snapshotURL, now: now)
         try writeReadyMarker(stateURL: stateURL)
         // The old interactive upgrade queued HealthKit backups before switching
         // stores. Keep that behavior, one launch later, without making the
@@ -151,7 +147,7 @@ public enum StoreMigrationRuntime {
         var archive: ExportNativeDatabase?
         if hasSplit,
            let container = try? CadenceStore.makeSplitModelContainer(
-               localURL: split.local, syncURL: split.sync, cloudKitEnabled: false) {
+               localURL: split.local, syncURL: split.sync) {
             let context = ModelContext(container)
             let built = try? NativeDatabaseExport.build(from: context)
             let sourceCounts = try? counts(in: context)
@@ -166,7 +162,7 @@ public enum StoreMigrationRuntime {
         }
         if archive == nil, hasLegacy,
            let container = try? CadenceStore.makeModelContainer(
-               inMemory: false, cloudKitEnabled: false, storeURL: legacyURL) {
+               inMemory: false, storeURL: legacyURL) {
             let context = ModelContext(container)
             sourceContainer = container
             sourceContext = context
@@ -185,7 +181,7 @@ public enum StoreMigrationRuntime {
         }
 
         let destination = try CadenceStore.makeSingleModelContainer(
-            storeURL: singleURL, cloudKitEnabled: false)
+            storeURL: singleURL)
         let destinationContext = ModelContext(destination)
         _ = sourceContainer
         _ = try NativeDatabaseExport.merge(archive, in: destinationContext)

@@ -4,8 +4,8 @@ import Testing
 import SwiftData
 @testable import CadenceCore
 
-/// The split Local/Sync configurations must remain constructible on separate
-/// files; they are the only application store layout now.
+/// The legacy split Local/Sync configurations must remain constructible on
+/// separate files so a pre-Cladiron.store install can be read during migration.
 @MainActor
 struct SplitStoreConfigurationTests {
     @Test func localAndSyncConfigurationsOpenOnSeparateFiles() throws {
@@ -16,8 +16,7 @@ struct SplitStoreConfigurationTests {
 
         let container = try CadenceStore.makeSplitModelContainer(
             localURL: directory.appendingPathComponent("Local.store"),
-            syncURL: directory.appendingPathComponent("Sync.store"),
-            cloudKitEnabled: false)
+            syncURL: directory.appendingPathComponent("Sync.store"))
         let context = ModelContext(container)
         let session = WorkoutSession(title: "Local history")
         let exercise = Exercise(name: "Sync exercise")

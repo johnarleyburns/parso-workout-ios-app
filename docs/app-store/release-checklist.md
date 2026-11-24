@@ -4,9 +4,12 @@ Use this checklist for the first public App Store v1 submission.
 
 ## Code Readiness
 
-- Resolve the CloudKit health-data policy gate documented in
-  `docs/app-store/security-accessibility-release-audit.md` before public
-  submission.
+- App Store submission is local-only: the app has no iCloud entitlement and no
+  CloudKit code or UI. Keep it that way unless a health-data-separated sync
+  design lands (Guideline 5.1.3(ii)).
+- Delete the legacy CloudKit container `iCloud.guru.parso.cladiron.sync` (or
+  its health-bearing record types) in CloudKit Console before public
+  submission so no previously mirrored health data remains in iCloud.
 
 - Confirm app display name is `Cladiron`.
 - Confirm the archive embeds the `Cadence Watch App` and both binaries pass
@@ -18,11 +21,19 @@ Use this checklist for the first public App Store v1 submission.
   wrist heart rate (Watch).
 - Confirm no copy implies generative AI, cloud AI, medical advice, diagnosis,
   treatment, guaranteed results, cloud sync, social features, or nutrition
-  coaching.
-- Confirm `PrivacyInfo.xcprivacy` remains Data Not Collected.
+  coaching. The submission build is local-only; use on-device/export language.
+- Confirm `PrivacyInfo.xcprivacy` remains Data Not Collected and declares the
+  required reasons actually used (UserDefaults, FileTimestamp, DiskSpace on the
+  iPhone; UserDefaults + SystemBootTime on the Watch).
+- Confirm `NSLocationAlwaysAndWhenInUseUsageDescription` is present and the
+  outdoor-workout flow requests Always only after the user starts a workout.
+- Confirm `remote-notification` is absent from `UIBackgroundModes`.
 - Confirm contribution copy says "support" or "contribute", never "donation".
 - Confirm all planning, coaching, logging, export, and execution surfaces remain
   available without a purchase.
+- Confirm third-party content attribution and content-rights answers: exercise
+  data/images from free-exercise-db (CC0) and Wikimedia assets (CC BY-SA) are
+  attributed in About; no unlicensed third-party media is shipped.
 - Confirm the single optional $9.99 contribution loads and unlocks nothing.
 - Confirm product-load failure leaves the free app fully usable.
 
@@ -38,13 +49,32 @@ Use this checklist for the first public App Store v1 submission.
 - Verify outdoor GPS workout recording and Health save.
 - On a real Apple Watch: verify a phone-free strength session, live wrist HR,
   Health save (rings credit), and auto-ingest back to the phone.
-- Verify the automatic iCloud backup and restore-on-fresh-install path with a
-  signed-in iCloud account.
+- Verify the on-device store survives relaunch and that JSON export/import
+  restores a fresh install.
 - Verify JSON export/import round-trip with non-empty strength, cardio,
   assessment, and preference data.
 - Verify StoreKit local products using `Cadence.storekit`.
 - Verify sandbox StoreKit products with the local StoreKit config disabled.
 - Verify the app behaves correctly when StoreKit products are unavailable.
+
+## Identifiers, provisioning, and certificates after removing iCloud
+
+Do this once in the Apple Developer portal and CI before the first local-only submission:
+
+- App ID `guru.parso.ios-workout-app`: remove the **iCloud/CloudKit** capability
+  and the `iCloud.guru.parso.cladiron.sync` container association.
+- Regenerate the **App Store distribution provisioning profile** for that App ID
+  and replace the CI secret `PROVISIONING_PROFILE_BASE64`. The Apple
+  Distribution certificate, APNs key, App Store Connect API key, Watch/widget
+  profiles, App Group, bundle IDs, HealthKit capability, and StoreKit product
+  do not need to change.
+- In CloudKit Console / App Store Connect, delete the legacy container
+  `iCloud.guru.parso.cladiron.sync` (or its health-bearing record types) after
+  removing it from the App ID. This removes previously mirrored data from
+  iCloud; local device data is unaffected.
+- If a CloudKit management token (`~/.cloudkit-management-token`) was used for
+  the old schema check, revoke/rotate it. That check has been removed from the
+  repo.
 
 ## App Store Connect
 
@@ -57,13 +87,13 @@ Use this checklist for the first public App Store v1 submission.
 - Fill App Information from `docs/app-store/metadata.md`.
 - Upload final screenshots using the screenshot storyboard in
   `docs/app-store/metadata.md`, including at least one Apple Watch screenshot
-  (required — the archive embeds a watchOS app).
+  (required — the archive embeds a watchOS app) and the iPad screenshots the
+  universal target requires.
 - Set App Privacy to `Data Not Collected`.
 - Confirm the privacy policy URL is live and accurate:
   `https://johnarleyburns.github.io/parso-workout-ios-app/` (published from this repo's
-  `gh-pages` branch; migrated off `parso.guru/cladiron_privacy`). The refreshed policy now
-  discloses microphone/speech-recognition voice logging — re-check App Privacy answers in App
-  Store Connect still match.
+  `gh-pages` branch). Remove stale iCloud/microphone claims; this build stores
+  training data on device and does not use the microphone.
 - Add review notes from `docs/app-store/metadata.md`.
 - Confirm no demo account is required.
 

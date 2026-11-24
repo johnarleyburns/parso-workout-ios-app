@@ -22,7 +22,7 @@ struct StoreMigrationRuntimeTests {
 
         let result = try StoreMigrationRuntime.migrate(
             legacyURL: legacyURL, localURL: localURL, syncURL: syncURL,
-            stateURL: stateURL, snapshotURL: snapshotURL, cloudKitEnabled: false,
+            stateURL: stateURL, snapshotURL: snapshotURL,
             now: Date(timeIntervalSince1970: 100))
 
         #expect(result.oldCounts == StoreMigrationCounts(sessions: 1, ownerSets: 1,
@@ -33,7 +33,7 @@ struct StoreMigrationRuntimeTests {
             .appendingPathComponent(StoreMigrationRuntime.readyMarkerFileName).path))
 
         let split = try CadenceStore.makeSplitModelContainer(
-            localURL: localURL, syncURL: syncURL, cloudKitEnabled: false)
+            localURL: localURL, syncURL: syncURL)
         let restored = ModelContext(split)
         #expect(try restored.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
         #expect(try restored.fetchCount(FetchDescriptor<Exercise>()) == 1)
@@ -74,7 +74,6 @@ struct StoreMigrationRuntimeTests {
 
     private func seedLegacyStore(at url: URL) throws {
         let legacy = try CadenceStore.makeModelContainer(inMemory: false,
-                                                         cloudKitEnabled: false,
                                                          storeURL: url)
         let context = ModelContext(legacy)
         let exercise = Exercise(name: "Bench Press")

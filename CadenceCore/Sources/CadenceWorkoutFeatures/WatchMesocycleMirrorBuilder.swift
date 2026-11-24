@@ -5,7 +5,7 @@ import Foundation
 import SwiftData
 
 /// Phone-side builder for the 12-week Watch mirror. The phone is the only
-/// CloudKit writer; this value is the Watch's read-only copy for local
+/// store writer; this value is the Watch's read-only copy for local
 /// strength/cardio generation. History is pruned to the mesocycle window, while
 /// all-time counts and the candidate catalog are carried as parity metadata.
 public enum WatchMesocycleMirrorBuilder {

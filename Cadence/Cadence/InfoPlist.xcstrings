@@ -128,55 +128,55 @@
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Your health data never leaves your device."
+            "value" : "Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Cladiron stores this health data on your device and never sends it to a Cladiron server."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron liest deine Schritte, Trainings, Herzfrequenz und – für erholungsbewusstes Coaching – Herzfrequenzvariabilität, Ruhepuls, Schlaf und Körpergewicht, damit deine Aktivität, auf der Watch aufgezeichnete Einheiten und deine Bereitschaft hier erscheinen. Deine Gesundheitsdaten verlassen nie dein Gerät."
+            "value" : "Cladiron liest deine Schritte, Trainings, Herzfrequenz und – für erholungsbewusstes Coaching – Herzfrequenzvariabilität, Ruhepuls, Schlaf und Körpergewicht, damit deine Aktivität, auf der Watch aufgezeichnete Einheiten und deine Bereitschaft hier erscheinen. Cladiron speichert diese Gesundheitsdaten auf deinem Gerät und sendet sie niemals an einen Cladiron-Server."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron lee tus pasos, entrenamientos, frecuencia cardiaca y, para un Coach que tenga en cuenta la recuperación, tu variabilidad de la frecuencia cardiaca, frecuencia cardiaca en reposo, sueño y peso corporal, para mostrar aquí tu actividad, las sesiones del Watch y tu preparación. Tus datos de salud nunca salen de tu dispositivo."
+            "value" : "Cladiron lee tus pasos, entrenamientos, frecuencia cardiaca y, para un Coach que tenga en cuenta la recuperación, tu variabilidad de la frecuencia cardiaca, frecuencia cardiaca en reposo, sueño y peso corporal, para mostrar aquí tu actividad, las sesiones del Watch y tu preparación. Cladiron guarda estos datos de salud en tu dispositivo y nunca los envía a un servidor de Cladiron."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron lit vos pas, vos entraînements, votre fréquence cardiaque et – pour un coaching attentif à la récupération – votre variabilité de la fréquence cardiaque, votre fréquence cardiaque au repos, votre sommeil et votre poids, afin d’afficher ici votre activité, les séances enregistrées sur la Watch et votre état de forme. Vos données de santé ne quittent jamais votre appareil."
+            "value" : "Cladiron lit vos pas, vos entraînements, votre fréquence cardiaque et – pour un coaching attentif à la récupération – votre variabilité de la fréquence cardiaque, votre fréquence cardiaque au repos, votre sommeil et votre poids, afin d’afficher ici votre activité, les séances enregistrées sur la Watch et votre état de forme. Cladiron conserve ces données de santé sur votre appareil et ne les envoie jamais à un serveur Cladiron."
           }
         },
         "nl" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron leest je stappen, trainingen, hartslag en – voor coaching die rekening houdt met herstel – je hartslagvariabiliteit, rusthartslag, slaap en lichaamsgewicht, zodat je activiteit, op de Watch vastgelegde sessies en paraatheid hier verschijnen. Je gezondheidsgegevens verlaten je apparaat nooit."
+            "value" : "Cladiron leest je stappen, trainingen, hartslag en – voor coaching die rekening houdt met herstel – je hartslagvariabiliteit, rusthartslag, slaap en lichaamsgewicht, zodat je activiteit, op de Watch vastgelegde sessies en paraatheid hier verschijnen. Cladiron bewaart deze gezondheidsgegevens op je apparaat en stuurt ze nooit naar een Cladiron-server."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "O Cladiron lê seus passos, treinos, frequência cardíaca e — para um Coach atento à recuperação — sua variabilidade da frequência cardíaca, frequência cardíaca em repouso, sono e peso corporal, para mostrar aqui sua atividade, as sessões gravadas no Watch e sua prontidão. Seus dados de saúde nunca saem do seu dispositivo."
+            "value" : "O Cladiron lê seus passos, treinos, frequência cardíaca e — para um Coach atento à recuperação — sua variabilidade da frequência cardíaca, frequência cardíaca em repouso, sono e peso corporal, para mostrar aqui sua atividade, as sessões gravadas no Watch e sua prontidão. O Cladiron armazena esses dados de saúde no seu dispositivo e nunca os envia a um servidor do Cladiron."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron 会读取你的步数、训练和心率，并为了兼顾恢复的指导读取心率变异性、静息心率、睡眠和体重，以便在此显示你的活动、手表记录的训练和准备度。你的健康数据绝不会离开你的设备。"
+            "value" : "Cladiron 会读取你的步数、训练和心率，并为了兼顾恢复的指导读取心率变异性、静息心率、睡眠和体重，以便在此显示你的活动、手表记录的训练和准备度。Cladiron 将这些健康数据存储在你的设备上，绝不会将其发送到 Cladiron 服务器。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron 會讀取你的步數、訓練和心率，並為了兼顧恢復的指導讀取心率變異度、靜止心率、睡眠和體重，以便在此顯示你的活動、手錶記錄的訓練和準備度。你的健康資料絕不會離開你的裝置。"
+            "value" : "Cladiron 會讀取你的步數、訓練和心率，並為了兼顧恢復的指導讀取心率變異度、靜止心率、睡眠和體重，以便在此顯示你的活動、手錶記錄的訓練和準備度。Cladiron 將這些健康資料儲存在你的裝置上，絕不會將其傳送到 Cladiron 伺服器。"
           }
         },
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Your health data never leaves your device."
+            "value" : "Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Cladiron stores this health data on your device and never sends it to a Cladiron server."
           }
         }
       }
@@ -237,6 +237,66 @@
           "stringUnit" : {
             "state" : "needs_review",
             "value" : "Cladiron saves summaries of your workouts (strength, cardio, intervals, and swim) to Apple Health so they appear system-wide and close your Activity rings."
+          }
+        }
+      }
+    },
+    "NSLocationAlwaysAndWhenInUseUsageDescription" : {
+      "comment" : "Info.plist NSLocationAlwaysAndWhenInUseUsageDescription — iPhone background outdoor-workout prompt",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cladiron keeps recording your outdoor route while your iPhone is locked or in your pocket during a workout. It stops when the workout ends and never tracks you at other times."
+          }
+        },
+        "en-GB" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron keeps recording your outdoor route while your iPhone is locked or in your pocket during a workout. It stops when the workout ends and never tracks you at other times."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron zeichnet deine Outdoor-Route weiter auf, während dein iPhone während eines Trainings gesperrt ist oder in deiner Tasche steckt. Nach dem Training wird die Aufzeichnung beendet; außerhalb von Trainings erfolgt keine Standortverfolgung."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron sigue registrando tu ruta al aire libre mientras tu iPhone está bloqueado o en el bolsillo durante un entrenamiento. Se detiene al terminar el entrenamiento y nunca te rastrea en otros momentos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron continue d’enregistrer votre parcours extérieur lorsque votre iPhone est verrouillé ou dans votre poche pendant un entraînement. La capture s’arrête à la fin de l’entraînement et ne vous suit jamais le reste du temps."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "Cladiron blijft je buitenroute opnemen terwijl je iPhone tijdens een training vergrendeld is of in je zak zit. Het stopt wanneer de training eindigt en volgt je nooit op andere momenten."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "O Cladiron continua registrando sua rota ao ar livre enquanto seu iPhone está bloqueado ou no bolso durante um treino. Ele para quando o treino termina e nunca rastreia você em outros momentos."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "训练期间，即使 iPhone 已锁定或放在口袋里，Cladiron 也会继续记录你的户外路线。训练结束后停止记录，绝不会在其他时间跟踪你。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "訓練期間，即使 iPhone 已鎖定或放在口袋裡，Cladiron 也會繼續記錄你的戶外路線。訓練結束後停止記錄，絕不會在其他時間追蹤你。"
           }
         }
       }

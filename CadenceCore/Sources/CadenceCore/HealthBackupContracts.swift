@@ -229,7 +229,7 @@ public enum HealthBackupJob: Codable, Equatable, Sendable {
 
 /// A durable, local-only queue entry. It intentionally lives in an app-owned
 /// file until H5 creates the dedicated local SwiftData configuration; putting
-/// it in the current CloudKit-backed schema would leak health state to the old
+/// it in the current store schema would leak health state to the old
 /// container.
 public struct HealthOutboxItem: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
@@ -343,7 +343,7 @@ public struct HealthOutboxQueue: Codable, Equatable, Sendable {
 
 /// Actor-isolated JSON persistence for the outbox. Writes are atomic and the
 /// directory is created lazily, so a locked/offline device can retain work
-/// without depending on SwiftData or CloudKit availability.
+/// without depending on SwiftData or store availability.
 public actor HealthOutboxStore {
     private let fileURL: URL
     private var queue: HealthOutboxQueue?
@@ -480,7 +480,7 @@ public enum HealthRestoreDecision: Equatable, Sendable {
 }
 
 /// Pure last-writer-wins policy used by both the Health reader and future
-/// CloudKit migration runner. Equal versions keep local data so an export/import
+/// migration runner. Equal versions keep local data so an export/import
 /// cannot unexpectedly replace an edit made on this device.
 public enum HealthRestorePlanner {
     public static func decision(local: HealthRestoreVersion?, incoming: HealthRestoreVersion) -> HealthRestoreDecision {

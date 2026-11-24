@@ -18,7 +18,6 @@ struct StoreFilePersistenceSafetyTests {
 
         do {
             let container = try CadenceStore.makeModelContainer(inMemory: false,
-                                                                cloudKitEnabled: false,
                                                                 storeURL: storeURL)
             let context = ModelContext(container)
             context.insert(WorkoutSession(title: "File Safety Regression"))
@@ -30,7 +29,6 @@ struct StoreFilePersistenceSafetyTests {
         #expect(sizeBefore > 0)
 
         _ = try CadenceStore.makeModelContainer(inMemory: false,
-                                                cloudKitEnabled: false,
                                                 storeURL: storeURL)
 
         #expect(FileManager.default.fileExists(atPath: storeURL.path),

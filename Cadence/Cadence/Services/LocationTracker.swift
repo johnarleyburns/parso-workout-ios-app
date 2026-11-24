@@ -39,7 +39,12 @@ final class LocationTracker: NSObject, LocationTracking, @unchecked Sendable {
         fixes.removeAll()
         startDate = Date()
         // Keep recording the route during a call / pocket (field-testing §05).
-        // The "location" background mode + usage string are in Info.plist.
+        // The "location" background mode and both usage strings are in
+        // Info.plist. When In Use alone stops at lock, so ask for Always only
+        // when the user is actively starting an outdoor workout.
+        if manager?.authorizationStatus == .authorizedWhenInUse {
+            manager?.requestAlwaysAuthorization()
+        }
         manager?.allowsBackgroundLocationUpdates = true
         manager?.showsBackgroundLocationIndicator = true
         manager?.startUpdatingLocation()

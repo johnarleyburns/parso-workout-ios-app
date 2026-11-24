@@ -102,15 +102,15 @@ final class WatchStoreBootstrap: ObservableObject {
         // Delegate the open/quarantine/retry/fall-back-to-memory
         // state machine entirely to the already-tested, generic policy.
         // `seed` is a deliberate no-op here — real users get data via
-        // CloudKit sync, never local starter-library seeding (mirrors the
+        // Local-only store, never cloud restore or starter-library seeding (mirrors the
         // iPhone app's CadenceApp.swift, which defers that same seed work so
-        // CloudKit restore is never blocked).
+        // a store open is never blocked by a cloud account).
         let policy = Policy(
             createPersistent: {
-                try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
+                try CadenceStore.makeModelContainer(inMemory: false, includesWatchCardioHistory: true)
             },
             createInMemory: {
-                try CadenceStore.makeModelContainer(inMemory: true, cloudKitEnabled: false, includesWatchCardioHistory: true)
+                try CadenceStore.makeModelContainer(inMemory: true, includesWatchCardioHistory: true)
             },
             quarantine: { try Self.quarantineStore() },
             seed: { _ in }
@@ -125,7 +125,7 @@ final class WatchStoreBootstrap: ObservableObject {
         retryInProgress = true
         defer { retryInProgress = false }
         do {
-            let fresh = try CadenceStore.makeModelContainer(inMemory: false, cloudKitEnabled: false, includesWatchCardioHistory: true)
+            let fresh = try CadenceStore.makeModelContainer(inMemory: false, includesWatchCardioHistory: true)
             container = fresh
             catalogPreparationStarted = false
             result = Policy.Result(container: fresh, state: .ready)

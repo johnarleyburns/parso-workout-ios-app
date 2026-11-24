@@ -94,7 +94,7 @@ public enum WatchSync {
 
     /// Property-list-safe snapshot of a user-created exercise sent from the
     /// phone to the watch. The watch has its own local SwiftData store, so
-    /// CloudKit cannot be relied on for the low-latency picker path.
+    /// The store cannot be relied on for the low-latency picker path.
     public struct CustomExercise: Equatable, Sendable {
         public var id: UUID
         public var name: String

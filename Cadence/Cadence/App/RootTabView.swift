@@ -35,8 +35,7 @@ struct RootTabView: View {
             }
 
             // Explicit Watch action results use one non-layout-affecting host.
-            // Automatic CloudKit restore state stays in Settings/diagnostics so
-            // it never shifts the Today dashboard during launch.
+            // Keep transient state out of the launch layout.
             if watchSyncToast != nil {
                 GeometryReader { proxy in
                     VStack(spacing: 8) {
@@ -157,9 +156,9 @@ struct RootTabView: View {
                 WorkoutLiveActivityCoordinator.shared.reconcile(
                     workoutIsActive: active.isActive, hasStrengthSession: active.strengthSession != nil)
             }
-            // The training log syncs live via SwiftData↔CloudKit (private DB);
-            // there is nothing to restore or upload here — SwiftData mirrors the
-            // store automatically on launch and as changes happen.
+            // The training log is local-only for App Store submission, so there
+            // is no cloud restore or upload step here. Export/import remains the
+            // portable backup path.
         }
         .onChange(of: scenePhase) { _, phase in
             // Reconcile BEFORE anything else: foregrounding is never activity, and an

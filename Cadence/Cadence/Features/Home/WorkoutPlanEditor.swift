@@ -171,7 +171,7 @@ struct WorkoutPlanEditor: View {
             refreshPlanWeeklyVolume()
         }
         .onChange(of: plan) { _, _ in refreshPlanVolume() }
-        // One bounded retry for a catalog/CloudKit history that lands just
+        // One bounded retry for a catalog/history that lands just
         // after the first frame. Do NOT refresh on every store notification:
         // re-seeding the plan inside that notification loop made the screen
         // flash and blocked every tap.

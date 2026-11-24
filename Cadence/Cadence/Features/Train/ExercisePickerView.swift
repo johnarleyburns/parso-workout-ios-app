@@ -27,7 +27,7 @@ struct ExercisePickerView: View {
     }
 
     /// NavigationPath stores only this stable value. The SwiftData exercise is
-    /// resolved at the destination boundary so a catalog refresh or CloudKit
+    /// resolved at the destination boundary so a catalog refresh or history
     /// merge cannot leave a live model embedded in the path.
     enum ExerciseDetailRoute: Hashable {
         case exercise(UUID)

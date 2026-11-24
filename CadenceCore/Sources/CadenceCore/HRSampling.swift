@@ -5,7 +5,7 @@ import Foundation
 public enum HRSampling {
 
     /// Default cap on stored HR points — enough to draw a smooth curve without
-    /// bloating the local store / CloudKit payload for long workouts.
+    /// bloating the local store / store payload for long workouts.
     public static let defaultMaxPoints = 120
 
     /// Reduces a sample series to at most `maxPoints`, preserving chronological

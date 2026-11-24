@@ -17,7 +17,7 @@ import SwiftData
 /// device: the catalog revision (seed version + app build, so every new build
 /// with new catalog data reconciles once), the stored exercise count, and the
 /// newest stored exercise `updatedAt`. The last two are single cheap queries,
-/// and they change whenever CloudKit imports or local edits add, delete, or
+/// and they change whenever store imports or local edits add, delete, or
 /// modify exercise rows.
 public enum StarterLibraryReconciliation {
     public static let defaultsKey = "catalog.starterLibrary.reconciledSignature"

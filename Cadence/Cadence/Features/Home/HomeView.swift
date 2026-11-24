@@ -318,7 +318,6 @@ struct HomeView: View {
     }
 
     func refreshCoachSnapshot() async {
-        guard !model.isRestoringCloudKitHistory else { return }
         model.coachRefreshInProgress = true
         defer { model.coachRefreshInProgress = false }
         coachSnapshot = await buildCoachSnapshot()

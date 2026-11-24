@@ -71,8 +71,8 @@ Current direction, so you don't design against the wrong target:
 - **Supporter contribution** — the only purchase is the optional $9.99
   `guru.parso.workout.support.dev` consumable, which unlocks nothing and adds
   a Supporter badge.
-- **Persistence unchanged** — SwiftData + CloudKit, as shipped. The spec follows
-  the app here rather than the reverse.
+- **Persistence unchanged** — SwiftData on-device, as shipped for the App Store
+  submission. CloudKit mirroring is disabled; the spec follows the app here.
 - **Execution unchanged underneath planning** — plans materialize through the
   shipped workout prescription seam. Preserve the DB++ 20-muscle accounting,
   collapsed/full-screen iPhone set-entry loop, performer-specific partner
@@ -104,12 +104,12 @@ The watch app **shipped 2026-07-17** (W1–W4: strength with partners, HIIT/Boxi
 - Read **steps** and ingest **Watch-recorded workouts + HR** from **HealthKit**. The coach also reads **HRV, resting HR, sleep, and bodyweight** (read-only, on-device) as a passive-readiness prior fused with self-report.
 - Review history, PRs, trends, and assessment results.
 - Follow **built-in programs** (5/3/1, PPL, 5x5, splits, calisthenics, Olympic).
-Cladiron **syncs the full training log live across the user's devices** (iPhone + Apple Watch; the Watch relays through the phone via WatchConnectivity) using one `Cladiron.store` and mirroring it to the user's **own private CloudKit database** (container `iCloud.guru.parso.cladiron.sync`) via `NSPersistentCloudKitContainer`. Pre-`Cladiron.store` installs (the legacy `default.store` and the interim Local/Sync pair) are copied into the single store once at first launch and are never opened as application stores again. Apple is the processor and Cladiron never sees the data, so the **Data Not Collected** label is unaffected. This replaced the earlier export-blob backup (D5) — decision reversed 2026-07-27. Data portability is still a complete JSON **export/import** (full workout history + assessments + all preferences) for moving off-platform losslessly. Requires a one-time CloudKit **schema deploy to Production** in the Dashboard before TestFlight/production builds sync.
+Cladiron keeps the full training log on the iPhone in one local-only `Cladiron.store`; the Watch relays completed work through WatchConnectivity. There is no iCloud or CloudKit access in the shipping app — no entitlement, no CloudKit import, no cloud store, and no cloud UI. This is required by App Review Guideline 5.1.3(ii), which prohibits personal health information in iCloud. Pre-`Cladiron.store` installs (the legacy `default.store` and the interim Local/Sync pair) are copied into the single local store once at first launch. Data portability is a complete JSON **export/import** (full workout history + assessments + all preferences).
 
 ## Stack
 - Swift + SwiftUI, **SwiftData** for the local store
 - **HealthKit** (steps, workouts, HR, routes; HRV, resting HR, sleep, bodyweight for passive readiness — read-only, on-device)
-- **Live cloud sync** via SwiftData↔CloudKit mirroring to the user's own **private** CloudKit database (no third-party server); JSON export/import remains for portability.
+- **On-device storage** via SwiftData; JSON export/import is the portable backup. No iCloud or CloudKit access.
 - **CoreBluetooth** (chest-strap HRM `0x180D`; cardio-machine FTMS `0x1826`)
 - **CoreLocation** (geofence + iPhone GPS), **CoreMotion** (activity class), **Swift Charts** (trends)
 - Targets: watchOS 11+, iOS 26+
@@ -118,7 +118,7 @@ Cladiron **syncs the full training log live across the user's devices** (iPhone 
 - **`CadenceCore` Swift package** holds the data model, Smart Start ranking, PR logic, and the export/import layer. Both app targets depend on it. Write logging logic ONCE here; it's headlessly testable with `swift test`.
 - HealthKit has **no schema for sets/reps/weight** — the rich strength model lives in SwiftData locally. Only a *summary* `HKWorkout` is written back to HealthKit.
 - **Live HR from the Watch requires an `HKWorkoutSession` on watchOS** (relayed to phone). The iPhone cannot stream the Watch's HR. The chest strap streams to the phone directly over BLE, no watch needed.
-- **Live cloud sync** via `NSPersistentCloudKitContainer` (SwiftData `cloudKitDatabase: .private`) to the user's private CloudKit DB — models are CloudKit-compatible by construction (all optional/defaulted, optional relationships, no `@Attribute(.unique)`; stable `UUID` + `updatedAt` + `originDevice` per entity). CloudKit is the cross-device system of record; **WatchConnectivity stays** for low-latency live handoff during an active workout (never removed). JSON export/import stays for off-platform portability, merging idempotently by id.
+- **On-device persistence** via SwiftData. Health-bearing records stay local; the app has no iCloud entitlement or CloudKit code. **WatchConnectivity stays** for low-latency live handoff and durable Watch completion delivery. JSON export/import stays for off-platform portability, merging idempotently by id.
 
 ## Commands
 - Core package: `swift build --package-path CadenceCore` / `bash scripts/ci-test.sh`

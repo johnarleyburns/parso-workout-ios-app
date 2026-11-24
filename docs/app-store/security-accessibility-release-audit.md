@@ -18,27 +18,40 @@ Audit date: 2026-09-24
   validates shipped plist/privacy-manifest files, required purpose strings,
   export-compliance metadata, absence of the unused Motion permission, and
   tracked credential-like files.
+- Disabled CloudKit mirroring for the submission build and removed the iCloud
+  entitlement so HealthKit-derived workout data is never written to iCloud
+  (Guideline 5.1.3(ii)). Settings, Transparency, and About now describe
+  on-device storage and export/import.
+- Added the iPhone FileTimestamp (C617.1) and DiskSpace (E174.1) required-reason
+  declarations plus the Watch SystemBootTime (35F9.1) declaration.
+- Added `NSLocationAlwaysAndWhenInUseUsageDescription` and request Always only
+  when an outdoor workout starts; removed the unused `remote-notification`
+  background mode.
 
 ## Manual release gates
 
-- Run the real-device HealthKit, Bluetooth HR, GPS, Watch, iCloud convergence,
-  StoreKit, export/import, and accessibility field tests in the release
-  checklist. Generic builds cannot prove hardware authorization or sensor
-  behavior.
+- Run the real-device HealthKit, Bluetooth HR, GPS, Watch, StoreKit,
+  export/import, and accessibility field tests in the release checklist.
+  Generic builds cannot prove hardware authorization or sensor behavior.
 - Capture final iPhone and Watch screenshots without debug seed data and verify
   the App Store Connect age rating, privacy answers, support URL, privacy URL,
   and contribution metadata.
 
-## Policy decision required before public submission
+## Resolved — App Review 5.1.3(ii) health-data policy
 
-The app currently mirrors its rich workout model, including fitness/health
-measurements, through the user's private CloudKit database. Apple's current
-App Review Guideline 5.1.3(ii) says apps must not store personal health
-information in iCloud. Apple has not publicly clarified whether a private,
-per-user CloudKit database or end-to-end encrypted fields are exempt. This is
-therefore a submission risk that cannot be corrected by a plist or UI change.
+The shipping app previously mirrored its rich workout model, including
+fitness/health measurements, through the user's private CloudKit database. App
+Review Guideline 5.1.3(ii) prohibits storing personal health information in
+iCloud.
 
-Before public App Store submission, obtain an App Review consultation or choose
-an architecture that keeps personal health information out of iCloud. Do not
-represent the current private-CloudKit behavior as an App Store-approved
-exception without that decision.
+**Resolution for the App Store submission:** the phone opens one local-only
+`Cladiron.store` (`cloudKitEnabled: false`), the iCloud entitlement is removed,
+and all iCloud/CloudKit settings copy and diagnostics links are gone. The Watch
+continues to sync to the phone over WatchConnectivity. JSON export/import is the
+portable backup path.
+
+Before public submission, delete the legacy CloudKit container
+`iCloud.guru.parso.cladiron.sync` (or its health-bearing record types) so data
+mirrored by earlier builds is removed from iCloud. Re-enabling cross-device
+sync requires a health-data-separated design first; do not simply turn the
+single-store mirror back on.

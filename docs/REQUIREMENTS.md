@@ -34,7 +34,7 @@ other applications under their own license.
 - **Auditable science:** every prescription and every test cites its published source via the built-in CitationRegistry. The user can always see *why*.
 - **Built-in established programs:** 5/3/1, PPL, 5x5, splits, calisthenics, Olympic lifting, and more for self-directed users who prefer a published program over coach-generated prescriptions.
 - **Strength-first, cardio secondary:** strength logging and coaching is the core loop. Cardio is capture-only (ingest Watch workouts from HealthKit, record with iPhone GPS or chest strap) — not coached in v1.
-- **Privacy by design:** no accounts, no developer-operated server, no telemetry, no third-party SDKs. Works in airplane mode. Data persists locally and mirrors through the user's private iCloud; portability is also available through JSON export/import.
+- **Privacy by design:** no accounts, no developer-operated server, no telemetry, no third-party SDKs. Works in airplane mode. Data persists locally and is never mirrored to iCloud in the App Store submission build; portability is available through JSON export/import.
 - **Apple Design Award polish:** HIG-native, fully accessible (VoiceOver, Dynamic Type, Reduce Motion), restrained motion, inclusive design.
 
 **Non-goals (for v1)**
@@ -107,7 +107,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-4.2 Local-first storage (SwiftData) as the source of truth for the rich strength model HealthKit cannot represent.
 - FR-4.3 Write summary strength workouts to HealthKit for unified history; keep detailed set data local.
 - FR-4.4 **Chest strap:** discover, connect, and subscribe to a BLE HRM via 0x180D; reconnect automatically; surface battery and signal status; persist a remembered device.
-- FR-4.5 (superseded) The former local-only rule was replaced by local SwiftData mirrored through the user's private iCloud. Complete JSON export/import remains required (FR-6).
+- FR-4.5 (submission) Local SwiftData is the system of record. CloudKit/iCloud mirroring is disabled because App Review 5.1.3(ii) prohibits personal health information in iCloud. Complete JSON export/import remains required (FR-6).
 
 ### FR-5 History, PRs & trends
 - FR-5.1 Per-exercise history list and trend chart (top weight, est. 1RM, volume over time).
@@ -140,7 +140,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
   `plans/watch-app/2026-07-17/`.
 
 ### FR-9 Cross-device portability & roles
-- FR-9.1 (superseded) The store is local-first and mirrors through private iCloud; JSON export/import remains the explicit portable backup (FR-6). WatchConnectivity handles live handoff and durable completion delivery.
+- FR-9.1 Local SwiftData is the system of record. JSON export/import is the portable backup (FR-6). WatchConnectivity handles live handoff and durable completion delivery.
 - FR-9.2 Every entity carries a stable UUID so export/import merges idempotently by id.
 - FR-9.3 Phone is the analysis surface; watch is the in-workout surface (future).
 - FR-9.4 (removed) Cloud sync is not part of the app.
@@ -189,9 +189,9 @@ Planning (program selection + routine building) lives **inside the Workout tab**
   - NFR-3.1 **No-network core:** all features work offline / airplane mode. Network is used only to fetch the public exercise-image dataset (cached on device).
   - NFR-3.2 **No third-party SDKs or telemetry.** Zero analytics, zero crash reporters, zero ad frameworks.
   - NFR-3.3 **App Store privacy label: "Data Not Collected."** No data is collected by the developer or any third party.
-  - NFR-3.4 **No developer-operated server.** Data is local-first and may sync through the user's private iCloud; portability is also available via JSON export/import.
-  - NFR-3.5 **Clear purpose strings** for every permission (HealthKit, Bluetooth, Location, Motion). Each explains exactly what data is accessed and that it never leaves the device.
-  - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no developer-operated server, and no analytics. Health, Bluetooth, and location data stay on the user's device/private iCloud, only with explicit permission. The user can export or delete all data at any time.
+  - NFR-3.4 **No developer-operated server.** Data is on-device only in the submission build; portability is available via JSON export/import.
+  - NFR-3.5 **Clear purpose strings** for every permission (HealthKit, Bluetooth, Location). Each explains exactly what data is accessed and where it is stored. The app does not request Motion or microphone access.
+  - NFR-3.6 **Plain-English privacy commitment:** Cladiron does not collect, transmit, or sell user data. There is no account, no developer-operated server, and no analytics. Health, Bluetooth, and location data stay on the user's device, only with explicit permission. The user can export or delete all data at any time.
 - NFR-4 **Performance:** cold launch < 1.5s; logging a set <= 2 taps; charts render < 100ms.
 - NFR-5 **Reliability/offline:** fully functional with no network; workout recording survives backgrounding.
 - NFR-6 **Licensing boundary:** Cladiron's application code is GPLv3-or-later with the Cladiron App Store Exception. `free-exercise-db-plusplus`, its exercise database, annotations, and related tooling remain open under that project's license. Brand assets remain protected under `TRADEMARKS.md`. Maintain complete third-party notices and a reproducible build.
@@ -280,7 +280,7 @@ Schema changes are **additive only** — optional fields, no unique constraints,
 
 - PR default: estimated 1RM (Brzycki formula). Configurable.
 - Units: kg canonical, lb toggle global.
-- Portability: complete JSON export/import plus private-iCloud mirroring. WatchConnectivity supports live handoff and durable workout completion delivery.
+- Portability: complete JSON export/import. WatchConnectivity supports live handoff and durable workout completion delivery.
 - Watch store: local store (no sync).
 - IA: Workout / Tests / Progress (3 tabs). Planning inside Workout.
 - Naming: Cladiron (user-visible), Cadence (internal codename).

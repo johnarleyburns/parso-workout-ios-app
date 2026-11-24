@@ -2,9 +2,8 @@ import Foundation
 import SwiftData
 import CadenceCore
 
-/// Read-only storage facts shown in Settings. CloudKit deliberately does not
-/// expose per-app private-database byte usage to apps, so the UI distinguishes
-/// the exact local footprint from the cloud account/sync state.
+/// Read-only storage facts shown in Settings. The submission build is
+/// local-only, so the screen reports the exact on-device footprint.
 struct StorageUsageSnapshot: Equatable {
     var appDataBytes: Int64 = 0
     var workoutStoreBytes: Int64 = 0

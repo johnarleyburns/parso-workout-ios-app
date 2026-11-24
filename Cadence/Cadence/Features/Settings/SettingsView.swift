@@ -94,7 +94,7 @@ struct SettingsView: View {
                     Label("Heart-Rate Monitor", systemImage: "antenna.radiowaves.left.and.right")
                 }
                 .accessibilityIdentifier("settings.hrm")
-                Text("HealthKit permissions are controlled by Apple. Cladiron's detailed sets remain in the app's local/private-iCloud store; only workout summaries are written to Apple Health when enabled.")
+                Text("HealthKit permissions are controlled by Apple. Cladiron's detailed sets stay on this device; only workout summaries are written to Apple Health when enabled.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -258,24 +258,17 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
 
-            settingsSection(String(localized: "CloudKit Sync"),
-                              identifier: "settings.section.cloudKit") {
+            settingsSection(String(localized: "Storage"),
+                              identifier: "settings.section.storage") {
                 HStack {
-                    Label("iCloud Sync", systemImage: "arrow.triangle.2.circlepath.icloud")
+                    Label("On this device", systemImage: "iphone")
                     Spacer()
-                    Text(model.cloudKitAccountAvailability.displayName)
+                    Text("Local only")
                         .font(.caption)
-                        .foregroundStyle(model.cloudKitAccountAvailability.canSync ? Color.secondary : Color.orange)
-                        .accessibilityIdentifier("settings.sync.status")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("settings.storage.status")
                 }
-
-                NavigationLink {
-                    CloudKitSyncDiagnosticsView()
-                } label: {
-                    Label("iCloud Details & Diagnostics", systemImage: "stethoscope")
-                }
-                .accessibilityIdentifier("settings.sync.diagnostics")
-                Text("Your workout data uses Apple’s private iCloud database. Sync is automatic and incremental; Apple schedules imports and exports. Detailed storage and recovery information is in iCloud Details & Diagnostics.")
+                Text("Your training history is stored on this iPhone. Cladiron does not mirror it to iCloud or a Cladiron server. Use Backup & Restore to export a complete copy or move it to a new device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

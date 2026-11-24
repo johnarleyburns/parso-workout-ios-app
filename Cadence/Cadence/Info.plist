@@ -18,16 +18,17 @@
 		<string>location</string>
 		<string>audio</string>
 		<string>bluetooth-central</string>
-		<string>remote-notification</string>
 	</array>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Your health data never leaves your device.</string>
+	<string>Cladiron reads your steps, workouts, heart rate, and — for recovery-aware coaching — your heart-rate variability, resting heart rate, sleep, and body weight, so your activity, Watch-recorded sessions, and readiness appear here. Cladiron stores this health data on your device and never sends it to a Cladiron server.</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>Cladiron saves summaries of your workouts (strength, cardio, intervals, and swim) to Apple Health so they appear system-wide and close your Activity rings.</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Cladiron connects to a Bluetooth chest strap to record accurate heart rate during workouts.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Cladiron uses your location to map and measure outdoor runs and rides recorded on your iPhone.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Cladiron keeps recording your outdoor route while your iPhone is locked or in your pocket during a workout. It stops when the workout ends and never tracks you at other times.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSSupportsLiveActivities</key>

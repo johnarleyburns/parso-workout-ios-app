@@ -93,7 +93,7 @@ struct AboutView: View {
             principle("lock.open", String(localized: "Open source & privacy-first"),
                       String(localized: "Cladiron is free and open-source software. Its privacy commitments are auditable in the public source and reinforced by an on-device, serverless design, clear permissions, data export, and a published privacy policy."))
             principle("square.and.arrow.up", String(localized: "Your data, fully portable"),
-                      String(localized: "Your history lives on your devices and syncs through your private iCloud, never a Cladiron server. You can export a complete backup and import it into a fresh install, so your data is never locked in."))
+                      String(localized: "Your history stays on this device, never on a Cladiron server. You can export a complete backup and import it into a fresh install, so your data is never locked in."))
         }
     }
 
@@ -225,7 +225,7 @@ struct AboutView: View {
                 Link("View Online", destination: privacyURL)
                     .font(.subheadline).accessibilityIdentifier("about.privacyLink")
             }
-            Text("Cladiron does not send your data to a Cladiron server, advertisers, or analytics providers. Your training log is processed on your devices and may be mirrored through Apple's private iCloud service when that feature is available. Apple Health, Bluetooth heart-rate, and location data are used only with your permission.")
+            Text("Cladiron does not send your data to a Cladiron server, advertisers, or analytics providers. Your training log is processed and stored on this device; it is not mirrored to iCloud. Apple Health, Bluetooth heart-rate, and location data are used only with your permission.")
                 .font(.footnote).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             Text("Location is used only while you're recording an outdoor run, walk, or ride. It keeps mapping your route in the background — shown by the blue status-bar indicator — and stops the moment you end the workout. Cladiron never tracks your location at any other time.")

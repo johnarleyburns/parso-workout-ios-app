@@ -81,14 +81,10 @@ struct BackupRestoreCenterView: View {
             }
 
             Section {
-                NavigationLink {
-                    CloudKitSyncDiagnosticsView()
-                } label: {
-                    Label("iCloud Details & Diagnostics", systemImage: "stethoscope")
-                }
-                Text("CloudKit transfers are controlled by Apple. This screen shows their state but cannot interrupt an in-flight platform transfer.")
+                Text("Your history is stored only on this device. Cladiron does not upload it to iCloud or a Cladiron server. Keep the JSON archive somewhere safe so you can restore it on a new device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("backupCenter.localOnly")
             }
         }
         .navigationTitle("Backup & Restore")

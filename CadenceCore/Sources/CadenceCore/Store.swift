@@ -3,13 +3,17 @@ import Foundation
 import SwiftData
 #endif
 
-/// Builds the shared SwiftData stores. The iPhone uses one `Cladiron.store`
-/// (all models, including health-bearing rows) and mirrors it to the user's
-/// **private** CloudKit database (`iCloud.guru.parso.cladiron.sync`). A single
-/// store is required for SwiftData relationship integrity: the previous
+/// Builds the shared SwiftData stores. The shipping iPhone app uses one
+/// local-only `Cladiron.store` (all models, including health-bearing rows). A
+/// single store is required for SwiftData relationship integrity: the previous
 /// Local/Sync split could not encode a set's Exercise relationship during save.
-/// The Watch uses a local-only store and syncs through WatchConnectivity so the
-/// phone is the sole CloudKit writer.
+///
+/// CloudKit mirroring is deliberately disabled for App Store submission:
+/// App Review Guideline 5.1.3(ii) prohibits storing personal health information
+/// in iCloud, and the workout model carries heart-rate and other health data.
+/// Export/import is the portable backup path. The CloudKit-capable factory
+/// remains for migration tests and a future health-data-separated sync design.
+/// The Watch uses a local-only store and syncs through WatchConnectivity.
 #if canImport(SwiftData)
 public enum CadenceStore {
     /// Shared local-store compatibility marker used by iPhone and Watch.
@@ -144,6 +148,9 @@ public enum CadenceStore {
     /// Local/Sync pair is copied into it once, before the first launch, so the
     /// store migration never strands history. The old files are left untouched
     /// as rollback copies.
+    ///
+    /// The shipping app passes `cloudKitEnabled: false`; the default stays true
+    /// only so migration/fallback tests can exercise the CloudKit retry path.
     public static func makeApplicationModelContainer(
         cloudKitEnabled: Bool = true,
         directory: URL = applicationSupportDirectory(),

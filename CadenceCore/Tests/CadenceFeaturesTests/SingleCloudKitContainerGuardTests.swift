@@ -1,8 +1,8 @@
 import Foundation
 import Testing
 
-/// Structural guards for the single-store architecture. The app must never
-/// select the retired pre-split store or its CloudKit container at runtime.
+/// Structural guards for the submission store: one local-only store, no
+/// iCloud/CloudKit health mirror, and no retired pre-split store selection.
 struct SingleCloudKitContainerGuardTests {
     private func source(_ relativePath: String) throws -> String {
         let root = URL(fileURLWithPath: #filePath)
@@ -13,19 +13,19 @@ struct SingleCloudKitContainerGuardTests {
         return try String(contentsOf: root.appendingPathComponent(relativePath), encoding: .utf8)
     }
 
-    @Test func everyEntitlementFileListsOnlyTheSyncContainer() throws {
+    @Test func everyEntitlementFileExcludesICloud() throws {
         for path in ["Cadence/Cadence/Cadence.entitlements",
                      "Cadence/Cadence/Cadence.Release.entitlements",
                      "Cadence/Cadence/Cadence.Debug.entitlements"] {
             let text = try source(path)
-            #expect(text.contains("<string>iCloud.guru.parso.cladiron.sync</string>"),
-                    "\(path) must include the current CloudKit container")
-            #expect(!text.contains("<string>iCloud.guru.parso.ios-workout-app</string>"),
-                    "\(path) must not include the retired CloudKit container")
+            #expect(!text.contains("com.apple.developer.icloud"),
+                    "\(path) must not grant iCloud access in the local-only submission build")
+            #expect(text.contains("com.apple.developer.healthkit"),
+                    "\(path) must keep the HealthKit entitlement")
         }
     }
 
-    @Test func storeAndSchemaToolingUseOnlyTheSyncContainer() throws {
+    @Test func legacyCloudKitContainerConstantRemainsForMigrationOnly() throws {
         let store = try source("CadenceCore/Sources/CadenceCore/Store.swift")
         #expect(store.contains("splitCloudKitContainerID = \"iCloud.guru.parso.cladiron.sync\""))
         #expect(!store.contains("cloudKitContainerID = \"iCloud.guru.parso.ios-workout-app\""))
@@ -58,6 +58,6 @@ struct SingleCloudKitContainerGuardTests {
         #expect(!diagnostics.contains("CloudKitRecoveryService"))
 
         let app = try source("Cadence/Cadence/CadenceApp.swift")
-        #expect(app.contains("makeApplicationModelContainer()"))
+        #expect(app.contains("makeApplicationModelContainer(cloudKitEnabled: false)"))
     }
 }

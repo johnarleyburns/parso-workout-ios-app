@@ -41,7 +41,11 @@ struct CadenceApp: App {
         // on-disk store, so the "never delete or replace stored workout
         // history" guarantee still holds even after this change.
         let policy = WatchStoreBootstrapPolicy<ModelContainer>(
-            createPersistent: { try CadenceStore.makeApplicationModelContainer() },
+            // App Store submission is local-only: HealthKit-derived workout
+            // data must not be mirrored to iCloud (Guideline 5.1.3(ii)).
+            // The single store still preserves every local relation, including
+            // SetEntry.exercise, and export/import remains the backup path.
+            createPersistent: { try CadenceStore.makeApplicationModelContainer(cloudKitEnabled: false) },
             createInMemory: { try CadenceStore.makeModelContainer(inMemory: true) },
             quarantine: { try Self.quarantinePhoneStore() },
             seed: { _ in })
@@ -53,9 +57,6 @@ struct CadenceApp: App {
         }
         container = resolvedContainer
         _storeRecoveryState = State(initialValue: outcome.state)
-        // Attach before the first scene task so an import that starts during
-        // ModelContainer setup can still surface its restore state in the UI.
-        model.startCloudKitHistoryMonitoring()
     }
 
     /// Moves aside (never deletes) whichever on-disk store files exist — the
@@ -90,7 +91,6 @@ struct CadenceApp: App {
                 .environment(\.cadenceModelContainer, container)
                 .overlay(alignment: .top) { storeRecoveryBanner }
                 .task { model.activateWCSession() }
-                .task { model.refreshCloudKitAccountStatus() }
                 .task { await model.finishLegacyStoreUpgrade(container: container, settings: settings) }
                 .task { _ = await model.healthBackup.drain() }
                 .task { model.configureWatchSync(settings: settings, container: container, active: active) }

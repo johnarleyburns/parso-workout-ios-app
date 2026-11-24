@@ -22,8 +22,8 @@ Audit date: 2026-09-24
   entitlement so HealthKit-derived workout data is never written to iCloud
   (Guideline 5.1.3(ii)). Settings, Transparency, and About now describe
   on-device storage and export/import.
-- Added the iPhone FileTimestamp (C617.1) and DiskSpace (E174.1) required-reason
-  declarations plus the Watch SystemBootTime (35F9.1) declaration.
+- Added the iPhone FileTimestamp (3B52.1) required-reason declaration plus the
+  Watch SystemBootTime (35F9.1) declaration.
 - Added `NSLocationAlwaysAndWhenInUseUsageDescription` and request Always only
   when an outdoor workout starts; removed the unused `remote-notification`
   background mode.

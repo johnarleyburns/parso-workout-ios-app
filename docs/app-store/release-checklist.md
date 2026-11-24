@@ -23,8 +23,8 @@ Use this checklist for the first public App Store v1 submission.
   treatment, guaranteed results, cloud sync, social features, or nutrition
   coaching. The submission build is local-only; use on-device/export language.
 - Confirm `PrivacyInfo.xcprivacy` remains Data Not Collected and declares the
-  required reasons actually used (UserDefaults, FileTimestamp, DiskSpace on the
-  iPhone; UserDefaults + SystemBootTime on the Watch).
+  required reasons actually used (UserDefaults + FileTimestamp `3B52.1` on the
+  iPhone; UserDefaults + SystemBootTime `35F9.1` on the Watch).
 - Confirm `NSLocationAlwaysAndWhenInUseUsageDescription` is present and the
   outdoor-workout flow requests Always only after the user starts a workout.
 - Confirm `remote-notification` is absent from `UIBackgroundModes`.

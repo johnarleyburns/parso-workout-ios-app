@@ -4,7 +4,7 @@ import Foundation
 
 /// The phone-built, Watch-local source of truth for personalized suggestions.
 ///
-/// The phone remains the only CloudKit writer. It builds this value from its
+/// The phone remains the only store writer. It builds this value from its
 /// full training log, prunes strength/cardio history to the 12-week mesocycle
 /// window, and transfers it when the content revision changes. The Watch stores
 /// the latest envelope and generates strength/cardio suggestions locally from

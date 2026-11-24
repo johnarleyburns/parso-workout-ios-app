@@ -14,7 +14,7 @@ public struct ExerciseTemplate: Equatable, Sendable, Identifiable, ExerciseSearc
     public var primaryMuscles: [String]
     public var secondaryMuscles: [String]
     // P2 (CC0 library): public-domain facets from free-exercise-db. All optional/
-    // defaulted so the curated literal catalog and CloudKit stay source-compatible.
+    // defaulted so the curated literal catalog and store stay source-compatible.
     public var instructions: [String]
     public var imageName: String?
     public var level: String?

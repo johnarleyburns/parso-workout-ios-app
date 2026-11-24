@@ -18,7 +18,6 @@ struct CompletedHistoryPersistenceSafetyTests {
         try saveCompletedWorkout(id: id, start: start, at: storeURL)
 
         let reopened = try CadenceStore.makeModelContainer(inMemory: false,
-                                                            cloudKitEnabled: false,
                                                             storeURL: storeURL)
         let context = ModelContext(reopened)
         let sessions = try context.fetch(FetchDescriptor<WorkoutSession>())
@@ -32,7 +31,6 @@ struct CompletedHistoryPersistenceSafetyTests {
 
     private func saveCompletedWorkout(id: UUID, start: Date, at storeURL: URL) throws {
         let container = try CadenceStore.makeModelContainer(inMemory: false,
-                                                            cloudKitEnabled: false,
                                                             storeURL: storeURL)
         let context = ModelContext(container)
         let session = WorkoutSession(id: id, title: "Persistence Regression", date: start,

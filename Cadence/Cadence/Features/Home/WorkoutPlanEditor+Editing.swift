@@ -22,7 +22,7 @@ extension WorkoutPlanEditor {
         }
     }
 
-    /// The catalog and CloudKit history can arrive after this sheet appears.
+    /// The catalog and history can arrive after this sheet appears.
     /// Retry only movements that had no history the first time, so a late
     /// imported exercise gets the same reps/loads the live session would use.
     func seedMissingSuggestedHistory() {

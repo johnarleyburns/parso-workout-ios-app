@@ -108,13 +108,6 @@ Installed hooks:
 - `pre-push`: runs no tests. The release smoke gate is run explicitly before
   release or TestFlight submission.
 
-The CloudKit guard is part of `make guardrails`. It always checks the checked-in
-model contract and, when `~/.cloudkit-management-token` exists, exports both
-CloudKit environments and compares every app record type, field, and field type
-against `scripts/cloudkit-schema-contract.tsv`. A mismatch blocks the commit;
-this is intentionally stricter than checking only whether a workout record can
-be created. CI runs the contract check without credentials and performs the
-same deterministic local validation.
 
 The pre-commit hook does not launch iPhone or Watch simulators. Before a release,
 TestFlight submission, or field-testing build, run `make all-tests` to execute the

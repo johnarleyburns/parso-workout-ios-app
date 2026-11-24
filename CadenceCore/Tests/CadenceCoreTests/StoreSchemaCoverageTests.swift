@@ -3,11 +3,10 @@ import Testing
 import SwiftData
 @testable import CadenceCore
 
-/// The explicit SwiftData schema is the source of truth used to generate the
-/// CloudKit record schema. Every @Model must be listed here or its data cannot
-/// be persisted and mirrored consistently.
+/// The explicit SwiftData schema is the source of truth for the local store.
+/// Every @Model must be listed here or its data cannot be persisted.
 @MainActor
-struct CloudKitSchemaCoverageTests {
+struct StoreSchemaCoverageTests {
     @Test func everyPersistedModelIsIncludedInTheStoreSchema() {
         let expectedModels: [any PersistentModel.Type] = [
             WorkoutSession.self,
@@ -54,7 +53,7 @@ struct CloudKitSchemaCoverageTests {
         #expect(fetched.first?.fatigueEnergy == 5)
     }
 
-    @Test func everyPersistedModelHasTheExpectedCloudKitAttributes() {
+    @Test func everyPersistedModelHasTheExpectedPersistenceAttributes() {
         let expected: [String: Set<String>] = [
             "Assessment": ["date", "exerciseName", "id", "inputAge",
                             "inputDistance", "inputEndingHR", "inputReps", "inputSex",
@@ -127,7 +126,7 @@ struct CloudKitSchemaCoverageTests {
         })
         #expect(Set(actual.keys) == Set(expected.keys))
         for (model, attributes) in expected {
-            #expect(actual[model] == attributes, "CloudKit attribute contract drifted for \(model)")
+            #expect(actual[model] == attributes, "persistence attribute contract drifted for \(model)")
         }
     }
 }

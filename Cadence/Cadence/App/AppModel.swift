@@ -4,7 +4,6 @@ import Observation
 import SwiftData
 import WatchConnectivity
 import HealthKit
-import CloudKit
 import CoreData
 import CadenceCore
 import CadenceFeatures
@@ -74,22 +73,6 @@ final class AppModel: NSObject, @unchecked Sendable {
             case .completed(_, let report):
                 return String(localized: "Restored \(report.inserted + report.replaced) · \(report.summariesOnly) summary-only")
             case .failed(let message): return String(localized: "Restore paused: \(message)")
-            }
-        }
-    }
-
-    enum CloudKitImportStatus: Equatable, Sendable {
-        case idle
-        case updating
-        case completed(Date)
-        case failed(Date)
-
-        var detailText: String {
-            switch self {
-            case .idle: return String(localized: "No recent import")
-            case .updating: return String(localized: "Updating private history…")
-            case .completed: return String(localized: "Private history up to date")
-            case .failed: return String(localized: "Update paused — open Diagnostics")
             }
         }
     }
@@ -167,20 +150,12 @@ final class AppModel: NSObject, @unchecked Sendable {
     @ObservationIgnored private var watchReconcileTask: Task<Void, Never>?
     private static let watchSyncLog = Logger(subsystem: "guru.parso.cladiron", category: "watch-sync")
     private let watchSessionDelegate: WatchSessionDelegateProxy
-    private(set) var cloudKitAccountAvailability: CloudKitAccountAvailability = .checking
-    private(set) var isRestoringCloudKitHistory = false
-    private(set) var cloudKitImportStatus: CloudKitImportStatus = .idle
-    private var cloudKitEventObserver: NSObjectProtocol?
-    /// SwiftData's CloudKit exporter must not be kicked off by a Watch payload
-    /// while the iPhone is backgrounded. Those writes used to outlive the
-    /// WatchConnectivity callback and were the last app-owned work in the
-    /// RUNNINGBOARD 0xdead10cc crash stack.
+    /// Watch payload writes must not be kicked off while the iPhone is
+    /// backgrounded. Those writes used to outlive the WatchConnectivity
+    /// callback and were the last app-owned work in the RUNNINGBOARD
+    /// 0xdead10cc crash stack.
     private var applicationIsActive = false
     private static let pendingWatchImportKey = "watch.pendingImports.v1"
-    /// CloudKit can deliver several import events while a new device is being
-    /// hydrated. Keep Home in its lightweight placeholder state until the
-    /// import burst has been quiet for a moment, then let it rebuild once.
-    private var cloudKitImportQuietTask: Task<Void, Never>?
 
     /// Last time we ingested HealthKit workouts (FR-2.1), persisted across runs.
     var healthSyncStatus: HealthSyncStatus = .idle
@@ -536,61 +511,6 @@ final class AppModel: NSObject, @unchecked Sendable {
         let activated = wcSession?.activationState == .activated
         let state = watchSyncTracker.state(installed: watchAppInstalled, activated: activated)
         if state != watchSyncState { watchSyncState = state }
-    }
-
-    /// Checks the Apple-ID account that backs the private SwiftData store.
-    /// CloudKit account lookup is asynchronous and never blocks the first frame.
-    func refreshCloudKitAccountStatus() {
-        cloudKitAccountAvailability = .checking
-        CKContainer(identifier: CadenceStore.splitCloudKitContainerID).accountStatus { [weak self] status, _ in
-            Task { @MainActor [weak self] in
-                self?.cloudKitAccountAvailability = CloudKitAccountGate.availability(for: status.rawValue)
-            }
-        }
-    }
-
-    /// Observes Core Data's CloudKit import events. SwiftData owns the
-    /// underlying store, but it forwards these notifications; this gives the UI
-    /// an honest restore indicator without pretending CloudKit exposes byte-level
-    /// progress.
-    func startCloudKitHistoryMonitoring() {
-        guard cloudKitEventObserver == nil else { return }
-        cloudKitEventObserver = NotificationCenter.default.addObserver(
-            forName: NSPersistentCloudKitContainer.eventChangedNotification,
-            object: nil,
-            queue: .main) { [weak self] notification in
-                guard let event = notification.userInfo?[NSPersistentCloudKitContainer.eventNotificationUserInfoKey]
-                        as? NSPersistentCloudKitContainer.Event,
-                      event.type == .import else { return }
-                let isInProgress = event.endDate == nil
-                let succeeded = event.succeeded
-                Task { @MainActor [weak self] in
-                    self?.applyCloudKitImport(isInProgress: isInProgress, succeeded: succeeded)
-                }
-            }
-    }
-
-    private func applyCloudKitImport(isInProgress: Bool, succeeded: Bool) {
-        let signpostID = OSSignpostID(log: Self.performanceLog)
-        os_signpost(.event, log: Self.performanceLog, name: "cloudKitImportEvent", signpostID: signpostID,
-                    "inProgress=%{public}d succeeded=%{public}d", isInProgress, succeeded)
-        cloudKitImportQuietTask?.cancel()
-        if isInProgress {
-            cloudKitImportStatus = .updating
-            isRestoringCloudKitHistory = true
-            return
-        }
-
-        // A single logical restore may be reported as several short imports.
-        // Do not release Home into an expensive full-history coach rebuild for
-        // every one of those events.
-        cloudKitImportQuietTask = Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .seconds(2))
-            guard !Task.isCancelled, let self else { return }
-            self.isRestoringCloudKitHistory = false
-            self.cloudKitImportStatus = succeeded ? .completed(Date()) : .failed(Date())
-            if succeeded { self.scheduleWatchCardioHistoryPublish() }
-        }
     }
 
     /// Starts a (coalesced, acknowledged) settings reconciliation. `force` is the manual

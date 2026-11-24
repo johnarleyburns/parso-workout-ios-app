@@ -19,7 +19,6 @@ struct ActiveHistoryPersistenceSafetyTests {
 
         do {
             let container = try CadenceStore.makeModelContainer(inMemory: false,
-                                                                cloudKitEnabled: false,
                                                                 storeURL: storeURL)
             let context = ModelContext(container)
             let session = WorkoutSession(id: id, title: "Active Persistence Regression", date: start)
@@ -35,7 +34,6 @@ struct ActiveHistoryPersistenceSafetyTests {
         }
 
         let reopened = try CadenceStore.makeModelContainer(inMemory: false,
-                                                            cloudKitEnabled: false,
                                                             storeURL: storeURL)
         let context = ModelContext(reopened)
         let session = try #require(

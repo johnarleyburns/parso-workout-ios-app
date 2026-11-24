@@ -5,8 +5,8 @@ import CryptoKit
 
 /// The small, app-local projection used by Personalized suggestions. This is
 /// deliberately not a SwiftData `@Model`: the canonical workout models remain
-/// the only CloudKit records, and this derived cache can always be recreated.
-/// That keeps the index iOS 17 compatible and avoids a CloudKit schema change.
+/// the only store records, and this derived cache can always be recreated.
+/// That keeps the index iOS 17 compatible and avoids a store schema change.
 public struct ExerciseHistoryIndexEntry: Codable, Equatable, Sendable {
     public let exerciseKey: String
     public let exerciseName: String

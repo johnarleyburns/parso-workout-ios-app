@@ -8,29 +8,13 @@ import SwiftData
 @Suite struct ApplicationContainerFallbackTests {
     private struct MirrorError: Error {}
 
-    @Test func cloudKitSetupFailureFallsBackToLocalOnlyInsteadOfThrowing() throws {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("cladiron-fallback-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: dir) }
-        var attempts: [Bool] = []
-        _ = try CadenceStore.makeApplicationModelContainer(
-            directory: dir,
-            singleFactory: { url, cloudKit in
-                attempts.append(cloudKit)
-                if cloudKit { throw MirrorError() }
-                return try CadenceStore.makeSingleModelContainer(
-                    storeURL: url, cloudKitEnabled: false)
-            })
-        #expect(attempts == [true, false])
-    }
-
-    /// issue #779: when `makeApplicationModelContainer()` throws even after its
-    /// own CloudKit-disabled retry (e.g. a corrupted/incompatible on-disk
-    /// store), the phone app must not propagate that error all the way to an
-    /// unconditional crash. Wiring it through `WatchStoreBootstrapPolicy` (the
-    /// same quarantine → retry → in-memory-fallback mechanism the Watch app
-    /// already uses) must still produce a usable container instead of
-    /// throwing — this is the exact combinator `CadenceApp.init()` now uses.
+    /// issue #779: when `makeApplicationModelContainer()` throws (e.g. a
+    /// corrupted/incompatible on-disk store), the phone app must not propagate
+    /// that error all the way to an unconditional crash. Wiring it through
+    /// `WatchStoreBootstrapPolicy` (the same quarantine → retry →
+    /// in-memory-fallback mechanism the Watch app already uses) must still
+    /// produce a usable container instead of throwing — this is the exact
+    /// combinator `CadenceApp.init()` now uses.
     @Test func persistentContainerFailureRecoversViaQuarantineAndDegradesToInMemoryInsteadOfThrowing() throws {
         var persistentAttempts = 0
         var quarantined = false
@@ -69,7 +53,6 @@ struct ApplicationContainerMigrationTests {
 
         let legacyURL = dir.appendingPathComponent(CadenceStore.legacyStoreFileName)
         let legacy = try CadenceStore.makeModelContainer(inMemory: false,
-                                                         cloudKitEnabled: false,
                                                          storeURL: legacyURL)
         let legacyContext = ModelContext(legacy)
         let exercise = Exercise(name: "Row")
@@ -82,8 +65,8 @@ struct ApplicationContainerMigrationTests {
 
         let container = try CadenceStore.makeApplicationModelContainer(
             directory: dir,
-            singleFactory: { url, _ in
-                try CadenceStore.makeSingleModelContainer(storeURL: url, cloudKitEnabled: false)
+            singleFactory: { url in
+                try CadenceStore.makeSingleModelContainer(storeURL: url)
             })
         let context = ModelContext(container)
         #expect(try context.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)
@@ -104,7 +87,7 @@ struct ApplicationContainerMigrationTests {
 
         let urls = CadenceStore.splitStoreURLs(in: dir)
         let split = try CadenceStore.makeSplitModelContainer(
-            localURL: urls.local, syncURL: urls.sync, cloudKitEnabled: false)
+            localURL: urls.local, syncURL: urls.sync)
         let splitContext = ModelContext(split)
         let exercise = Exercise(name: "Press")
         let session = WorkoutSession(title: "Split")
@@ -118,8 +101,8 @@ struct ApplicationContainerMigrationTests {
 
         let container = try CadenceStore.makeApplicationModelContainer(
             directory: dir,
-            singleFactory: { url, _ in
-                try CadenceStore.makeSingleModelContainer(storeURL: url, cloudKitEnabled: false)
+            singleFactory: { url in
+                try CadenceStore.makeSingleModelContainer(storeURL: url)
             })
         let context = ModelContext(container)
         #expect(try context.fetchCount(FetchDescriptor<WorkoutSession>()) == 1)

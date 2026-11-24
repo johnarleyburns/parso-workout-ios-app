@@ -268,7 +268,7 @@ struct SettingsView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("settings.storage.status")
                 }
-                Text("Your training history is stored on this iPhone. Cladiron does not mirror it to iCloud or a Cladiron server. Use Backup & Restore to export a complete copy or move it to a new device.")
+                Text("Your training history is stored on this iPhone. Cladiron does not send it to a server. Use Backup & Restore to export a complete copy or move it to a new device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

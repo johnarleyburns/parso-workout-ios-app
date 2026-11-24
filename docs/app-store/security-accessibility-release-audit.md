@@ -10,7 +10,7 @@ Audit date: 2026-09-24
   Core Motion or request motion authorization.
 - Added a 256 MiB encoded-import limit and a matching 256 MiB gzip inflation
   limit. The limit applies before decoding, to file imports, and to the legacy
-  CloudKit recovery asset path.
+  recovery asset path.
 - Preserved accessible labels on the high-frequency icon-only workout controls
   (minimize/close/delete/rename/save-to-Health, partner management, and volume
   warnings).
@@ -45,10 +45,9 @@ Review Guideline 5.1.3(ii) prohibits storing personal health information in
 iCloud.
 
 **Resolution for the App Store submission:** the phone opens one local-only
-`Cladiron.store` (`cloudKitEnabled: false`), the iCloud entitlement is removed,
-and all iCloud/CloudKit settings copy and diagnostics links are gone. The Watch
-continues to sync to the phone over WatchConnectivity. JSON export/import is the
-portable backup path.
+`Cladiron.store`; the iCloud entitlement, CloudKit code, settings copy, and
+diagnostics screen are removed. The Watch continues to sync to the phone over
+WatchConnectivity. JSON export/import is the portable backup path.
 
 Before public submission, delete the legacy CloudKit container
 `iCloud.guru.parso.cladiron.sync` (or its health-bearing record types) so data

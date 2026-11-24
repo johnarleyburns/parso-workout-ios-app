@@ -26,7 +26,7 @@ final class HealthKitProvider: HealthDataProviding {
     private(set) var lastImportDiagnostics: [String] = []
 
     /// Anchors are device-local cursors. They deliberately live outside
-    /// SwiftData/CloudKit because a cursor belongs to this HealthKit database
+    /// SwiftData because a cursor belongs to this HealthKit database
     /// and must never be mirrored to another device.
     private let anchorDefaults: UserDefaults
 
@@ -385,7 +385,7 @@ final class HealthKitProvider: HealthDataProviding {
     /// valid "none visible" result and is explained by the Backup center.
     func readHealthBackups(since: Date?) async -> [HealthBackupReadObject] {
         // Restore uses an anchored query after the first successful read. This
-        // picks up late Health-iCloud arrivals without repeatedly scanning the
+        // picks up late Health sync arrivals without repeatedly scanning the
         // entire database. The older date path remains for callers that ask
         // for a bounded historical window (and for compatibility with the
         // existing ingest surface).

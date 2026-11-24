@@ -41,11 +41,10 @@ struct CadenceApp: App {
         // on-disk store, so the "never delete or replace stored workout
         // history" guarantee still holds even after this change.
         let policy = WatchStoreBootstrapPolicy<ModelContainer>(
-            // App Store submission is local-only: HealthKit-derived workout
-            // data must not be mirrored to iCloud (Guideline 5.1.3(ii)).
+            // App Store submission is local-only: no cloud store or cloud entitlement.
             // The single store still preserves every local relation, including
             // SetEntry.exercise, and export/import remains the backup path.
-            createPersistent: { try CadenceStore.makeApplicationModelContainer(cloudKitEnabled: false) },
+            createPersistent: { try CadenceStore.makeApplicationModelContainer() },
             createInMemory: { try CadenceStore.makeModelContainer(inMemory: true) },
             quarantine: { try Self.quarantinePhoneStore() },
             seed: { _ in })
@@ -140,7 +139,7 @@ struct CadenceApp: App {
         let catalogRevision = StarterLibraryReconciliation.revision()
         // A detached task does not inherit cancellation from the scene task. If
         // the user backgrounds during this store work, explicitly cancel it so
-        // a SwiftData context cannot keep the SQLite/CloudKit store open while
+        // a SwiftData context cannot keep the SQLite store open while
         // iOS suspends the process (RUNNINGBOARD 0xdead10cc).
         let preparation = Task.detached(priority: .utility) {
             guard !Task.isCancelled else { return nil as UUID? }

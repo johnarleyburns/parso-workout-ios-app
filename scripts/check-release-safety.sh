@@ -12,7 +12,15 @@ if rg -n "private iCloud|iCloud backup|automatic iCloud|syncs back|everything sy
 fi
 
 # App Review 5.1.3(ii): no personal health information in iCloud. The shipping
-# build is local-only, so no iCloud entitlement may remain.
+# build is local-only, so no iCloud entitlement or CloudKit code may remain.
+if rg -n "iCloud|CloudKit|CKContainer|NSPersistentCloudKitContainer|cloudKitDatabase|cloudKitEnabled" Cadence/Cadence --glob '*.swift' >/dev/null; then
+  echo "release-safety: iCloud/CloudKit code remains in the app target" >&2
+  exit 1
+fi
+test ! -e "Cadence/Cadence/Features/Settings/CloudKitSyncDiagnosticsView.swift" || {
+  echo "release-safety: CloudKit diagnostics screen remains" >&2
+  exit 1
+}
 for ent in "Cadence/Cadence/Cadence.entitlements" \
            "Cadence/Cadence/Cadence.Release.entitlements" \
            "Cadence/Cadence/Cadence.Debug.entitlements"; do
@@ -74,9 +82,7 @@ phone_privacy="Cadence/Cadence/PrivacyInfo.xcprivacy"
 watch_privacy="Cadence/Cadence Watch App Watch App/PrivacyInfo.xcprivacy"
 grep -q "NSPrivacyAccessedAPICategoryUserDefaults" "$phone_privacy" || { echo "release-safety: phone UserDefaults reason missing" >&2; exit 1; }
 grep -q "NSPrivacyAccessedAPICategoryFileTimestamp" "$phone_privacy" || { echo "release-safety: phone FileTimestamp reason missing" >&2; exit 1; }
-grep -q "C617.1" "$phone_privacy" || { echo "release-safety: phone FileTimestamp reason code missing" >&2; exit 1; }
-grep -q "NSPrivacyAccessedAPICategoryDiskSpace" "$phone_privacy" || { echo "release-safety: phone DiskSpace reason missing" >&2; exit 1; }
-grep -q "E174.1" "$phone_privacy" || { echo "release-safety: phone DiskSpace reason code missing" >&2; exit 1; }
+grep -q "3B52.1" "$phone_privacy" || { echo "release-safety: phone FileTimestamp reason code missing" >&2; exit 1; }
 grep -q "NSPrivacyAccessedAPICategoryUserDefaults" "$watch_privacy" || { echo "release-safety: watch UserDefaults reason missing" >&2; exit 1; }
 grep -q "NSPrivacyAccessedAPICategorySystemBootTime" "$watch_privacy" || { echo "release-safety: watch SystemBootTime reason missing" >&2; exit 1; }
 grep -q "35F9.1" "$watch_privacy" || { echo "release-safety: watch SystemBootTime reason code missing" >&2; exit 1; }

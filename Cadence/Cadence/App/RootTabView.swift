@@ -35,8 +35,7 @@ struct RootTabView: View {
             }
 
             // Explicit Watch action results use one non-layout-affecting host.
-            // Automatic CloudKit restore state stays in Settings/diagnostics so
-            // it never shifts the Today dashboard during launch.
+            // Keep transient state out of the launch layout.
             if watchSyncToast != nil {
                 GeometryReader { proxy in
                     VStack(spacing: 8) {

@@ -4,9 +4,9 @@ Use this checklist for the first public App Store v1 submission.
 
 ## Code Readiness
 
-- App Store submission is local-only: the phone store opens with CloudKit
-  disabled and the app has no iCloud entitlement. Keep it that way unless a
-  health-data-separated sync design lands (Guideline 5.1.3(ii)).
+- App Store submission is local-only: the app has no iCloud entitlement and no
+  CloudKit code or UI. Keep it that way unless a health-data-separated sync
+  design lands (Guideline 5.1.3(ii)).
 - Delete the legacy CloudKit container `iCloud.guru.parso.cladiron.sync` (or
   its health-bearing record types) in CloudKit Console before public
   submission so no previously mirrored health data remains in iCloud.
@@ -31,6 +31,9 @@ Use this checklist for the first public App Store v1 submission.
 - Confirm contribution copy says "support" or "contribute", never "donation".
 - Confirm all planning, coaching, logging, export, and execution surfaces remain
   available without a purchase.
+- Confirm third-party content attribution and content-rights answers: exercise
+  data/images from free-exercise-db (CC0) and Wikimedia assets (CC BY-SA) are
+  attributed in About; no unlicensed third-party media is shipped.
 - Confirm the single optional $9.99 contribution loads and unlocks nothing.
 - Confirm product-load failure leaves the free app fully usable.
 
@@ -53,6 +56,25 @@ Use this checklist for the first public App Store v1 submission.
 - Verify StoreKit local products using `Cadence.storekit`.
 - Verify sandbox StoreKit products with the local StoreKit config disabled.
 - Verify the app behaves correctly when StoreKit products are unavailable.
+
+## Identifiers, provisioning, and certificates after removing iCloud
+
+Do this once in the Apple Developer portal and CI before the first local-only submission:
+
+- App ID `guru.parso.ios-workout-app`: remove the **iCloud/CloudKit** capability
+  and the `iCloud.guru.parso.cladiron.sync` container association.
+- Regenerate the **App Store distribution provisioning profile** for that App ID
+  and replace the CI secret `PROVISIONING_PROFILE_BASE64`. The Apple
+  Distribution certificate, APNs key, App Store Connect API key, Watch/widget
+  profiles, App Group, bundle IDs, HealthKit capability, and StoreKit product
+  do not need to change.
+- In CloudKit Console / App Store Connect, delete the legacy container
+  `iCloud.guru.parso.cladiron.sync` (or its health-bearing record types) after
+  removing it from the App ID. This removes previously mirrored data from
+  iCloud; local device data is unaffected.
+- If a CloudKit management token (`~/.cloudkit-management-token`) was used for
+  the old schema check, revoke/rotate it. That check has been removed from the
+  repo.
 
 ## App Store Connect
 

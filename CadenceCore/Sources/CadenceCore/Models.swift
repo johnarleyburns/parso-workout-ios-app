@@ -133,15 +133,15 @@ public struct PlannedPerformerPrescription: Codable, Equatable, Sendable {
 
 // MARK: - Models
 //
-// CloudKit compatibility rules (REQUIREMENTS §7, FR-9):
+// Persistence compatibility rules (REQUIREMENTS §7, FR-9):
 //  • every stored property is optional OR has a default value
 //  • every relationship is optional
-//  • no @Attribute(.unique) — CloudKit does not support unique constraints
+//  • no @Attribute(.unique) — de-duplication is by stable id
 //  • inverse is declared on exactly one side of each relationship
 //
 // Every entity carries a stable `id` (UUID), `updatedAt`, and `originDevice`
-// for CloudKit reconciliation across devices (FR-9.2). De-duplication is by
-// `id` in the repository layer, not by a DB unique constraint.
+// for record reconciliation. De-duplication is by `id` in the repository
+// layer, not by a DB unique constraint.
 //
 // Rich set/rep/weight detail lives here in SwiftData. HealthKit only ever
 // receives a summary HKWorkout (FR-4.3).
@@ -154,12 +154,12 @@ public struct PlannedPerformerPrescription: Codable, Equatable, Sendable {
 public final class Exercise {
     public var id: UUID = UUID()
     public var name: String = ""
-    /// Raw value of `ExerciseCategory`; stored as String for CloudKit friendliness.
+    /// Raw value of `ExerciseCategory`; stored as String for store friendliness.
     public var category: String?
     /// Muscle-group tags (e.g. "chest"). Delimited-String storage (see `StringArray`).
     private var muscleGroupsData: String = ""
     public var isCustom: Bool = false
-    // Field-testing §03 facets (all optional/defaulted for CloudKit + back-compat).
+    // Field-testing §03 facets (all optional/defaulted for store + back-compat).
     /// Raw value of `Equipment`.
     public var equipment: String?
     /// Isolateral / unilateral movement (decision #11).
@@ -173,7 +173,7 @@ public final class Exercise {
     private var secondaryMusclesData: String = ""
     private var searchKeywordsData: String = ""
     // P2 (CC0 library) facets — public-domain instructions/image/level from
-    // free-exercise-db. Optional/defaulted for CloudKit + back-compat.
+    // free-exercise-db. Optional/defaulted for store + back-compat.
     /// Step-by-step instructions; delimited-String storage (see `StringArray`).
     private var instructionsData: String = ""
     /// Bundled demonstration-image asset id (the source exercise id), if any.
@@ -194,7 +194,7 @@ public final class Exercise {
     public var loadAccountingUserOverride: Bool = false
 
     // free-exercise-db++ annotation (DB++ adoption phase 3). All optional or
-    // defaulted, so CloudKit mirrors them as new nullable columns and an older
+    // defaulted, so the store mirrors them as new nullable columns and an older
     // store keeps opening (decision D7/D12).
     /// `MuscleGroup` raw values the movement trains directly — 1.0 set credit.
     private var directMusclesData: String = ""
@@ -513,7 +513,7 @@ public final class WorkoutSession {
     public var title: String = ""
     public var date: Date = Date()
     /// When the workout was finalized (field-testing §02). Optional for
-    /// CloudKit + back-compat; nil means in-progress or a legacy session.
+    /// store + back-compat; nil means in-progress or a legacy session.
     public var endedAt: Date?
     /// Exercise names pre-loaded when reusing a past workout (field-testing §04,
     /// decision #16). Delimited-String storage (see `StringArray`).
@@ -524,10 +524,10 @@ public final class WorkoutSession {
     /// Delimited-String storage (see `StringArray`).
     private var plannedRepLadderData: String = ""
     /// JSON encoded per-exercise/per-set prescription. Additive and defaulted
-    /// for CloudKit and legacy sessions.
+    /// for store and legacy sessions.
     private var plannedPrescriptionsData: String = ""
     /// JSON encoded per-performer prescriptions (field test 2026-08-18 #4,
-    /// decision **D11**). Additive and defaulted for CloudKit and legacy
+    /// decision **D11**). Additive and defaulted for store and legacy
     /// sessions; `plannedPrescriptions` stays the owner's plan and the fallback.
     private var plannedPerformerPrescriptionsData: String = ""
     public var notes: String?
@@ -536,10 +536,10 @@ public final class WorkoutSession {
     /// Stable key of the `WorkoutPlan` that launched this session (round4b §B-1):
     /// a strength preset ("preset-5x5"). Resolved via `PlanCatalog`; nil for
     /// ad-hoc sessions and legacy keys (e.g. a removed CrossFit benchmark).
-    /// Additive + optional for CloudKit + back-compat.
+    /// Additive + optional for store + back-compat.
     public var planKey: String?
     /// DB++ plan provenance for generated/adapted sessions. Additive and
-    /// optional so existing CloudKit stores and legacy sessions remain valid.
+    /// optional so existing stores and legacy sessions remain valid.
     public var enginePlanId: String?
     public var engineRevisionId: String?
     public var enginePlanJSON: Data?
@@ -553,7 +553,7 @@ public final class WorkoutSession {
     /// Watch-ingested workout this came from (FR-2.1). Used for de-dup.
     public var healthKitWorkoutUUID: UUID?
     /// Manually logged after the fact, rather than recorded live (feedback batch 6).
-    /// History shows a "Logged" tag. Additive/defaulted for CloudKit + back-compat.
+    /// History shows a "Logged" tag. Additive/defaulted for store + back-compat.
     public var isLogged: Bool = false
     public var deletedAt: Date?
     /// Actual warm-up / cool-down time consumed for this session, in seconds; 0 when
@@ -562,18 +562,18 @@ public final class WorkoutSession {
     public var cooldownSeconds: Double = 0
     /// Heart-rate samples (JSON `[HRSamplePoint]`, seconds since `date`) captured
     /// during a strength session from the phone HRM/chest strap or the Watch.
-    /// Additive and defaulted for CloudKit + back-compat; "" when none.
+    /// Additive and defaulted for store + back-compat; "" when none.
     public var hrSamplesData: String = ""
     /// Guideline-minute / Z1–Z5 split (JSON `CardioMinuteSummary`) derived from
     /// `hrSamplesData` with the same classifier cardio uses. "" when unavailable.
     public var intensitySummaryData: String = ""
     /// True once the user explicitly saved manual cardio minutes (including 0/0).
-    /// Additive/defaulted for CloudKit + back-compat; cleared when new accepted
+    /// Additive/defaulted for store + back-compat; cleared when new accepted
     /// physiological data replaces the summary.
     public var hasManualCardioMinutesOverride: Bool = false
     /// Working load (canonical kg) prescribed by the coach when this session was
     /// launched via "Do this workout" (strength-pivot P5.3); 0 = none. Pre-fills the
-    /// set keypad for the prescribed movement. Additive/defaulted for CloudKit + back-compat.
+    /// set keypad for the prescribed movement. Additive/defaulted for store + back-compat.
     public var prescribedLoadKg: Double = 0
     /// UUID strings of active training partners for this session. When empty,
     /// all known partners are shown (backward-compat). Delimited-String storage.
@@ -583,7 +583,7 @@ public final class WorkoutSession {
         set { activePartnerIDsData = StringArray.encode(newValue) }
     }
     /// Last user action that counts toward the strength inactivity clock
-    /// (`StrengthInactivityPolicy`). Optional/additive for CloudKit + legacy
+    /// (`StrengthInactivityPolicy`). Optional/additive for store + legacy
     /// sessions; nil means "no inactivity tracking" (never auto-ended).
     public var lastMeaningfulActivityAt: Date?
     /// When the app reconciled an inactivity expiry (>= the deadline stored in `endedAt`).
@@ -926,7 +926,7 @@ public final class SetEntry {
     /// A bodyweight set (feedback batch 3): the movement is performed at body
     /// weight and `weight` holds only the *added* external load (0 = pure
     /// bodyweight, e.g. a strict pull-up; >0 = a weighted variant like a
-    /// weighted dip). Optional/defaulted for CloudKit + back-compat.
+    /// weighted dip). Optional/defaulted for store + back-compat.
     public var usesBodyweight: Bool = false
     /// Rate of perceived exertion, 1...10 (FR-1.2). Optional.
     public var rpe: Double?
@@ -944,7 +944,7 @@ public final class SetEntry {
     /// without accounting metadata (effective load = weight).
     public var loadAccountingMode: String?
 
-    /// Cross-store exercise identity used by the Health/CloudKit split. The
+    /// Cross-store exercise identity used by the legacy split. The
     /// relationship remains during the migration window, but readers can keep
     /// a set when the related Exercise lives in another SwiftData
     /// configuration or is temporarily unavailable.
@@ -1222,19 +1222,19 @@ public final class CardioWorkout {
     public var avgHeartRate: Double?      // bpm
     public var maxHeartRate: Double?      // bpm
     /// Swimming (round4b feedback #3): completed laps and the lap goal, if set.
-    /// Optional/additive for CloudKit + back-compat; nil for non-swim workouts.
+    /// Optional/additive for store + back-compat; nil for non-swim workouts.
     public var laps: Int?
     public var targetLaps: Int?
     /// Optional distance goal in meters for a run/walk/cycle (feedback batch 8): the
     /// user can target e.g. 5K/10K when starting; the live screen shows progress and
-    /// history shows whether it was met. Additive/optional for CloudKit + back-compat.
+    /// history shows whether it was met. Additive/optional for store + back-compat.
     public var targetDistance: Double?
     /// Raw value of `CardioSource`.
     public var source: String = CardioSource.iphone.rawValue
     public var healthKitWorkoutUUID: UUID?
     public var notes: String?
     /// Manually logged after the fact, rather than recorded live (feedback batch 6).
-    /// History shows a "Logged" tag. Additive/defaulted for CloudKit + back-compat.
+    /// History shows a "Logged" tag. Additive/defaulted for store + back-compat.
     public var isLogged: Bool = false
     public var deletedAt: Date?
     /// Free-text label for an "Other Cardio" workout (e.g. "Rowing", "Yardwork");
@@ -1242,7 +1242,7 @@ public final class CardioWorkout {
     public var customTitle: String?
     /// Preserved HKWorkoutActivityType for imported workouts so the coach can
     /// distinguish imported strength from unknown cardio. nil for app-authored
-    /// workouts. Additive/defaulted for CloudKit + back-compat.
+    /// workouts. Additive/defaulted for store + back-compat.
     public var importedWorkoutKindRaw: String?
     /// Raw `CardioRecordOrigin`; nil for legacy rows (see `originValue`). Local-only.
     public var recordOriginRaw: String?

@@ -107,7 +107,7 @@ Planning (program selection + routine building) lives **inside the Workout tab**
 - FR-4.2 Local-first storage (SwiftData) as the source of truth for the rich strength model HealthKit cannot represent.
 - FR-4.3 Write summary strength workouts to HealthKit for unified history; keep detailed set data local.
 - FR-4.4 **Chest strap:** discover, connect, and subscribe to a BLE HRM via 0x180D; reconnect automatically; surface battery and signal status; persist a remembered device.
-- FR-4.5 (submission) Local SwiftData is the system of record. CloudKit/iCloud mirroring is disabled because App Review 5.1.3(ii) prohibits personal health information in iCloud. Complete JSON export/import remains required (FR-6).
+- FR-4.5 (submission) Local SwiftData is the system of record. There is no cloud sync or iCloud access because App Review 5.1.3(ii) prohibits personal health information in iCloud. Complete JSON export/import remains required (FR-6).
 
 ### FR-5 History, PRs & trends
 - FR-5.1 Per-exercise history list and trend chart (top weight, est. 1RM, volume over time).

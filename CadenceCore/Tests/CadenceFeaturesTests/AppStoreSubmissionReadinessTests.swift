@@ -17,7 +17,8 @@ struct AppStoreSubmissionReadinessTests {
 
     @Test func phoneStoreIsLocalOnlyAndHasNoICloudEntitlement() throws {
         let app = try source("Cadence/Cadence/CadenceApp.swift")
-        #expect(app.contains("makeApplicationModelContainer(cloudKitEnabled: false)"))
+        #expect(app.contains("makeApplicationModelContainer()"))
+        #expect(!app.contains("CloudKit"))
 
         for entitlement in ["Cadence/Cadence/Cadence.entitlements",
                             "Cadence/Cadence/Cadence.Release.entitlements",
@@ -28,21 +29,24 @@ struct AppStoreSubmissionReadinessTests {
         }
 
         let settings = try source("Cadence/Cadence/Features/Settings/SettingsView.swift")
-        #expect(!settings.contains("CloudKitSyncDiagnosticsView()"))
-        #expect(!settings.contains("iCloud Sync"))
+        #expect(!settings.contains("CloudKit"))
+        #expect(!settings.contains("iCloud"))
         let transparency = try source("Cadence/Cadence/Features/Settings/TransparencyCenterView.swift")
-        #expect(!transparency.contains("CloudKitSyncDiagnosticsView()"))
+        #expect(!transparency.contains("CloudKit"))
+        #expect(!transparency.contains("iCloud"))
         let backup = try source("Cadence/Cadence/Features/Settings/BackupRestoreCenterView.swift")
-        #expect(!backup.contains("CloudKitSyncDiagnosticsView()"))
+        #expect(!backup.contains("CloudKit"))
+        #expect(!backup.contains("iCloud"))
+        let about = try source("Cadence/Cadence/Features/Settings/AboutView.swift")
+        #expect(!about.contains("CloudKit"))
+        #expect(!about.contains("iCloud"))
     }
 
     @Test func privacyManifestsDeclareEveryRequiredReasonAPI() throws {
         let phone = try source("Cadence/Cadence/PrivacyInfo.xcprivacy")
         #expect(phone.contains("NSPrivacyAccessedAPICategoryUserDefaults"))
         #expect(phone.contains("NSPrivacyAccessedAPICategoryFileTimestamp"))
-        #expect(phone.contains("C617.1"))
-        #expect(phone.contains("NSPrivacyAccessedAPICategoryDiskSpace"))
-        #expect(phone.contains("E174.1"))
+        #expect(phone.contains("3B52.1"))
 
         let watch = try source("Cadence/Cadence Watch App Watch App/PrivacyInfo.xcprivacy")
         #expect(watch.contains("NSPrivacyAccessedAPICategoryUserDefaults"))

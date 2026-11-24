@@ -193,7 +193,7 @@ Connect will not submit without at least one Apple Watch screenshot):
 ## Review Notes
 
 ```text
-Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; training data stays on the device and a complete JSON export/import is available. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md.
+Cladiron is an open-source, privacy-first strength app for iPhone. It has no accounts, no ads, no analytics, and no developer-operated server; training data stays on the device and a complete JSON export/import is available. The application is released under GPLv3-or-later with the Cladiron App Store Exception; brand assets remain protected under TRADEMARKS.md. Exercise data/images from free-exercise-db (CC0) and Wikimedia assets (CC BY-SA) are attributed in Settings → About.
 
 The tracker is free: logging, history, PRs, analytics, assessments, routines, Apple Health import/write, and JSON export/import. Free users also see the coach's live insights (observations about their training).
 
@@ -205,7 +205,7 @@ works without purchase.
 
 HealthKit is used to read steps, heart rate, and workouts recorded by Apple Watch or other apps, and to save summary workouts back to Apple Health. Detailed set/reps/weight history is stored only on the device because HealthKit has no structured schema for it; it is never mirrored to iCloud.
 
-Bluetooth is used only for standard heart-rate monitors that expose the Bluetooth Heart Rate Service. Location is used only for iPhone-recorded outdoor workouts and continues in the background only while that workout is active.
+Bluetooth is used only for standard heart-rate monitors that expose the Bluetooth Heart Rate Service. Location is used only for iPhone-recorded outdoor workouts and continues in the background only while that workout is active. The audio background mode is used only for short spoken/tone workout cues and timers during an active workout; the app does not play continuous audio.
 
 This version includes a companion Apple Watch app for phone-free workouts (strength, HIIT/boxing, and cardio including swim). The watch app runs an HKWorkoutSession for live heart rate, saves workouts to Apple Health, and relays completed sessions to the iPhone over WatchConnectivity. Like the phone app, it has no accounts and no developer server.
 

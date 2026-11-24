@@ -60,7 +60,7 @@ struct TransparencyCenterView: View {
 
                 explanationRow(
                     title: String(localized: "On-device history"),
-                    detail: String(localized: "Your workout, heart-rate, readiness, and assessment data are stored only on this iPhone. Cladiron does not mirror them to iCloud or a Cladiron server."),
+                    detail: String(localized: "Your workout, heart-rate, readiness, and assessment data are stored only on this iPhone. Cladiron does not send them to a server."),
                     control: String(localized: "Use Backup & Restore to export a complete JSON backup or move your data to a new device. Nothing is uploaded automatically."))
 
                 explanationRow(

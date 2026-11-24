@@ -11,7 +11,7 @@ import SwiftData
 // strength + strength-endurance battery; aerobic (VO₂max) and anaerobic (Wingate)
 // kinds land in P6.
 //
-// CloudKit rules (REQUIREMENTS §7) hold: every stored property is optional or
+// persistence rules (REQUIREMENTS §7) hold: every stored property is optional or
 // defaulted, no unique constraints, stable `id` + `updatedAt` + `originDevice`.
 
 #if canImport(SwiftData)
@@ -20,7 +20,7 @@ import SwiftData
 public final class Assessment {
     public var id: UUID = UUID()
     public var date: Date = Date()
-    /// `AssessmentKind.rawValue`; stored as String for CloudKit friendliness.
+    /// `AssessmentKind.rawValue`; stored as String for store friendliness.
     public var kind: String = AssessmentKind.pushupMax.rawValue
     /// The primary result in the kind's unit: estimated 1RM (kg), max reps, or
     /// hold time (seconds).

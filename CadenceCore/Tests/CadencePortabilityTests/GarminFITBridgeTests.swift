@@ -13,7 +13,7 @@ struct GarminFITBridgeTests {
     private let start = Date(timeIntervalSince1970: 1_700_100_000)
 
     private func makeContext(_ dir: URL? = nil) throws -> ModelContext {
-        let container = try CadenceStore.makeModelContainer(inMemory: dir == nil, cloudKitEnabled: false,
+        let container = try CadenceStore.makeModelContainer(inMemory: dir == nil,
                                                             storeURL: dir?.appendingPathComponent("fit.store"))
         return ModelContext(container)
     }

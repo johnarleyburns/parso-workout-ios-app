@@ -269,7 +269,6 @@ struct InlineSetEditorView: View {
                             .scaledSystemFont(40, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                             .monospacedDigit()
                             .lineLimit(1)
-                            .minimumScaleFactor(0.55)
                             .allowsTightening(true)
                         Text(config.unit.abbreviation).font(.title3.weight(.semibold))
                     }

@@ -36,6 +36,29 @@ public enum StoreRecovery {
     private enum Source {
         case single(URL)
         case split(local: URL, sync: URL)
+
+        var primaryPath: String {
+            switch self {
+            case .single(let url): return url.path
+            case .split(let local, _): return local.deletingLastPathComponent().path
+            }
+        }
+        var identifier: String { primaryPath }
+        var kindName: Candidate.Kind {
+            switch self {
+            case .single: return .single
+            case .split: return .split
+            }
+        }
+        var modifiedAt: Date {
+            let path: String
+            switch self {
+            case .single(let url): path = url.path
+            case .split(let local, _): path = local.path
+            }
+            let attributes = try? FileManager.default.attributesOfItem(atPath: path)
+            return (attributes?[.modificationDate] as? Date) ?? .distantPast
+        }
     }
 
     /// Runs once on launch, only when the live store has no workouts. Existing
@@ -53,7 +76,7 @@ public enum StoreRecovery {
         let report = recover(into: container, directory: directory, fileManager: fileManager)
         if report.recoveredAny {
             try? Data("recovered\n".utf8).write(to: marker, options: .atomic)
-            DispatchQueue.main.async { NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil) }
+            DispatchQueue.main.async { NotificationCenter.default.post(name: Notification.Name("cadence.workoutHistoryChanged"), object: nil) }
         }
         return report
     }
@@ -106,7 +129,7 @@ public enum StoreRecovery {
         if changed > 0 {
             do {
                 try destination.save()
-                DispatchQueue.main.async { NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil) }
+                DispatchQueue.main.async { NotificationCenter.default.post(name: Notification.Name("cadence.workoutHistoryChanged"), object: nil) }
             } catch {
                 errors.append("Could not save recovered data: \(error.localizedDescription)")
             }
@@ -193,29 +216,3 @@ public enum StoreRecovery {
         }
     }
 }
-
-private extension StoreRecovery.Source {
-    var primaryPath: String {
-        switch self {
-        case .single(let url): return url.path
-        case .split(let local, _): return local.deletingLastPathComponent().path
-        }
-    }
-    var identifier: String { primaryPath }
-    var kindName: StoreRecovery.Candidate.Kind {
-        switch self {
-        case .single: return .single
-        case .split: return .split
-        }
-    }
-    var modifiedAt: Date {
-        let path: String
-        switch self {
-        case .single(let url): path = url.path
-        case .split(let local, _): path = local.path
-        }
-        let attributes = try? FileManager.default.attributesOfItem(atPath: path)
-        return (attributes?[.modificationDate] as? Date) ?? .distantPast
-    }
-}
-#endif

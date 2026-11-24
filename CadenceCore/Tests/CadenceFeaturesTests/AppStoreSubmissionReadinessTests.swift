@@ -18,7 +18,9 @@ struct AppStoreSubmissionReadinessTests {
     @Test func phoneStoreIsLocalOnlyAndHasNoICloudEntitlement() throws {
         let app = try source("Cadence/Cadence/CadenceApp.swift")
         #expect(app.contains("makeApplicationModelContainer()"))
-        #expect(!app.contains("CloudKit"))
+        #expect(!app.contains("import CloudKit"))
+        #expect(!app.contains("CKContainer"))
+        #expect(!app.contains("cloudKitDatabase"))
 
         for entitlement in ["Cadence/Cadence/Cadence.entitlements",
                             "Cadence/Cadence/Cadence.Release.entitlements",

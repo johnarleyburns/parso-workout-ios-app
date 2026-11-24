@@ -143,6 +143,11 @@ struct CadenceApp: App {
         // iOS suspends the process (RUNNINGBOARD 0xdead10cc).
         let preparation = Task.detached(priority: .utility) {
             guard !Task.isCancelled else { return nil as UUID? }
+            // A CloudKit-era build could quarantine/replace the primary store
+            // when it was opened local-only. Recover any old quarantined or
+            // legacy store before the catalog/history index work runs.
+            _ = StoreRecovery.autoRecoverIfNeeded(container: container)
+            guard !Task.isCancelled else { return nil as UUID? }
             // Decode the bundled DB++ catalog here, off the main actor, so the
             // first Home volume, search, or template lookup does not pay it
             // while the UI waits.

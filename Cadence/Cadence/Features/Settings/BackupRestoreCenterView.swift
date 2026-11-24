@@ -15,6 +15,8 @@ struct BackupRestoreCenterView: View {
 
     @State private var localCounts = LocalBackupCounts()
     @State private var isRefreshing = false
+    @State private var recoveringPreviousData = false
+    @State private var recoveryMessage: String?
 
     var body: some View {
         Form {
@@ -66,6 +68,29 @@ struct BackupRestoreCenterView: View {
                 }
                 .disabled(model.healthRestoreStatus.isInProgress)
                 .accessibilityIdentifier("backupCenter.restoreHealth")
+            }
+
+            Section("Previous local data") {
+                Text("If workouts disappeared after an update, Cladiron can merge them from a previous on-device store. The current store is kept. This can also restore workouts that were permanently deleted before the update.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button {
+                    Task { await recoverPreviousData() }
+                } label: {
+                    if recoveringPreviousData {
+                        HStack { ProgressView(); Text("Scanning previous stores…") }
+                    } else {
+                        Label("Recover Previous Data", systemImage: "clock.arrow.circlepath")
+                    }
+                }
+                .disabled(recoveringPreviousData || container == nil)
+                .accessibilityIdentifier("backupCenter.recoverPrevious")
+                if let recoveryMessage {
+                    Text(recoveryMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("backupCenter.recoveryResult")
+                }
             }
 
             Section("Full Cladiron archive") {
@@ -132,6 +157,26 @@ struct BackupRestoreCenterView: View {
     }
 
     @MainActor
+    private func recoverPreviousData() async {
+        guard let container, !recoveringPreviousData else { return }
+        guard container.configurations.contains(where: { !$0.isStoredInMemoryOnly }) else {
+            recoveryMessage = String(localized: "Cladiron is using a temporary store. Restart the app before recovering previous data.")
+            return
+        }
+        recoveringPreviousData = true
+        recoveryMessage = nil
+        let report = await Task.detached(priority: .userInitiated) {
+            StoreRecovery.recover(into: container)
+        }.value
+        recoveringPreviousData = false
+        if report.errors.isEmpty {
+            recoveryMessage = String(localized: "Merged \(report.changedRecords) records. \(report.currentSessionsAfter) workouts are now in the live store.")
+        } else {
+            recoveryMessage = String(localized: "Merged \(report.changedRecords) records; \(report.errors.count) previous store(s) could not be read. \(report.currentSessionsAfter) workouts are now in the live store.")
+        }
+        await reload()
+    }
+
     private func reload() async {
         guard let container, !isRefreshing else { return }
         isRefreshing = true

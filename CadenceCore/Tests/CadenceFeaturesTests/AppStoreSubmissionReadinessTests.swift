@@ -15,18 +15,33 @@ struct AppStoreSubmissionReadinessTests {
         return try String(contentsOf: root.appendingPathComponent(relativePath), encoding: .utf8)
     }
 
+    /// The 1184 recovery build temporarily restores a read-only iCloud import
+    /// path. Every other build must stay local-only.
+    private var isRecoveryBuild: Bool {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return FileManager.default.fileExists(atPath: root.appendingPathComponent("CLOUDKIT_RECOVERY_BUILD").path)
+    }
+
     @Test func phoneStoreIsLocalOnlyAndHasNoICloudEntitlement() throws {
         let app = try source("Cadence/Cadence/CadenceApp.swift")
         #expect(app.contains("makeApplicationModelContainer()"))
-        #expect(!app.contains("import CloudKit"))
-        #expect(!app.contains("CKContainer"))
-        #expect(!app.contains("cloudKitDatabase"))
+        if !isRecoveryBuild {
+            #expect(!app.contains("import CloudKit"))
+            #expect(!app.contains("CKContainer"))
+            #expect(!app.contains("cloudKitDatabase"))
+        }
 
         for entitlement in ["Cadence/Cadence/Cadence.entitlements",
                             "Cadence/Cadence/Cadence.Release.entitlements",
                             "Cadence/Cadence/Cadence.Debug.entitlements"] {
             let text = try source(entitlement)
-            #expect(!text.contains("com.apple.developer.icloud"), "\(entitlement) still grants iCloud")
+            if !isRecoveryBuild {
+                #expect(!text.contains("com.apple.developer.icloud"), "\(entitlement) still grants iCloud")
+            }
             #expect(text.contains("com.apple.developer.healthkit"), "\(entitlement) lost HealthKit")
         }
 
@@ -36,9 +51,11 @@ struct AppStoreSubmissionReadinessTests {
         let transparency = try source("Cadence/Cadence/Features/Settings/TransparencyCenterView.swift")
         #expect(!transparency.contains("CloudKit"))
         #expect(!transparency.contains("iCloud"))
-        let backup = try source("Cadence/Cadence/Features/Settings/BackupRestoreCenterView.swift")
-        #expect(!backup.contains("CloudKit"))
-        #expect(!backup.contains("iCloud"))
+        if !isRecoveryBuild {
+            let backup = try source("Cadence/Cadence/Features/Settings/BackupRestoreCenterView.swift")
+            #expect(!backup.contains("CloudKit"))
+            #expect(!backup.contains("iCloud"))
+        }
         let about = try source("Cadence/Cadence/Features/Settings/AboutView.swift")
         #expect(!about.contains("CloudKit"))
         #expect(!about.contains("iCloud"))

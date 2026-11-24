@@ -13,6 +13,14 @@ fi
 
 # App Review 5.1.3(ii): no personal health information in iCloud. The shipping
 # build is local-only, so no iCloud entitlement or CloudKit code may remain.
+#
+# `CLOUDKIT_RECOVERY_BUILD` is a one-off exception for the 1184 data-recovery
+# build: it restores the iCloud entitlement and a read-only import path so the
+# user can pull their pre-1184 history out of the existing private container.
+# It must be removed before the next App Store submission.
+if [ -e "CLOUDKIT_RECOVERY_BUILD" ]; then
+  echo "release-safety: CLOUDKIT_RECOVERY_BUILD is present; skipping the local-only assertions" >&2
+else
 if rg -n "iCloud|CloudKit|CKContainer|NSPersistentCloudKitContainer|cloudKitDatabase|cloudKitEnabled" Cadence/Cadence --glob '*.swift' >/dev/null; then
   echo "release-safety: iCloud/CloudKit code remains in the app target" >&2
   exit 1
@@ -30,6 +38,7 @@ for ent in "Cadence/Cadence/Cadence.entitlements" \
     exit 1
   fi
 done
+fi
 
 plist_files=(
   "Cadence/Cadence/Info.plist"

@@ -17,6 +17,8 @@ struct BackupRestoreCenterView: View {
     @State private var isRefreshing = false
     @State private var recoveringPreviousData = false
     @State private var recoveryMessage: String?
+    @State private var recoveringFromICloud = false
+    @State private var iCloudRecoveryMessage: String?
 
     var body: some View {
         Form {
@@ -93,6 +95,29 @@ struct BackupRestoreCenterView: View {
                 }
             }
 
+            Section("Recover from iCloud (recovery build)") {
+                Text("This temporary build can download the copy of your history that Cladiron previously kept in your private iCloud database. It only reads from iCloud and merges what it finds into the local store. The current store is kept. The result also reports how many records iCloud returned, which shows whether the data is in the account, zone, or environment this build can see.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button {
+                    Task { await recoverFromICloud() }
+                } label: {
+                    if recoveringFromICloud {
+                        HStack { ProgressView(); Text("Contacting iCloud…") }
+                    } else {
+                        Label("Recover from iCloud", systemImage: "icloud.and.arrow.down")
+                    }
+                }
+                .disabled(recoveringFromICloud || container == nil)
+                .accessibilityIdentifier("backupCenter.recoverICloud")
+                if let iCloudRecoveryMessage {
+                    Text(iCloudRecoveryMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("backupCenter.iCloudRecoveryResult")
+                }
+            }
+
             Section("Full Cladiron archive") {
                 Text("JSON is the lossless backup for a new device; export it from Progress › My Workouts. FIT is for cardio/activity exchange; it intentionally does not contain strength sets or preferences.")
                     .font(.footnote)
@@ -106,7 +131,7 @@ struct BackupRestoreCenterView: View {
             }
 
             Section {
-                Text("Your history is stored only on this device. Cladiron does not upload it to a server. Keep the JSON archive somewhere safe so you can restore it on a new device.")
+                Text("Your history is stored on this device. This temporary recovery build also reads a copy from your private iCloud database when you ask it to. Keep the JSON archive somewhere safe so you can restore it on a new device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("backupCenter.localOnly")
@@ -174,6 +199,35 @@ struct BackupRestoreCenterView: View {
         } else {
             recoveryMessage = String(localized: "Merged \(report.changedRecords) records; \(report.errors.count) previous store(s) could not be read. \(report.currentSessionsAfter) workouts are now in the live store.")
         }
+        await reload()
+    }
+
+    @MainActor
+    private func recoverFromICloud() async {
+        guard let container, !recoveringFromICloud else { return }
+        recoveringFromICloud = true
+        iCloudRecoveryMessage = String(localized: "Checking iCloud…")
+        if let problem = await CloudKitRecovery.preflight() {
+            recoveringFromICloud = false
+            iCloudRecoveryMessage = problem
+            return
+        }
+        iCloudRecoveryMessage = String(localized: "Waiting for iCloud. Keep the app open and stay online.")
+        let report = await CloudKitRecovery.run(into: container) { message in
+            iCloudRecoveryMessage = message
+        }
+        recoveringFromICloud = false
+        var lines: [String] = []
+        if report.errors.isEmpty {
+            lines.append(String(localized: "Downloaded \(report.downloadedSessions) workouts from iCloud. Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store."))
+        } else {
+            lines.append(String(localized: "Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store."))
+            lines.append(contentsOf: report.errors)
+        }
+        if let inventory = report.inventory {
+            lines.append(inventory)
+        }
+        iCloudRecoveryMessage = lines.joined(separator: "\n\n")
         await reload()
     }
 

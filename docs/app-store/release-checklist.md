@@ -11,6 +11,31 @@ Use this checklist for the first public App Store v1 submission.
   its health-bearing record types) in CloudKit Console before public
   submission so no previously mirrored health data remains in iCloud.
 
+### Temporary 1184 recovery exception
+
+Build 1186 is a one-off data-recovery build for users whose pre-1184 history was
+left only in CloudKit. It is marked by the repo-root file
+`CLOUDKIT_RECOVERY_BUILD`, which the release-safety script and
+`AppStoreSubmissionReadinessTests` use to allow:
+
+- `Cadence.entitlements`, `Cadence.Debug.entitlements`, and
+  `Cadence.Release.entitlements` to grant `iCloud.guru.parso.cladiron.sync`;
+- `Cadence/Cadence/Services/CloudKitRecovery.swift` (read-only private-database
+  import into a separate scratch store);
+- the **Recover from iCloud** section in Backup & Restore.
+
+The live application store stays `cloudKitDatabase: .none`; only the scratch
+store reads iCloud, and it never saves. This build must not be submitted to the
+App Store. Before submission, revert it in one PR:
+
+- delete `CLOUDKIT_RECOVERY_BUILD` and
+  `Cadence/Cadence/Services/CloudKitRecovery.swift`;
+- remove the iCloud keys from all three entitlement files;
+- remove the **Recover from iCloud** section and restore the local-only footer
+  copy in `BackupRestoreCenterView.swift`;
+- run `scripts/check-release-safety.sh` and the
+  `AppStoreSubmissionReadinessTests` suite with the marker absent.
+
 - Confirm app display name is `Cladiron`.
 - Confirm the archive embeds the `Cadence Watch App` and both binaries pass
   App Store validation.

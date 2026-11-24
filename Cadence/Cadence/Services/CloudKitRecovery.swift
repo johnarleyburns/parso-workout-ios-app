@@ -73,9 +73,9 @@ enum CloudKitRecovery {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let operation = CKFetchRecordZoneChangesOperation()
             operation.recordZoneIDs = zoneIDs
-            var configurations: [CKRecordZone.ID: CKFetchRecordZoneChangesConfiguration] = [:]
+            var configurations: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneConfiguration] = [:]
             for zoneID in zoneIDs {
-                configurations[zoneID] = CKFetchRecordZoneChangesConfiguration()
+                configurations[zoneID] = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
             }
             operation.configurationsByRecordZoneID = configurations
             operation.recordWasChangedBlock = { _, result in

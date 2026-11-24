@@ -164,28 +164,11 @@ public enum CadenceStore {
 
     /// Builds the single local application store. The URL is caller-owned so
     /// tests can use a temporary store.
-    ///
-    /// The app has no iCloud entitlement, so `.automatic` cannot reach iCloud.
-    /// It is tried first because it opens stores created by earlier
-    /// CloudKit-enabled builds more reliably; `.none` is the fallback.
     public static func makeSingleModelContainer(
         storeURL: URL
     ) throws -> ModelContainer {
-        do {
-            return try makeSingleModelContainer(storeURL: storeURL,
-                                                cloudKitDatabase: .automatic)
-        } catch {
-            return try makeSingleModelContainer(storeURL: storeURL,
-                                                cloudKitDatabase: .none)
-        }
-    }
-
-    private static func makeSingleModelContainer(
-        storeURL: URL,
-        cloudKitDatabase: ModelConfiguration.CloudKitDatabase
-    ) throws -> ModelContainer {
         let config = ModelConfiguration("app", schema: schema, url: storeURL,
-                                       cloudKitDatabase: cloudKitDatabase)
+                                       cloudKitDatabase: .none)
         return try ModelContainer(for: schema, configurations: [config])
     }
 
@@ -195,24 +178,10 @@ public enum CadenceStore {
         localURL: URL,
         syncURL: URL
     ) throws -> ModelContainer {
-        do {
-            return try makeSplitModelContainer(localURL: localURL, syncURL: syncURL,
-                                               cloudKitDatabase: .automatic)
-        } catch {
-            return try makeSplitModelContainer(localURL: localURL, syncURL: syncURL,
-                                               cloudKitDatabase: .none)
-        }
-    }
-
-    private static func makeSplitModelContainer(
-        localURL: URL,
-        syncURL: URL,
-        cloudKitDatabase: ModelConfiguration.CloudKitDatabase
-    ) throws -> ModelContainer {
         let local = ModelConfiguration("local", schema: localSchema, url: localURL,
-                                       cloudKitDatabase: cloudKitDatabase)
+                                       cloudKitDatabase: .none)
         let sync = ModelConfiguration("sync", schema: syncSchema, url: syncURL,
-                                      cloudKitDatabase: cloudKitDatabase)
+                                      cloudKitDatabase: .none)
         return try ModelContainer(for: schema, configurations: [local, sync])
     }
 
@@ -224,36 +193,21 @@ public enum CadenceStore {
                                           storeURL: URL? = nil,
                                           includesWatchCardioHistory: Bool = false) throws -> ModelContainer {
         let activeSchema = includesWatchCardioHistory ? watchSchema : schema
+        let configuration: ModelConfiguration
         if inMemory {
-            let configuration = ModelConfiguration(schema: activeSchema,
-                                                   isStoredInMemoryOnly: true)
-            return try ModelContainer(for: activeSchema, configurations: [configuration])
+            configuration = ModelConfiguration(schema: activeSchema,
+                                               isStoredInMemoryOnly: true,
+                                               cloudKitDatabase: .none)
+        } else if let storeURL {
+            configuration = ModelConfiguration(schema: activeSchema, url: storeURL,
+                                               cloudKitDatabase: .none)
+        } else {
+            configuration = ModelConfiguration(schema: activeSchema,
+                                               isStoredInMemoryOnly: false,
+                                               cloudKitDatabase: .none)
         }
-        // No iCloud entitlement: `.automatic` is local. Try it first for
-        // compatibility with stores created by earlier CloudKit builds.
-        if let storeURL {
-            do {
-                let configuration = ModelConfiguration(schema: activeSchema, url: storeURL,
-                                                       cloudKitDatabase: .automatic)
-                return try ModelContainer(for: activeSchema, configurations: [configuration])
-            } catch {
-                let configuration = ModelConfiguration(schema: activeSchema, url: storeURL,
-                                                       cloudKitDatabase: .none)
-                return try ModelContainer(for: activeSchema, configurations: [configuration])
-            }
-        }
-        do {
-            let configuration = ModelConfiguration(schema: activeSchema,
-                                                   isStoredInMemoryOnly: false)
-            return try ModelContainer(for: activeSchema, configurations: [configuration])
-        } catch {
-            let configuration = ModelConfiguration(schema: activeSchema,
-                                                   isStoredInMemoryOnly: false,
-                                                   cloudKitDatabase: .none)
-            return try ModelContainer(for: activeSchema, configurations: [configuration])
-        }
+        return try ModelContainer(for: activeSchema, configurations: [configuration])
     }
-
 }
 #endif
 

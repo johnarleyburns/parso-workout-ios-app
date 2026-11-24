@@ -652,14 +652,15 @@ final class AppModel: NSObject, @unchecked Sendable {
                 // AppSettings is main-actor-owned and not Sendable; a fresh instance reads the
                 // same persisted UserDefaults, so the detached build never shares the live object.
                 let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
-                var peopleDescriptor = FetchDescriptor<Person>(
-                    sortBy: [SortDescriptor(\Person.updatedAt, order: .reverse)])
-                peopleDescriptor.fetchLimit = 6
+                // The Watch mirrors the phone's training-partner roster so its
+                // Partners screen can show the same names with checkmarks.
+                let peopleDescriptor = FetchDescriptor<Person>(
+                    sortBy: [SortDescriptor(\Person.name)])
                 let people = (try? context.fetch(peopleDescriptor)) ?? []
-                let names = Array(people
-                    .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+                let names = people
+                    .filter { !$0.isMe && !$0.isArchived
+                        && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
                     .map(\.name)
-                    .prefix(3))
                 return WatchPayloadSnapshot(
                     customExercises: exercises.filter(\.isCustom).map(WatchSync.CustomExercise.init),
                     recentPartnerNames: names,
@@ -1520,13 +1521,12 @@ final class AppModel: NSObject, @unchecked Sendable {
     private func recentPartnerNames() -> [String] {
         guard let container = _modelContainer else { return [] }
         let ctx = ModelContext(container)
-        var descriptor = FetchDescriptor<Person>(sortBy: [SortDescriptor(\.updatedAt, order: .reverse)])
-        descriptor.fetchLimit = 6
+        let descriptor = FetchDescriptor<Person>(sortBy: [SortDescriptor(\.name)])
         let people = (try? ctx.fetch(descriptor)) ?? []
-        return Array(people
-            .filter { !$0.isMe && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        return people
+            .filter { !$0.isMe && !$0.isArchived
+                && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
             .map(\.name)
-            .prefix(3))
     }
 }
 

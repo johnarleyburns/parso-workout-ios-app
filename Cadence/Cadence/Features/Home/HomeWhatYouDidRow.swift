@@ -20,6 +20,9 @@ struct HomeWeekWorkoutRow: View {
         /// "Mon · 6:14 PM" / "Nov 3 · 6:14 PM" -- Workouts History only, where
         /// rows aren't already grouped by day the way This Week/Today are.
         let timestamp: String?
+        /// History's deleted archive keeps the normal timeline row and adds a
+        /// right-justified red subtitle instead of changing the whole layout.
+        let isDeleted: Bool
         let identifier: String
     }
 
@@ -33,6 +36,7 @@ struct HomeWeekWorkoutRow: View {
                                value: entry.value,
                                badge: nil,
                                timestamp: showsTimestamp ? HistoryEntryTimestamp.format(entry.occurredAt) : nil,
+                               isDeleted: entry.isDeleted,
                                identifier: "home.week.workout.\(entry.id)")
         self.onOpen = onOpen
     }
@@ -44,6 +48,7 @@ struct HomeWeekWorkoutRow: View {
                                value: row.value,
                                badge: row.status.badgeText,
                                timestamp: nil,
+                               isDeleted: false,
                                identifier: "home.today.row.\(row.sourceKey)")
         self.onOpen = onOpen
     }
@@ -80,6 +85,12 @@ struct HomeWeekWorkoutRow: View {
                 Text(content.value)
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                if content.isDeleted {
+                    Text("Deleted")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("history.deletedSubtitle")
+                }
             }
             Image(systemName: "chevron.right")
                 .font(.caption2.weight(.semibold))

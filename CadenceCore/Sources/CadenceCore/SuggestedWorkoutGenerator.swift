@@ -162,7 +162,18 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Codable, Equatable, Sen
     }
 
     /// These are user-facing workout titles, not saved program/plan names.
-    public var planName: String { "\(displayName) Workout" }
+    /// The history-first option is simply "Lift"; "Personalized Workout" is no
+    /// longer used anywhere in the app or Watch.
+    public var planName: String {
+        #if os(Linux)
+        if self == .personalized { return "Lift" }
+        #else
+        if self == .personalized {
+            return String(localized: "Lift", bundle: .module)
+        }
+        #endif
+        return "\(displayName) Workout"
+    }
 
     public var subtitle: String {
         switch self {
@@ -648,7 +659,7 @@ public enum SuggestedWorkoutGenerator {
         )
     }
 
-    /// Generates the single user-facing Personalized workout. Unlike the old
+    /// Generates the single user-facing Lift. Unlike the old
     /// chooser API, this deliberately returns one option and remains launchable
     /// before five workouts: historical movements are preferred once available;
     /// the onboarding style fills only gaps (or supplies the initial pool).

@@ -731,7 +731,7 @@ struct SuggestedWorkoutGeneratorTests {
         let bundle = generate(completed: [:], candidates: candidates, sets: 4, goal: .endurance)
 
         #expect(bundle.options.map { $0.plan.name } ==
-                       ["Personalized Workout", "Fitness Workout", "Bodyweight Workout", "Powerlifting Workout",
+                       ["Lift", "Fitness Workout", "Bodyweight Workout", "Powerlifting Workout",
                         "Olympic Weightlifting Workout", "Strongman Workout"])
         for option in bundle.options where option.style != .personalized {
             #expect(option.plan.id == "coach-suggested-\(option.style.rawValue)")

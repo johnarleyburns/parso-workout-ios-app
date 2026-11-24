@@ -4,10 +4,10 @@ import CadenceCore
 @testable import CadenceWorkoutFeatures
 
 struct SuggestedWorkoutPresenterTests {
-    @Test func workoutCopyUsesPersonalizedTerminology() {
-        #expect(SuggestedWorkoutPresenter.navigationTitle == "View Personalized Workout")
-        #expect(SuggestedWorkoutPresenter.calculatingTitle == "Calculating personalized workouts…")
-        #expect(SuggestedWorkoutPresenter.aboutAccessibilityLabel == "About personalized workouts")
+    @Test func workoutCopyUsesTheBriefLiftTerm() {
+        #expect(SuggestedWorkoutPresenter.navigationTitle == "Lift")
+        #expect(SuggestedWorkoutPresenter.calculatingTitle == "Calculating your Lift…")
+        #expect(SuggestedWorkoutPresenter.aboutAccessibilityLabel == "About Lift suggestions")
     }
 
     private func option(style: SuggestedWorkoutStyle, exercises: [SuggestedWorkoutExercise],
@@ -140,7 +140,11 @@ struct SuggestedWorkoutPresenterTests {
             .contains("no set cap"))
         for style in SuggestedWorkoutStyle.allCases {
             #expect(!style.subtitle.isEmpty)
-            #expect(style.planName == "\(style.displayName) Workout")
+            if style == .personalized {
+                #expect(style.planName == "Lift")
+            } else {
+                #expect(style.planName == "\(style.displayName) Workout")
+            }
         }
     }
 

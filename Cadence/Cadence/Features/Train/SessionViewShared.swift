@@ -36,6 +36,10 @@ struct InlineEditorConfig: Equatable {
     var weightSourceText: String? = nil
     var exerciseName: String = ""
     var setNumberText: String = ""
+    /// Position in the exercise's working-set ladder, shown as the `m/n`
+    /// gauge on the exercise-name row (same reading as the Watch set card).
+    var setNumber: Int = 0
+    var setTotal: Int = 0
     var recordedText: String?
     /// Owner history snapshot from the workout card, used when the per-performer
     /// default is missing (e.g. the Me Person row has not loaded yet).
@@ -95,6 +99,8 @@ enum SetCol {
 /// Leaves the live workout header visible above the Add Set editor.
 struct SetEditorSheetDetent: CustomPresentationDetent {
     static func height(in context: Context) -> CGFloat? {
-        max(320, context.maxDetentValue - 96)
+        // A little higher than the previous 96 pt gap so the sheet top sits
+        // just under the elapsed/BPM/Rest row rather than leaving dead space.
+        max(320, context.maxDetentValue - 72)
     }
 }

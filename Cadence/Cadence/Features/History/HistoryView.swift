@@ -30,17 +30,14 @@ struct HistoryView: View {
     }
 
     private var timelineEntries: [TodayActivityPresenter.Entry] {
-        TodayActivityPresenter.historyEntries(sessions: sessions, cardio: cardio)
+        // Deleted rows keep the normal timeline layout; only the presenter's
+        // filter changes, so Show Deleted no longer swaps in a different list.
+        TodayActivityPresenter.historyEntries(sessions: sessions, cardio: cardio,
+                                              includeDeleted: showDeleted)
     }
 
     var body: some View {
-        Group {
-            if showDeleted {
-                legacyDeletedList
-            } else {
-                workoutTimeline
-            }
-        }
+        workoutTimeline
         .modifier(HistoryChrome(embedded: embedded))
         .toolbar {
             if let control = paging?.deletedControl {
@@ -110,7 +107,9 @@ struct HistoryView: View {
                 .listRowBackground(Color.clear)
                 .listRowSeparator(.hidden)
             if timelineEntries.isEmpty {
-                Text("No workouts yet — start one from Today.")
+                Text(showDeleted
+                     ? "No deleted workouts."
+                     : "No workouts yet — start one from Today.")
                     .font(.subheadline).foregroundStyle(.secondary)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
@@ -120,8 +119,22 @@ struct HistoryView: View {
                     HomeWeekWorkoutRow(entry: entry, showsTimestamp: true) { open(entry) }
                         .contextMenu { timelineActions(for: entry) }
                         .swipeActions(edge: .trailing) {
-                            Button(role: .destructive) { deleteImmediately(entry) } label: {
-                                Label("Delete", systemImage: "trash")
+                            if entry.isDeleted {
+                                Button(role: .destructive) { purgeImmediately(entry) } label: {
+                                    Label("Delete permanently", systemImage: "trash.slash")
+                                }
+                            } else {
+                                Button(role: .destructive) { deleteImmediately(entry) } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
+                        }
+                        .swipeActions(edge: .leading) {
+                            if entry.isDeleted {
+                                Button { restoreImmediately(entry) } label: {
+                                    Label("Restore", systemImage: "arrow.uturn.backward")
+                                }
+                                .tint(.green)
                             }
                         }
                         .listRowInsets(EdgeInsets())
@@ -161,32 +174,38 @@ struct HistoryView: View {
         notifyHistoryChanged()
     }
 
-    private func notifyHistoryChanged() {
-        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
-    }
-
-    private var legacyDeletedList: some View {
-        List {
-            Section {
-                if entries.isEmpty {
-                    Text("No deleted workouts.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(entries) { entry in
-                    switch entry {
-                    case .strength(let s): strengthRow(s)
-                    case .cardio(let c): cardioRow(c)
-                    }
-                }
-                showMoreButton
-            } header: {
-                Text("Deleted")
-            } footer: {
-                if showDeleted {
-                    Text("Swipe to restore a deleted workout.")
-                }
+    /// Restore is the leading-swipe action while the deleted archive is open.
+    private func restoreImmediately(_ entry: TodayActivityPresenter.Entry) {
+        switch entry.kind {
+        case .strength:
+            if let session = sessions.first(where: { $0.id == entry.sourceId }) {
+                try? WorkoutRepository.restoreSession(session, in: context)
+            }
+        case .cardio:
+            if let workout = cardio.first(where: { $0.id == entry.sourceId }) {
+                try? WorkoutRepository.restoreCardio(workout, in: context)
             }
         }
+        notifyHistoryChanged()
+    }
+
+    /// Permanent removal is only offered from the already-deleted archive.
+    private func purgeImmediately(_ entry: TodayActivityPresenter.Entry) {
+        switch entry.kind {
+        case .strength:
+            if let session = sessions.first(where: { $0.id == entry.sourceId }) {
+                try? WorkoutRepository.deleteSession(session, in: context)
+            }
+        case .cardio:
+            if let workout = cardio.first(where: { $0.id == entry.sourceId }) {
+                try? WorkoutRepository.deleteCardio(workout, in: context)
+            }
+        }
+        notifyHistoryChanged()
+    }
+
+    private func notifyHistoryChanged() {
+        NotificationCenter.default.post(name: .workoutHistoryChanged, object: nil)
     }
 
     @ViewBuilder private var showMoreButton: some View {
@@ -217,136 +236,34 @@ struct HistoryView: View {
         switch entry.kind {
         case .strength:
             if let session = sessions.first(where: { $0.id == entry.sourceId }) {
-                Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
-                Button(role: .destructive) { sessionToDelete = session } label: {
-                    Label("Delete", systemImage: "trash")
+                if entry.isDeleted {
+                    Button { restoreImmediately(entry) } label: {
+                        Label("Restore", systemImage: "arrow.uturn.backward")
+                    }
+                    Button(role: .destructive) { purgeImmediately(entry) } label: {
+                        Label("Delete permanently", systemImage: "trash.slash")
+                    }
+                } else {
+                    Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
+                    Button(role: .destructive) { sessionToDelete = session } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 }
             }
         case .cardio:
             if let workout = cardio.first(where: { $0.id == entry.sourceId }) {
-                Button(role: .destructive) { cardioToDelete = workout } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
-    }
-
-    // MARK: Rows
-
-    private func strengthRow(_ session: WorkoutSession) -> some View {
-        HStack(spacing: 12) {
-            Button { Haptics.selection(); path.append(HistorySummaryRoute.strength(session.id)) } label: {
-                HStack {
-                    Image(systemName: session.symbol).foregroundStyle(.tint).frame(width: 26)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 8) {
-                            Text(session.title.isEmpty ? String(localized: "Workout") : session.title)
-                            if session.isLogged { LoggedTag() }
-                            if session.deletedAt != nil { DeletedTag() }
-                        }
-                        Text(session.date.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption).foregroundStyle(.secondary)
-                        Text("\(session.setsCount) sets · \(Format.weightValue(session.totalVolume, unit: .kilograms)) kg volume")
-                            .font(.caption2).foregroundStyle(.tertiary)
+                if entry.isDeleted {
+                    Button { restoreImmediately(entry) } label: {
+                        Label("Restore", systemImage: "arrow.uturn.backward")
+                    }
+                    Button(role: .destructive) { purgeImmediately(entry) } label: {
+                        Label("Delete permanently", systemImage: "trash.slash")
+                    }
+                } else {
+                    Button(role: .destructive) { cardioToDelete = workout } label: {
+                        Label("Delete", systemImage: "trash")
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if session.deletedAt != nil {
-                Button { restore(session) } label: {
-                    Label("Restore", systemImage: "arrow.uturn.backward")
-                }
-                .font(.caption.weight(.semibold))
-                .buttonStyle(.bordered)
-                .tint(.green)
-                .accessibilityIdentifier("history.restore")
-            }
-        }
-        .accessibilityIdentifier("session.row")
-        .swipeActions(edge: .leading) {
-            if session.deletedAt != nil {
-                Button { restore(session) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                    .tint(.green)
-                    .accessibilityIdentifier("history.restoreSwipe")
-            } else {
-                Button { reuse(session) } label: { Label("Reuse", systemImage: "arrow.clockwise") }
-                    .tint(.blue)
-            }
-        }
-        .swipeActions {
-            if session.deletedAt != nil {
-                Button(role: .destructive) {
-                    try? WorkoutRepository.deleteSession(session, in: context)
-                    notifyHistoryChanged()
-                } label: { Label("Purge", systemImage: "trash.slash") }
-                    .accessibilityIdentifier("history.purge")
-            } else {
-                Button(role: .destructive) { sessionToDelete = session } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
-    }
-
-    private func cardioRow(_ c: CardioWorkout) -> some View {
-        HStack(spacing: 12) {
-            Button { Haptics.selection(); path.append(HistorySummaryRoute.cardio(c.id)) } label: {
-                HStack {
-                    Image(systemName: c.typeValue.symbol).foregroundStyle(.tint).frame(width: 26)
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 8) {
-                            Text(c.displayTitle)
-                            if c.isLogged { LoggedTag() }
-                            if c.deletedAt != nil { DeletedTag() }
-                        }
-                        Text(c.start.formatted(date: .abbreviated, time: .shortened))
-                            .font(.caption).foregroundStyle(.secondary)
-                        if c.originValue == .healthKitImported {
-                            let origin = HealthKitWorkoutOriginPresenter.label(for: c.healthKitProvenance)
-                            Text(origin.primary)
-                                .font(.caption2).foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .accessibilityLabel(origin.accessibilityLabel)
-                        }
-                        Text("\(Format.duration(c.duration))\(c.distance.map { " · " + Format.distance($0) } ?? "")")
-                            .font(.caption2).foregroundStyle(.tertiary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-
-            if c.deletedAt != nil {
-                Button { restoreCardio(c) } label: {
-                    Label("Restore", systemImage: "arrow.uturn.backward")
-                }
-                .font(.caption.weight(.semibold))
-                .buttonStyle(.bordered)
-                .tint(.green)
-                .accessibilityIdentifier("history.restore")
-            }
-        }
-        .accessibilityIdentifier("history.cardioRow.\(c.typeValue.rawValue)")
-        .swipeActions {
-            if c.deletedAt != nil {
-                Button(role: .destructive) {
-                    try? WorkoutRepository.deleteCardio(c, in: context)
-                    notifyHistoryChanged()
-                } label: { Label("Purge", systemImage: "trash.slash") }
-            } else {
-                Button(role: .destructive) { cardioToDelete = c } label: {
-                    Label("Delete", systemImage: "trash")
-                }
-            }
-        }
-        .swipeActions(edge: .leading) {
-            if c.deletedAt != nil {
-                Button { restoreCardio(c) } label: { Label("Restore", systemImage: "arrow.uturn.backward") }
-                    .tint(.green)
             }
         }
     }
@@ -364,26 +281,6 @@ struct HistoryView: View {
         }
     }
 
-    private func restore(_ s: WorkoutSession) {
-        try? WorkoutRepository.restoreSession(s, in: context)
-        notifyHistoryChanged()
-    }
-
-    private func restoreCardio(_ c: CardioWorkout) {
-        try? WorkoutRepository.restoreCardio(c, in: context)
-        notifyHistoryChanged()
-    }
-}
-
-struct DeletedTag: View {
-    var body: some View {
-        Text("Deleted")
-            .font(.caption2).fontWeight(.medium)
-            .padding(.horizontal, 6).padding(.vertical, 2)
-            .background(.red.opacity(0.15), in: Capsule())
-            .foregroundStyle(.red)
-            .accessibilityLabel("Deleted")
-    }
 }
 
 /// Standalone History owns its title; the Progress tab owns title and backdrop,

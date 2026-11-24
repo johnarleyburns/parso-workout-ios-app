@@ -9,7 +9,7 @@ import CadencePhoneFeatures
 extension HomeView {
     private static let healthIngestLog = OSLog(subsystem: "guru.parso.cladiron", category: "HealthIngestion")
     var contributionPromptAllowed: Bool {
-        active.strengthSession == nil && hrGateKind == nil && pending == nil && !warmupActive
+        active.strengthSession == nil && hrGateKind == nil && pending == nil && !warmupCover.isPresented
     }
 
     static func dayString(_ date: Date = Date()) -> String {

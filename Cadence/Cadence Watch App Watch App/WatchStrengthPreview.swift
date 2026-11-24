@@ -23,6 +23,7 @@ struct WatchStrengthPreview: View {
     @State private var startedLaunch: WatchLiftLaunch?
     @State private var startedPartners: [String] = []
     @State private var startedRest: Int?
+    @State private var exerciseToRemove: String?
 
     init(launch: WatchLiftLaunch, citationIDs: [String] = []) {
         self.launch = launch
@@ -90,6 +91,14 @@ struct WatchStrengthPreview: View {
                         } label: { Image(systemName: "info.circle") }
                         .accessibilityLabel("\(name) details")
                     }
+                    .contentShape(Rectangle())
+                    .onLongPressGesture(minimumDuration: 0.6) {
+                        WatchHaptics.tap()
+                        exerciseToRemove = name
+                    }
+                    .accessibilityAction(named: Text("Remove exercise")) {
+                        exerciseToRemove = name
+                    }
                 }
                 NavigationLink {
                     WatchPreviewAddExerciseView(
@@ -141,8 +150,18 @@ struct WatchStrengthPreview: View {
             .disabled(manager.isActive)
             .accessibilityIdentifier("watchStrength.preview.start")
         }
-        .navigationTitle(launch.title)
+        .navigationTitle("Lift")
         .onAppear(perform: applyStoredDefaults)
+        .alert("Remove \(exerciseToRemove ?? "exercise")?",
+               isPresented: Binding(get: { exerciseToRemove != nil },
+                                    set: { if !$0 { exerciseToRemove = nil } })) {
+            Button("Remove exercise", role: .destructive) {
+                if let name = exerciseToRemove { removeExercise(named: name) }
+            }
+            Button("Keep", role: .cancel) { exerciseToRemove = nil }
+        } message: {
+            Text("This removes the exercise from this Lift plan.")
+        }
         .navigationDestination(isPresented: Binding(get: { startedLaunch != nil },
             set: { if !$0 { startedLaunch = nil } })) {
                 if let started = startedLaunch {
@@ -162,6 +181,15 @@ struct WatchStrengthPreview: View {
             stored: lastPartners,
             launchPartners: launchPartners,
             previouslyChosen: partnersChosen)
+    }
+
+    private func removeExercise(named name: String) {
+        WatchHaptics.delete()
+        exerciseNames.removeAll { $0.caseInsensitiveCompare(name) == .orderedSame }
+        addedPrescriptions = addedPrescriptions.filter {
+            $0.key.caseInsensitiveCompare(name) != .orderedSame
+        }
+        exerciseToRemove = nil
     }
 
     private func rememberDefaults() {
@@ -237,14 +265,15 @@ private struct WatchPreviewRepPicker: View {
 
 private struct WatchPreviewPartnerPicker: View {
     @Binding var setup: WatchStrengthPreviewSetup
-    @Query(filter: #Predicate<Person> { !$0.isMe }, sort: \Person.name) private var people: [Person]
+    @Environment(WatchWorkoutManager.self) private var manager
+    @Query(filter: #Predicate<Person> { !$0.isMe && !$0.isArchived }, sort: \Person.name) private var people: [Person]
     @State private var newPartner = ""
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         List {
             Button("No partner") { setup.partnerNames = []; dismiss() }
                 .accessibilityIdentifier("watchStrength.partner.none")
-            ForEach(setup.partnerOptions(recentNames: people.map(\.name)), id: \.self) { name in
+            ForEach(setup.partnerOptions(recentNames: manager.recentPartnerNames + people.map(\.name)), id: \.self) { name in
                 Button { setup.togglePartner(name); dismiss() } label: {
                     HStack {
                         Text(name)

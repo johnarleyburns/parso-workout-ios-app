@@ -15,6 +15,7 @@ struct RootTabView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var selection: Tab = .home
     @State private var watchSyncToast: WatchSyncToast?
+    @State private var warmupCover = WarmupCoverController()
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -23,6 +24,15 @@ struct RootTabView: View {
         @Bindable var active = active
         return ZStack {
             nativeTabs
+
+            // Warm-up lives above the tabs and below the workout cover. When
+            // the phase ends, the session cover slides over it and only then
+            // is it dismissed, so Home never flashes in between.
+            if warmupCover.isPresented {
+                WarmupPhaseCover(controller: warmupCover)
+                    .transition(.identity)
+                    .zIndex(30)
+            }
 
             // Explicit Watch action results use one non-layout-affecting host.
             // Automatic CloudKit restore state stays in Settings/diagnostics so
@@ -46,6 +56,7 @@ struct RootTabView: View {
 
         }
         .environment(\.rootTabSelection, $selection)
+        .environment(warmupCover)
         // The live workout + its finish summary share ONE root-level cover
         // (launch-blockers Phase 1b). A cover — not a NavigationStack push — so
         // lock/unlock can never pop the session (iOS 17 NavigationStack drops

@@ -152,7 +152,7 @@ extension HomeView {
             .overlay {
                 suggestionGenerationStatus
             }
-            .alert("Couldn’t calculate your Personalized workout", isPresented: suggestedWorkoutFailurePresented) {
+            .alert("Couldn’t calculate your Lift", isPresented: suggestedWorkoutFailurePresented) {
                 Button("Try Again") { suggestedWorkoutFailure = nil; requestSuggestedWorkout(.strength) }
                 Button("Choose Manually") {
                     suggestedWorkoutFailure = nil
@@ -221,7 +221,7 @@ extension HomeView {
                 if suggestedWorkoutPlan == nil { handleSuggestedStrength(.interactiveDismiss) }
             }) { plan in
                 NavigationStack {
-                    // View Personalized Workout opens read-only first, like
+                    // View Lift opens read-only first, like
                     // every other plan entry point (Previous Workouts, saved
                     // routines, Progress history); edit controls are reached
                     // via the pencil toggle, not forced up front.

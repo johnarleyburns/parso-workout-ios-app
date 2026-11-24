@@ -24,23 +24,23 @@ public struct SuggestedWorkoutChoice: Equatable, Sendable, Identifiable {
 public enum SuggestedWorkoutPresenter {
     public static let navigationTitle = {
         #if os(Linux)
-        "View Personalized Workout"
+        "Lift"
         #else
-        String(localized: "View Personalized Workout", bundle: FeatureLocalization.bundle)
+        String(localized: "Lift", bundle: FeatureLocalization.bundle)
         #endif
     }()
     public static let calculatingTitle = {
         #if os(Linux)
-        "Calculating personalized workouts…"
+        "Calculating your Lift…"
         #else
-        String(localized: "Calculating personalized workouts…", bundle: FeatureLocalization.bundle)
+        String(localized: "Calculating your Lift…", bundle: FeatureLocalization.bundle)
         #endif
     }()
     public static let aboutAccessibilityLabel = {
         #if os(Linux)
-        "About personalized workouts"
+        "About Lift suggestions"
         #else
-        String(localized: "About personalized workouts", bundle: FeatureLocalization.bundle)
+        String(localized: "About Lift suggestions", bundle: FeatureLocalization.bundle)
         #endif
     }()
     public static let chooserIntro = {
@@ -65,9 +65,9 @@ public enum SuggestedWorkoutPresenter {
         case .unavailable:
             return {
                 #if os(Linux)
-                "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout."
+                "No completed strength history was available. This Lift uses your onboarding preferences and the exercise catalog; future Lifts can become more specific after you log a workout."
                 #else
-                String(localized: "No completed strength history was available. This personalized workout uses your onboarding preferences and the exercise catalog; future personalized workouts can become more specific after you log a workout.", bundle: FeatureLocalization.bundle)
+                String(localized: "No completed strength history was available. This Lift uses your onboarding preferences and the exercise catalog; future Lifts can become more specific after you log a workout.", bundle: FeatureLocalization.bundle)
                 #endif
             }()
         case .limited(let workoutCount, let workingSetCount):
@@ -87,9 +87,9 @@ public enum SuggestedWorkoutPresenter {
                 }() + ". "
                 + {
                     #if os(Linux)
-                    "This personalized workout also uses your onboarding preferences, so review it before starting."
+                    "This Lift also uses your onboarding preferences, so review it before starting."
                     #else
-                    String(localized: "This personalized workout also uses your onboarding preferences, so review it before starting.", bundle: FeatureLocalization.bundle)
+                    String(localized: "This Lift also uses your onboarding preferences, so review it before starting.", bundle: FeatureLocalization.bundle)
                     #endif
                 }()
         }
@@ -257,9 +257,9 @@ public enum SuggestedWorkoutPresenter {
         }(),
         {
             #if os(Linux)
-            "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum."
+            "Produces a deterministic Lift to review and edit, not a medical prescription or guarantee of an individualized optimum."
             #else
-            String(localized: "Produces a deterministic personalized workout to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: FeatureLocalization.bundle)
+            String(localized: "Produces a deterministic Lift to review and edit, not a medical prescription or guarantee of an individualized optimum.", bundle: FeatureLocalization.bundle)
             #endif
         }()
     ]

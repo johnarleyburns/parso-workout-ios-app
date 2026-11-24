@@ -34,6 +34,7 @@ struct HomeView: View {
     @Environment(ContributionCoordinator.self) var contributions
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.rootTabSelection) var rootTabSelection
+    @Environment(WarmupCoverController.self) var warmupCover
     @Environment(\.cadenceModelContainer) var cadenceModelContainer
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) var cardio: [CardioWorkout]
@@ -74,9 +75,6 @@ struct HomeView: View {
     @State var pending: PendingWorkout?
     @State var hrGateKind: PendingWorkout.Kind?
     @State var startWarmupAfterHRGate = false
-    @State var warmupActive = false
-    @State var pendingWarmupSeconds: Int?
-    @State var pendingWarmupCue: WorkoutStartCue = .none
     @State var today: DayActivity?
     @State var activityTrend: [DayActivity] = []
     @State var passiveSamples: [PassiveReadinessSample] = []

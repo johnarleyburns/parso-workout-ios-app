@@ -38,7 +38,7 @@ struct HomeTodayCardioCard: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 if hasNewer {
-                    Button("Show newer personalized workout…", action: onShowNewer)
+                    Button("Show newer cardio suggestion…", action: onShowNewer)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(CadenceTheme.link)
                         .accessibilityIdentifier("home.cardio.showNewer")

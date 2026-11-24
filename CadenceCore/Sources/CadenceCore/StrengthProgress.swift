@@ -107,7 +107,7 @@ public enum StrengthProgress {
                 date: session.date,
                 deleted: session.deletedAt != nil,
                 sets: session.orderedSets.compactMap { set in
-                    guard let name = set.exercise?.name, !name.isEmpty else { return nil }
+                    guard let name = set.resolvedExerciseName else { return nil }
                     return StrengthProgressSetInput(exerciseName: name,
                                                     completedAt: set.completedAt,
                                                     weightKg: set.effectiveLoadKg,

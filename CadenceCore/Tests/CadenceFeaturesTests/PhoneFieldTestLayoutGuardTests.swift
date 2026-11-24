@@ -39,24 +39,32 @@ struct PhoneFieldTestLayoutGuardTests {
     @Test func warmupAndCooldownUseThreeEvenBottomButtons() throws {
         let overlay = try source("Cadence/Cadence/Features/Shared/GuidedPhaseOverlay.swift")
         #expect(overlay.contains("finishSystemImage"))
+        #expect(overlay.contains("finishTitle.isEmpty"))
         #expect(!overlay.contains("addFiveMinutes"))
         #expect(!overlay.contains("+5 min"))
 
-        let home = try source("Cadence/Cadence/Features/Home/HomeView+DashboardOverlays.swift")
-        #expect(home.contains("finishSystemImage: \"chevron.forward.2\""))
+        let warmup = try source("Cadence/Cadence/Features/Home/WarmupCover.swift")
+        #expect(warmup.contains("finishSystemImage: \"chevron.forward.2\""))
 
         let session = try source("Cadence/Cadence/Features/Train/SessionView+RenderingSupport.swift")
-        #expect(session.contains("finishTitle: String(localized: \"End\")"))
-        #expect(!session.contains("chevron.forward.2"))
+        #expect(session.contains("finishTitle: \"\""))
+        #expect(session.contains("finishSystemImage: \"stop.fill\""))
+        #expect(session.contains("emphasis: .liveMetric"))
+        #expect(session.contains("pauseShowsTitle: false"))
+        #expect(!session.contains("finishTitle: String(localized: \"End\")"))
     }
 
-    @Test func warmupIsPresentedFullScreenWithoutTheTabBar() throws {
+    @Test func warmupCoversTheTabsAndHandsOffWithoutAHomeFlash() throws {
+        let root = try source("Cadence/Cadence/App/RootTabView.swift")
+        #expect(root.contains("WarmupPhaseCover(controller: warmupCover)"))
+        #expect(root.contains(".environment(warmupCover)"))
         let scroll = try source("Cadence/Cadence/Features/Home/HomeView+DashboardScroll.swift")
-        #expect(scroll.contains(".fullScreenCover(isPresented: $warmupActive"))
-        #expect(scroll.contains("completePendingWarmupLaunch"))
-        #expect(scroll.contains("interactiveDismissDisabled"))
-        let overlays = try source("Cadence/Cadence/Features/Home/HomeView+DashboardOverlays.swift")
-        #expect(!overlays.contains("if warmupActive"))
+        #expect(!scroll.contains(".fullScreenCover(isPresented: $warmupActive"))
+        #expect(!scroll.contains("completePendingWarmupLaunch"))
+        let launch = try source("Cadence/Cadence/Features/Home/HomeView+Warmup.swift")
+        #expect(launch.contains("launch(.strength, startCue: startCue)"))
+        #expect(launch.contains("asyncAfter"))
+        #expect(launch.contains("warmupCover.dismiss()"))
     }
 
     @Test func workoutHeaderIsOneLiveUpdatingRow() throws {
@@ -65,9 +73,10 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(!header.contains("WallClockLabel"))
         #expect(!header.contains("Timer.publish"))
         #expect(header.contains(".font(.system(.title3"))
-        #expect(header.contains("intervalTimer(now: now)"))
-        #expect(!header.contains("timerButton(.work"))
-        #expect(!header.contains("timerButton(.rest"))
+        #expect(header.contains("intervalTimerButton(now: now)"))
+        #expect(header.contains("timers.beginRest(now: ref)"))
+        #expect(header.contains("timers.beginWork(now: ref)"))
+        #expect(!header.contains("Text(\"Paused\")"))
         #expect(!header.contains("Text(verbatim: \"/\")"))
         #expect(header.contains("session.timer.interval"))
     }
@@ -87,6 +96,16 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(bar.contains("compact: true"))
         #expect(bar.contains("compactTargetHeight"))
         #expect(!bar.contains("minimumTargetHeight"))
+        // Pause and End are icon-only; accessibility keeps the words.
+        #expect(bar.contains("Image(systemName: pause.systemImage)"))
+        #expect(bar.contains("Image(systemName: WorkoutDockPresenter.endSystemImage)"))
+        #expect(!bar.contains("Label(LocalizedStringKey(pause.title)"))
+        #expect(bar.contains(".accessibilityLabel(pause.title)"))
+    }
+
+    @Test func connectHeartRateKeepsContinueClose() throws {
+        let hr = try source("Cadence/Cadence/Features/Shared/PreWorkoutHRView.swift")
+        #expect(hr.contains("Spacer(minLength: 12).frame(maxHeight: 40)"))
     }
 
     @Test func addSetSitsOnTheWeightRepsHeaderRow() throws {
@@ -110,6 +129,23 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(history.contains("Button(role: .destructive) { deleteImmediately(entry) }"))
         #expect(history.contains("Text(control.title)"))
         #expect(history.contains("NotificationCenter.default.post(name: .workoutHistoryChanged"))
+        // Show Deleted keeps the normal timeline and only adds the red subtitle.
+        #expect(!history.contains("legacyDeletedList"))
+        #expect(history.contains("includeDeleted: showDeleted"))
+        #expect(history.contains("HomeWeekWorkoutRow(entry: entry"))
+        let row = try source("Cadence/Cadence/Features/Home/HomeWhatYouDidRow.swift")
+        #expect(row.contains("if content.isDeleted"))
+        #expect(row.contains("Text(\"Deleted\")"))
+        #expect(row.contains(".foregroundStyle(.red)"))
+    }
+
+    @Test func pauseIsABigBlurredSurfaceWithResume() throws {
+        let rendering = try source("Cadence/Cadence/Features/Train/SessionView+RenderingSupport.swift")
+        #expect(rendering.contains("active.isPaused"))
+        #expect(rendering.contains(".ultraThinMaterial"))
+        #expect(rendering.contains("Text(\"PAUSED\")"))
+        #expect(rendering.contains("session.paused.resume"))
+        #expect(!rendering.contains("Text(\"Paused\").font(.caption2"))
     }
 
     @Test func watchConfirmedToastIsNotRepeated() throws {
@@ -142,7 +178,7 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(!overlay.contains("Label(\"1 min\""))
         #expect(!overlay.contains("Label(\"+1 min\""))
 
-        let home = try source("Cadence/Cadence/Features/Home/HomeView+DashboardOverlays.swift")
+        let home = try source("Cadence/Cadence/Features/Home/WarmupCover.swift")
         #expect(home.contains("emphasis: .liveMetric"))
         #expect(home.contains("pauseShowsTitle: false"))
         #expect(home.contains("GuidedPhaseLiveHRView(idPrefix: \"warmup\")"))
@@ -150,13 +186,16 @@ struct PhoneFieldTestLayoutGuardTests {
         let hr = try source("Cadence/Cadence/Features/Train/GuidedPhaseLiveHRView.swift")
         #expect(hr.contains("LiveHRBigView("))
         #expect(hr.contains("CardioMath.hrZone"))
+        // Guided phases never show reconnect copy or actions.
+        #expect(hr.contains("connectionNote: nil"))
+        #expect(!hr.contains("Reconnect Apple Watch HR"))
     }
 
     @Test func addSetEditorIsFullHeightAndFocused() throws {
         let editor = try source("Cadence/Cadence/Features/Train/InlineSetEditorView.swift")
         #expect(editor.contains(".custom(SetEditorSheetDetent.self)"))
         let shared = try source("Cadence/Cadence/Features/Train/SessionViewShared.swift")
-        #expect(shared.contains("context.maxDetentValue - 96"))
+        #expect(shared.contains("context.maxDetentValue - 72"))
         #expect(editor.contains("historyLastTimeText"))
         #expect(!editor.contains("Who did this set?"))
         #expect(!editor.contains("How hard did the set feel?"))
@@ -165,8 +204,22 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(!editor.contains("Button(\"None\")"))
         #expect(!editor.contains("Text(\"Type\").font(.caption)"))
 
-        // Weight steppers sit beside the value; the plate row scrolls to the
-        // selected increment (5 lb is the pounds default).
+        // The set gauge replaces the separate "Set 1 of 3" subtitle row.
+        #expect(editor.contains("config.setTotal"))
+        #expect(editor.contains("setEditor.setGauge"))
+        #expect(!editor.contains("Text(config.setNumberText)"))
+
+        // History is collapsed behind a right-aligned toggle.
+        #expect(editor.contains("Show History"))
+        #expect(editor.contains("Hide History"))
+        #expect(editor.contains("setEditor.history.toggle"))
+
+        // The separate + Add Partner row is gone; the Change menu owns it.
+        #expect(!editor.contains("＋ Add Partner"))
+        #expect(editor.contains("Add Partner…"))
+
+        // Weight steppers sit beside the value; plate buttons live on the title
+        // row and the value itself is smaller.
         let minus = try #require(editor.range(of: "weightStepButton(\"−\""))
         let value = try #require(editor.range(of: "setEditor.weightValue"))
         let plus = try #require(editor.range(of: "weightStepButton(\"+\""))
@@ -174,6 +227,13 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(editor.contains("ScrollViewReader"))
         #expect(editor.contains("proxy.scrollTo(increment, anchor: .center)"))
         #expect(editor.contains("config.unit == .pounds ? 5 : 2.5"))
+        #expect(!editor.contains("scaledSystemFont(52"))
+        #expect(editor.contains("scaledSystemFont(40"))
+        #expect(editor.contains("setEditor.weight.increment"))
+
+        // Reps uses the same step-button component as Weight.
+        #expect(editor.contains("weightStepButton(\"−\", label: \"Decrease reps\""))
+        #expect(editor.contains("weightStepButton(\"+\", label: \"Increase reps\""))
 
         // Effort is one number with +/- and no chooser grid or helper prose.
         #expect(editor.contains("setEditor.effort.minus"))

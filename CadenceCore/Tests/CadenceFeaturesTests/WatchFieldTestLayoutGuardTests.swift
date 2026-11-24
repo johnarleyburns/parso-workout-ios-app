@@ -25,7 +25,7 @@ struct WatchFieldTestLayoutGuardTests {
         let rows = try watch("WatchHomeStartControls.swift")
         #expect(rows.contains("defaultMinListRowHeight"))
         #expect(rows.contains(".listRowInsets("))
-        #expect(rows.contains("bottom: 3"))
+        #expect(rows.contains("bottom: 1"))
         #expect(rows.contains("minHeight: 52"))
     }
 
@@ -69,8 +69,11 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(set.contains("WatchSetEntryPresentation.logButtonSystemImage"))
         #expect(set.contains("String(localized: \"rps\")"))
         #expect(set.contains("WatchSetEntryPresentation.headerSpacing"))
+        #expect(set.contains("WatchSetEntryPresentation.fieldTopSpacing"))
         let components = try watch("WatchKitComponents.swift")
         #expect(components.contains(".font(.system(.title3"))
+        #expect(components.contains(".padding(.top, 6)"))
+        #expect(components.contains(".padding(.bottom, 2)"))
         #expect(!set.contains(".borderedProminent"))
         #expect(!set.contains("Text(\"Log\")"))
         #expect(!set.contains("lineLimit(2, reservesSpace: true)"))
@@ -141,11 +144,43 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(add.contains("displayName: $0.name.localizedExerciseName"))
     }
 
+    @Test func addCustomIsTheLastRowInAddExercise() throws {
+        let add = try watch("WatchAddExercisePicker.swift")
+        let matches = try #require(add.range(of: "Section(\"Matches\")"))
+        let custom = try #require(add.range(of: "addCustomRow\n"))
+        #expect(matches.lowerBound < custom.lowerBound)
+        #expect(add.contains("Add Custom is always the last row"))
+    }
+
+    @Test func liftPreviewUsesTheBriefTitleAndLongPressDelete() throws {
+        let preview = try watch("WatchStrengthPreview.swift")
+        #expect(preview.contains(".navigationTitle(\"Lift\")"))
+        #expect(!preview.contains(".navigationTitle(launch.title)"))
+        #expect(preview.contains("onLongPressGesture"))
+        #expect(preview.contains("exerciseToRemove"))
+        #expect(preview.contains("Remove exercise"))
+        #expect(preview.contains("This removes the exercise from this Lift plan."))
+    }
+
     @Test func partnersShowsKnownPartnersAndOffersAWayBack() throws {
         let partners = try watch("WatchPartnersView.swift")
         #expect(partners.contains("WatchPartnerDirectory"))
         #expect(partners.contains("WatchBackButton") || partners.contains("Button(\"Done\")"))
         #expect(!partners.contains("Section(\"Rotation\")"))
         #expect(partners.contains("Section(\"Partners\")"))
+        // The phone roster is the default list, with optional checkmarks.
+        #expect(partners.contains("manager.recentPartnerNames"))
+        #expect(partners.contains("Section(\"From your iPhone\")"))
+        #expect(partners.contains("Image(systemName: \"checkmark\")"))
+        #expect(partners.contains("togglePartner"))
+    }
+
+    @Test func liftTermIsUsedInsteadOfPersonalizedWorkout() throws {
+        let generator = try source("CadenceCore/Sources/CadenceCore/SuggestedWorkoutGenerator.swift")
+        #expect(generator.contains("case .personalized:"))
+        #expect(generator.contains("\"Lift\""))
+        let presenter = try source("CadenceCore/Sources/CadenceWorkoutFeatures/SuggestedWorkoutPresenter.swift")
+        #expect(presenter.contains("\"Lift\""))
+        #expect(!presenter.contains("View Personalized Workout"))
     }
 }

@@ -17,16 +17,17 @@ struct InlineSetEditorView: View {
     let onEffortMode: (WatchEffortMode) -> Void
     let onAddPartner: (() -> Void)?
 
-    @State private var draft: ExpandedSetDraftModel
+    @State var draft: ExpandedSetDraftModel
     @State private var increment: Double
-    @State private var typedWeight: String
-    @State private var typedReps: String
-    @State private var hasExplicitWeightEntry: Bool
-    @State private var keypadPresented = false
-    @State private var repsKeypadPresented = false
-    @State private var keypadError: String?
+    @State var typedWeight: String
+    @State var typedReps: String
+    @State var hasExplicitWeightEntry: Bool
+    @State var keypadPresented = false
+    @State var repsKeypadPresented = false
+    @State var keypadError: String?
     @State private var deletePresented = false
     @State private var performerID: UUID?
+    @State private var showHistory = false
 
     init(config: InlineEditorConfig, wouldBePR: ((Double, Int) -> Bool)?,
          onSave: @escaping (SetDraft) -> Void, onDelete: (() -> Void)?,
@@ -109,12 +110,26 @@ struct InlineSetEditorView: View {
     }
 
     private var headerContext: some View {
-        VStack(spacing: 6) {
-            Text(config.exerciseName.localizedExerciseName).font(.headline).frame(maxWidth: .infinity)
-                .accessibilityIdentifier("setEditor.exerciseName")
-            Text(config.setNumberText).font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-                .accessibilityIdentifier("setEditor.setNumber")
-            if let context = config.recordedText { Text(context).font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity) }
+        VStack(spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if config.setTotal > 0 {
+                    Text("\(config.setNumber)/\(config.setTotal)")
+                        .font(.subheadline.weight(.bold))
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("setEditor.setGauge")
+                        .accessibilityLabel("Set \(config.setNumber) of \(config.setTotal)")
+                }
+                Text(config.exerciseName.localizedExerciseName)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("setEditor.exerciseName")
+            }
+            if let context = config.recordedText {
+                Text(context).font(.caption).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
     }
 
@@ -131,18 +146,31 @@ struct InlineSetEditorView: View {
     /// "always show (if any)" and is assertable in the smoke test.
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("History").font(.headline)
-            if let lastTime = historyLastTimeText {
-                Text("Last time: \(lastTime)")
-                    .accessibilityIdentifier("setEditor.history.lastTime")
-            } else {
-                Text("No previous history for \(selectedPerformerName)")
-                    .foregroundStyle(.secondary)
-                    .accessibilityIdentifier("setEditor.history.noHistory")
+            HStack {
+                Text("History").font(.headline)
+                Spacer()
+                Button(showHistory ? "Hide History" : "Show History") {
+                    withAnimation(.snappy(duration: 0.2)) { showHistory.toggle() }
+                    Haptics.selection()
+                }
+                .font(.subheadline.weight(.semibold))
+                .buttonStyle(.plain)
+                .foregroundStyle(.tint)
+                .accessibilityIdentifier("setEditor.history.toggle")
             }
-            if let lastSet = selectedDefault?.lastSetThisSession {
-                Text("Last set today: \(lastSet)")
-                    .accessibilityIdentifier("setEditor.history.lastSet")
+            if showHistory {
+                if let lastTime = historyLastTimeText {
+                    Text("Last time: \(lastTime)")
+                        .accessibilityIdentifier("setEditor.history.lastTime")
+                } else {
+                    Text("No previous history for \(selectedPerformerName)")
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("setEditor.history.noHistory")
+                }
+                if let lastSet = selectedDefault?.lastSetThisSession {
+                    Text("Last set today: \(lastSet)")
+                        .accessibilityIdentifier("setEditor.history.lastSet")
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -189,18 +217,44 @@ struct InlineSetEditorView: View {
             .buttonStyle(.bordered)
             .accessibilityLabel("Performer, \(selectedPerformerName)")
             .accessibilityIdentifier("setEditor.performer")
-            if let onAddPartner {
-                Button("＋ Add Partner", action: onAddPartner)
-                    .font(.caption.weight(.semibold))
-                    .accessibilityIdentifier("setEditor.performer.add")
-            }
         }
         .padding(12)
         .background(.background, in: RoundedRectangle(cornerRadius: 14))
     }
     private var weightSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(config.bodyweight ? "Added weight" : "Weight").font(.headline)
+            HStack(alignment: .center, spacing: 8) {
+                Text(config.bodyweight ? "Added weight" : "Weight")
+                    .font(.headline)
+                    .fixedSize()
+                // Plate/increment buttons live on the Weight title row so they
+                // no longer take a whole extra row above the number.
+                ScrollViewReader { proxy in
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 6) {
+                            ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
+                                Button { increment = value; Haptics.selection() } label: {
+                                    Text(incrementLabel(value))
+                                        .font(.caption2.weight(.semibold))
+                                        .fixedSize(horizontal: true, vertical: false)
+                                        .frame(minHeight: 28)
+                                        .padding(.horizontal, 4)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.mini)
+                                .tint(increment == value ? .green : .secondary)
+                                .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))")
+                                .accessibilityAddTraits(increment == value ? .isSelected : [])
+                                .id(value)
+                            }
+                        }
+                        .padding(.horizontal, 1)
+                    }
+                    .contentMargins(.horizontal, 1, for: .scrollContent)
+                    .onAppear { proxy.scrollTo(increment, anchor: .center) }
+                }
+                .frame(height: 34)
+            }
             if config.bodyweight { Text("Bodyweight movement · enter added load only").font(.caption).foregroundStyle(.secondary) }
             HStack(spacing: 12) {
                 weightStepButton("−", label: "Decrease weight",
@@ -212,8 +266,10 @@ struct InlineSetEditorView: View {
                 Button { typedWeight = weightText; keypadPresented = true } label: {
                     HStack(alignment: .lastTextBaseline, spacing: 6) {
                         Text(weightText)
-                            .scaledSystemFont(52, relativeTo: .largeTitle, weight: .bold, design: .rounded)
+                            .scaledSystemFont(40, relativeTo: .largeTitle, weight: .bold, design: .rounded)
                             .monospacedDigit()
+                            .lineLimit(1)
+                            .allowsTightening(true)
                         Text(config.unit.abbreviation).font(.title3.weight(.semibold))
                     }
                     .frame(maxWidth: .infinity)
@@ -228,31 +284,6 @@ struct InlineSetEditorView: View {
                     Haptics.selection()
                 }
             }
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(ExpandedSetDraftModel.increments(for: config.unit), id: \.self) { value in
-                            Button { increment = value; Haptics.selection() } label: {
-                                Text(incrementLabel(value))
-                                    .fixedSize(horizontal: true, vertical: false)
-                                    .frame(minHeight: 48)
-                                    .padding(.horizontal, 10)
-                            }.buttonStyle(.bordered).tint(increment == value ? .green : .secondary)
-                                .accessibilityIdentifier("setEditor.weight.increment.\(displayID(value))").accessibilityAddTraits(increment == value ? .isSelected : [])
-                                .id(value)
-                        }
-                        Button { typedWeight = weightText; keypadPresented = true } label: {
-                            Text("Type")
-                                .frame(minHeight: 48)
-                                .padding(.horizontal, 10)
-                                .accessibilityLabel("Type weight")
-                        }.buttonStyle(.bordered).accessibilityIdentifier("setEditor.weight.type")
-                    }
-                    .padding(.horizontal, 2)
-                }
-                .contentMargins(.horizontal, 2, for: .scrollContent)
-                .onAppear { proxy.scrollTo(increment, anchor: .center) }
-            }
             if isPR { Label("Would be a PR", systemImage: "trophy.fill").foregroundStyle(.orange).font(.subheadline.weight(.semibold)) }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
@@ -260,7 +291,11 @@ struct InlineSetEditorView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Reps").font(.headline)
             HStack(spacing: 12) {
-                adjustmentButton("−") { draft.adjustReps(by: -1); Haptics.selection() }.accessibilityLabel("Decrease reps").accessibilityIdentifier("setEditor.reps.minus")
+                weightStepButton("−", label: "Decrease reps",
+                                 identifier: "setEditor.reps.minus") {
+                    draft.adjustReps(by: -1)
+                    Haptics.selection()
+                }
                 Button {
                     typedReps = "\(draft.reps)"
                     repsKeypadPresented = true
@@ -275,7 +310,11 @@ struct InlineSetEditorView: View {
                 .accessibilityLabel("\(draft.reps) reps")
                 .accessibilityHint("Tap to enter a rep count")
                 .accessibilityIdentifier("setEditor.reps.value")
-                adjustmentButton("+") { draft.adjustReps(by: 1); Haptics.selection() }.accessibilityLabel("Increase reps").accessibilityIdentifier("setEditor.reps.plus")
+                weightStepButton("+", label: "Increase reps",
+                                 identifier: "setEditor.reps.plus") {
+                    draft.adjustReps(by: 1)
+                    Haptics.selection()
+                }
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
@@ -351,47 +390,5 @@ struct InlineSetEditorView: View {
     private func display(_ value: Double) -> String { value == value.rounded() ? String(Int(value)) : String(format: "%.2f", value).replacingOccurrences(of: "0+$", with: "", options: .regularExpression) }
     private func displayID(_ value: Double) -> String { display(value) }
     private func incrementLabel(_ value: Double) -> String { "\(value >= 10 ? "+" : "±")\(display(value))" }
-    private var keypad: some View {
-        NavigationStack { VStack(spacing: 12) { TextField("Weight", text: $typedWeight).keyboardType(.decimalPad).font(.largeTitle.monospacedDigit()).multilineTextAlignment(.center).textFieldStyle(.roundedBorder).padding(); if let keypadError { Text(keypadError).font(.caption).foregroundStyle(CadenceTheme.attention) }; ForEach([["1","2","3"],["4","5","6"],["7","8","9"],[".","0","⌫"]], id: \.self) { row in HStack { ForEach(row, id: \.self) { key in Button(key) { if key == "⌫" { if !typedWeight.isEmpty { typedWeight.removeLast() } } else if key == "." && !typedWeight.contains(".") { typedWeight += "." } else if key != "." { typedWeight += key } }.font(.title).frame(maxWidth: .infinity, minHeight: 56).buttonStyle(.bordered) } } }; Spacer() }.padding().navigationTitle(config.bodyweight ? "Enter added weight" : "Enter weight").toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { if let value = Double(typedWeight), value.isFinite { hasExplicitWeightEntry = true; draft.setWeight(value); keypadError = nil; keypadPresented = false } else { keypadError = "Enter a valid number" } } } } }
-    }
-    private var repsKeypad: some View {
-        NavigationStack {
-            VStack(spacing: 12) {
-                Text(typedReps.isEmpty ? "0" : typedReps)
-                    .font(.largeTitle.monospacedDigit().bold())
-                    .frame(maxWidth: .infinity, minHeight: 56)
-                    .accessibilityIdentifier("setEditor.reps.typed")
-                ForEach([["1", "2", "3"], ["4", "5", "6"], ["7", "8", "9"], ["", "0", "⌫"]], id: \.self) { row in
-                    HStack(spacing: 10) {
-                        ForEach(row, id: \.self) { key in
-                            Button(key.isEmpty ? " " : key) {
-                                if key == "⌫" {
-                                    if !typedReps.isEmpty { typedReps.removeLast() }
-                                } else if !key.isEmpty, typedReps.count < 3 {
-                                    if typedReps == "0" { typedReps = key } else { typedReps += key }
-                                }
-                            }
-                            .font(.title)
-                            .frame(maxWidth: .infinity, minHeight: 52)
-                            .buttonStyle(.bordered)
-                            .disabled(key.isEmpty)
-                        }
-                    }
-                }
-                Spacer()
-            }
-            .padding()
-            .navigationTitle("Enter reps")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        if let reps = Int(typedReps), (1...100).contains(reps) {
-                            draft.setReps(reps)
-                            repsKeypadPresented = false
-                        }
-                    }
-                }
-            }
-        }
-    }
+
 }

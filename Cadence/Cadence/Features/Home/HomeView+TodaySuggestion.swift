@@ -54,7 +54,7 @@ extension HomeView {
         suggestedWorkoutTask = nil
         let generation = suggestedWorkoutGeneration.begin()
         guard request.failureMessage == nil else {
-            strengthRequestState = .failed(request.failureMessage ?? String(localized: "Couldn't generate a personalized workout."))
+            strengthRequestState = .failed(request.failureMessage ?? String(localized: "Couldn't generate a Lift."))
             return
         }
         // Stable semantic fingerprint: never the view refresh token or task ids.

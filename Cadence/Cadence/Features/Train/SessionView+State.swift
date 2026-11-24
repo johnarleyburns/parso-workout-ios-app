@@ -110,6 +110,7 @@ extension SessionView {
         let nonWeighted = SessionViewModel.isNonWeighted(exercise)
         let workingSets = session.orderedSets.filter { $0.exercise?.id == exercise.id && !$0.isWarmup }
         let number = isEditing ? (workingSets.firstIndex(where: { $0.id == editingSet?.id }).map { $0 + 1 } ?? workingSets.count + 1) : workingSets.count + 1
+        let setTotal = max(number, session.plannedRepLadder.count)
         let editorContext = cache.state.contexts.first { $0.exerciseID == exercise.id }
             ?? cache.state.contexts.first {
                 ExerciseLibrary.dedupKey($0.name) == ExerciseLibrary.dedupKey(exercise.name)
@@ -133,7 +134,9 @@ extension SessionView {
             performerDefaults: defaults,
             weightSourceText: own?.weightSourceText,
             exerciseName: exercise.name,
-            setNumberText: isEditing ? String(localized: "Editing set \(number)") : String(localized: "Set \(number) of \(max(number, session.plannedRepLadder.count))"),
+            setNumberText: isEditing ? String(localized: "Editing set \(number)") : String(localized: "Set \(number) of \(setTotal)"),
+            setNumber: number,
+            setTotal: setTotal,
             recordedText: isEditing ? String(localized: "Recorded") : nil,
             lastTimeText: ownerLastTime,
             effortMode: lastEffortMode

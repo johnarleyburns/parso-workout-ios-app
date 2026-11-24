@@ -166,7 +166,9 @@ struct PreWorkoutHRView: View {
             }
             .padding(.horizontal)
 
-            Spacer()
+            // Keep the Continue action close to the HR sources; the old
+            // unbounded spacer left a large blank band above it on tall phones.
+            Spacer(minLength: 12).frame(maxHeight: 40)
 
             VStack(spacing: 12) {
                 Button {

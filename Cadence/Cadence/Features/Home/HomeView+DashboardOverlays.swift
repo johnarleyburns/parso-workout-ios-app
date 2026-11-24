@@ -34,23 +34,4 @@ extension HomeView {
         }
     }
 
-    /// Immersive warm-up cover. It is intentionally not an overlay: workout
-    /// phases must hide the app tab bar and cannot be swiped away.
-    var warmupPhaseOverlay: some View {
-        GuidedPhaseOverlay(
-            title: String(localized: "Warm Up"),
-            minutes: pendingPlan?.warmupMinutes ?? settings.warmupMinutes,
-            tint: .orange,
-            idPrefix: "warmup",
-            soundsEnabled: settings.workoutSounds,
-            emphasis: .liveMetric,
-            pauseShowsTitle: false,
-            finishSystemImage: "chevron.forward.2",
-            onFinish: { secs in finishWarmup(elapsedSeconds: secs, startCue: .countdown) },
-            onSkip: { secs in
-                WorkoutCues.cancelPendingSounds()
-                finishWarmup(elapsedSeconds: secs, startCue: .single)
-            },
-            liveMetric: AnyView(GuidedPhaseLiveHRView(idPrefix: "warmup")))
-    }
 }

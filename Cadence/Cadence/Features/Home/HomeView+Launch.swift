@@ -7,7 +7,7 @@ import CadencePhoneFeatures
 
 extension HomeView {
     /// Starts a scheduled snapshot through the same reviewed Workout Plan
-    /// surface used by custom and personalized workouts. The schedule remains
+    /// surface used by custom and Lifts. The schedule remains
     /// `scheduled` until the user actually commits Start Workout; this avoids
     /// manufacturing a session merely because a row was tapped.
     func consumeScheduledWorkoutStart(_ request: ScheduledWorkoutStartRequest) {
@@ -106,7 +106,7 @@ extension HomeView {
     func proceedFromHRGate(_ kind: PendingWorkout.Kind, useHR: Bool) {
         if startWarmupAfterHRGate {
             startWarmupAfterHRGate = false
-            warmupActive = true
+            presentWarmup()
             return
         }
         if case .interval = kind {
@@ -234,29 +234,6 @@ extension HomeView {
         guard active.strengthSession == nil else { return } // Every cardio dismiss here stops the watch session (2026-08-20 #5).
         cardioTracksGPS = nil
         model.stopWatchWorkout(); if let lease = active.liveWorkout.lease { _ = active.liveWorkout.release(lease) }
-    }
-
-    func finishWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {
-        // Dismiss the immersive warm-up cover first; the session cover is
-        // presented from its onDismiss handler so two full-screen covers never
-        // race each other.
-        pendingWarmupSeconds = secs
-        pendingWarmupCue = startCue
-        warmupActive = false
-    }
-
-    /// Runs after the warm-up full-screen cover has finished dismissing.
-    func completePendingWarmupLaunch() {
-        guard let secs = pendingWarmupSeconds else { return }
-        pendingWarmupSeconds = nil
-        var t = Transaction(); t.disablesAnimations = true
-        withTransaction(t) {
-            launch(.strength, startCue: pendingWarmupCue)
-            // Record the actual warm-up time on the session just created
-            // (feedback batch 6).
-            active.strengthSession?.warmupSeconds = Double(secs)
-            try? context.save()
-        }
     }
 
     func playStartCue(_ cue: WorkoutStartCue) {

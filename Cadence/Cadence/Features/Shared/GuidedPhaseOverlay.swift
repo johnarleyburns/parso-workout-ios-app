@@ -60,7 +60,6 @@ struct GuidedPhaseOverlay: View {
     @State private var countdown: PhaseCountdownClock
     @State private var now = Date()
     @State private var finished = false
-    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     init(title: String, minutes: Int, tint: Color = .green,
          idPrefix: String, soundsEnabled: Bool = false,
@@ -150,13 +149,22 @@ struct GuidedPhaseOverlay: View {
                     .accessibilityLabel(paused ? "Resume" : "Pause")
 
                     Button {
+                        guard !finished else { return }
+                        finished = true
                         (onSkip ?? onFinish)(consumedSeconds)
                     } label: {
-                        Label(finishTitle, systemImage: finishSystemImage)
-                            .frame(maxWidth: .infinity)
+                        if finishTitle.isEmpty {
+                            Image(systemName: finishSystemImage)
+                                .font(.title3.weight(.semibold))
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Label(finishTitle, systemImage: finishSystemImage)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                     .cadenceGlassButton(prominent: false, tint: finishTint)
                     .accessibilityIdentifier("\(idPrefix).skip")
+                    .accessibilityLabel(finishTitle.isEmpty ? "Finish" : finishTitle)
 
                     Button {
                         addTime(60)
@@ -185,14 +193,22 @@ struct GuidedPhaseOverlay: View {
             // of any delay between init and appearance.
             countdown = PhaseCountdownClock(total: TimeInterval(total))
             now = Date()
+            finished = false
             WorkoutCues.startBeepSequence(enabled: soundsEnabled)
         }
-        .onReceive(tick) { date in
-            now = date
-            guard !finished, !countdown.isPaused else { return }
-            if countdown.isFinished(now: date) {
-                finished = true
-                onFinish(total)
+        // A view-owned sleep loop refreshes four times a second so the visible
+        // second changes every second even if a shared Timer publisher is
+        // coalesced by the system. The clock itself is wall-clock based, so
+        // backgrounding cannot make it drift.
+        .task {
+            while !Task.isCancelled {
+                let date = Date()
+                now = date
+                if !finished, !countdown.isPaused, countdown.isFinished(now: date) {
+                    finished = true
+                    onFinish(total)
+                }
+                try? await Task.sleep(for: .milliseconds(250))
             }
         }
         .onChange(of: scenePhase) { _, phase in

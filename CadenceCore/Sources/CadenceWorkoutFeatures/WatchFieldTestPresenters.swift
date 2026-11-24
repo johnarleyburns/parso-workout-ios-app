@@ -123,8 +123,11 @@ public enum WatchSetEntryPresentation {
     /// The Log action is a green checkbox with no surrounding button box.
     public static let logButtonSystemImage = "checkmark.square.fill"
     public static let repsUnit = "rps"
-    /// Breathing room below the exercise name and above the weight/reps fields.
-    public static let headerSpacing: Double = 8
+    /// Tight spacing between the small header rows.
+    public static let headerSpacing: Double = 4
+    /// Extra breathing room below the header and above the weight/reps row;
+    /// the row itself sits tighter to the space below it.
+    public static let fieldTopSpacing: Double = 10
 }
 
 public enum WatchStrengthControlsPresentation {

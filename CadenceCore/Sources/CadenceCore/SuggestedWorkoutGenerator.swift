@@ -165,17 +165,14 @@ public enum SuggestedWorkoutStyle: String, CaseIterable, Codable, Equatable, Sen
     /// The history-first option is simply "Lift"; "Personalized Workout" is no
     /// longer used anywhere in the app or Watch.
     public var planName: String {
-        switch self {
-        case .personalized: {
-            #if os(Linux)
-            "Lift"
-            #else
-            String(localized: "Lift", bundle: .module)
-            #endif
+        #if os(Linux)
+        if self == .personalized { return "Lift" }
+        #else
+        if self == .personalized {
+            return String(localized: "Lift", bundle: .module)
         }
-        default:
-            "\(displayName) Workout"
-        }
+        #endif
+        return "\(displayName) Workout"
     }
 
     public var subtitle: String {

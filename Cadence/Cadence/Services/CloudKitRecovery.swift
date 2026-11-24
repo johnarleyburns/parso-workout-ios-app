@@ -9,13 +9,15 @@ import CadenceCore
 ///
 /// This file and the iCloud entitlement are recovery-build only. The shipping
 /// App Store build removes both.
+
+/// The Core Data / SwiftData mirroring container and zone. Reading them is
+/// read-only and tells us whether the cloud copy actually contains workouts.
+private let recoveryContainerID = "iCloud.guru.parso.cladiron.sync"
+private let coreDataZoneName = "com.apple.coredata.cloudkit.zone"
+private let recoveryTimedOut = "CLADIRON_RECOVERY_TIMEOUT"
+
 @MainActor
 enum CloudKitRecovery {
-    static let containerID = "iCloud.guru.parso.cladiron.sync"
-    /// The zone Core Data / SwiftData mirroring uses for every store in the
-    /// container. Enumerating it is read-only and tells us whether the cloud
-    /// copy actually contains workouts.
-    static let coreDataZoneName = "com.apple.coredata.cloudkit.zone"
 
     struct Report {
         let downloadedSessions: Int
@@ -27,10 +29,33 @@ enum CloudKitRecovery {
         var recoveredAny: Bool { liveSessionsAfter > liveSessionsBefore || changedRecords > 0 }
     }
 
-    /// Distinguishes "no iCloud access" from an empty container before we wait
-    /// five minutes for an import that cannot happen.
-    static func preflight() async -> String? {
-        let container = CKContainer(identifier: containerID)
+    struct Inventory: Sendable {
+        let summary: String
+        let workoutRecords: Int
+    }
+
+    // MARK: - Bounded phases
+
+    /// Every CloudKit call is given a hard ceiling. A hung container query must
+    /// never leave the screen on a spinner; the import still runs afterwards.
+    private static func bounded<T: Sendable>(seconds: Double, fallback: T,
+                                             _ operation: @escaping @Sendable () async -> T) async -> T {
+        await withCheckedContinuation { (continuation: CheckedContinuation<T, Never>) in
+            let gate = TimeoutGate()
+            Task.detached {
+                let value = await operation()
+                if gate.claim() { continuation.resume(returning: value) }
+            }
+            Task.detached {
+                try? await Task.sleep(for: .seconds(seconds))
+                if gate.claim() { continuation.resume(returning: fallback) }
+            }
+        }
+    }
+
+    /// Distinguishes "no iCloud access" from an empty container.
+    nonisolated static func accountProblem() async -> String? {
+        let container = CKContainer(identifier: recoveryContainerID)
         guard container.containerIdentifier != nil else {
             return "This build is not authorized for the Cladiron iCloud container. Install the recovery build from TestFlight again."
         }
@@ -54,89 +79,108 @@ enum CloudKitRecovery {
         }
     }
 
-    /// Counts what the private database actually holds, per record type, by
-    /// enumerating every zone. Read-only: no save, no push.
-    static func inventory() async -> (summary: String, workoutRecords: Int) {
-        let database = CKContainer(identifier: containerID).privateCloudDatabase
-        var zoneIDs: [CKRecordZone.ID]
-        var setupError: String?
+    /// Counts what the private database holds, per record type. Read-only:
+    /// no save, no push.
+    nonisolated static func inventory() async -> Inventory {
+        let database = CKContainer(identifier: recoveryContainerID).privateCloudDatabase
+        let coreDataZone = CKRecordZone.ID(zoneName: coreDataZoneName,
+                                           ownerName: CKCurrentUserDefaultName)
+        let types = ["CD_WorkoutSession", "CD_CardioWorkout", "CD_SetEntry", "CD_Assessment"]
+
+        func count(in zoneID: CKRecordZone.ID) async throws -> [String: Int] {
+            var counts: [String: Int] = [:]
+            for type in types {
+                let (results, _) = try await database.records(
+                    matching: CKQuery(recordType: type, predicate: NSPredicate(value: true)),
+                    inZoneWith: zoneID,
+                    desiredKeys: nil,
+                    resultsLimit: 100)
+                counts[type] = results.count
+            }
+            return counts
+        }
+
         do {
-            var zones = try await database.allRecordZones()
-            zones.append(CKRecordZone.default())
-            zoneIDs = zones.map(\.zoneID)
+            let counts = try await count(in: coreDataZone)
+            return Inventory(summary: describe(counts, zone: "store zone"), workoutRecords: counts["CD_WorkoutSession"] ?? 0)
         } catch {
-            zoneIDs = [CKRecordZone.ID(zoneName: coreDataZoneName,
-                                       ownerName: CKCurrentUserDefaultName)]
-            setupError = error.localizedDescription
-        }
-        let box = InventoryBox()
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            let operation = CKFetchRecordZoneChangesOperation()
-            operation.recordZoneIDs = zoneIDs
-            var configurations: [CKRecordZone.ID: CKFetchRecordZoneChangesOperation.ZoneConfiguration] = [:]
-            for zoneID in zoneIDs {
-                configurations[zoneID] = CKFetchRecordZoneChangesOperation.ZoneConfiguration()
+            let coreError = error.localizedDescription
+            do {
+                let counts = try await count(in: CKRecordZone.default().zoneID)
+                return Inventory(summary: describe(counts, zone: "default zone"), workoutRecords: counts["CD_WorkoutSession"] ?? 0)
+            } catch {
+                return Inventory(summary: "iCloud could not be read. Store zone: \(coreError). Default zone: \(error.localizedDescription)",
+                                 workoutRecords: 0)
             }
-            operation.configurationsByRecordZoneID = configurations
-            operation.recordWasChangedBlock = { _, result in
-                if case .success(let record) = result { box.add(record.recordType) }
-            }
-            operation.recordZoneFetchResultBlock = { _, result in
-                if case .failure(let error) = result { box.fail(error) }
-            }
-            operation.fetchRecordZoneChangesResultBlock = { result in
-                if case .failure(let error) = result { box.fail(error) }
-                continuation.resume()
-            }
-            database.add(operation)
         }
-        let snapshot = box.snapshot()
-        if let error = snapshot.error ?? setupError, snapshot.counts.isEmpty {
-            return ("iCloud could not be read: \(error)", 0)
-        }
-        guard !snapshot.counts.isEmpty else {
-            return ("iCloud has \(zoneIDs.count) zone(s) but no Cladiron records in them.", 0)
-        }
-        let total = snapshot.counts.values.reduce(0, +)
-        let workouts = snapshot.counts["CD_WorkoutSession"] ?? 0
-        let top = snapshot.counts
-            .sorted { $0.value > $1.value }
-            .prefix(6)
-            .map { "\($0.key) \($0.value)" }
-            .joined(separator: ", ")
-        return ("iCloud has \(total) records across \(zoneIDs.count) zone(s) (workouts: \(workouts)). Largest types: \(top).", workouts)
     }
+
+    private nonisolated static func describe(_ counts: [String: Int], zone: String) -> String {
+        let total = counts.values.reduce(0, +)
+        guard total > 0 else {
+            return "iCloud is reachable but the \(zone) holds no Cladiron records."
+        }
+        let parts = counts
+            .filter { $0.value > 0 }
+            .map { "\($0.key.replacingOccurrences(of: "CD_", with: "")) \($0.value)" }
+            .joined(separator: ", ")
+        return "iCloud \(zone): \(total) samples — \(parts)."
+    }
+
+    // MARK: - Recovery
 
     static func run(into live: ModelContainer,
                     progress: @MainActor @escaping (String) -> Void) async -> Report {
         let liveContext = ModelContext(live)
         let before = (try? liveContext.fetchCount(FetchDescriptor<WorkoutSession>())) ?? 0
+
+        func failure(_ message: String, inventory: String? = nil) -> Report {
+            Report(downloadedSessions: 0, changedRecords: 0,
+                   liveSessionsBefore: before, liveSessionsAfter: before,
+                   inventory: inventory, errors: [message])
+        }
+
+        progress("Checking your iCloud account…")
+        let account: String? = await bounded(seconds: 15, fallback: recoveryTimedOut as String?) {
+            await accountProblem()
+        }
+        if let account, account != recoveryTimedOut {
+            return failure(account)
+        }
+        if account == recoveryTimedOut {
+            progress("The iCloud account check timed out. Trying the import anyway…")
+        }
+
+        progress("Reading iCloud…")
+        let cloud = await bounded(seconds: 45,
+                                  fallback: Inventory(summary: "The iCloud inventory check timed out.",
+                                                      workoutRecords: 0)) {
+            await inventory()
+        }
+        progress(cloud.summary)
+
         // A persistent scratch store (not /tmp) keeps the CloudKit mirroring
         // actor from writing into a directory we delete underneath it, and lets
         // a second attempt resume instead of re-downloading everything.
-        let support = (try? FileManager.default.url(for: .applicationSupportDirectory,
-                                                    in: .userDomainMask,
-                                                    appropriateFor: nil,
-                                                    create: true))
+        let supportDirectory = (try? FileManager.default.url(for: .applicationSupportDirectory,
+                                                             in: .userDomainMask,
+                                                             appropriateFor: nil,
+                                                             create: true))
             ?? FileManager.default.temporaryDirectory
-        let directory = support.appendingPathComponent("CloudRecovery", isDirectory: true)
+        let directory = supportDirectory.appendingPathComponent("CloudRecovery", isDirectory: true)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
 
-        progress("Checking what iCloud holds…")
-        let cloud = await inventory()
-
-        let storeURL = directory.appendingPathComponent("CloudRecovery.store")
+        progress("Opening the iCloud recovery store…")
         let schema = CadenceStore.schema
-        let configuration = ModelConfiguration(schema: schema, url: storeURL,
+        let configuration = ModelConfiguration(schema: schema,
+                                               url: directory.appendingPathComponent("CloudRecovery.store"),
                                                cloudKitDatabase: .private(containerID))
         let scratch: ModelContainer
         do {
             scratch = try ModelContainer(for: schema, configurations: [configuration])
         } catch {
-            return Report(downloadedSessions: 0, changedRecords: 0,
-                          liveSessionsBefore: before, liveSessionsAfter: before,
-                          inventory: cloud.summary,
-                          errors: ["Could not open the iCloud recovery store: \(error.localizedDescription)"])
+            return failure("Could not open the iCloud recovery store: \(error.localizedDescription)",
+                           inventory: cloud.summary)
         }
 
         var lastCount = 0
@@ -169,10 +213,8 @@ enum CloudKitRecovery {
         }
 
         guard downloaded > 0 else {
-            return Report(downloadedSessions: 0, changedRecords: 0,
-                          liveSessionsBefore: before, liveSessionsAfter: before,
-                          inventory: cloud.summary,
-                          errors: ["The recovery store imported no workouts. \(cloud.summary)"])
+            return failure("The recovery store imported no workouts. \(cloud.summary)",
+                           inventory: cloud.summary)
         }
 
         progress("Merging \(downloaded) workouts into your local history…")
@@ -186,35 +228,23 @@ enum CloudKitRecovery {
                           liveSessionsBefore: before, liveSessionsAfter: after,
                           inventory: cloud.summary, errors: [])
         } catch {
-            return Report(downloadedSessions: downloaded, changedRecords: 0,
-                          liveSessionsBefore: before, liveSessionsAfter: before,
-                          inventory: cloud.summary,
-                          errors: ["Downloaded data could not be merged: \(error.localizedDescription)"])
+            return failure("Downloaded data could not be merged: \(error.localizedDescription)",
+                           inventory: cloud.summary)
         }
     }
 }
 
-/// Small thread-safe accumulator for CloudKit's background callbacks.
-private final class InventoryBox: @unchecked Sendable {
+/// Ensures a continuation resumes exactly once when a bounded phase races its
+/// timeout.
+private final class TimeoutGate: @unchecked Sendable {
     private let lock = NSLock()
-    private var counts: [String: Int] = [:]
-    private var error: String?
+    private var finished = false
 
-    func add(_ recordType: String) {
-        lock.lock()
-        counts[recordType, default: 0] += 1
-        lock.unlock()
-    }
-
-    func fail(_ error: Error) {
-        lock.lock()
-        if self.error == nil { self.error = error.localizedDescription }
-        lock.unlock()
-    }
-
-    func snapshot() -> (counts: [String: Int], error: String?) {
+    func claim() -> Bool {
         lock.lock()
         defer { lock.unlock() }
-        return (counts, error)
+        guard !finished else { return false }
+        finished = true
+        return true
     }
 }

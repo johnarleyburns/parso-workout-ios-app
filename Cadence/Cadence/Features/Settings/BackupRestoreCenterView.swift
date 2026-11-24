@@ -96,7 +96,7 @@ struct BackupRestoreCenterView: View {
             }
 
             Section("Recover from iCloud (recovery build)") {
-                Text("This temporary build can download the copy of your history that Cladiron previously kept in your private iCloud database. It only reads from iCloud and merges what it finds into the local store. The current store is kept. This build will be replaced by a local-only App Store build.")
+                Text("This temporary build can download the copy of your history that Cladiron previously kept in your private iCloud database. It only reads from iCloud and merges what it finds into the local store. The current store is kept. The result also reports how many records iCloud returned, which shows whether the data is in the account, zone, or environment this build can see.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Button {
@@ -217,11 +217,17 @@ struct BackupRestoreCenterView: View {
             iCloudRecoveryMessage = message
         }
         recoveringFromICloud = false
+        var lines: [String] = []
         if report.errors.isEmpty {
-            iCloudRecoveryMessage = String(localized: "Downloaded \(report.downloadedSessions) workouts from iCloud. Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store.")
+            lines.append(String(localized: "Downloaded \(report.downloadedSessions) workouts from iCloud. Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store."))
         } else {
-            iCloudRecoveryMessage = String(localized: "Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store. \(report.errors.joined(separator: " "))")
+            lines.append(String(localized: "Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store."))
+            lines.append(contentsOf: report.errors)
         }
+        if let inventory = report.inventory {
+            lines.append(inventory)
+        }
+        iCloudRecoveryMessage = lines.joined(separator: "\n\n")
         await reload()
     }
 

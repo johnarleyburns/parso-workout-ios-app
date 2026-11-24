@@ -55,16 +55,29 @@ enum CloudKitRecovery {
     }
 
     /// Counts what the private database actually holds, per record type, by
-    /// enumerating the mirrored store's zone. Read-only: no save, no push.
+    /// enumerating every zone. Read-only: no save, no push.
     static func inventory() async -> (summary: String, workoutRecords: Int) {
         let database = CKContainer(identifier: containerID).privateCloudDatabase
-        let zoneID = CKRecordZone.ID(zoneName: coreDataZoneName,
-                                     ownerName: CKCurrentUserDefaultName)
+        var zoneIDs: [CKRecordZone.ID]
+        var setupError: String?
+        do {
+            var zones = try await database.allRecordZones()
+            zones.append(CKRecordZone.default())
+            zoneIDs = zones.map(\.zoneID)
+        } catch {
+            zoneIDs = [CKRecordZone.ID(zoneName: coreDataZoneName,
+                                       ownerName: CKCurrentUserDefaultName)]
+            setupError = error.localizedDescription
+        }
         let box = InventoryBox()
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             let operation = CKFetchRecordZoneChangesOperation()
-            operation.recordZoneIDs = [zoneID]
-            operation.configurationsByRecordZoneID = [zoneID: CKFetchRecordZoneChangesConfiguration()]
+            operation.recordZoneIDs = zoneIDs
+            var configurations: [CKRecordZone.ID: CKFetchRecordZoneChangesConfiguration] = [:]
+            for zoneID in zoneIDs {
+                configurations[zoneID] = CKFetchRecordZoneChangesConfiguration()
+            }
+            operation.configurationsByRecordZoneID = configurations
             operation.recordWasChangedBlock = { _, result in
                 if case .success(let record) = result { box.add(record.recordType) }
             }
@@ -78,11 +91,11 @@ enum CloudKitRecovery {
             database.add(operation)
         }
         let snapshot = box.snapshot()
-        if let error = snapshot.error {
-            return ("iCloud zone could not be read: \(error)", 0)
+        if let error = snapshot.error ?? setupError, snapshot.counts.isEmpty {
+            return ("iCloud could not be read: \(error)", 0)
         }
         guard !snapshot.counts.isEmpty else {
-            return ("The Cladiron iCloud zone exists but is empty.", 0)
+            return ("iCloud has \(zoneIDs.count) zone(s) but no Cladiron records in them.", 0)
         }
         let total = snapshot.counts.values.reduce(0, +)
         let workouts = snapshot.counts["CD_WorkoutSession"] ?? 0
@@ -91,7 +104,7 @@ enum CloudKitRecovery {
             .prefix(6)
             .map { "\($0.key) \($0.value)" }
             .joined(separator: ", ")
-        return ("iCloud holds \(total) records (workouts: \(workouts)). Largest types: \(top).", workouts)
+        return ("iCloud has \(total) records across \(zoneIDs.count) zone(s) (workouts: \(workouts)). Largest types: \(top).", workouts)
     }
 
     static func run(into live: ModelContainer,

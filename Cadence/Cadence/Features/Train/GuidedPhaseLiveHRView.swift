@@ -25,10 +25,9 @@ struct GuidedPhaseLiveHRView: View {
                 avgHR: nil,
                 idPrefix: idPrefix,
                 intensityProfile: profile,
-                connectionNote: LiveHRPresenter.connectionNote(
-                    isAppleWatchSource: model.hrm.source == .appleWatch,
-                    isSampleFresh: model.watchHRConnection.isSampleFresh(now: context.date),
-                    statusText: model.watchHRStatusText))
+                // Warm-up/cool-down are guided phases, not connection setup:
+                // never show "Reconnecting…" or a reconnect action here.
+                connectionNote: nil)
         }
     }
 }

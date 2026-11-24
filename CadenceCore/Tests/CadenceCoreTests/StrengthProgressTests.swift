@@ -188,6 +188,40 @@ struct StrengthProgressTests {
         #expect(abs(series[0].current - epley) <= 0.01)
     }
 
+    @Test func migratedSetWithoutARelationshipStillChartsItsLift() throws {
+        let ctx = try makeContext()
+        let now = Date()
+        let ex = try WorkoutRepository.findOrCreateExercise(
+            named: "Bench Press", primaryMuscles: ["chest"], in: ctx)
+
+        let s = try WorkoutRepository.createSession(
+            date: now.addingTimeInterval(-1 * 86400), in: ctx)
+        let set = try WorkoutRepository.addSet(to: s, exercise: ex,
+                                               weightKg: 100, reps: 5, in: ctx)
+        // The store migration can land the snapshot columns before the live
+        // relationship is resolved. Progress must read the snapshot instead of
+        // reporting "no sessions yet" for every lift.
+        set.exercise = nil
+        #expect(set.exerciseNameSnapshot == "Bench Press")
+
+        let inputs = [StrengthProgressSessionInput(
+            date: s.date,
+            deleted: false,
+            sets: s.orderedSets.compactMap { set in
+                guard let name = set.resolvedExerciseName else { return nil }
+                return StrengthProgressSetInput(exerciseName: name,
+                                                completedAt: set.completedAt,
+                                                weightKg: set.effectiveLoadKg,
+                                                reps: set.reps,
+                                                isWarmup: set.isWarmup,
+                                                isOwnerSet: set.isOwnerSet)
+            })]
+        let data = StrengthProgress.chartData(from: inputs, now: now)
+        let bench = data.allSeries.first { $0.exercise == "Bench Press" }
+        #expect(bench?.points.isEmpty == false)
+        #expect(!data.emptyLifts.contains("Bench Press"))
+    }
+
     @Test func seriesSortedByCurrentDescending() throws {
         let ctx = try makeContext()
         let now = Date()

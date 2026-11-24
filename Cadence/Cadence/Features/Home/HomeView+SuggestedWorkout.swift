@@ -31,7 +31,7 @@ extension HomeView {
                 session.completedOwnerWorkingSetCount > 0
             }.count
             // Do not borrow weekly volume from `coachFacts` here. The coach
-            // snapshot and this personalized workout task are invalidated together after
+            // snapshot and this Lift task are invalidated together after
             // a workout completes, so the rendered snapshot can still describe
             // the previous history while this request is being assembled. Build
             // the volume projection from the just-captured sessions instead.
@@ -62,7 +62,7 @@ extension HomeView {
             // seed finishes, and older stores can contain rows without the
             // facets the solver needs. The canonical value catalog keeps the
             // chooser launchable in both cases without creating SwiftData rows
-            // merely to display a personalized workout.
+            // merely to display a Lift.
             let candidates: [SuggestedExerciseCandidate]
             let trackedMuscleIDs = Set(settings.coachSchedulePreferences.trackedMuscleGroups
                 .map(\.rawValue))

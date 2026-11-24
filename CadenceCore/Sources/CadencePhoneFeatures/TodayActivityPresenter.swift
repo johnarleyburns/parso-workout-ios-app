@@ -21,9 +21,13 @@ public enum TodayActivityPresenter {
         public let occurredAt: Date
         /// The source workout's UUID so the view can navigate to it.
         public let sourceId: UUID
+        /// True only when the History screen is showing the deleted archive.
+        /// The row keeps the normal timeline layout and adds a red subtitle.
+        public let isDeleted: Bool
 
         public init(id: UUID, kind: EntryKind, title: String, detail: String?,
-                    value: String, occurredAt: Date, sourceId: UUID) {
+                    value: String, occurredAt: Date, sourceId: UUID,
+                    isDeleted: Bool = false) {
             self.id = id
             self.kind = kind
             self.title = title
@@ -31,6 +35,7 @@ public enum TodayActivityPresenter {
             self.value = value
             self.occurredAt = occurredAt
             self.sourceId = sourceId
+            self.isDeleted = isDeleted
         }
     }
 
@@ -70,22 +75,25 @@ public enum TodayActivityPresenter {
     /// timelines so each place a person reviews workouts reads consistently.
     public static func historyEntries(
         sessions: [WorkoutSession],
-        cardio: [CardioWorkout]
+        cardio: [CardioWorkout],
+        includeDeleted: Bool = false
     ) -> [Entry] {
         entries(sessions: sessions, cardio: cardio,
-                since: .distantPast, until: .distantFuture)
+                since: .distantPast, until: .distantFuture,
+                includeDeleted: includeDeleted)
     }
 
     private static func entries(
         sessions: [WorkoutSession],
         cardio: [CardioWorkout],
         since: Date,
-        until: Date
+        until: Date,
+        includeDeleted: Bool = false
     ) -> [Entry] {
 
         let strengthEntries = sessions
             .filter { s in
-                s.deletedAt == nil && !s.isResumable
+                (includeDeleted || s.deletedAt == nil) && !s.isResumable
                 && s.endedAt != nil
                 && s.date >= since && s.date < until
             }
@@ -114,13 +122,14 @@ public enum TodayActivityPresenter {
                     detail: detail,
                     value: value,
                     occurredAt: s.endedAt ?? s.date,
-                    sourceId: s.id
+                    sourceId: s.id,
+                    isDeleted: s.deletedAt != nil
                 )
             }
 
         let cardioEntries = cardio
             .filter { c in
-                c.deletedAt == nil
+                (includeDeleted || c.deletedAt == nil)
                 && c.start >= since && c.start < until
             }
             .map { c -> (CardioWorkout, Entry) in
@@ -149,7 +158,8 @@ public enum TodayActivityPresenter {
                     detail: heartRateDetail,
                     value: value,
                     occurredAt: c.start,
-                    sourceId: c.id
+                    sourceId: c.id,
+                    isDeleted: c.deletedAt != nil
                 ))
             }
 

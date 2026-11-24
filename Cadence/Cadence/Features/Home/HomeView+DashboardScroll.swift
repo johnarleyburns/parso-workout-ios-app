@@ -24,13 +24,8 @@ extension HomeView {
                 }
             }
         }
-        // Warm-up is part of the workout, so it is an immersive full-screen
-        // cover rather than an overlay that leaves the app tab bar visible.
-        .fullScreenCover(isPresented: $warmupActive,
-                         onDismiss: completePendingWarmupLaunch) {
-            warmupPhaseOverlay
-                .interactiveDismissDisabled()
-        }
+        // Warm-up is owned by RootTabView above the tab bar so the workout
+        // cover can replace it without exposing Home for a frame.
     }
 
     @ViewBuilder

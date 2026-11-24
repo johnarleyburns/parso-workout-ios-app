@@ -86,7 +86,8 @@ struct WatchFieldTestBatchTests {
     @Test func setEntryLogControlIsAnUnboxedGreenCheckbox() {
         #expect(WatchSetEntryPresentation.logButtonSystemImage == "checkmark.square.fill")
         #expect(WatchSetEntryPresentation.repsUnit == "rps")
-        #expect(WatchSetEntryPresentation.headerSpacing >= 6)
+        #expect(WatchSetEntryPresentation.headerSpacing >= 2)
+        #expect(WatchSetEntryPresentation.fieldTopSpacing >= 8)
     }
 
     @Test func workoutPageIsTitledAndUsesOnlyASmallPauseMargin() {

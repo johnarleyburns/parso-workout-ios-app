@@ -9,14 +9,15 @@ import CadenceWorkoutFeatures
 struct WatchPartnersView: View {
     let model: WatchStrengthFlowModel
     @Environment(\.dismiss) private var dismiss
-    @Query(filter: #Predicate<Person> { !$0.isMe }, sort: \Person.name) private var people: [Person]
+    @Environment(WatchWorkoutManager.self) private var manager
+    @Query(filter: #Predicate<Person> { !$0.isMe && !$0.isArchived }, sort: \Person.name) private var people: [Person]
     @State private var newPartner = ""
 
     var body: some View {
         List {
             Section("Partners") {
                 if model.performerOptions.isEmpty {
-                    Text("No partner")
+                    Text("No partner selected")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("watchPartners.empty")
@@ -49,6 +50,37 @@ struct WatchPartnersView: View {
                     }
                 }
             }
+            Section("From your iPhone") {
+                if phonePartnerNames.isEmpty {
+                    Text("No partners on your iPhone yet.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .accessibilityIdentifier("watchPartners.phone.empty")
+                } else {
+                    ForEach(phonePartnerNames, id: \.self) { name in
+                        Button {
+                            togglePartner(name)
+                        } label: {
+                            HStack {
+                                Text(name).font(.body)
+                                Spacer()
+                                if isPartnerSelected(name) {
+                                    Image(systemName: "checkmark")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundStyle(WatchTone.accent)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("watchPartners.phone.\(name)")
+                        .accessibilityValue(isPartnerSelected(name) ? "Checked" : "Not checked")
+                        .accessibilityHint("Adds or removes this partner from today's rotation")
+                    }
+                }
+            }
+
             Section {
                 TextField("Add partner", text: $newPartner)
                     .onSubmit {
@@ -79,6 +111,31 @@ struct WatchPartnersView: View {
                 }
                 .accessibilityIdentifier("watchPartners.done")
             }
+        }
+    }
+
+    /// The phone's active training partners are synced in the Watch settings
+    /// payload, with the Watch's own Person rows as a local fallback. This is
+    /// what lets Watch > Partners default to the same roster as the iPhone.
+    private var phonePartnerNames: [String] {
+        WatchPartnerDirectory.addable(allNames: manager.recentPartnerNames + people.map(\.name),
+                                      currentNames: [])
+    }
+
+    private func isPartnerSelected(_ name: String) -> Bool {
+        model.performerOptions.contains {
+            $0.index > 0 && $0.name.caseInsensitiveCompare(name) == .orderedSame
+        }
+    }
+
+    private func togglePartner(_ name: String) {
+        WatchHaptics.tap()
+        if let option = model.performerOptions.first(where: {
+            $0.index > 0 && $0.name.caseInsensitiveCompare(name) == .orderedSame
+        }) {
+            model.removePartner(at: option.index - 1)
+        } else {
+            model.addPartner(named: name)
         }
     }
 

@@ -71,20 +71,27 @@ struct WorkoutControlBar: View {
 
     @ViewBuilder private var dockActions: some View {
         let pause = WorkoutDockPresenter.pauseContent(isPaused: isPaused)
+        // Icon-only dock: the pause bars and stop square are universally
+        // understood, and the labels made the two actions feel cramped.
         Button(action: onPauseToggle) {
-            Label(LocalizedStringKey(pause.title), systemImage: pause.systemImage)
+            Image(systemName: pause.systemImage)
+                .font(.title3.weight(.bold))
                 .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.compactTargetHeight)
         }
         .cadenceGlassButton(tint: pauseTint, compact: true)
         .accessibilityIdentifier("\(idPrefix).pause")
+        .accessibilityLabel(pause.title)
+        .accessibilityHint(isPaused ? "Resumes the workout" : "Pauses the workout")
 
         Button(role: .destructive) {
             if confirmEnd { confirming = true } else { onEnd() }
         } label: {
-            Label(endTitle, systemImage: WorkoutDockPresenter.endSystemImage)
+            Image(systemName: WorkoutDockPresenter.endSystemImage)
+                .font(.title3.weight(.bold))
                 .frame(maxWidth: .infinity, minHeight: WorkoutDockPresenter.compactTargetHeight)
         }
         .cadenceGlassButton(prominent: false, tint: endTint, compact: true)
         .accessibilityIdentifier("\(idPrefix).end")
+        .accessibilityLabel(endTitle)
     }
 }

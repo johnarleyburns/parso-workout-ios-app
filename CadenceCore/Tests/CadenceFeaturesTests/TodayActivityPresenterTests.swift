@@ -63,6 +63,20 @@ struct TodayActivityPresenterTests {
         #expect(entries.first?.title == "Kept")
     }
 
+    @Test func deletedArchiveKeepsTheNormalHistoryRows() {
+        let deleted = WorkoutSession(title: "Deleted", date: now.addingTimeInterval(-1800))
+        deleted.endedAt = now.addingTimeInterval(-1500)
+        deleted.deletedAt = now
+        let kept = WorkoutSession(title: "Kept", date: now.addingTimeInterval(-3600))
+        kept.endedAt = now.addingTimeInterval(-3000)
+
+        let entries = TodayActivityPresenter.historyEntries(
+            sessions: [deleted, kept], cardio: [], includeDeleted: true)
+        #expect(entries.count == 2)
+        #expect(entries.first(where: { $0.title == "Deleted" })?.isDeleted == true)
+        #expect(entries.first(where: { $0.title == "Kept" })?.isDeleted == false)
+    }
+
     // MARK: - multipleSameDayAllListed
 
     @Test func multipleSameDayAllListed() {

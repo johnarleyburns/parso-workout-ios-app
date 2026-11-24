@@ -103,13 +103,14 @@ struct WatchAddExercisePicker: View {
 
             if queryIsEmpty {
                 suggestedExerciseSection
-                addCustomRow
             } else {
-                addCustomRow
                 Section("Matches") {
                     searchPhaseContent
                 }
             }
+            // Add Custom is always the last row, after the suggestions or the
+            // matches, so it never pushes the exercise list down from the top.
+            addCustomRow
         }
     }
 

@@ -58,6 +58,7 @@ struct WatchSetKeypadView: View {
                   }
                 }
                 fields(card)
+                    .padding(.top, CGFloat(WatchSetEntryPresentation.fieldTopSpacing))
             }
             .padding(.horizontal, 4)
             // Keep the title, exercise name, and fields together at the top;

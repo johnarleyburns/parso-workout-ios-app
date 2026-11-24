@@ -72,7 +72,8 @@ struct WatchMetricField: View {
                 VStack(alignment: .center, spacing: 0) { metricValue; metricUnit }
             }
             .padding(.horizontal, 6)
-            .padding(.vertical, 6)
+            .padding(.top, 6)
+            .padding(.bottom, 2)
             .frame(maxWidth: .infinity, minHeight: 44)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(isFocused ? WatchTone.accentSoft : Color.clear))

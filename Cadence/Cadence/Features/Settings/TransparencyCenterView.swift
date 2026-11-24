@@ -55,7 +55,7 @@ struct TransparencyCenterView: View {
                 explanationRow(
                     title: String(localized: "Coach refresh"),
                     detail: String(localized: "Home recomputes an ephemeral coach projection after relevant history, readiness, or preference changes. It does not save or replace a user-reviewed workout."),
-                    control: String(localized: "Pull down on Home to rerun the refresh. Coach guidance never changes a workout automatically. Review and edit a Personalized or Custom Workout explicitly before starting or scheduling it."))
+                    control: String(localized: "Pull down on Home to rerun the refresh. Coach guidance never changes a workout automatically. Review and edit a Lift or Custom Workout explicitly before starting or scheduling it."))
 
                 explanationRow(
                     title: String(localized: "Watch projection"),

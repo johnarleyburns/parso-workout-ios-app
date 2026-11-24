@@ -1013,6 +1013,23 @@ public final class SetEntry {
         return p.isMe
     }
 
+    /// Reads the movement name through the live relationship first and falls
+    /// back to the stable snapshot written for the split-store migration.
+    /// Progress and other history readers must use this instead of
+    /// `exercise?.name`: a migrated set can briefly have no live relationship,
+    /// which used to make every lift look like it had no sessions.
+    public var resolvedExerciseName: String? {
+        if let name = exercise?.name.trimmingCharacters(in: .whitespacesAndNewlines),
+           !name.isEmpty {
+            return name
+        }
+        if let snapshot = exerciseNameSnapshot?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !snapshot.isEmpty {
+            return snapshot
+        }
+        return nil
+    }
+
     /// Backfills the additive cross-store references from legacy relationships.
     /// Calling this before a write/export is idempotent and intentionally does
     /// not clear an existing snapshot when the relationship is unavailable.

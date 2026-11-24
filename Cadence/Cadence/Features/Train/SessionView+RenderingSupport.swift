@@ -216,14 +216,53 @@ extension SessionView {
             tint: .teal,
             idPrefix: "cooldown",
             soundsEnabled: settings.workoutSounds,
-            finishTitle: String(localized: "End"),
+            // Match Warm Up: the live HR is the hero above the countdown, the
+            // pause action is only `||`, and finish is only the stop square.
+            emphasis: .liveMetric,
+            pauseShowsTitle: false,
+            finishTitle: "",
+            finishSystemImage: "stop.fill",
             onFinish: finishCooldown,
-            liveMetric: AnyView(SessionLiveHRBand(sessionID: session.id, showsEmptyState: true)))
+            // Same live-HR presentation as Warm Up, without the Watch
+            // link/reconnect row that belongs on full workout screens.
+            liveMetric: AnyView(GuidedPhaseLiveHRView(idPrefix: "cooldown")))
     }
 
     @ViewBuilder
     var sessionTopOverlay: some View {
-        if let prMoment {
+        if isActiveSession, active.isPaused {
+            // Pause is a whole-surface state, not a tiny header label. The
+            // blurred backdrop makes it unmistakable and keeps Resume one tap
+            // away even when the dock is below the fold.
+            ZStack {
+                Rectangle()
+                    .fill(.ultraThinMaterial)
+                    .ignoresSafeArea()
+                VStack(spacing: 18) {
+                    Image(systemName: "pause.fill")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundStyle(.orange)
+                    Text("PAUSED")
+                        .font(.system(size: 54, weight: .black, design: .rounded))
+                        .tracking(2)
+                        .foregroundStyle(.primary)
+                        .accessibilityIdentifier("session.paused.label")
+                    Button {
+                        togglePause()
+                    } label: {
+                        Label("Resume", systemImage: "play.fill")
+                            .font(.headline)
+                            .frame(minWidth: 180, minHeight: 50)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .accessibilityIdentifier("session.paused.resume")
+                }
+            }
+            .transition(.opacity)
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("session.pausedOverlay")
+        } else if let prMoment {
             ZStack {
                 Color.black.opacity(0.12).ignoresSafeArea()
                 prMomentCard(prMoment)

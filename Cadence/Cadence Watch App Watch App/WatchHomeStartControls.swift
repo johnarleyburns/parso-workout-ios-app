@@ -26,8 +26,10 @@ extension WatchRootView {
                         .font(.caption2.weight(.semibold))
                         .foregroundStyle(.secondary)
                 }
+                // Keep the comfortable row height but remove the extra vertical
+                // padding/inset gap that made every choice look far apart.
                 .frame(minHeight: 52, alignment: .leading)
-                .padding(.vertical, 4)
+                .padding(.vertical, 1)
                 .padding(.horizontal, 6)
                 .contentShape(Rectangle())
                 // Painterly row backgrounds inside the row are cheaper on the
@@ -36,7 +38,8 @@ extension WatchRootView {
             }
             .buttonStyle(.plain)
             .listRowBackground(Color.clear)
-            .listRowInsets(EdgeInsets(top: 3, leading: 4, bottom: 3, trailing: 4))
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4))
             .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             .accessibilityHint("Starts or opens \(option.title)")
         }

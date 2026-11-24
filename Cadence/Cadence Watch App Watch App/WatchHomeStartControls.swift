@@ -38,7 +38,6 @@ extension WatchRootView {
             }
             .buttonStyle(.plain)
             .listRowBackground(Color.clear)
-            .listRowSeparator(.hidden)
             .listRowInsets(EdgeInsets(top: 1, leading: 4, bottom: 1, trailing: 4))
             .accessibilityIdentifier("watch.workoutChoice.\(option.id)")
             .accessibilityHint("Starts or opens \(option.title)")

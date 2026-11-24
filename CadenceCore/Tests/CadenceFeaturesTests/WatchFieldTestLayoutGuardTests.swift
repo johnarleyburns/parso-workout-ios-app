@@ -26,7 +26,6 @@ struct WatchFieldTestLayoutGuardTests {
         #expect(rows.contains("defaultMinListRowHeight"))
         #expect(rows.contains(".listRowInsets("))
         #expect(rows.contains("bottom: 1"))
-        #expect(rows.contains(".listRowSeparator(.hidden)"))
         #expect(rows.contains("minHeight: 52"))
     }
 

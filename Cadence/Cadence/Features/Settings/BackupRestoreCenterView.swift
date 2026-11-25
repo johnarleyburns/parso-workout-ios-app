@@ -25,6 +25,8 @@ struct BackupRestoreCenterView: View {
     @State private var snapshotMessage: String?
     @State private var restoringHealthQueue = false
     @State private var healthQueueMessage: String?
+    @State private var removingDuplicates = false
+    @State private var duplicateMessage: String?
 
     var body: some View {
         Form {
@@ -184,6 +186,22 @@ struct BackupRestoreCenterView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Button {
+                    Task { await removeEmptyDuplicates() }
+                } label: {
+                    if removingDuplicates {
+                        HStack { ProgressView(); Text("Cleaning up…") }
+                    } else {
+                        Label("Hide empty duplicate workouts", systemImage: "rectangle.stack.badge.minus")
+                    }
+                }
+                .disabled(removingDuplicates || container == nil)
+                .accessibilityIdentifier("backupCenter.removeEmptyDuplicates")
+                if let duplicateMessage {
+                    Text(duplicateMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Full Cladiron archive") {
@@ -316,6 +334,19 @@ struct BackupRestoreCenterView: View {
         }.value
         healthQueueMessage = message
         restoringHealthQueue = false
+        await reload()
+    }
+
+    @MainActor
+    private func removeEmptyDuplicates() async {
+        guard let container, !removingDuplicates else { return }
+        removingDuplicates = true
+        duplicateMessage = nil
+        let message = await Task.detached(priority: .userInitiated) {
+            StoreAudit.removeEmptyDuplicates(in: container)
+        }.value
+        duplicateMessage = message
+        removingDuplicates = false
         await reload()
     }
 

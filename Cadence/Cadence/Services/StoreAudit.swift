@@ -138,7 +138,7 @@ enum StoreAudit {
                     activeEnergyKcal: summary.activeEnergyKcal,
                     heartRate: summary.hrSamples,
                     metadata: summary.metadata,
-                    source: .cladiron)
+                    source: .iphone)
                 if let object = try? HealthBackupDecoder.workout(payload) { incoming.append(object) }
             case .cardio(let summary):
                 let payload = HealthWorkoutReadPayload(
@@ -150,8 +150,9 @@ enum StoreAudit {
                     activeEnergyKcal: summary.activeEnergyKcal,
                     distanceMeters: summary.distanceMeters,
                     heartRate: summary.hrSamples,
-                    metadata: summary.metadata,
-                    source: .cladiron)
+                    metadata: CladironHealthBackup.baseMetadata(id: summary.id,
+                                                               updatedAt: summary.updatedAt ?? summary.end),
+                    source: .iphone)
                 if let object = try? HealthBackupDecoder.workout(payload) { incoming.append(object) }
             default:
                 break

@@ -16,7 +16,7 @@ enum StoreAudit {
         let modified: Date?
     }
 
-    static func report() -> String {
+    static func report(liveSessionIDs: Set<UUID>, liveCardioIDs: Set<UUID>) -> String {
         let fileManager = FileManager.default
         let support = CadenceStore.applicationSupportDirectory()
         var lines: [String] = []
@@ -53,6 +53,12 @@ enum StoreAudit {
         }
 
         lines.append("")
+        lines.append("HEALTH OUTBOX")
+        lines.append(contentsOf: outboxSummary(support: support,
+                                               liveSessionIDs: liveSessionIDs,
+                                               liveCardioIDs: liveCardioIDs))
+
+        lines.append("")
         lines.append("MIGRATION SNAPSHOTS")
         for name in ["pre-single-store-native-db-v9.json", "pre-split-native-db-v8.json"] {
             let url = support.appendingPathComponent(name)
@@ -72,6 +78,37 @@ enum StoreAudit {
             lines.append("\(name) · \(summary) · newest record \(latest)")
         }
         return lines.joined(separator: "\n")
+    }
+
+    /// The Health backup queue is written when a workout is saved, so it can
+    /// still describe workouts that are no longer in any store.
+    private static func outboxSummary(support: URL, liveSessionIDs: Set<UUID>,
+                                      liveCardioIDs: Set<UUID>) -> [String] {
+        let url = support.appendingPathComponent("HealthOutbox.json")
+        guard let data = try? Data(contentsOf: url),
+              let queue = try? JSONDecoder().decode(HealthOutboxQueue.self, from: data) else {
+            return ["HealthOutbox.json · missing or unreadable"]
+        }
+        var byKind: [String: Int] = [:]
+        var missingStrength: [Date] = []
+        var missingCardio: [Date] = []
+        for item in queue.items {
+            byKind["\(item.entityKind.rawValue)/\(item.operation.rawValue)", default: 0] += 1
+            guard item.operation == .upsert, let job = try? item.decodeJob() else { continue }
+            switch job {
+            case .strength(let summary):
+                if !liveSessionIDs.contains(summary.id) { missingStrength.append(summary.start) }
+            case .cardio(let summary):
+                if !liveCardioIDs.contains(summary.id) { missingCardio.append(summary.start) }
+            default:
+                break
+            }
+        }
+        let kinds = byKind.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
+        var lines = ["HealthOutbox.json · \(queue.items.count) items \(kinds.isEmpty ? "" : "(\(kinds))")"]
+        lines.append("  strength jobs not in the live store: \(missingStrength.count)\(missingStrength.isEmpty ? "" : " (\(format(missingStrength.min()!)) → \(format(missingStrength.max()!)))")")
+        lines.append("  cardio jobs not in the live store: \(missingCardio.count)\(missingCardio.isEmpty ? "" : " (\(format(missingCardio.min()!)) → \(format(missingCardio.max()!)))")")
+        return lines
     }
 
     /// Merges the app's newest migration snapshot into the live store. The merge

@@ -290,11 +290,14 @@ struct BackupRestoreCenterView: View {
 
     @MainActor
     private func auditStores() async {
-        guard !auditingStores else { return }
+        guard !auditingStores, let container else { return }
         auditingStores = true
         storeAuditText = nil
+        let context = ModelContext(container)
+        let sessionIDs = Set((try? context.fetch(FetchDescriptor<WorkoutSession>()))?.map(\.id) ?? [])
+        let cardioIDs = Set((try? context.fetch(FetchDescriptor<CardioWorkout>()))?.map(\.id) ?? [])
         let report = await Task.detached(priority: .userInitiated) {
-            StoreAudit.report()
+            StoreAudit.report(liveSessionIDs: sessionIDs, liveCardioIDs: cardioIDs)
         }.value
         storeAuditText = report
         auditingStores = false

@@ -17,16 +17,6 @@ struct BackupRestoreCenterView: View {
     @State private var isRefreshing = false
     @State private var recoveringPreviousData = false
     @State private var recoveryMessage: String?
-    @State private var recoveringFromICloud = false
-    @State private var iCloudRecoveryMessage: String?
-    @State private var auditingStores = false
-    @State private var storeAuditText: String?
-    @State private var mergingSnapshot = false
-    @State private var snapshotMessage: String?
-    @State private var restoringHealthQueue = false
-    @State private var healthQueueMessage: String?
-    @State private var removingDuplicates = false
-    @State private var duplicateMessage: String?
 
     var body: some View {
         Form {
@@ -103,107 +93,6 @@ struct BackupRestoreCenterView: View {
                 }
             }
 
-            Section("Recover from iCloud (recovery build)") {
-                Text("This temporary build can download the copy of your history that Cladiron previously kept in your private iCloud database. It only reads from iCloud and merges what it finds into the local store. The current store is kept. The result also reports how many records iCloud returned, which shows whether the data is in the account, zone, or environment this build can see.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Button {
-                    Task { await recoverFromICloud() }
-                } label: {
-                    if recoveringFromICloud {
-                        HStack { ProgressView(); Text("Recovering…") }
-                    } else {
-                        Label("Recover from iCloud", systemImage: "icloud.and.arrow.down")
-                    }
-                }
-                .disabled(recoveringFromICloud || container == nil)
-                .accessibilityIdentifier("backupCenter.recoverICloud")
-                if let iCloudRecoveryMessage {
-                    Text(iCloudRecoveryMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("backupCenter.iCloudRecoveryResult")
-                }
-            }
-
-            Section("Recovery diagnostics") {
-                Text("Lists every file that could hold workout history on this iPhone and how many workouts each store contains. It works on copies only, so nothing is changed.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Button {
-                    Task { await auditStores() }
-                } label: {
-                    if auditingStores {
-                        HStack { ProgressView(); Text("Scanning stores…") }
-                    } else {
-                        Label("Scan this iPhone", systemImage: "doc.text.magnifyingglass")
-                    }
-                }
-                .disabled(auditingStores)
-                .accessibilityIdentifier("backupCenter.scanStores")
-                if let storeAuditText {
-                    ScrollView {
-                        Text(storeAuditText)
-                            .font(.caption2.monospaced())
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                    .frame(maxHeight: 280)
-                    ShareLink(item: storeAuditText) {
-                        Label("Share report", systemImage: "square.and.arrow.up")
-                    }
-                    .accessibilityIdentifier("backupCenter.shareAudit")
-                }
-                Button {
-                    Task { await mergeSnapshot() }
-                } label: {
-                    if mergingSnapshot {
-                        HStack { ProgressView(); Text("Merging snapshot…") }
-                    } else {
-                        Label("Merge the 23 Nov snapshot", systemImage: "clock.arrow.2.circlepath")
-                    }
-                }
-                .disabled(mergingSnapshot || container == nil)
-                .accessibilityIdentifier("backupCenter.mergeSnapshot")
-                if let snapshotMessage {
-                    Text(snapshotMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Button {
-                    Task { await restoreHealthQueue() }
-                } label: {
-                    if restoringHealthQueue {
-                        HStack { ProgressView(); Text("Restoring queued workouts…") }
-                    } else {
-                        Label("Restore workouts from the Health queue", systemImage: "heart.text.square")
-                    }
-                }
-                .disabled(restoringHealthQueue || container == nil)
-                .accessibilityIdentifier("backupCenter.restoreHealthQueue")
-                if let healthQueueMessage {
-                    Text(healthQueueMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Button {
-                    Task { await removeEmptyDuplicates() }
-                } label: {
-                    if removingDuplicates {
-                        HStack { ProgressView(); Text("Cleaning up…") }
-                    } else {
-                        Label("Hide empty duplicate workouts", systemImage: "rectangle.stack.badge.minus")
-                    }
-                }
-                .disabled(removingDuplicates || container == nil)
-                .accessibilityIdentifier("backupCenter.removeEmptyDuplicates")
-                if let duplicateMessage {
-                    Text(duplicateMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            }
-
             Section("Full Cladiron archive") {
                 Text("JSON is the lossless backup for a new device; export it from Progress › My Workouts. FIT is for cardio/activity exchange; it intentionally does not contain strength sets or preferences.")
                     .font(.footnote)
@@ -217,7 +106,7 @@ struct BackupRestoreCenterView: View {
             }
 
             Section {
-                Text("Your history is stored on this device. This temporary recovery build also reads a copy from your private iCloud database when you ask it to. Keep the JSON archive somewhere safe so you can restore it on a new device.")
+                Text("Your history is stored only on this device. Cladiron does not upload it to a server. Keep the JSON archive somewhere safe so you can restore it on a new device.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .accessibilityIdentifier("backupCenter.localOnly")
@@ -286,83 +175,6 @@ struct BackupRestoreCenterView: View {
             recoveryMessage = String(localized: "Merged \(report.changedRecords) records; \(report.errors.count) previous store(s) could not be read. \(report.currentSessionsAfter) workouts are now in the live store.")
         }
         await reload()
-    }
-
-    @MainActor
-    private func recoverFromICloud() async {
-        guard let container, !recoveringFromICloud else { return }
-        recoveringFromICloud = true
-        iCloudRecoveryMessage = String(localized: "Starting…")
-        let report = await CloudKitRecovery.run(into: container) { message in
-            iCloudRecoveryMessage = message
-        }
-        recoveringFromICloud = false
-        var lines: [String] = []
-        if report.errors.isEmpty {
-            lines.append(String(localized: "Downloaded \(report.downloadedSessions) workouts from iCloud. Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store."))
-        } else {
-            lines.append(String(localized: "Merged \(report.changedRecords) records. \(report.liveSessionsAfter) workouts are now in the live store."))
-            lines.append(contentsOf: report.errors)
-        }
-        if let inventory = report.inventory {
-            lines.append(inventory)
-        }
-        iCloudRecoveryMessage = lines.joined(separator: "\n\n")
-        await reload()
-    }
-
-    @MainActor
-    private func mergeSnapshot() async {
-        guard let container, !mergingSnapshot else { return }
-        mergingSnapshot = true
-        snapshotMessage = nil
-        let message = await Task.detached(priority: .userInitiated) {
-            StoreAudit.mergeLatestSnapshot(into: container)
-        }.value
-        snapshotMessage = message
-        mergingSnapshot = false
-        await reload()
-    }
-
-    @MainActor
-    private func restoreHealthQueue() async {
-        guard let container, !restoringHealthQueue else { return }
-        restoringHealthQueue = true
-        healthQueueMessage = nil
-        let message = await Task.detached(priority: .userInitiated) {
-            StoreAudit.restoreFromHealthOutbox(into: container)
-        }.value
-        healthQueueMessage = message
-        restoringHealthQueue = false
-        await reload()
-    }
-
-    @MainActor
-    private func removeEmptyDuplicates() async {
-        guard let container, !removingDuplicates else { return }
-        removingDuplicates = true
-        duplicateMessage = nil
-        let message = await Task.detached(priority: .userInitiated) {
-            StoreAudit.removeEmptyDuplicates(in: container)
-        }.value
-        duplicateMessage = message
-        removingDuplicates = false
-        await reload()
-    }
-
-    @MainActor
-    private func auditStores() async {
-        guard !auditingStores, let container else { return }
-        auditingStores = true
-        storeAuditText = nil
-        let context = ModelContext(container)
-        let sessionIDs = Set((try? context.fetch(FetchDescriptor<WorkoutSession>()))?.map(\.id) ?? [])
-        let cardioIDs = Set((try? context.fetch(FetchDescriptor<CardioWorkout>()))?.map(\.id) ?? [])
-        let report = await Task.detached(priority: .userInitiated) {
-            StoreAudit.report(liveSessionIDs: sessionIDs, liveCardioIDs: cardioIDs)
-        }.value
-        storeAuditText = report
-        auditingStores = false
     }
 
     private func reload() async {

@@ -21,6 +21,8 @@ struct BackupRestoreCenterView: View {
     @State private var iCloudRecoveryMessage: String?
     @State private var auditingStores = false
     @State private var storeAuditText: String?
+    @State private var mergingSnapshot = false
+    @State private var snapshotMessage: String?
 
     var body: some View {
         Form {
@@ -148,6 +150,22 @@ struct BackupRestoreCenterView: View {
                     }
                     .accessibilityIdentifier("backupCenter.shareAudit")
                 }
+                Button {
+                    Task { await mergeSnapshot() }
+                } label: {
+                    if mergingSnapshot {
+                        HStack { ProgressView(); Text("Merging snapshot…") }
+                    } else {
+                        Label("Merge the 23 Nov snapshot", systemImage: "clock.arrow.2.circlepath")
+                    }
+                }
+                .disabled(mergingSnapshot || container == nil)
+                .accessibilityIdentifier("backupCenter.mergeSnapshot")
+                if let snapshotMessage {
+                    Text(snapshotMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Full Cladiron archive") {
@@ -254,6 +272,19 @@ struct BackupRestoreCenterView: View {
             lines.append(inventory)
         }
         iCloudRecoveryMessage = lines.joined(separator: "\n\n")
+        await reload()
+    }
+
+    @MainActor
+    private func mergeSnapshot() async {
+        guard let container, !mergingSnapshot else { return }
+        mergingSnapshot = true
+        snapshotMessage = nil
+        let message = await Task.detached(priority: .userInitiated) {
+            StoreAudit.mergeLatestSnapshot(into: container)
+        }.value
+        snapshotMessage = message
+        mergingSnapshot = false
         await reload()
     }
 

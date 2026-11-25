@@ -111,6 +111,76 @@ enum StoreAudit {
         return lines
     }
 
+
+    /// Rebuilds workouts described by the Health backup queue that are no longer
+    /// in any store. Each queued strength job carries the session metadata and
+    /// its full set list, so the normal Health restore path can recreate it with
+    /// sets. Existing ids are skipped by the planner, and queued deletes are
+    /// ignored, so this is idempotent and cannot resurrect deleted workouts.
+    static func restoreFromHealthOutbox(into container: ModelContainer) -> String {
+        let support = CadenceStore.applicationSupportDirectory()
+        let url = support.appendingPathComponent("HealthOutbox.json")
+        guard let data = try? Data(contentsOf: url),
+              let queue = try? JSONDecoder().decode(HealthOutboxQueue.self, from: data) else {
+            return "HealthOutbox.json is missing or unreadable."
+        }
+        var incoming: [HealthBackupReadObject] = []
+        for item in queue.items {
+            guard item.operation == .upsert, let job = try? item.decodeJob() else { continue }
+            switch job {
+            case .strength(let summary):
+                let payload = HealthWorkoutReadPayload(
+                    healthObjectID: UUID(),
+                    kind: .strength,
+                    activityType: .traditionalStrength,
+                    start: summary.start,
+                    end: summary.end,
+                    activeEnergyKcal: summary.activeEnergyKcal,
+                    heartRate: summary.hrSamples,
+                    metadata: summary.metadata,
+                    source: .cladiron)
+                if let object = try? HealthBackupDecoder.workout(payload) { incoming.append(object) }
+            case .cardio(let summary):
+                let payload = HealthWorkoutReadPayload(
+                    healthObjectID: UUID(),
+                    kind: .cardio,
+                    activityType: importedKind(for: summary.type),
+                    start: summary.start,
+                    end: summary.end,
+                    activeEnergyKcal: summary.activeEnergyKcal,
+                    distanceMeters: summary.distanceMeters,
+                    heartRate: summary.hrSamples,
+                    metadata: summary.metadata,
+                    source: .cladiron)
+                if let object = try? HealthBackupDecoder.workout(payload) { incoming.append(object) }
+            default:
+                break
+            }
+        }
+        guard !incoming.isEmpty else { return "The Health queue holds no recoverable workouts." }
+        let context = ModelContext(container)
+        let local: [HealthRestoreLocalState] =
+            ((try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []).map {
+                HealthRestoreLocalState(kind: .strengthSession, id: $0.id,
+                                        updatedAt: $0.updatedAt,
+                                        healthObjectID: $0.healthKitWorkoutUUID,
+                                        isDeleted: $0.deletedAt != nil)
+            }
+            + ((try? context.fetch(FetchDescriptor<CardioWorkout>())) ?? []).map {
+                HealthRestoreLocalState(kind: .cardioWorkout, id: $0.id,
+                                        updatedAt: $0.updatedAt,
+                                        healthObjectID: $0.healthKitWorkoutUUID,
+                                        isDeleted: $0.deletedAt != nil)
+            }
+        let plan = HealthBackupRestorePlanner.plan(incoming: incoming, local: local)
+        do {
+            let report = try WorkoutRepository.applyHealthRestore(plan, in: context)
+            return "Health queue restore: inserted \(report.inserted), replaced \(report.replaced), skipped \(report.skipped)."
+        } catch {
+            return "Health queue restore failed: \(error.localizedDescription)"
+        }
+    }
+
     /// Merges the app's newest migration snapshot into the live store. The merge
     /// is idempotent and identity-based, so records already present are skipped.
     static func mergeLatestSnapshot(into container: ModelContainer) -> String {
@@ -244,6 +314,19 @@ enum StoreAudit {
         return counts.keys.sorted().suffix(10).map { bucket in
             "\(bucket) \(strength[bucket] ?? 0)/\(counts[bucket] ?? 0)"
         }.joined(separator: " · ")
+    }
+
+    private static func importedKind(for type: CardioType) -> ImportedWorkoutKind {
+        switch type {
+        case .run: return .running
+        case .walk: return .walking
+        case .cycle: return .cycling
+        case .swim: return .swimming
+        case .rowing: return .rowing
+        case .hiit: return .hiit
+        case .boxing: return .boxing
+        case .elliptical, .stairClimber, .other: return .other
+        }
     }
 
     private static func format(_ date: Date) -> String {

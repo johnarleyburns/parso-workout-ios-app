@@ -23,6 +23,8 @@ struct BackupRestoreCenterView: View {
     @State private var storeAuditText: String?
     @State private var mergingSnapshot = false
     @State private var snapshotMessage: String?
+    @State private var restoringHealthQueue = false
+    @State private var healthQueueMessage: String?
 
     var body: some View {
         Form {
@@ -166,6 +168,22 @@ struct BackupRestoreCenterView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                Button {
+                    Task { await restoreHealthQueue() }
+                } label: {
+                    if restoringHealthQueue {
+                        HStack { ProgressView(); Text("Restoring queued workouts…") }
+                    } else {
+                        Label("Restore workouts from the Health queue", systemImage: "heart.text.square")
+                    }
+                }
+                .disabled(restoringHealthQueue || container == nil)
+                .accessibilityIdentifier("backupCenter.restoreHealthQueue")
+                if let healthQueueMessage {
+                    Text(healthQueueMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Full Cladiron archive") {
@@ -285,6 +303,19 @@ struct BackupRestoreCenterView: View {
         }.value
         snapshotMessage = message
         mergingSnapshot = false
+        await reload()
+    }
+
+    @MainActor
+    private func restoreHealthQueue() async {
+        guard let container, !restoringHealthQueue else { return }
+        restoringHealthQueue = true
+        healthQueueMessage = nil
+        let message = await Task.detached(priority: .userInitiated) {
+            StoreAudit.restoreFromHealthOutbox(into: container)
+        }.value
+        healthQueueMessage = message
+        restoringHealthQueue = false
         await reload()
     }
 

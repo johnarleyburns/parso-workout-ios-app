@@ -119,6 +119,27 @@ enum StoreAudit {
     }
 
 
+    /// Hides duration-only sessions that duplicate a session which does have
+    /// sets. The Health restore creates these when a Health workout cannot be
+    /// matched to its local row, so both copies end up in History. Soft delete
+    /// only, and only when a set-carrying session exists within 15 minutes.
+    static func removeEmptyDuplicates(in container: ModelContainer) -> String {
+        let context = ModelContext(container)
+        let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []
+        let withSets = sessions.filter { $0.deletedAt == nil && !$0.orderedSets.isEmpty }
+        var removed = 0
+        for session in sessions where session.deletedAt == nil && session.orderedSets.isEmpty {
+            if withSets.contains(where: { abs($0.date.timeIntervalSince(session.date)) < 900 }) {
+                session.deletedAt = Date()
+                removed += 1
+            }
+        }
+        try? context.save()
+        let remaining = (try? context.fetchCount(FetchDescriptor<WorkoutSession>())) ?? 0
+        let kept = sessions.filter { $0.deletedAt == nil && !$0.orderedSets.isEmpty }.count
+        return "Hid \(removed) empty duplicates. \(kept) of \(remaining) strength workouts keep their sets."
+    }
+
     /// Rebuilds workouts described by the Health backup queue that are no longer
     /// in any store. Each queued strength job carries the session metadata and
     /// its full set list, so the normal Health restore path can recreate it with

@@ -91,13 +91,20 @@ enum StoreAudit {
         }
         var byKind: [String: Int] = [:]
         var missingStrength: [Date] = []
+        var missingStrengthWithSets = 0
         var missingCardio: [Date] = []
         for item in queue.items {
             byKind["\(item.entityKind.rawValue)/\(item.operation.rawValue)", default: 0] += 1
             guard item.operation == .upsert, let job = try? item.decodeJob() else { continue }
             switch job {
             case .strength(let summary):
-                if !liveSessionIDs.contains(summary.id) { missingStrength.append(summary.start) }
+                if !liveSessionIDs.contains(summary.id) {
+                    missingStrength.append(summary.start)
+                    if let raw = summary.metadata[CladironHealthBackup.ownerSetsKey],
+                       raw != "[]", !raw.isEmpty {
+                        missingStrengthWithSets += 1
+                    }
+                }
             case .cardio(let summary):
                 if !liveCardioIDs.contains(summary.id) { missingCardio.append(summary.start) }
             default:
@@ -106,7 +113,7 @@ enum StoreAudit {
         }
         let kinds = byKind.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
         var lines = ["HealthOutbox.json · \(queue.items.count) items \(kinds.isEmpty ? "" : "(\(kinds))")"]
-        lines.append("  strength jobs not in the live store: \(missingStrength.count)\(missingStrength.isEmpty ? "" : " (\(format(missingStrength.min()!)) → \(format(missingStrength.max()!)))")")
+        lines.append("  strength jobs not in the live store: \(missingStrength.count) (\(missingStrengthWithSets) carry set detail)\(missingStrength.isEmpty ? "" : " \(format(missingStrength.min()!)) → \(format(missingStrength.max()!))")")
         lines.append("  cardio jobs not in the live store: \(missingCardio.count)\(missingCardio.isEmpty ? "" : " (\(format(missingCardio.min()!)) → \(format(missingCardio.max()!)))")")
         return lines
     }

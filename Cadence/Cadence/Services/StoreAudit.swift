@@ -305,10 +305,12 @@ enum StoreAudit {
             let assessments = (try? context.fetchCount(FetchDescriptor<Assessment>())) ?? -1
             let liveSessions = sessions.filter { $0.deletedAt == nil }
             let liveCardio = cardio.filter { $0.deletedAt == nil }
+            let withSets = liveSessions.filter { !$0.orderedSets.isEmpty }.count
+            let withoutSets = liveSessions.count - withSets
             let oldest = (liveSessions.map(\.date) + liveCardio.map(\.start)).min()
             let newest = (liveSessions.map(\.date) + liveCardio.map(\.start)).max()
             return ["\(store.path)",
-                    "  open: ok · strength \(sessions.count) (\(sessions.count - liveSessions.count) deleted) · cardio \(cardio.count) (\(cardio.count - liveCardio.count) deleted) · assessments \(assessments)",
+                    "  open: ok · strength \(sessions.count) (\(sessions.count - liveSessions.count) deleted; \(withSets) with sets, \(withoutSets) without) · cardio \(cardio.count) (\(cardio.count - liveCardio.count) deleted) · assessments \(assessments)",
                     "  range: \(oldest.map { format($0) } ?? "—") → \(newest.map { format($0) } ?? "—")",
                     "  by month (strength/cardio): \(monthly(sessions: liveSessions, cardio: liveCardio))"]
         } catch {

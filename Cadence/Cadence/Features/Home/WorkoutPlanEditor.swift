@@ -240,16 +240,7 @@ struct WorkoutPlanEditor: View {
                 useHR: $useHR)
         }
         .sheet(item: $exclusionExercise) { exercise in
-            ExerciseSuggestionExclusionSheet(exercise: exercise, onExcluded: {
-                let rowID = exclusionRowID
-                exclusionRowID = nil
-                exclusionExercise = nil
-                if let onExcludeAndRegenerate {
-                    regenerateAfterExcluding(exercise)
-                } else if let rowID {
-                    Task { await replaceExcludedExercise(rowID: rowID) }
-                }
-            })
+            exclusionSheet(for: exercise)
         }
         .sheet(item: $suggestExerciseRequest) { request in
             SuggestExerciseView(request: request,
@@ -294,6 +285,26 @@ struct WorkoutPlanEditor: View {
         }
     }
 
+
+    @ViewBuilder
+    private func exclusionSheet(for exercise: Exercise) -> some View {
+        ExerciseSuggestionExclusionSheet(exercise: exercise, onExcluded: {
+            finishExclusion(of: exercise)
+        })
+    }
+
+    /// Excluding from a suggested workout rebuilds that whole plan; every other
+    /// plan swaps a new suggestion into the same row instead.
+    private func finishExclusion(of exercise: Exercise) {
+        let rowID = exclusionRowID
+        exclusionRowID = nil
+        exclusionExercise = nil
+        if onExcludeAndRegenerate != nil {
+            regenerateAfterExcluding(exercise)
+        } else if let rowID {
+            Task { await replaceExcludedExercise(rowID: rowID) }
+        }
+    }
 
     /// Regenerates the whole suggested plan from scratch now that `exercise`
     /// is excluded — never a patch that just deletes the row and leaves

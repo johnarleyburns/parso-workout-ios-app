@@ -58,7 +58,7 @@ extension WorkoutPlanEditor {
     /// single-exercise solver the Add Exercise sheet uses for a replacement
     /// that fits the remaining allocation, then swap it into the same slot.
     @MainActor
-    private func replaceExcludedExercise(rowID: UUID) async {
+    func replaceExcludedExercise(rowID: UUID) async {
         guard plan.exercises.contains(where: { $0.id == rowID }) else { return }
         isRegeneratingAfterExclusion = true
         defer { isRegeneratingAfterExclusion = false }

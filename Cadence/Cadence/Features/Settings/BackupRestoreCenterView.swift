@@ -19,6 +19,8 @@ struct BackupRestoreCenterView: View {
     @State private var recoveryMessage: String?
     @State private var recoveringFromICloud = false
     @State private var iCloudRecoveryMessage: String?
+    @State private var auditingStores = false
+    @State private var storeAuditText: String?
 
     var body: some View {
         Form {
@@ -115,6 +117,36 @@ struct BackupRestoreCenterView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .accessibilityIdentifier("backupCenter.iCloudRecoveryResult")
+                }
+            }
+
+            Section("Recovery diagnostics") {
+                Text("Lists every file that could hold workout history on this iPhone and how many workouts each store contains. It works on copies only, so nothing is changed.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button {
+                    Task { await auditStores() }
+                } label: {
+                    if auditingStores {
+                        HStack { ProgressView(); Text("Scanning stores…") }
+                    } else {
+                        Label("Scan this iPhone", systemImage: "doc.text.magnifyingglass")
+                    }
+                }
+                .disabled(auditingStores)
+                .accessibilityIdentifier("backupCenter.scanStores")
+                if let storeAuditText {
+                    ScrollView {
+                        Text(storeAuditText)
+                            .font(.caption2.monospaced())
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .frame(maxHeight: 280)
+                    ShareLink(item: storeAuditText) {
+                        Label("Share report", systemImage: "square.and.arrow.up")
+                    }
+                    .accessibilityIdentifier("backupCenter.shareAudit")
                 }
             }
 
@@ -223,6 +255,18 @@ struct BackupRestoreCenterView: View {
         }
         iCloudRecoveryMessage = lines.joined(separator: "\n\n")
         await reload()
+    }
+
+    @MainActor
+    private func auditStores() async {
+        guard !auditingStores else { return }
+        auditingStores = true
+        storeAuditText = nil
+        let report = await Task.detached(priority: .userInitiated) {
+            StoreAudit.report()
+        }.value
+        storeAuditText = report
+        auditingStores = false
     }
 
     private func reload() async {

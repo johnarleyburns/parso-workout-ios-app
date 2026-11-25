@@ -103,7 +103,7 @@ struct BackupRestoreCenterView: View {
                     Task { await recoverFromICloud() }
                 } label: {
                     if recoveringFromICloud {
-                        HStack { ProgressView(); Text("Contacting iCloud…") }
+                        HStack { ProgressView(); Text("Recovering…") }
                     } else {
                         Label("Recover from iCloud", systemImage: "icloud.and.arrow.down")
                     }
@@ -206,13 +206,7 @@ struct BackupRestoreCenterView: View {
     private func recoverFromICloud() async {
         guard let container, !recoveringFromICloud else { return }
         recoveringFromICloud = true
-        iCloudRecoveryMessage = String(localized: "Checking iCloud…")
-        if let problem = await CloudKitRecovery.preflight() {
-            recoveringFromICloud = false
-            iCloudRecoveryMessage = problem
-            return
-        }
-        iCloudRecoveryMessage = String(localized: "Waiting for iCloud. Keep the app open and stay online.")
+        iCloudRecoveryMessage = String(localized: "Starting…")
         let report = await CloudKitRecovery.run(into: container) { message in
             iCloudRecoveryMessage = message
         }

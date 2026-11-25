@@ -175,7 +175,26 @@ enum StoreAudit {
         let plan = HealthBackupRestorePlanner.plan(incoming: incoming, local: local)
         do {
             let report = try WorkoutRepository.applyHealthRestore(plan, in: context)
-            return "Health queue restore: inserted \(report.inserted), replaced \(report.replaced), skipped \(report.skipped)."
+            let restoredIDs = Set(plan.operations
+                .filter { $0.action == .insert || $0.action == .replace }
+                .map { $0.object.entityID })
+            // A Health object without Cladiron metadata is restored as a
+            // duration-only summary, which duplicates the real session once the
+            // queue rebuilds it with sets. Hide those empty placeholders.
+            var removedPlaceholders = 0
+            if !restoredIDs.isEmpty {
+                let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []
+                let restoredDates = sessions.filter { restoredIDs.contains($0.id) }.map(\.date)
+                for session in sessions
+                where session.deletedAt == nil && session.orderedSets.isEmpty
+                    && session.healthKitWorkoutUUID != nil
+                    && restoredDates.contains(where: { abs($0.timeIntervalSince(session.date)) < 180 }) {
+                    session.deletedAt = Date()
+                    removedPlaceholders += 1
+                }
+                try? context.save()
+            }
+            return "Health queue restore: inserted \(report.inserted), replaced \(report.replaced), skipped \(report.skipped), removed \(removedPlaceholders) empty placeholders."
         } catch {
             return "Health queue restore failed: \(error.localizedDescription)"
         }

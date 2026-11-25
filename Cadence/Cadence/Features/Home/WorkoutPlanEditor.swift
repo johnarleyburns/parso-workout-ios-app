@@ -73,8 +73,11 @@ struct WorkoutPlanEditor: View {
     @State private var didResolvePartnerPlans = false
     @State var exerciseIndex: [String: Exercise] = [:]
     @State private var exclusionExercise: Exercise?
-    @State private var isRegeneratingAfterExclusion = false
-    @State private var regenerationFailed = false
+    /// The plan row whose movement was just excluded, so the editor can put a
+    /// different suggestion in its place instead of leaving it sitting there.
+    @State private var exclusionRowID: UUID?
+    @State var isRegeneratingAfterExclusion = false
+    @State var regenerationFailed = false
     @State var planVolumeState = LiveWorkoutVolumeState()
     @State var planVolumeWeekly: [MuscleGroup: Double] = [:]
     @State var planVolumePerformers: [VolumeSummaryPerformer] = []
@@ -126,7 +129,10 @@ struct WorkoutPlanEditor: View {
                         unit: settings.unit,
                         exerciseInfo: exerciseIndex[exercise.name.lowercased()],
                         onSwap: { exercisePickerIntent = .swap(exercise.id) },
-                        onExclude: { exclusionExercise = exerciseIndex[exercise.name.lowercased()] })
+                        onExclude: {
+                            exclusionRowID = exercise.id
+                            exclusionExercise = exerciseIndex[exercise.name.lowercased()]
+                        })
                         .workoutPlanCard()
                 }
                 LiveWorkoutVolumeSummary(state: planVolumeState,
@@ -235,7 +241,14 @@ struct WorkoutPlanEditor: View {
         }
         .sheet(item: $exclusionExercise) { exercise in
             ExerciseSuggestionExclusionSheet(exercise: exercise, onExcluded: {
-                regenerateAfterExcluding(exercise)
+                let rowID = exclusionRowID
+                exclusionRowID = nil
+                exclusionExercise = nil
+                if let onExcludeAndRegenerate {
+                    regenerateAfterExcluding(exercise)
+                } else if let rowID {
+                    Task { await replaceExcludedExercise(rowID: rowID) }
+                }
             })
         }
         .sheet(item: $suggestExerciseRequest) { request in

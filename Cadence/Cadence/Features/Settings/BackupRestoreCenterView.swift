@@ -21,6 +21,10 @@ struct BackupRestoreCenterView: View {
     @State private var iCloudRecoveryMessage: String?
     @State private var auditingStores = false
     @State private var storeAuditText: String?
+    @State private var mergingSnapshot = false
+    @State private var snapshotMessage: String?
+    @State private var restoringHealthQueue = false
+    @State private var healthQueueMessage: String?
 
     var body: some View {
         Form {
@@ -148,6 +152,38 @@ struct BackupRestoreCenterView: View {
                     }
                     .accessibilityIdentifier("backupCenter.shareAudit")
                 }
+                Button {
+                    Task { await mergeSnapshot() }
+                } label: {
+                    if mergingSnapshot {
+                        HStack { ProgressView(); Text("Merging snapshot…") }
+                    } else {
+                        Label("Merge the 23 Nov snapshot", systemImage: "clock.arrow.2.circlepath")
+                    }
+                }
+                .disabled(mergingSnapshot || container == nil)
+                .accessibilityIdentifier("backupCenter.mergeSnapshot")
+                if let snapshotMessage {
+                    Text(snapshotMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Button {
+                    Task { await restoreHealthQueue() }
+                } label: {
+                    if restoringHealthQueue {
+                        HStack { ProgressView(); Text("Restoring queued workouts…") }
+                    } else {
+                        Label("Restore workouts from the Health queue", systemImage: "heart.text.square")
+                    }
+                }
+                .disabled(restoringHealthQueue || container == nil)
+                .accessibilityIdentifier("backupCenter.restoreHealthQueue")
+                if let healthQueueMessage {
+                    Text(healthQueueMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Full Cladiron archive") {
@@ -258,12 +294,41 @@ struct BackupRestoreCenterView: View {
     }
 
     @MainActor
+    private func mergeSnapshot() async {
+        guard let container, !mergingSnapshot else { return }
+        mergingSnapshot = true
+        snapshotMessage = nil
+        let message = await Task.detached(priority: .userInitiated) {
+            StoreAudit.mergeLatestSnapshot(into: container)
+        }.value
+        snapshotMessage = message
+        mergingSnapshot = false
+        await reload()
+    }
+
+    @MainActor
+    private func restoreHealthQueue() async {
+        guard let container, !restoringHealthQueue else { return }
+        restoringHealthQueue = true
+        healthQueueMessage = nil
+        let message = await Task.detached(priority: .userInitiated) {
+            StoreAudit.restoreFromHealthOutbox(into: container)
+        }.value
+        healthQueueMessage = message
+        restoringHealthQueue = false
+        await reload()
+    }
+
+    @MainActor
     private func auditStores() async {
-        guard !auditingStores else { return }
+        guard !auditingStores, let container else { return }
         auditingStores = true
         storeAuditText = nil
+        let context = ModelContext(container)
+        let sessionIDs = Set((try? context.fetch(FetchDescriptor<WorkoutSession>()))?.map(\.id) ?? [])
+        let cardioIDs = Set((try? context.fetch(FetchDescriptor<CardioWorkout>()))?.map(\.id) ?? [])
         let report = await Task.detached(priority: .userInitiated) {
-            StoreAudit.report()
+            StoreAudit.report(liveSessionIDs: sessionIDs, liveCardioIDs: cardioIDs)
         }.value
         storeAuditText = report
         auditingStores = false

@@ -3,10 +3,11 @@ import SwiftData
 import CadenceCore
 
 /// Recovery-build diagnostics. Lists every file that could hold workout history
-/// on this iPhone and reports the row counts each store actually contains.
+/// on this iPhone and reports what each store actually contains.
 ///
-/// Read-only: stores are copied to a temporary directory before opening, so no
-/// source file is ever opened in place or modified.
+/// Read-only for the listing: stores are copied to a temporary directory before
+/// opening. The one write is `mergeLatestSnapshot(into:)`, which only merges the
+/// app's own migration snapshot into the live store on explicit request.
 enum StoreAudit {
     private struct Entry {
         let path: String
@@ -15,38 +16,220 @@ enum StoreAudit {
         let modified: Date?
     }
 
-    static func report() -> String {
+    static func report(liveSessionIDs: Set<UUID>, liveCardioIDs: Set<UUID>) -> String {
         let fileManager = FileManager.default
         let support = CadenceStore.applicationSupportDirectory()
         var lines: [String] = []
         lines.append("Application Support: \(support.path)")
 
         let entries = listing(in: support, fileManager: fileManager)
-        if entries.isEmpty {
-            lines.append("(empty)")
-        } else {
+        lines.append("")
+        lines.append("FILES (name · size · modified)")
+        lines.append(contentsOf: entries.isEmpty
+                     ? ["(empty)"]
+                     : entries.map { entry in
+            let size = entry.isDirectory ? "dir" : ByteCountFormatter.string(fromByteCount: entry.bytes, countStyle: .file)
+            let modified = entry.modified.map { format($0) } ?? "—"
+            return "\(entry.path) · \(size) · \(modified)"
+        })
+
+        // The Watch delivery inbox can hold payloads the phone never processed.
+        let inbox = support.appendingPathComponent("com.apple.watchconnectivity")
+        if fileManager.fileExists(atPath: inbox.path) {
             lines.append("")
-            lines.append("FILES (name · size · modified)")
-            for entry in entries {
-                let size = entry.isDirectory ? "dir" : ByteCountFormatter.string(fromByteCount: entry.bytes, countStyle: .file)
-                let modified = entry.modified.map { format($0) } ?? "—"
-                lines.append("\(entry.path) · \(size) · \(modified)")
-            }
+            lines.append("WATCH INBOX")
+            let inboxEntries = listing(in: inbox, fileManager: fileManager, depth: 3)
+            lines.append(contentsOf: inboxEntries.isEmpty
+                         ? ["(empty)"]
+                         : inboxEntries.map { "\($0.path) · \(ByteCountFormatter.string(fromByteCount: $0.bytes, countStyle: .file)) · \($0.modified.map { format($0) } ?? "—")" })
         }
 
         lines.append("")
         lines.append("STORE CONTENTS")
         let stores = storeCandidates(in: support, fileManager: fileManager)
-        if stores.isEmpty {
-            lines.append("No .store files found.")
-        }
+        if stores.isEmpty { lines.append("No .store files found.") }
         for store in stores {
             lines.append(contentsOf: inspect(store, fileManager: fileManager))
+        }
+
+        lines.append("")
+        lines.append("HEALTH OUTBOX")
+        lines.append(contentsOf: outboxSummary(support: support,
+                                               liveSessionIDs: liveSessionIDs,
+                                               liveCardioIDs: liveCardioIDs))
+
+        lines.append("")
+        lines.append("MIGRATION SNAPSHOTS")
+        for name in ["pre-single-store-native-db-v9.json", "pre-split-native-db-v8.json"] {
+            let url = support.appendingPathComponent(name)
+            guard let data = try? Data(contentsOf: url) else {
+                lines.append("\(name) · missing")
+                continue
+            }
+            guard let archive = try? JSONDecoder().decode(ExportNativeDatabase.self, from: data) else {
+                lines.append("\(name) · unreadable archive")
+                continue
+            }
+            let counts = Dictionary(grouping: archive.records, by: \.entity).mapValues(\.count)
+            let summary = ["WorkoutSession", "CardioWorkout", "SetEntry", "Assessment"]
+                .map { "\($0) \(counts[$0] ?? 0)" }
+                .joined(separator: ", ")
+            let latest = archive.records.compactMap(\.updatedAt).max().map { format($0) } ?? "—"
+            lines.append("\(name) · \(summary) · newest record \(latest)")
         }
         return lines.joined(separator: "\n")
     }
 
-    private static func listing(in directory: URL, fileManager: FileManager) -> [Entry] {
+    /// The Health backup queue is written when a workout is saved, so it can
+    /// still describe workouts that are no longer in any store.
+    private static func outboxSummary(support: URL, liveSessionIDs: Set<UUID>,
+                                      liveCardioIDs: Set<UUID>) -> [String] {
+        let url = support.appendingPathComponent("HealthOutbox.json")
+        guard let data = try? Data(contentsOf: url),
+              let queue = try? JSONDecoder().decode(HealthOutboxQueue.self, from: data) else {
+            return ["HealthOutbox.json · missing or unreadable"]
+        }
+        var byKind: [String: Int] = [:]
+        var missingStrength: [Date] = []
+        var missingStrengthWithSets = 0
+        var missingCardio: [Date] = []
+        for item in queue.items {
+            byKind["\(item.entityKind.rawValue)/\(item.operation.rawValue)", default: 0] += 1
+            guard item.operation == .upsert, let job = try? item.decodeJob() else { continue }
+            switch job {
+            case .strength(let summary):
+                if !liveSessionIDs.contains(summary.id) {
+                    missingStrength.append(summary.start)
+                    if let raw = summary.metadata[CladironHealthBackup.ownerSetsKey],
+                       raw != "[]", !raw.isEmpty {
+                        missingStrengthWithSets += 1
+                    }
+                }
+            case .cardio(let summary):
+                if !liveCardioIDs.contains(summary.id) { missingCardio.append(summary.start) }
+            default:
+                break
+            }
+        }
+        let kinds = byKind.sorted { $0.key < $1.key }.map { "\($0.key) \($0.value)" }.joined(separator: ", ")
+        var lines = ["HealthOutbox.json · \(queue.items.count) items \(kinds.isEmpty ? "" : "(\(kinds))")"]
+        lines.append("  strength jobs not in the live store: \(missingStrength.count) (\(missingStrengthWithSets) carry set detail)\(missingStrength.isEmpty ? "" : " \(format(missingStrength.min()!)) → \(format(missingStrength.max()!))")")
+        lines.append("  cardio jobs not in the live store: \(missingCardio.count)\(missingCardio.isEmpty ? "" : " (\(format(missingCardio.min()!)) → \(format(missingCardio.max()!)))")")
+        return lines
+    }
+
+
+    /// Rebuilds workouts described by the Health backup queue that are no longer
+    /// in any store. Each queued strength job carries the session metadata and
+    /// its full set list, so the normal Health restore path can recreate it with
+    /// sets. Existing ids are skipped by the planner, and queued deletes are
+    /// ignored, so this is idempotent and cannot resurrect deleted workouts.
+    static func restoreFromHealthOutbox(into container: ModelContainer) -> String {
+        let support = CadenceStore.applicationSupportDirectory()
+        let url = support.appendingPathComponent("HealthOutbox.json")
+        guard let data = try? Data(contentsOf: url),
+              let queue = try? JSONDecoder().decode(HealthOutboxQueue.self, from: data) else {
+            return "HealthOutbox.json is missing or unreadable."
+        }
+        var incoming: [HealthBackupReadObject] = []
+        for item in queue.items {
+            guard item.operation == .upsert, let job = try? item.decodeJob() else { continue }
+            switch job {
+            case .strength(let summary):
+                let payload = HealthWorkoutReadPayload(
+                    healthObjectID: UUID(),
+                    kind: .strength,
+                    activityType: .traditionalStrength,
+                    start: summary.start,
+                    end: summary.end,
+                    activeEnergyKcal: summary.activeEnergyKcal,
+                    heartRate: summary.hrSamples,
+                    metadata: summary.metadata,
+                    source: .iphone)
+                if let object = try? HealthBackupDecoder.workout(payload) { incoming.append(object) }
+            case .cardio(let summary):
+                let payload = HealthWorkoutReadPayload(
+                    healthObjectID: UUID(),
+                    kind: .cardio,
+                    activityType: importedKind(for: summary.type),
+                    start: summary.start,
+                    end: summary.end,
+                    activeEnergyKcal: summary.activeEnergyKcal,
+                    distanceMeters: summary.distanceMeters,
+                    heartRate: summary.hrSamples,
+                    metadata: CladironHealthBackup.baseMetadata(id: summary.id,
+                                                               updatedAt: summary.updatedAt ?? summary.end),
+                    source: .iphone)
+                if let object = try? HealthBackupDecoder.workout(payload) { incoming.append(object) }
+            default:
+                break
+            }
+        }
+        guard !incoming.isEmpty else { return "The Health queue holds no recoverable workouts." }
+        let context = ModelContext(container)
+        let local: [HealthRestoreLocalState] =
+            ((try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []).map {
+                HealthRestoreLocalState(kind: .strengthSession, id: $0.id,
+                                        updatedAt: $0.updatedAt,
+                                        healthObjectID: $0.healthKitWorkoutUUID,
+                                        isDeleted: $0.deletedAt != nil)
+            }
+            + ((try? context.fetch(FetchDescriptor<CardioWorkout>())) ?? []).map {
+                HealthRestoreLocalState(kind: .cardioWorkout, id: $0.id,
+                                        updatedAt: $0.updatedAt,
+                                        healthObjectID: $0.healthKitWorkoutUUID,
+                                        isDeleted: $0.deletedAt != nil)
+            }
+        let plan = HealthBackupRestorePlanner.plan(incoming: incoming, local: local)
+        do {
+            let report = try WorkoutRepository.applyHealthRestore(plan, in: context)
+            let restoredIDs = Set(plan.operations
+                .filter { $0.action == .insert || $0.action == .replace }
+                .map { $0.object.entityID })
+            // A Health object without Cladiron metadata is restored as a
+            // duration-only summary, which duplicates the real session once the
+            // queue rebuilds it with sets. Hide those empty placeholders.
+            var removedPlaceholders = 0
+            if !restoredIDs.isEmpty {
+                let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []
+                let restoredDates = sessions.filter { restoredIDs.contains($0.id) }.map(\.date)
+                for session in sessions
+                where session.deletedAt == nil && session.orderedSets.isEmpty
+                    && session.healthKitWorkoutUUID != nil
+                    && restoredDates.contains(where: { abs($0.timeIntervalSince(session.date)) < 180 }) {
+                    session.deletedAt = Date()
+                    removedPlaceholders += 1
+                }
+                try? context.save()
+            }
+            return "Health queue restore: inserted \(report.inserted), replaced \(report.replaced), skipped \(report.skipped), removed \(removedPlaceholders) empty placeholders."
+        } catch {
+            return "Health queue restore failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Merges the app's newest migration snapshot into the live store. The merge
+    /// is idempotent and identity-based, so records already present are skipped.
+    static func mergeLatestSnapshot(into container: ModelContainer) -> String {
+        let support = CadenceStore.applicationSupportDirectory()
+        for name in ["pre-single-store-native-db-v9.json", "pre-split-native-db-v8.json"] {
+            let url = support.appendingPathComponent(name)
+            guard let data = try? Data(contentsOf: url),
+                  let archive = try? JSONDecoder().decode(ExportNativeDatabase.self, from: data) else { continue }
+            let context = ModelContext(container)
+            do {
+                let changed = try NativeDatabaseExport.merge(archive, in: context)
+                try context.save()
+                let after = (try? context.fetchCount(FetchDescriptor<WorkoutSession>())) ?? 0
+                return "Merged \(name): \(changed) records changed. \(after) strength workouts are now in the live store."
+            } catch {
+                return "Merging \(name) failed: \(error.localizedDescription)"
+            }
+        }
+        return "No migration snapshot found."
+    }
+
+    private static func listing(in directory: URL, fileManager: FileManager, depth: Int = 1) -> [Entry] {
         var results: [Entry] = []
         func walk(_ url: URL, depth: Int) {
             guard depth >= 0 else { return }
@@ -64,7 +247,7 @@ enum StoreAudit {
                 if isDirectory { walk(child, depth: depth - 1) }
             }
         }
-        walk(directory, depth: 1)
+        walk(directory, depth: depth)
         return results
     }
 
@@ -125,22 +308,53 @@ enum StoreAudit {
                 container = try CadenceStore.makeSingleModelContainer(storeURL: copyFamily(store))
             }
             let context = ModelContext(container)
-            let sessions = (try? context.fetchCount(FetchDescriptor<WorkoutSession>())) ?? -1
-            let deleted = (try? context.fetchCount(FetchDescriptor<WorkoutSession>(
-                predicate: #Predicate<WorkoutSession> { $0.deletedAt != nil }))) ?? -1
-            let cardio = (try? context.fetchCount(FetchDescriptor<CardioWorkout>())) ?? -1
+            let sessions = (try? context.fetch(FetchDescriptor<WorkoutSession>())) ?? []
+            let cardio = (try? context.fetch(FetchDescriptor<CardioWorkout>())) ?? []
             let assessments = (try? context.fetchCount(FetchDescriptor<Assessment>())) ?? -1
-            var newest = FetchDescriptor<WorkoutSession>(sortBy: [SortDescriptor(\.date, order: .reverse)])
-            newest.fetchLimit = 1
-            let newestDate = (try? context.fetch(newest))?.first?.date
-            var newestCardio = FetchDescriptor<CardioWorkout>(sortBy: [SortDescriptor(\.start, order: .reverse)])
-            newestCardio.fetchLimit = 1
-            let newestCardioDate = (try? context.fetch(newestCardio))?.first?.start
-            let latest = [newestDate, newestCardioDate].compactMap { $0 }.max()
+            let liveSessions = sessions.filter { $0.deletedAt == nil }
+            let liveCardio = cardio.filter { $0.deletedAt == nil }
+            let withSets = liveSessions.filter { !$0.orderedSets.isEmpty }.count
+            let withoutSets = liveSessions.count - withSets
+            let oldest = (liveSessions.map(\.date) + liveCardio.map(\.start)).min()
+            let newest = (liveSessions.map(\.date) + liveCardio.map(\.start)).max()
             return ["\(store.path)",
-                    "  open: ok · strength \(sessions) (soft-deleted \(deleted)) · cardio \(cardio) · assessments \(assessments) · newest \(latest.map { format($0) } ?? "—")"]
+                    "  open: ok · strength \(sessions.count) (\(sessions.count - liveSessions.count) deleted; \(withSets) with sets, \(withoutSets) without) · cardio \(cardio.count) (\(cardio.count - liveCardio.count) deleted) · assessments \(assessments)",
+                    "  range: \(oldest.map { format($0) } ?? "—") → \(newest.map { format($0) } ?? "—")",
+                    "  by month (strength/cardio): \(monthly(sessions: liveSessions, cardio: liveCardio))"]
         } catch {
             return ["\(store.path)", "  open: FAILED · \(error.localizedDescription)"]
+        }
+    }
+
+    private static func monthly(sessions: [WorkoutSession], cardio: [CardioWorkout]) -> String {
+        let key = DateFormatter()
+        key.dateFormat = "yyyy-MM"
+        var strength: [String: Int] = [:]
+        var counts: [String: Int] = [:]
+        for session in sessions {
+            let bucket = key.string(from: session.date)
+            strength[bucket, default: 0] += 1
+            counts[bucket, default: 0] += 1
+        }
+        for workout in cardio {
+            counts[key.string(from: workout.start), default: 0] += 1
+        }
+        guard !counts.isEmpty else { return "none" }
+        return counts.keys.sorted().suffix(10).map { bucket in
+            "\(bucket) \(strength[bucket] ?? 0)/\(counts[bucket] ?? 0)"
+        }.joined(separator: " · ")
+    }
+
+    private static func importedKind(for type: CardioType) -> ImportedWorkoutKind {
+        switch type {
+        case .run: return .running
+        case .walk: return .walking
+        case .cycle: return .cycling
+        case .swim: return .swimming
+        case .rowing: return .rowing
+        case .hiit: return .hiit
+        case .boxing: return .boxing
+        case .elliptical, .stairClimber, .other: return .other
         }
     }
 

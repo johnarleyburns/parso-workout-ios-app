@@ -148,6 +148,11 @@ struct CadenceApp: App {
             // store before the catalog/history index work runs.
             _ = StoreRecovery.autoRecoverIfNeeded(container: container)
             guard !Task.isCancelled else { return nil as UUID? }
+            // One-time: hide duration-only twins left behind when a workout was
+            // restored from Apple Health instead of matched to its local row.
+            // Soft delete only, and only next to a session that has sets.
+            _ = EmptyDuplicateCleanup.runIfNeeded(container: container)
+            guard !Task.isCancelled else { return nil as UUID? }
             // Decode the bundled DB++ catalog here, off the main actor, so the
             // first Home volume, search, or template lookup does not pay it
             // while the UI waits.

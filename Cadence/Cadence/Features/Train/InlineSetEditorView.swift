@@ -26,8 +26,11 @@ struct InlineSetEditorView: View {
     @State var repsKeypadPresented = false
     @State var keypadError: String?
     @State private var deletePresented = false
-    @State private var performerID: UUID?
-    @State private var showHistory = false
+    @State var performerID: UUID?
+    @State var showHistory = false
+    @State var historyPresented = false
+    @State var partnersPresented = false
+    @State var effortPresented = false
 
     init(config: InlineEditorConfig, wouldBePR: ((Double, Int) -> Bool)?,
          onSave: @escaping (SetDraft) -> Void, onDelete: (() -> Void)?,
@@ -49,16 +52,16 @@ struct InlineSetEditorView: View {
         _performerID = State(initialValue: config.performerID)
     }
 
-    private var weightText: String {
+    var weightText: String {
         ExpandedSetDraftModel.displayWeightText(draft.weight,
                                                 hasExplicitEntry: hasExplicitWeightEntry,
                                                 bodyweight: config.bodyweight)
     }
-    private var isPR: Bool { wouldBePR?(draft.canonicalWeightKg, draft.reps) ?? false }
-    private var effortValueText: String {
+    var isPR: Bool { wouldBePR?(draft.canonicalWeightKg, draft.reps) ?? false }
+    var effortValueText: String {
         draft.effort.map { "\(Int($0.rounded()))" } ?? "—"
     }
-    private var effortAccessibilityText: String {
+    var effortAccessibilityText: String {
         if let effort = draft.effort {
             return "\(draft.effortMode.displayName) \(Int(effort.rounded()))"
         }
@@ -70,8 +73,6 @@ struct InlineSetEditorView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     headerContext
-                    performerSection
-                    historySection
                     if config.nonWeighted {
                         Label("Non-weighted movement · no load entry", systemImage: "figure.strengthtraining.traditional")
                             .foregroundStyle(.secondary)
@@ -82,7 +83,6 @@ struct InlineSetEditorView: View {
                         weightSection
                     }
                     repsSection
-                    effortSection
                 }
                 .padding(.horizontal, 20).padding(.top, 12).padding(.bottom, 24)
             }
@@ -96,6 +96,15 @@ struct InlineSetEditorView: View {
                 Button("Delete", role: .destructive) { Haptics.restComplete(); onDelete?() }
                 Button("Cancel", role: .cancel) { }
             } message: { Text("This set will be removed from the workout.") }
+            .sheet(isPresented: $historyPresented) {
+                setEditorSheet(title: "History") { historySection }
+            }
+            .sheet(isPresented: $partnersPresented) {
+                setEditorSheet(title: "Partner") { performerSection }
+            }
+            .sheet(isPresented: $effortPresented) {
+                setEditorSheet(title: "Effort") { effortSection }
+            }
             .sheet(isPresented: $keypadPresented) { keypad }
             .sheet(isPresented: $repsKeypadPresented) { repsKeypad }
         }
@@ -111,8 +120,9 @@ struct InlineSetEditorView: View {
 
     private var headerContext: some View {
         VStack(spacing: 4) {
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
+            HStack(alignment: .center, spacing: 8) {
                 if config.setTotal > 0 {
+                    setProgressRing
                     Text("\(config.setNumber)/\(config.setTotal)")
                         .font(.subheadline.weight(.bold))
                         .monospacedDigit()
@@ -125,6 +135,30 @@ struct InlineSetEditorView: View {
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier("setEditor.exerciseName")
+                Menu {
+                    Button {
+                        showHistory = true
+                        historyPresented = true
+                    } label: {
+                        Label("History", systemImage: "clock.arrow.circlepath")
+                    }
+                    .accessibilityIdentifier("setEditor.menu.history")
+                    Button { partnersPresented = true } label: {
+                        Label("Partner", systemImage: "person.2")
+                    }
+                    .accessibilityIdentifier("setEditor.menu.partner")
+                    Button { effortPresented = true } label: {
+                        Label("Effort", systemImage: "flame")
+                    }
+                    .accessibilityIdentifier("setEditor.menu.effort")
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 36, height: 36)
+                }
+                .accessibilityIdentifier("setEditor.menu")
+                .accessibilityLabel("Set options")
             }
             if let context = config.recordedText {
                 Text(context).font(.caption).foregroundStyle(.secondary)
@@ -133,94 +167,44 @@ struct InlineSetEditorView: View {
         }
     }
 
-    /// The roster entry for whoever is currently selected. The History card reads
-    /// this, so it re-derives by SwiftUI recompute whenever the performer
-    /// changes.
-    private var selectedDefault: InlineEditorConfig.PerformerDefault? {
-        config.performerDefaults.first { $0.performerID == performerID }
+    private var setProgressRing: some View {
+        let progress = config.setTotal > 0
+            ? min(1, max(0, Double(config.setNumber) / Double(config.setTotal)))
+            : 0
+        return ZStack {
+            Circle().stroke(Color.green.opacity(0.22), lineWidth: 3)
+            Circle()
+                .trim(from: 0, to: progress)
+                .stroke(Color.green, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+        .frame(width: 20, height: 20)
+        .accessibilityHidden(true)
     }
 
-    /// Per-selected-performer history: prior-session sets on this movement
-    /// ("Last time") and the most recent set logged today ("Last set today").
-    /// Decision D8: an explicit "No previous history for <name>" line satisfies
-    /// "always show (if any)" and is assertable in the smoke test.
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("History").font(.headline)
-                Spacer()
-                Button(showHistory ? "Hide History" : "Show History") {
-                    withAnimation(.snappy(duration: 0.2)) { showHistory.toggle() }
-                    Haptics.selection()
-                }
-                .font(.subheadline.weight(.semibold))
-                .buttonStyle(.plain)
-                .foregroundStyle(.tint)
-                .accessibilityIdentifier("setEditor.history.toggle")
+    @ViewBuilder
+    private func setEditorSheet<Content: View>(title: String,
+                                               @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
+            ScrollView {
+                content()
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 16)
             }
-            if showHistory {
-                if let lastTime = historyLastTimeText {
-                    Text("Last time: \(lastTime)")
-                        .accessibilityIdentifier("setEditor.history.lastTime")
-                } else {
-                    Text("No previous history for \(selectedPerformerName)")
-                        .foregroundStyle(.secondary)
-                        .accessibilityIdentifier("setEditor.history.noHistory")
-                }
-                if let lastSet = selectedDefault?.lastSetThisSession {
-                    Text("Last set today: \(lastSet)")
-                        .accessibilityIdentifier("setEditor.history.lastSet")
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") {
+                        historyPresented = false
+                        partnersPresented = false
+                        effortPresented = false
+                    }
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(.background, in: RoundedRectangle(cornerRadius: 14))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("setEditor.history")
     }
 
-    private var selectedPerformerName: String {
-        guard let performerID else { return "Me" }
-        return config.roster.first(where: { $0.personID == performerID })?.name ?? String(localized: "Partner")
-    }
-
-    private var historyLastTimeText: String? {
-        if let text = selectedDefault?.lastTimeText { return text }
-        // The owner's card history is the page's source of truth. Use it when
-        // the per-performer default is missing rather than showing a false
-        // "No previous history".
-        return performerID == nil ? config.lastTimeText : nil
-    }
-
-    private var performerSection: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Menu {
-                Button("Me") { performerID = nil }
-                ForEach(config.roster.filter { !$0.isMe && $0.personID != nil }) { person in
-                    Button(person.name) { performerID = person.personID }
-                }
-                if let onAddPartner {
-                    Divider()
-                    Button("Add Partner…") { onAddPartner() }
-                }
-            } label: {
-                HStack {
-                    Image(systemName: performerID == nil ? "person.fill" : "person.2.fill")
-                    Text(selectedPerformerName).fontWeight(.semibold)
-                    Spacer()
-                    Text("Change").foregroundStyle(.tint)
-                    Image(systemName: "chevron.up.chevron.down").font(.caption)
-                }
-                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-            }
-            .buttonStyle(.bordered)
-            .accessibilityLabel("Performer, \(selectedPerformerName)")
-            .accessibilityIdentifier("setEditor.performer")
-        }
-        .padding(12)
-        .background(.background, in: RoundedRectangle(cornerRadius: 14))
-    }
     private var weightSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .center, spacing: 8) {
@@ -318,38 +302,6 @@ struct InlineSetEditorView: View {
             }
         }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
     }
-    private var effortSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Effort").font(.headline)
-            HStack(spacing: 0) {
-                ForEach(WatchEffortMode.allCases) { mode in
-                    Button(mode.displayName) { draft.selectMode(mode); onEffortMode(mode); Haptics.selection() }
-                        .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity, minHeight: 48)
-                        .background(draft.effortMode == mode ? Color.green.opacity(0.22) : .clear)
-                        .accessibilityIdentifier("setEditor.effort.\(mode.rawValue)")
-                        .accessibilityAddTraits(draft.effortMode == mode ? .isSelected : [])
-                }
-            }.background(.background, in: RoundedRectangle(cornerRadius: 10)).clipShape(RoundedRectangle(cornerRadius: 10))
-            HStack(spacing: 12) {
-                adjustmentButton("−") { adjustEffort(by: -1) }
-                    .accessibilityLabel("Decrease effort")
-                    .accessibilityIdentifier("setEditor.effort.minus")
-                Text(effortValueText)
-                    .scaledSystemFont(42, relativeTo: .title, weight: .bold, design: .rounded)
-                    .monospacedDigit()
-                    .frame(maxWidth: .infinity)
-                    .accessibilityIdentifier("setEditor.effort.value")
-                    .accessibilityLabel(effortAccessibilityText)
-                adjustmentButton("+") { adjustEffort(by: 1) }
-                    .accessibilityLabel("Increase effort")
-                    .accessibilityIdentifier("setEditor.effort.plus")
-            }
-        }.padding(16).background(.background, in: RoundedRectangle(cornerRadius: 16))
-    }
-    private func adjustEffort(by delta: Double) {
-        draft.adjustEffort(by: delta)
-        Haptics.selection()
-    }
     private var footer: some View {
         Button(action: {
             guard let result = draft.submit() else { return }
@@ -373,7 +325,7 @@ struct InlineSetEditorView: View {
         .accessibilityIdentifier(config.isEditing ? "setEditor.save" : "session.set.log")
         .padding(.horizontal, 20).padding(.vertical, 10).background(.bar)
     }
-    private func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.bordered).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
+    func adjustmentButton(_ title: String, action: @escaping () -> Void) -> some View { Button(title, action: action).font(.title3.weight(.bold)).buttonStyle(.bordered).tint(.green).frame(maxWidth: .infinity, minHeight: 56).contentShape(Rectangle()).padding(.vertical, 9) }
     private func weightStepButton(_ title: String, label: LocalizedStringKey,
                                   identifier: String,
                                   action: @escaping () -> Void) -> some View {

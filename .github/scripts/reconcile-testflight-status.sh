@@ -179,6 +179,47 @@ reconcile_issue() {
   echo "Reconciled #$issue: $status"
 }
 
+assign_recent_builds() {
+  [[ -n "${APP_BUNDLE_ID:-}" ]] || return 0
+  local apps="$tmp/apps" builds="$tmp/builds" groups="$tmp/groups"
+  local check="$tmp/group-check" add="$tmp/group-add" app_id group_id build_id code
+
+  api_get "$apps" --get --data-urlencode "filter[bundleId]=$APP_BUNDLE_ID" \
+    'https://api.appstoreconnect.apple.com/v1/apps' || return 0
+  [[ "$HTTP_CODE" == 200 ]] || return 0
+  app_id=$(jq -r '.data[0].id // empty' "$apps")
+  [[ -n "$app_id" ]] || return 0
+
+  api_get "$groups" --get --data-urlencode "filter[app]=$app_id" \
+    --data-urlencode 'filter[name]=Internal QA' \
+    'https://api.appstoreconnect.apple.com/v1/betaGroups' || return 0
+  [[ "$HTTP_CODE" == 200 ]] || return 0
+  group_id=$(jq -r '.data[] | select(.attributes.name == "Internal QA") | .id' "$groups" | head -1)
+  [[ -n "$group_id" ]] || { echo "::warning title=TestFlight distribution::No Internal QA group found"; return 0; }
+
+  api_get "$builds" --get --data-urlencode "filter[app]=$app_id" \
+    --data-urlencode 'sort=-uploadedDate' --data-urlencode 'limit=10' \
+    'https://api.appstoreconnect.apple.com/v1/builds' || return 0
+  [[ "$HTTP_CODE" == 200 ]] || return 0
+
+  while IFS= read -r build_id; do
+    [[ -n "$build_id" ]] || continue
+    internal_qa_for_build "$check" "$app_id" "$build_id"
+    if [[ "$HTTP_CODE" == 200 && "$(jq '.data | length' "$check")" != "0" ]]; then
+      continue
+    fi
+    code=$(curl -sS -o "$add" -w '%{http_code}' "${auth[@]}" -X POST \
+      --data "{\"data\":[{\"type\":\"builds\",\"id\":\"$build_id\"}]}" \
+      "https://api.appstoreconnect.apple.com/v1/betaGroups/$group_id/relationships/builds" || true)
+    case "$code" in
+      200|201|204|409) echo "Assigned TestFlight build $build_id to Internal QA (HTTP $code)." ;;
+      *) echo "::warning title=TestFlight distribution::Could not assign build $build_id to Internal QA (HTTP $code)." ;;
+    esac
+  done < <(jq -r '.data[] | select(.attributes.processingState == "VALID") | .id' "$builds")
+}
+
+assign_recent_builds
+
 if [[ -n "$only_issue" ]]; then
   reconcile_issue "$only_issue"
 else

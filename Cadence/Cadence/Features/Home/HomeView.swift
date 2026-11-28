@@ -35,6 +35,7 @@ struct HomeView: View {
     @Environment(\.scenePhase) var scenePhase
     @Environment(\.rootTabSelection) var rootTabSelection
     @Environment(WarmupCoverController.self) var warmupCover
+    @Environment(WeekSurfacePresenter.self) var weekSurface: WeekSurfacePresenter?
     @Environment(\.cadenceModelContainer) var cadenceModelContainer
     @Query(sort: \WorkoutSession.date, order: .reverse) var sessions: [WorkoutSession]
     @Query(sort: \CardioWorkout.start, order: .reverse) var cardio: [CardioWorkout]

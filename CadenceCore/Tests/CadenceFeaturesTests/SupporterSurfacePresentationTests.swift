@@ -4,9 +4,10 @@ import CadenceWorkoutFeatures
 import CadencePhoneFeatures
 
 struct SupporterSurfacePresentationTests {
-    @Test func trailingItemsOnlyIncludeBadgeBeforeSettingsForSupporter() {
-        #expect(HomeHeaderPresentation(isSupporter: false).trailingItems == [.settings])
-        #expect(HomeHeaderPresentation(isSupporter: true).trailingItems == [.supporterBadge, .settings])
+    @Test func supporterBadgeIsLeadingOnlyAndNeverInTheMenu() {
+        #expect(HomeHeaderPresentation(isSupporter: false).leadingItems.isEmpty)
+        #expect(HomeHeaderPresentation(isSupporter: true).leadingItems == [.supporterBadge])
+        #expect(!HomeHeaderPresentation(isSupporter: true).menuItems.map(\.rawValue).contains("supporterBadge"))
     }
 
     @Test func badgeMetrics() throws {

@@ -27,10 +27,4 @@ public struct HomeHeaderPresentation: Equatable, Sendable {
     }
 }
 
-public enum TodayHeaderTrailingItem: Equatable, Sendable { case supporterBadge, settings }
 
-public extension HomeHeaderPresentation {
-    var trailingItems: [TodayHeaderTrailingItem] {
-        supporterBadge == nil ? [.settings] : [.supporterBadge, .settings]
-    }
-}

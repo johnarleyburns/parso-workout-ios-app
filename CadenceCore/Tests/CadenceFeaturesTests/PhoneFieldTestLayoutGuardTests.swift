@@ -72,7 +72,11 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(header.contains("TimelineView"))
         #expect(!header.contains("WallClockLabel"))
         #expect(!header.contains("Timer.publish"))
-        #expect(header.contains(".font(.system(.title3"))
+        // Elapsed, live HR and Work/Rest share one size.
+        #expect(header.contains("private func intervalTimerButton"))
+        #expect(header.contains(".font(.headline.weight(.semibold))"))
+        #expect(!header.contains("design: .rounded"))
+        #expect(!header.contains(".subheadline.weight(.bold)"))
         #expect(header.contains("intervalTimerButton(now: now)"))
         #expect(header.contains("timers.beginRest(now: ref)"))
         #expect(header.contains("timers.beginWork(now: ref)"))

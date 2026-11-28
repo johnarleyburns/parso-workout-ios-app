@@ -6,9 +6,9 @@ import CadencePhoneFeatures
 struct ThisWeekCompactTests {
     private func display(strength: String, cardio: String) -> WeeklyIntentDisplay {
         WeeklyIntentDisplay(
-            strengthRing: .init(normalizedProgress: 0.5, tintRole: .productive,
+            strengthRing: .init(normalizedProgress: 0.5, tintRole: .green,
                                 valueText: strength, accessibilityLabel: "Strength", accessibilityValue: strength),
-            cardioRing: .init(normalizedProgress: 0.4, tintRole: .productive,
+            cardioRing: .init(normalizedProgress: 0.4, tintRole: .green,
                               valueText: cardio, accessibilityLabel: "Cardio", accessibilityValue: cardio))
     }
 

@@ -8,11 +8,25 @@ public struct WeeklyIntentRingDisplay: Equatable, Sendable {
     public let valueText: String
     public let accessibilityLabel: String
     public let accessibilityValue: String
+
+    public init(normalizedProgress: Double, tintRole: WeeklySetTintRole,
+                valueText: String, accessibilityLabel: String, accessibilityValue: String) {
+        self.normalizedProgress = normalizedProgress
+        self.tintRole = tintRole
+        self.valueText = valueText
+        self.accessibilityLabel = accessibilityLabel
+        self.accessibilityValue = accessibilityValue
+    }
 }
 
 public struct WeeklyIntentDisplay: Equatable, Sendable {
     public let strengthRing: WeeklyIntentRingDisplay
     public let cardioRing: WeeklyIntentRingDisplay
+
+    public init(strengthRing: WeeklyIntentRingDisplay, cardioRing: WeeklyIntentRingDisplay) {
+        self.strengthRing = strengthRing
+        self.cardioRing = cardioRing
+    }
 }
 
 /// Glanceable weekly rings: strength sets (never days per week) and cardio minutes.

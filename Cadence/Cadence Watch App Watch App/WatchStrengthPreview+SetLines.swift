@@ -10,7 +10,7 @@ extension WatchStrengthPreview {
     /// ones Start carries. Kept out of `body` to stay inside the type-checker's
     /// budget.
     @ViewBuilder
-    private func setLines(for name: String) -> some View {
+    func setLines(for name: String) -> some View {
         let prepared = setup.preparedLaunch(from: launch)
         if let prescription = prepared.planPayload?.strength?.prescriptions.first(where: {
             $0.exerciseName.caseInsensitiveCompare(name) == .orderedSame
@@ -27,7 +27,7 @@ extension WatchStrengthPreview {
         }
     }
 
-    private func loadLabel(targetWeightKg: Double?, name: String) -> String {
+    func loadLabel(targetWeightKg: Double?, name: String) -> String {
         if let targetWeightKg { return Format.weight(targetWeightKg, unit: settings.unit) }
         return ExerciseLoading.isBodyweight(named: name) ? "BW" : "—"
     }

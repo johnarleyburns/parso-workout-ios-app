@@ -63,6 +63,21 @@ public enum WorkoutType: String, CaseIterable, Codable, Sendable, Identifiable {
     /// false for the cardio/interval recorder.
     public var isStrength: Bool { self == .weights }
 
+    public init?(cardioType: CardioType) {
+        switch cardioType {
+        case .run: self = .run
+        case .walk: self = .walk
+        case .cycle: self = .cycle
+        case .rowing: self = .rowing
+        case .swim: self = .swim
+        case .elliptical: self = .elliptical
+        case .stairClimber: self = .stairClimber
+        case .hiit: self = .hiit
+        case .boxing: self = .boxing
+        case .other: self = .other
+        }
+    }
+
     /// Maps a cardio/interval `WorkoutType` to its `CardioType`. Returns nil for
     /// `.weights`, which is logged as a strength session, not cardio.
     public var cardioType: CardioType? {

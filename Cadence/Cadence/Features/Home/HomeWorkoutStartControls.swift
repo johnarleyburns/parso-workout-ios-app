@@ -15,21 +15,60 @@ struct HomeWorkoutStartControls: View {
     let onCustomCardio: (String, Bool) -> Void
     let onSuggestedCardio: () -> Void
     @State private var showingCustomCardio = false
+    @State private var showingAllCardio = false
+    @Query(sort: \CardioWorkout.start, order: .reverse) private var cardioWorkouts: [CardioWorkout]
+
+    /// The three most recently logged cardio types, newest first, deduplicated.
+    private var recentCardio: [WorkoutType] {
+        let logged = cardioWorkouts
+            .filter { $0.deletedAt == nil }
+            .compactMap { WorkoutType(cardioType: $0.type) }
+            .filter { $0 != .other }
+        return HomeRecentCardioChoices.recent(logged)
+    }
+
+    private var rows: [HomeStartRow] { HomeStartList.rows(recentCardio: recentCardio) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Start a workout")
+            Text("Start a Workout")
                 .font(.headline)
             VStack(spacing: 0) {
-                ForEach(Array(HomeWorkoutStartChoice.allChoices.enumerated()), id: \.element.id) { index, option in
+                ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                     if index > 0 { Divider().padding(.leading, 52) }
-                    row(option)
+                    switch item {
+                    case .choice(let option):
+                        row(option)
+                    case .more:
+                        moreRow
+                    }
                 }
             }
         }
         .padding(CGFloat(LayoutMetrics.cardPadding))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceCard()
+        .sheet(isPresented: $showingAllCardio) {
+            NavigationStack {
+                List(HomeStartList.moreChoices(), id: \.id) { option in
+                    Button {
+                        Haptics.selection()
+                        showingAllCardio = false
+                        start(option)
+                    } label: {
+                        Label(LocalizedStringKey(option.title), systemImage: option.symbol)
+                    }
+                }
+                .navigationTitle("All Cardio")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { showingAllCardio = false }
+                    }
+                }
+            }
+            .accessibilityIdentifier("home.start.moreList")
+        }
         .sheet(isPresented: $showingCustomCardio) {
             NavigationStack {
                 OtherCardioEntryView { description, gps in
@@ -70,6 +109,35 @@ struct HomeWorkoutStartControls: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("home.start.\(option.id)")
         .accessibilityHint("Starts \(option.title)")
+    }
+
+    private var moreRow: some View {
+        Button {
+            Haptics.selection()
+            showingAllCardio = true
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "ellipsis.circle")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 34, height: 34)
+                    .background(Color.secondary.opacity(0.14), in: Circle())
+                Text("More…")
+                    .font(.body.weight(.medium))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 8)
+            .frame(minHeight: 48)
+            .background(Color.secondary.opacity(0.08),
+                        in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("home.start.more")
+        .accessibilityHint("Shows every cardio workout")
     }
 
     private func start(_ option: HomeWorkoutStartChoice) {

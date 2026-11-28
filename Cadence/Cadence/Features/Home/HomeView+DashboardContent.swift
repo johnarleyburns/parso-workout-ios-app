@@ -11,10 +11,31 @@ extension HomeView {
         VStack(alignment: .leading, spacing: 12) {
             Text("This Week").font(.headline)
                 .padding(.bottom, 8)
-            WeeklyIntentRingsCard(
-                display: WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio),
-                tabSelection: rootTabSelection)
-                .frame(minHeight: 260)
+            let display = WeeklyIntentPresenter.make(strength: dashboard.strength, cardio: dashboard.cardio)
+            HStack(alignment: .center, spacing: 16) {
+                WeeklyIntentRingsCard(display: display,
+                                      tabSelection: rootTabSelection,
+                                      compact: true)
+                    .frame(width: CGFloat(ThisWeekCompactPresentation.ringDiameter),
+                           height: CGFloat(ThisWeekCompactPresentation.ringDiameter))
+                VStack(alignment: .leading, spacing: 14) {
+                    ForEach(ThisWeekCompactPresentation.rows(from: display)) { row in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.kind == .strength
+                                 ? String(localized: "Strength")
+                                 : String(localized: "Cardio"))
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Text(row.value)
+                                .font(.headline.monospacedDigit())
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityIdentifier(row.accessibilityIdentifier)
+                    }
+                }
+                Spacer(minLength: 0)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceCard()

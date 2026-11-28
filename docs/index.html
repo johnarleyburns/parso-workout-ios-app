@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cladiron</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #ffffff;
+    --ink: #1c1c1e;
+    --ink-secondary: #4b4b4f;
+    --accent: #d1551f;
+    --hairline: #e3e3e6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #121214;
+      --ink: #f2f2f3;
+      --ink-secondary: #b7b7bb;
+      --accent: #ef8450;
+      --hairline: #2c2c2f;
+    }
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  main {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 48px 20px 80px;
+  }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  .subtitle { color: var(--ink-secondary); margin: 0 0 28px; }
+  p { margin: 0 0 16px; }
+  ul { padding-left: 20px; margin: 0 0 24px; }
+  li { margin-bottom: 8px; }
+  a { color: var(--accent); }
+  footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--hairline);
+    color: var(--ink-secondary);
+    font-size: 14px;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Cladiron</h1>
+  <p class="subtitle">Strength and cardio training for iPhone and Apple Watch &middot; Parso Consulting</p>
+
+  <p>Cladiron is an open-source strength and cardio training app. It needs no account,
+  contains no tracking or advertising, and stores your history only on your device.
+  A full JSON archive is the backup and device-migration path.</p>
+
+  <ul>
+    <li><a href="privacy.html">Privacy policy</a></li>
+    <li><a href="https://github.com/johnarleyburns/parso-workout-ios-app">Source code</a></li>
+    <li><a href="https://github.com/johnarleyburns/parso-workout-ios-app/issues">Support</a></li>
+  </ul>
+
+  <footer>
+    Cladiron (bundle id <code>guru.parso.ios-workout-app</code>) &middot; Last updated November 27, 2026
+  </footer>
+</main>
+</body>
+</html>

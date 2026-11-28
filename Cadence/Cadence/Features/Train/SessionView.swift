@@ -59,6 +59,10 @@ struct SessionView: View {
     @Namespace var sessionRotorNamespace
     @State var usePreviousPresented = false
     @State var swapTarget: ExerciseSwap.SwapTarget?
+    /// Exercise opened from a planned row's overflow menu.
+    @State var detailExercise: Exercise?
+    /// Volume summary lives in the workout menu, not the scrolling body.
+    @State var volumeSummaryPresented = false
     @State var coolingDown = false
 
     @State var prMoment: PRMoment?

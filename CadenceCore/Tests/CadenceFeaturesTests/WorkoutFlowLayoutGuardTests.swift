@@ -46,11 +46,18 @@ struct WorkoutFlowLayoutGuardTests {
         #expect(editor.contains("LiveWorkoutVolumeSummary"))
     }
 
-    @Test func workoutAddExerciseFollowsVolumeSummary() throws {
+    @Test func workoutAddExerciseAndVolumeSummaryLiveInTheHeaderMenu() throws {
         let session = try source("Cadence/Cadence/Features/Train/SessionView+Rendering.swift")
-        let volume = try position(of: "LiveWorkoutVolumeSummary", in: session)
-        let add = try position(of: "suggestExerciseButton", in: session)
-        #expect(volume < add)
+        // Both moved out of the scrolling body: the toolbar owns Add Exercise
+        // and the overflow owns the volume summary sheet.
+        #expect(session.contains("sheet(isPresented: $volumeSummaryPresented)"))
+        #expect(session.contains("navigationTitle(\"Volume Summary\")"))
+        #expect(!session.contains("suggestExerciseButton"))
+        let actions = try source("Cadence/Cadence/Features/Train/SessionView+Actions.swift")
+        #expect(actions.contains("session.addExercise"))
+        #expect(actions.contains("suggestExercise()"))
+        #expect(actions.contains("session.volumeSummary"))
+        #expect(actions.contains("volumeSummaryPresented = true"))
     }
 
     @Test func coolDownStartsWithoutASecondConfirmation() throws {

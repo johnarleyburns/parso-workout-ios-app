@@ -24,7 +24,7 @@ struct SessionLiveHRInline: View {
                     .font(.caption)
                     .foregroundStyle(.red)
                 Text(bpmText(now: context.date))
-                    .font(.caption.weight(.semibold))
+                    .font(.headline.monospacedDigit().weight(.semibold))
                     .monospacedDigit()
             }
         }

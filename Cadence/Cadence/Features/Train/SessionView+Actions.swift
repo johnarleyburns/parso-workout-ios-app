@@ -25,8 +25,18 @@ extension SessionView {
                     .accessibilityLabel("Close workout")
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button { suggestExercise() } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityIdentifier("session.addExercise")
+            .accessibilityLabel("Add exercise")
             Menu {
+                Button { volumeSummaryPresented = true } label: {
+                    Label("Volume Summary", systemImage: "chart.bar.xaxis")
+                }
+                .accessibilityIdentifier("session.volumeSummary")
+                .disabled(cache.state.contexts.isEmpty)
                 if let plan {
                     NavigationLink {
                         RoutineDetailView(plan: plan, onEditorStart: { _ in })
@@ -78,17 +88,26 @@ extension SessionView {
                 Text(name).font(.headline)
                     .accessibilityIdentifier("exerciseCard.\(name)")
                 Spacer()
-                if let ex = plannedExerciseIndex[name] {
-                    NavigationLink {
-                        ExerciseDetailView(exercise: ex)
-                    } label: {
-                        Image(systemName: "info.circle").font(.headline)
-                            .foregroundStyle(.secondary)
+                Button {
+                    if let ex = plannedExerciseIndex[name]
+                        ?? (try? WorkoutRepository.findOrCreateExercise(named: name, in: context)) {
+                        openInlineEditor(for: ex)
                     }
-                    .accessibilityIdentifier("exercise.info.\(name)")
-                    .accessibilityLabel("\(name) details")
+                } label: {
+                    Image(systemName: "plus").font(.headline)
+                        .foregroundStyle(.tint).frame(width: 44, height: 44)
                 }
+                .accessibilityIdentifier("set.add.\(name)")
+                .accessibilityLabel("Add set to \(name)")
                 Menu {
+                    if let ex = plannedExerciseIndex[name] {
+                        Button {
+                            detailExercise = ex
+                        } label: {
+                            Label("Exercise details", systemImage: "info.circle")
+                        }
+                        .accessibilityIdentifier("exercise.info.\(name)")
+                    }
                     Button { swapTarget = .planned(name: name) } label: {
                         Label("Swap", systemImage: "arrow.triangle.2.circlepath")
                     }
@@ -105,24 +124,8 @@ extension SessionView {
                 .accessibilityIdentifier("planned.menu.\(name)")
                 .accessibilityLabel("Planned exercise options")
             }
-            if let rx = prescription(for: name) {
-                Text(rx).font(.subheadline).foregroundStyle(.secondary)
-                    .accessibilityIdentifier("session.rx.\(name)")
-            } else {
-                Text("Planned — tap to log").font(.caption).foregroundStyle(.secondary)
-            }
-            if inlineExercise == nil || inlineExercise?.name != name {
-                Button {
-                    if let ex = plannedExerciseIndex[name]
-                        ?? (try? WorkoutRepository.findOrCreateExercise(named: name, in: context)) {
-                        openInlineEditor(for: ex)
-                    }
-                } label: { Label("Add Set", systemImage: "plus") }
-                    .buttonStyle(.bordered).controlSize(.small)
-                    .accessibilityIdentifier("set.add.\(name)")
-            }
         }
-        .padding(CGFloat(LayoutMetrics.cardPadding))
+        .padding(CGFloat(LayoutMetrics.cardPadding - 4))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceGlassCard(in: CadenceCardShape.rounded)
     }

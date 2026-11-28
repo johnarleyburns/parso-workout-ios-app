@@ -41,6 +41,10 @@ struct CombinedSessionLaunch: Identifiable {
 
 enum WorkoutStartCue {
     case countdown, single, none
+
+    /// The audible countdown is three ticks plus the start alert; the workout
+    /// clock must not run until it finishes.
+    static let countdownLeadIn: TimeInterval = 3
 }
 
 /// Pushed destinations reachable from Home.

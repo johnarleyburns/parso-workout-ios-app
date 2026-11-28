@@ -139,16 +139,25 @@ struct LiveWorkoutVolumeSummary: View {
             HStack {
                 Text("Volume Summary").font(.headline)
                 Spacer()
-                Text(presentation == .planned ? "Planned" : "This workout")
-                    .font(.caption).foregroundStyle(.secondary)
+                if presentation == .planned {
+                    Text("Planned")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Button {
+                    withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
+                } label: {
+                    Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(expanded
+                                         ? "\(accessibilityPrefix).volume.showLess"
+                                         : "\(accessibilityPrefix).volume.showMore")
+                .accessibilityLabel(expanded ? "Hide volume details" : "Show volume details")
             }
-            Button(expanded ? "Hide details" : "Details…") {
-                withAnimation(.easeInOut(duration: 0.18)) { expanded.toggle() }
-            }
-            .font(.subheadline.weight(.semibold))
-            .accessibilityIdentifier(expanded
-                                     ? "\(accessibilityPrefix).volume.showLess"
-                                     : "\(accessibilityPrefix).volume.showMore")
             if expanded {
                 if performers.count > 1 {
                     ScrollView(.horizontal, showsIndicators: false) {

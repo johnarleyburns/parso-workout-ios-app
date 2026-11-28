@@ -36,28 +36,22 @@ extension SessionView {
                                        systemImage: "dumbbell",
                                        description: Text("Use a previous workout, or add exercises below."))
             }
-            ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
-                exerciseCardView(for: ctx)
-                    .id(ctx.exerciseID)
-            }
-            ForEach(plannedOnlyNames, id: \.self) { name in
-                plannedCard(name)
-            }
-            if isActiveSession {
-                LiveWorkoutVolumeSummary(state: liveVolumeState,
-                                         expanded: $liveVolumeExpanded,
-                                         performers: liveVolumePerformers,
-                                         performerStates: liveVolumePerformerStates)
-            }
-            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                suggestExerciseButton
-
-                if !isActiveSession && isManualLog {
-                    CadenceActionButton(title: String(localized: "Done"), systemImage: "checkmark") {
-                        finishManualLog()
-                    }
-                    .accessibilityIdentifier("log.done")
+            // Exercise rows are one continuous list: tight spacing between
+            // them, with the page rhythm reserved for sections around it.
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
+                    exerciseCardView(for: ctx)
+                        .id(ctx.exerciseID)
                 }
+                ForEach(plannedOnlyNames, id: \.self) { name in
+                    plannedCard(name)
+                }
+            }
+            if !isActiveSession && isManualLog {
+                CadenceActionButton(title: String(localized: "Done"), systemImage: "checkmark") {
+                    finishManualLog()
+                }
+                .accessibilityIdentifier("log.done")
             }
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))
@@ -119,6 +113,35 @@ extension SessionView {
             ExercisePickerView(onPick: handleExercisePickerSelection)
         }
         .sheet(item: $suggestExerciseRequest, content: suggestedExerciseSheet)
+        .sheet(isPresented: $volumeSummaryPresented) {
+            NavigationStack {
+                ScrollView {
+                    LiveWorkoutVolumeSummary(state: liveVolumeState,
+                                             expanded: .constant(true),
+                                             performers: liveVolumePerformers,
+                                             performerStates: liveVolumePerformerStates)
+                        .padding(CGFloat(LayoutMetrics.pagePadding))
+                }
+                .navigationTitle("Volume Summary")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { volumeSummaryPresented = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(item: $detailExercise) { exercise in
+            NavigationStack {
+                ExerciseDetailView(exercise: exercise)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { detailExercise = nil }
+                        }
+                    }
+            }
+        }
         .sheet(item: $swapTarget) { target in
             let pickAction: ExercisePickerView.PickAction = {
                 switch target {

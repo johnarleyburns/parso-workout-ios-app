@@ -44,6 +44,21 @@ Do this once in the Apple Developer portal and CI before the first local-only su
   the old schema check, revoke/rotate it. That check has been removed from the
   repo.
 
+## App icon
+
+The icon is an Icon Composer bundle (`Cadence/Cadence/AppIcon.icon`), replaced on
+30 Sep 2026; any build older than that carries the previous artwork.
+
+- The App Store product-page icon is taken from the **released version's build**,
+  so it only changes when a version containing the new icon is approved and
+  released. TestFlight showing the new icon does not update the store page.
+- App Store Connect caches the icon per app record. If App Information still
+  shows the old artwork after a new build is processed, upload
+  `design/icon/png/cladiron-1024-appstore.png` (1024×1024, opaque, new artwork)
+  in App Information and refresh.
+- Verify a build carries the new icon by checking the build row in TestFlight or
+  the version page before submitting.
+
 ## App Store Connect
 
 - Create or confirm the app record:

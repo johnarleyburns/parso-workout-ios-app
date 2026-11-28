@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - docs/privacy.html
+      - docs/**
       - .github/workflows/publish-privacy-policy.yml
   workflow_dispatch:
 

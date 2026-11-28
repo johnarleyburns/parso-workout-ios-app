@@ -84,6 +84,10 @@ struct WorkoutPlanEditor: View {
     @State var planVolumePerformerStates: [String: LiveWorkoutVolumeState] = [:]
     @State private var planVolumeExpanded = false
     @State var suggestExerciseRequest: SuggestedExerciseRequest?
+    @State var detailExercise: Exercise?
+    @State var partnersPresented = false
+    @State var repsPresented = false
+    @State var whyPresented = false
     @State var sendToWatchResultPresented = false
     @State var sendToWatchSucceeded = false
     @Environment(AppModel.self) var model
@@ -112,17 +116,6 @@ struct WorkoutPlanEditor: View {
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                if let rationale = plan.recommendationRationale {
-                    RecommendationRationaleDisclosure(rationale: rationale)
-                        .workoutPlanCard()
-                }
-
-                WorkoutPlanPartnerSection(partnerIDs: $plan.partnerIDs,
-                                          allPeople: allPeople,
-                                          onRosterChanged: resolvePartnerPlans)
-
-                workoutRepStructureControls
-
                 ForEach(plan.exercises) { exercise in
                     CompactExerciseRow(
                         exercise: exercise,
@@ -132,6 +125,11 @@ struct WorkoutPlanEditor: View {
                         onExclude: {
                             exclusionRowID = exercise.id
                             exclusionExercise = exerciseIndex[exercise.name.lowercased()]
+                        },
+                        onInfo: { detailExercise = exerciseIndex[exercise.name.lowercased()] },
+                        onRemove: {
+                            plan.exercises.removeAll { $0.id == exercise.id }
+                            resolvePartnerPlans()
                         })
                         .workoutPlanCard()
                 }
@@ -143,13 +141,9 @@ struct WorkoutPlanEditor: View {
                                          performerStates: planVolumePerformerStates)
 
                 if suggestedStrength != nil {
-                    // Add Exercise sits directly above Start. There is no
-                    // separate Edit mode on this screen.
-                    suggestExerciseButton
                     suggestedStrengthActions
                 } else {
                     if allowsStart { sendToWatchButton }
-                    suggestExerciseButton
                     if allowsStart { startButton }
                 }
             }
@@ -198,11 +192,18 @@ struct WorkoutPlanEditor: View {
                 .accessibilityIdentifier("editor.close")
             }
             ToolbarItemGroup(placement: .topBarTrailing) {
-                Button { settingsPresented = true } label: {
-                    Image(systemName: "gearshape")
+                Button { suggestExercise() } label: {
+                    Image(systemName: "plus")
                 }
-                .accessibilityLabel("Workout settings")
-                .accessibilityIdentifier("editor.showSettings")
+                .accessibilityLabel("Add exercise")
+                .accessibilityIdentifier("editor.addExercise")
+                Menu {
+                    planOverflowMenu
+                } label: {
+                    Image(systemName: "ellipsis")
+                }
+                .accessibilityLabel("Workout plan options")
+                .accessibilityIdentifier("editor.menu")
             }
         }
         .alert(sendToWatchSucceeded ? "Sent to your Watch" : "Couldn't send to Watch",
@@ -227,6 +228,12 @@ struct WorkoutPlanEditor: View {
                 }
             }
         }
+        .sheet(item: $detailExercise) { exercise in
+            planExerciseDetailSheet(exercise)
+        }
+        .sheet(isPresented: $partnersPresented) { planPartnersSheet }
+        .sheet(isPresented: $repsPresented) { planRepsSheet }
+        .sheet(isPresented: $whyPresented) { planWhySheet }
         .sheet(isPresented: $settingsPresented) {
             WorkoutSettingsSheet(
                 warmupMinutes: $plan.warmupMinutes,

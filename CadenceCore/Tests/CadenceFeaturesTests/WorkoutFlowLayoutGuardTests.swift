@@ -26,7 +26,7 @@ struct WorkoutFlowLayoutGuardTests {
     @Test func addingAnExerciseNeverEntersEditMode() throws {
         let add = try source("Cadence/Cadence/Features/Home/WorkoutPlanEditor+SuggestExercise.swift")
         #expect(!add.contains("isEditing = true"))
-        #expect(add.contains("String(localized: \"Add Exercise\")"))
+        #expect(add.contains("func suggestExercise()"))
         #expect(!add.contains("Suggest Exercise…"))
     }
 
@@ -35,13 +35,15 @@ struct WorkoutFlowLayoutGuardTests {
         return source.distance(from: source.startIndex, to: range.lowerBound)
     }
 
-    @Test func addExerciseSitsBelowVolumeAndImmediatelyAboveStart() throws {
+    @Test func planAddExerciseLivesInTheTrailingToolbar() throws {
         let editor = try source("Cadence/Cadence/Features/Home/WorkoutPlanEditor.swift")
-        let volume = try position(of: "LiveWorkoutVolumeSummary", in: editor)
-        let add = try position(of: "suggestExerciseButton", in: editor)
-        let start = try position(of: "startButton", in: editor)
-        #expect(volume < add)
-        #expect(add < start)
+        // The list screen no longer carries an Add Exercise button; the
+        // toolbar's "+" owns it, and Start stays at the bottom of the list.
+        #expect(!editor.contains("suggestExerciseButton"))
+        #expect(editor.contains("editor.addExercise"))
+        #expect(editor.contains("suggestExercise()"))
+        #expect(editor.contains("startButton"))
+        #expect(editor.contains("LiveWorkoutVolumeSummary"))
     }
 
     @Test func workoutAddExerciseFollowsVolumeSummary() throws {

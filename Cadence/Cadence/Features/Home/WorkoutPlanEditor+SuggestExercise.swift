@@ -4,24 +4,18 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 
 extension WorkoutPlanEditor {
-    /// The plan screen has one Add Exercise entry point. It opens the same
-    /// suggestion surface as before, renamed to match what it does.
-    var suggestExerciseButton: some View {
-        CadenceActionButton(title: String(localized: "Add Exercise"),
-                            systemImage: "plus.circle.fill",
-                            emphasis: .secondary) {
-            do {
-                suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
-                    context: modelContext,
-                    settings: settings,
-                    style: .personalized,
-                    existingExerciseNames: plan.exercises.map(\.name),
-                    alreadyAllocatedByMuscle: planAllocatedVolume())
-            } catch {
-                suggestExerciseFailed = true
-            }
+    /// One Add Exercise entry point, now the "+" in the trailing toolbar.
+    func suggestExercise() {
+        do {
+            suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
+                context: modelContext,
+                settings: settings,
+                style: .personalized,
+                existingExerciseNames: plan.exercises.map(\.name),
+                alreadyAllocatedByMuscle: planAllocatedVolume())
+        } catch {
+            suggestExerciseFailed = true
         }
-        .accessibilityIdentifier("editor.addExercise")
     }
 
     func planAllocatedVolume() -> [String: Double] {

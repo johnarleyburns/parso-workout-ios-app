@@ -5,23 +5,20 @@ import CadenceFeatures
 import CadenceWorkoutFeatures
 
 extension SessionView {
-    var suggestExerciseButton: some View {
-        CadenceActionButton(title: String(localized: "Add Exercise"),
-                            systemImage: "wand.and.stars",
-                            emphasis: .secondary) {
-            do {
-                suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
-                    context: context,
-                    settings: settings,
-                    style: .personalized,
-                    existingExerciseNames: sessionExerciseNames,
-                    alreadyAllocatedByMuscle: activeAllocatedVolume(),
-                    excludingSessionID: session.id)
-            } catch {
-                suggestExerciseFailed = true
-            }
+    /// Opens Add Exercise. The live workout surfaces it as the "+" in the
+    /// grouped trailing toolbar; manual logs still use it from the body.
+    func suggestExercise() {
+        do {
+            suggestExerciseRequest = try SuggestedExerciseRequestFactory.make(
+                context: context,
+                settings: settings,
+                style: .personalized,
+                existingExerciseNames: sessionExerciseNames,
+                alreadyAllocatedByMuscle: activeAllocatedVolume(),
+                excludingSessionID: session.id)
+        } catch {
+            suggestExerciseFailed = true
         }
-        .accessibilityIdentifier("session.suggestExercise")
     }
 
     private var sessionExerciseNames: [String] {

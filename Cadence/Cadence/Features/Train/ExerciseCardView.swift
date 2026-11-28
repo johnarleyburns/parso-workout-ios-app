@@ -61,7 +61,7 @@ struct ExerciseCardView: View {
                 if !isEditing { actionButtons }
             }
         }
-        .padding(CGFloat(LayoutMetrics.cardPadding))
+        .padding(CGFloat(LayoutMetrics.cardPadding - 4))
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceCard(isCurrent ? .hero : .standard)
         .confirmationDialog("Delete this set?", isPresented: Binding(
@@ -89,8 +89,6 @@ struct ExerciseCardView: View {
                             Text(context.name.localizedExerciseName).font(.headline).lineLimit(1)
                             if isCurrent { Image(systemName: "arrow.right.circle.fill").foregroundStyle(.green).font(.caption) }
                         }
-                        if !isExpanded, !context.hasPartners { Text(compactSummary).font(.caption).foregroundStyle(.secondary).lineLimit(2) }
-                        if !isExpanded, let defaultsLine { Text(defaultsLine).font(.caption.weight(.medium)).foregroundStyle(.secondary).lineLimit(1).accessibilityIdentifier("exercise.defaults.\(context.name)") }
                     }
                 }
                 .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -146,10 +144,6 @@ struct ExerciseCardView: View {
     private var contextLines: some View {
         if !context.performerContexts.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
-                if let rx = prescriptionText {
-                    Text(rx).font(.subheadline).foregroundStyle(.secondary)
-                        .accessibilityIdentifier("session.rx.\(context.name)")
-                }
                 ForEach(context.performerContexts, id: \.label) { pc in
                     performerContextView(pc)
                 }

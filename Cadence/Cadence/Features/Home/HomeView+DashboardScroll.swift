@@ -56,7 +56,10 @@ extension HomeView {
                         HStack(spacing: 4) {
                             Image(systemName: badge.systemImage)
                             Text(badge.text)
+                                .lineLimit(1)
+                                .fixedSize(horizontal: true, vertical: false)
                         }
+                        .fixedSize(horizontal: true, vertical: false)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(CadenceTheme.achievement)
                         .padding(.horizontal, badge.horizontalPadding)

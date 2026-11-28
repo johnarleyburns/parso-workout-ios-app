@@ -11,6 +11,7 @@ import CadenceWorkoutFeatures
 struct WatchStrengthPreview: View {
     let launch: WatchLiftLaunch
     var citationIDs: [String] = []
+    @Environment(AppSettings.self) private var settings
     @Environment(WatchWorkoutManager.self) private var manager
     @AppStorage(WatchStrengthPreviewDefaults.repPatternKey) private var lastRepPattern = "8-8-8"
     @AppStorage(WatchStrengthPreviewDefaults.partnersKey) private var lastPartners = ""
@@ -84,7 +85,23 @@ struct WatchStrengthPreview: View {
                 }
                 ForEach(exerciseNames, id: \.self) { name in
                     HStack {
-                        Text(name.localizedExerciseName).font(.footnote)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(name.localizedExerciseName).font(.footnote)
+                            let prepared = setup.preparedLaunch(from: launch)
+                            if let prescription = prepared.planPayload?.strength?.prescriptions.first(where: {
+                                $0.exerciseName.caseInsensitiveCompare(name) == .orderedSame
+                            }) {
+                                ForEach(Array(prescription.sets.enumerated()), id: \.offset) { _, set in
+                                    let load = PlanFormatting.loadLabel(targetWeightKg: set.targetWeightKg,
+                                        isBodyweight: ExerciseLoading.isBodyweight(named: name), unit: settings.unit)
+                                    Text(verbatim: "\(set.targetReps) × \(load)")
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                            } else if !prepared.repLadder.isEmpty {
+                                Text(verbatim: prepared.repLadder.map(String.init).joined(separator: "-"))
+                                    .font(.caption2).foregroundStyle(.secondary)
+                            }
+                        }
                         Spacer()
                         NavigationLink {
                             WatchSuggestedExerciseInfoView(name: name)

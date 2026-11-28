@@ -108,6 +108,31 @@ struct WorkoutPlanRepStructureTests {
         #expect(WorkoutPlanRepSchemeOptions.summary(name: "Me", reps: []) == "Me")
     }
 
+    @Test func structureLabelReflectsThePlansActualSets() {
+        let plan = EditablePlan(warmupMinutes: 0, cooldownMinutes: 0,
+            exercises: [EditableExercise(name: "Row",
+                sets: [8, 8, 8].map { EditableSet(targetReps: $0, targetWeight: 25) }, notes: "")])
+        let label = WorkoutPlanRepSchemeOptions.summary(name: "Me",
+            reps: plan.exercises[0].sets.map(\.targetReps))
+        #expect(label == "Me: 8-8-8")
+    }
+
+    @Test func ownerSeedFillsBlankSetsFromTheLastWorkingSet() {
+        let original = (0..<3).map { _ in EditableSet(targetReps: 6, targetWeight: nil) }
+        let history = PartnerPlanResolver.ExerciseHistory(lastSets: [
+            .init(weightKg: 100, reps: 6), .init(weightKg: 90, reps: 8)])
+        let seeded = PartnerPlanResolver.suggestedOwnerSets(original, history: history)
+        // Identity and count survive; reps and loads follow the last working sets.
+        #expect(seeded.map(\.id) == original.map(\.id))
+        #expect(seeded.map(\.targetReps) == [6, 8, 8])
+        #expect(seeded.map(\.targetWeight) == [100, 90, 90])
+        // No history leaves the generated prescription untouched.
+        #expect(PartnerPlanResolver.suggestedOwnerSets(original, history: .empty) == original)
+        // An explicit load is never overwritten.
+        let explicit = [EditableSet(targetReps: 12, targetWeight: 20)]
+        #expect(PartnerPlanResolver.suggestedOwnerSets(explicit, history: history) == explicit)
+    }
+
     @Test func mountainClimbersAreBodyweightWithoutAnExternalLoad() {
         let exercise = Exercise(name: "Mountain Climbers")
         #expect(SessionViewModel.isNonWeighted(exercise))

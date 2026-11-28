@@ -48,7 +48,8 @@ struct WorkoutFlowLayoutGuardTests {
         let session = try source("Cadence/Cadence/Features/Train/SessionView+Rendering.swift")
         // Both moved out of the scrolling body: the toolbar owns Add Exercise
         // and the overflow owns the volume summary sheet.
-        #expect(!session.contains("LiveWorkoutVolumeSummary(state:"))
+        #expect(session.contains("sheet(isPresented: $volumeSummaryPresented)"))
+        #expect(session.contains("navigationTitle(\"Volume Summary\")"))
         #expect(!session.contains("suggestExerciseButton"))
         let actions = try source("Cadence/Cadence/Features/Train/SessionView+Actions.swift")
         #expect(actions.contains("session.addExercise"))

@@ -1216,6 +1216,16 @@ final class WatchStrengthFlowModelTests {
         let payload = try #require(m.endSessionPayload())
         #expect(payload[WatchStrengthHeartRate.transportKey] != nil)
         #expect(m.recordedHeartRate == dense)
+        // The same durable series must reach the Watch's own session and history.
+        let session = try #require(m.session)
+        #expect(session.hrSamplePoints == dense)
+        let fresh = ModelContext(container)
+        let id = session.id
+        let stored = try #require(try fresh.fetch(FetchDescriptor<WorkoutSession>(
+            predicate: #Predicate { $0.id == id })).first)
+        let historical = WatchWorkoutHistorySummary.make(session: stored)
+        #expect(historical.hrSamples == dense)
+        #expect(historical.availability != .basic)
     }
 
     @Test func legacyPayloadHasSourceButNoInventedFinalSequence() throws {

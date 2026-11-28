@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 import CadenceCore
 import CadenceFeatures
 import CadenceWorkoutFeatures
@@ -7,6 +8,7 @@ import CadenceWorkoutFeatures
 /// 12-week mirror. No phone Coach snapshot is consumed here.
 struct WatchHomeSuggestedStrengthView: View {
     @Environment(WatchWorkoutManager.self) private var manager
+    @Environment(\.modelContext) private var context
     @State private var launch: WatchLiftLaunch?
     @State private var citationIDs: [String] = []
     @State private var finished = false
@@ -74,11 +76,25 @@ struct WatchHomeSuggestedStrengthView: View {
         }.value
         guard !Task.isCancelled else { return }
         if let result {
-            launch = result.launch
+            launch = prefilled(result.launch)
             citationIDs = result.citationIDs
         } else if launch == nil {
             needsSync = true
         }
         finished = true
+    }
+
+    /// Fill the generated suggestion from this Watch's own history once, so the
+    /// review screen shows real reps and loads and Start carries them through.
+    private func prefilled(_ source: WatchLiftLaunch) -> WatchLiftLaunch {
+        let exercises = (try? WorkoutRepository.allExercises(context)) ?? []
+        return WatchStrengthPreviewSetup.prefilledSuggestion(source) { name in
+            guard let exercise = exercises.first(where: {
+                $0.name.caseInsensitiveCompare(name) == .orderedSame
+            }) else { return .empty }
+            let local = WorkoutRepository.lastTimeSets(for: exercise, performedBy: nil, excluding: nil)
+                .filter { !$0.isWarmup }
+            return .init(lastSets: local.map { .init(weightKg: $0.weight, reps: $0.reps) })
+        }
     }
 }

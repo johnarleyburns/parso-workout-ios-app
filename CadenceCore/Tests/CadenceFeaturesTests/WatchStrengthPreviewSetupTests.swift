@@ -7,6 +7,20 @@ import CadenceCore
 @testable import CadenceWorkoutFeatures
 
 struct WatchStrengthPreviewSetupTests {
+    @Test func suggestedPreviewSeedsTargetsAndKeepsThemThroughStart() {
+        let source = WatchLiftLaunch(title: "Personalized", exerciseNames: ["Squat"], repLadder: [],
+            planPayload: .init(strength: .init(exerciseNames: ["Squat"], prescriptions: [
+                .init(exerciseName: "Squat", sets: (0..<3).map { _ in .init(targetReps: 6) })])))
+        let prepared = WatchStrengthPreviewSetup.prefilledSuggestion(source) { _ in
+            PartnerPlanResolver.ExerciseHistory(lastSets: [.init(weightKg: 90, reps: 8)])
+        }
+        let setup = WatchStrengthPreviewSetup(launch: prepared)
+        let started = setup.preparedLaunch(from: prepared)
+        #expect(started.planPayload?.strength?.prescriptions.first?.sets.map(\.targetReps) == [8, 8, 8])
+        #expect(started.planPayload?.strength?.prescriptions.first?.sets.map(\.targetWeightKg) == [90, 90, 90])
+        #expect(source.planPayload?.strength?.prescriptions.first?.sets.first?.targetWeightKg == nil)
+    }
+
     @Test func repDefaultsReplaceEveryExercisePrescriptionWithoutChangingLoadsOrSource() {
         let prescriptions = ["Squat", "Row"].map {
             PlannedExercisePrescription(exerciseName: $0, sets: [.init(targetReps: 8, targetWeightKg: 25)])

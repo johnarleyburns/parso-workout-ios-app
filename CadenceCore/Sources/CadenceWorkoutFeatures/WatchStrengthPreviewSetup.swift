@@ -63,6 +63,32 @@ public struct WatchStrengthPreviewSetup: Equatable, Sendable {
         return launch
     }
 
+    /// Seed a generated suggestion once, before review, using the same last-set
+    /// defaults as the phone. Starting then carries exactly the reviewed targets.
+    public static func prefilledSuggestion(_ source: WatchLiftLaunch,
+        history: (String) -> PartnerPlanResolver.ExerciseHistory) -> WatchLiftLaunch {
+        var result = source
+        guard var payload = result.planPayload, var strength = payload.strength else { return result }
+        strength.prescriptions = strength.prescriptions.map { exercise in
+            var exercise = exercise
+            let logged = history(exercise.exerciseName)
+            guard let last = logged.lastSets.last(where: { $0.reps > 0 }) else { return exercise }
+            exercise.sets = exercise.sets.map { original in
+                guard original.targetWeightKg == nil,
+                      original.targetLoadMode == nil || original.targetLoadMode == "straight",
+                      !original.isWarmup else { return original }
+                var set = original
+                set.targetReps = last.reps
+                set.targetWeightKg = last.weightKg > 0 ? last.weightKg : nil
+                return set
+            }
+            return exercise
+        }
+        payload.strength = strength
+        result.planPayload = payload
+        return result
+    }
+
     /// Empty custom plans need explicit targets on exercises added after Start;
     /// otherwise the logger would prefer the exercise's old rep history.
     public static func customDefaultPrescription(for name: String, payload: WatchPlanPayload?) -> PlannedExercisePrescription? {

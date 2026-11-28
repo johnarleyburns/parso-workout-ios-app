@@ -20,16 +20,22 @@ extension HomeView {
                            height: CGFloat(ThisWeekCompactPresentation.ringDiameter))
                 VStack(alignment: .leading, spacing: 14) {
                     ForEach(ThisWeekCompactPresentation.rows(from: display)) { row in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(row.kind == .strength
-                                 ? String(localized: "Strength")
-                                 : String(localized: "Cardio"))
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
-                            Text(row.value)
-                                .font(.headline.monospacedDigit())
+                        Button {
+                            weekSurface?.open(row.kind == .strength ? .strength : .cardio)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(row.kind == .strength
+                                     ? String(localized: "Strength")
+                                     : String(localized: "Cardio"))
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                                Text(row.value)
+                                    .font(.headline.monospacedDigit())
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .buttonStyle(.plain)
                         .accessibilityElement(children: .combine)
                         .accessibilityIdentifier(row.accessibilityIdentifier)
                     }

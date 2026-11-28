@@ -15,6 +15,8 @@ struct ProgressStrengthChartView: View {
     @Binding var selectedNames: Set<String>
     let onAddLift: (String) -> Void
     @State private var selectedDate: Date?
+    @State private var showInfo = false
+    @Environment(AppSettings.self) private var settings
 
     /// The individual lifts the user has charted. The aggregate total is never
     /// taken from the precomputed data; it is recomputed from exactly these.
@@ -40,16 +42,22 @@ struct ProgressStrengthChartView: View {
     }
 
     var body: some View {
+        content
+            .sheet(isPresented: $showInfo) { infoSheet }
+    }
+
+    @ViewBuilder
+    private var content: some View {
         if data.allSeries.isEmpty {
             VStack(alignment: .leading, spacing: 8) {
-                liftPicker
+                liftHeader
                 Text("Log a few weeks of working sets and your estimated-1RM trend appears here. e1RM is projected from the weight and reps of your heaviest sets.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
         } else {
-            liftPicker
+            liftHeader
             Chart {
                 ForEach(selectedSeries) { series in
                     ForEach(series.points) { point in
@@ -159,7 +167,7 @@ struct ProgressStrengthChartView: View {
             }
         } label: {
             HStack(spacing: 6) {
-                Text("Charted lifts")
+                Image(systemName: "dumbbell.fill")
                 Image(systemName: "chevron.down")
                     .font(.caption.weight(.bold))
             }
@@ -171,6 +179,47 @@ struct ProgressStrengthChartView: View {
         .accessibilityLabel("Choose lifts to chart")
         .accessibilityHint("Select one or more default or custom lifts")
         .accessibilityIdentifier("progress.strength.liftPicker")
+    }
+
+    /// Icon-only picker on the left, method details behind one info button on
+    /// the right. The explanation and citation no longer take card space.
+    private var liftHeader: some View {
+        HStack(spacing: 8) {
+            liftPicker
+            Spacer(minLength: 0)
+            Button { showInfo = true } label: {
+                Image(systemName: "info.circle")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("About estimated 1RM trends")
+            .accessibilityIdentifier("progress.strength.info")
+        }
+    }
+
+    private var infoSheet: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Estimated 1RM trends use the \(settings.formula.displayName) formula selected in Settings, over the last 12 weeks.")
+                        .font(.subheadline)
+                        .fixedSize(horizontal: false, vertical: true)
+                    CitationLink(citation: CitationRegistry.oneRMEstimation, compact: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+            }
+            .navigationTitle("Estimated 1RM")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showInfo = false }
+                }
+            }
+        }
     }
 
     @ViewBuilder

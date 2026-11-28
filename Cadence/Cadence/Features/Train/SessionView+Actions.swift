@@ -25,7 +25,12 @@ extension SessionView {
                     .accessibilityLabel("Close workout")
             }
         }
-        ToolbarItem(placement: .topBarTrailing) {
+        ToolbarItemGroup(placement: .topBarTrailing) {
+            Button { suggestExercise() } label: {
+                Image(systemName: "plus")
+            }
+            .accessibilityIdentifier("session.addExercise")
+            .accessibilityLabel("Add exercise")
             Menu {
                 Button { volumeSummaryPresented = true } label: {
                     Label("Volume Summary", systemImage: "chart.bar.xaxis")

@@ -47,15 +47,11 @@ extension SessionView {
                     plannedCard(name)
                 }
             }
-            VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
-                suggestExerciseButton
-
-                if !isActiveSession && isManualLog {
-                    CadenceActionButton(title: String(localized: "Done"), systemImage: "checkmark") {
-                        finishManualLog()
-                    }
-                    .accessibilityIdentifier("log.done")
+            if !isActiveSession && isManualLog {
+                CadenceActionButton(title: String(localized: "Done"), systemImage: "checkmark") {
+                    finishManualLog()
                 }
+                .accessibilityIdentifier("log.done")
             }
         }
         .padding(CGFloat(LayoutMetrics.pagePadding))

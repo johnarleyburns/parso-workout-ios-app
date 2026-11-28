@@ -17,8 +17,10 @@ struct HomeHeaderPresentationTests {
         #expect(HomeHeaderPresentation(isSupporter: false).supporterBadge == nil)
     }
 
-    @Test func trailingItemsPlaceTheSupporterBadgeBeforeSettings() {
-        #expect(HomeHeaderPresentation(isSupporter: true).trailingItems == [.supporterBadge, .settings])
-        #expect(HomeHeaderPresentation(isSupporter: false).trailingItems == [.settings])
+    @Test func supporterBadgeLeadsAndTheMenuIsTrailing() {
+        let supporter = HomeHeaderPresentation(isSupporter: true)
+        #expect(supporter.leadingItems == [.supporterBadge])
+        #expect(supporter.menuItems == [.history, .strengthWeek, .cardioWeek, .settings])
+        #expect(HomeHeaderPresentation(isSupporter: false).leadingItems.isEmpty)
     }
 }

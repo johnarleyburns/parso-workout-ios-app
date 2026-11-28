@@ -25,10 +25,6 @@ struct TrainingProgressView: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                ProgressQuestionSummaryView<EmptyView>.pickerOnly(selection: $questionSelection)
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    .padding(.bottom, 8)
                 switch ProgressDataOwner.owner(for: questionSelection.selected) {
                 case .pagedHistory:
                     ProgressAnalyticsView(path: $path, questionSelection: questionSelection)
@@ -41,6 +37,11 @@ struct TrainingProgressView: View {
             .background { CadenceGlassBackdrop(tint: .blue) }
             .navigationTitle("Progress")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    ProgressSectionMenuButton(selection: $questionSelection)
+                }
+            }
             .navigationDestination(for: AssessmentKind.self) { AssessmentDetailView(kind: $0) }
             .navigationDestination(for: HistorySummaryRoute.self) { route in
                 historyDestination(route)
@@ -291,17 +292,11 @@ struct ProgressAnalyticsView: View {
                                           unit: settings.unit,
                                           selectedNames: $selectedStrengthNames,
                                           onAddLift: addLift)
-                Text("Estimated 1RM trends use the \(settings.formula.displayName) formula selected in Settings, over the last 12 weeks.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             } else {
                 ProgressView()
                     .frame(maxWidth: .infinity, minHeight: 110)
                     .accessibilityLabel("Preparing lifts chart")
             }
-            Divider().padding(.top, 2)
-            CitationLink(citation: CitationRegistry.oneRMEstimation, compact: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .cadenceCard()

@@ -41,17 +41,10 @@ extension HomeView {
         .navigationTitle(surface.title)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            // Settings is no longer a bottom tab; Today owns the single
-            // entry point, shown only on the Today surface.
             if surface == .today {
+                // The Supporter badge is a status mark at the leading edge; one
+                // overflow menu owns navigation on the trailing edge.
                 ToolbarItem(placement: .topBarLeading) {
-                    Button { path.append(HomeRoute.history) } label: {
-                        Image(systemName: "clock.arrow.circlepath")
-                    }
-                    .accessibilityLabel("Workout history")
-                    .accessibilityIdentifier("home.history")
-                }
-                ToolbarItemGroup(placement: .topBarTrailing) {
                     if let badge = HomeHeaderPresentation(isSupporter: contributions.store.isSupporter).supporterBadge {
                         HStack(spacing: 4) {
                             Image(systemName: badge.systemImage)
@@ -68,14 +61,39 @@ extension HomeView {
                         .accessibilityLabel(badge.accessibilityLabel)
                         .accessibilityIdentifier(badge.accessibilityIdentifier)
                     }
-                    Button {
-                        Haptics.selection()
-                        path.append(HomeRoute.settings)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Button {
+                            path.append(HomeRoute.history)
+                        } label: {
+                            Label("History", systemImage: "clock.arrow.circlepath")
+                        }
+                        .accessibilityIdentifier(HomeMenuDestination.history.accessibilityIdentifier)
+                        Button {
+                            weekSurface?.open(.strength)
+                        } label: {
+                            Label("Strength this week", systemImage: "dumbbell.fill")
+                        }
+                        .accessibilityIdentifier(HomeMenuDestination.strengthWeek.accessibilityIdentifier)
+                        Button {
+                            weekSurface?.open(.cardio)
+                        } label: {
+                            Label("Cardio this week", systemImage: "heart.fill")
+                        }
+                        .accessibilityIdentifier(HomeMenuDestination.cardioWeek.accessibilityIdentifier)
+                        Button {
+                            Haptics.selection()
+                            path.append(HomeRoute.settings)
+                        } label: {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                        .accessibilityIdentifier(HomeMenuDestination.settings.accessibilityIdentifier)
                     } label: {
-                        Image(systemName: "gearshape")
+                        Image(systemName: "ellipsis.circle")
                     }
-                    .accessibilityIdentifier("home.settings")
-                    .accessibilityLabel("Settings")
+                    .accessibilityIdentifier("home.menu")
+                    .accessibilityLabel("Home options")
                 }
             }
         }

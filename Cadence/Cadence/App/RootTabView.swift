@@ -16,6 +16,7 @@ struct RootTabView: View {
     @State private var selection: Tab = .home
     @State private var watchSyncToast: WatchSyncToast?
     @State private var warmupCover = WarmupCoverController()
+    @State private var weekSurface = WeekSurfacePresenter()
     /// Liveness heartbeat for crash/upgrade recovery (launch-blockers Phase 1e).
     /// Root-level so it keeps beating while the workout is minimized.
     private let heartbeatTimer = Timer.publish(every: 5, on: .main, in: .common).autoconnect()
@@ -56,6 +57,10 @@ struct RootTabView: View {
         }
         .environment(\.rootTabSelection, $selection)
         .environment(warmupCover)
+        .environment(weekSurface)
+        .sheet(item: $weekSurface.surface) { surface in
+            WeekSurfaceView(surface: surface)
+        }
         // The live workout + its finish summary share ONE root-level cover
         // (launch-blockers Phase 1b). A cover — not a NavigationStack push — so
         // lock/unlock can never pop the session (iOS 17 NavigationStack drops
@@ -226,8 +231,6 @@ struct RootTabView: View {
         if #available(iOS 18.0, *) {
             TabView(selection: $selection) {
                 SwiftUI.Tab("Workout", systemImage: "figure.strengthtraining.traditional", value: .home) { HomeView() }
-                SwiftUI.Tab("Strength", systemImage: "dumbbell.fill", value: .strength) { StrengthView() }
-                SwiftUI.Tab("Cardio", systemImage: "heart.fill", value: .cardio) { CardioWeekView() }
                 SwiftUI.Tab("Progress", systemImage: "chart.line.uptrend.xyaxis", value: .progress) {
                     AdaptiveProgressRoot()
                 }
@@ -238,9 +241,8 @@ struct RootTabView: View {
         } else {
             TabView(selection: $selection) {
                 HomeView().tabItem { Label("Workout", systemImage: "figure.strengthtraining.traditional") }.tag(Tab.home)
-                StrengthView().tabItem { Label("Strength", systemImage: "dumbbell.fill") }.tag(Tab.strength)
-                CardioWeekView().tabItem { Label("Cardio", systemImage: "heart.fill") }.tag(Tab.cardio)
                 AdaptiveProgressRoot().tabItem { Label("Progress", systemImage: "chart.line.uptrend.xyaxis") }.tag(Tab.progress)
+                FindExercisesView().tabItem { Label("Find", systemImage: "magnifyingglass") }.tag(Tab.search)
             }
         }
     }

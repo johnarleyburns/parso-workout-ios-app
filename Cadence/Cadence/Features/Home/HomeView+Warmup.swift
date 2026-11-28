@@ -20,6 +20,20 @@ extension HomeView {
     }
 
     func finishWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {
+        guard startCue == .countdown else {
+            startSessionAfterWarmup(elapsedSeconds: secs, startCue: startCue)
+            return
+        }
+        // Play 3-2-1 first and only then start the session, so the workout
+        // clock does not begin while the user is still counting in. The
+        // warm-up cover stays up for the lead-in, so Home never flashes.
+        playStartCue(.countdown)
+        DispatchQueue.main.asyncAfter(deadline: .now() + WorkoutStartCue.countdownLeadIn) {
+            startSessionAfterWarmup(elapsedSeconds: secs, startCue: .none)
+        }
+    }
+
+    private func startSessionAfterWarmup(elapsedSeconds secs: Int, startCue: WorkoutStartCue) {
         // Start the workout first. RootTabView keeps the warm-up surface above
         // the tabs while the root workout cover slides over it, so Home is
         // never visible between the two phases.

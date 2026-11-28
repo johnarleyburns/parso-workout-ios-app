@@ -36,12 +36,16 @@ extension SessionView {
                                        systemImage: "dumbbell",
                                        description: Text("Use a previous workout, or add exercises below."))
             }
-            ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
-                exerciseCardView(for: ctx)
-                    .id(ctx.exerciseID)
-            }
-            ForEach(plannedOnlyNames, id: \.self) { name in
-                plannedCard(name)
+            // Exercise rows are one continuous list: tight spacing between
+            // them, with the page rhythm reserved for sections around it.
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(cache.state.contexts, id: \.exerciseID) { ctx in
+                    exerciseCardView(for: ctx)
+                        .id(ctx.exerciseID)
+                }
+                ForEach(plannedOnlyNames, id: \.self) { name in
+                    plannedCard(name)
+                }
             }
             if isActiveSession {
                 LiveWorkoutVolumeSummary(state: liveVolumeState,
@@ -119,6 +123,16 @@ extension SessionView {
             ExercisePickerView(onPick: handleExercisePickerSelection)
         }
         .sheet(item: $suggestExerciseRequest, content: suggestedExerciseSheet)
+        .sheet(item: $detailExercise) { exercise in
+            NavigationStack {
+                ExerciseDetailView(exercise: exercise)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { detailExercise = nil }
+                        }
+                    }
+            }
+        }
         .sheet(item: $swapTarget) { target in
             let pickAction: ExercisePickerView.PickAction = {
                 switch target {

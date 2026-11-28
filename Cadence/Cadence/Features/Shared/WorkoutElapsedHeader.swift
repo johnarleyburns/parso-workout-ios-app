@@ -24,10 +24,10 @@ struct WorkoutElapsedHeader: View {
             ZStack {
                 HStack(spacing: 10) {
                     Image(systemName: "stopwatch")
-                        .font(.subheadline)
+                        .font(.headline)
                         .foregroundStyle(isPaused ? .secondary : .primary)
                     Text(time)
-                        .font(.system(.title3, design: .rounded).weight(.bold))
+                        .font(.headline.weight(.semibold))
                         .monospacedDigit()
                         .allowsTightening(true)
                         .foregroundStyle(isPaused ? .secondary : .primary)
@@ -69,9 +69,9 @@ struct WorkoutElapsedHeader: View {
         } label: {
             HStack(spacing: 5) {
                 Text(label)
-                    .font(.subheadline.weight(.bold))
+                    .font(.headline.weight(.semibold))
                 Text(value)
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                    .font(.headline.monospacedDigit().weight(.semibold))
             }
             .frame(minWidth: 92, alignment: .trailing)
             .padding(.vertical, 5)

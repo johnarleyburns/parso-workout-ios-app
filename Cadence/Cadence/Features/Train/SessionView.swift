@@ -59,6 +59,8 @@ struct SessionView: View {
     @Namespace var sessionRotorNamespace
     @State var usePreviousPresented = false
     @State var swapTarget: ExerciseSwap.SwapTarget?
+    /// Exercise opened from a planned row's overflow menu.
+    @State var detailExercise: Exercise?
     @State var coolingDown = false
 
     @State var prMoment: PRMoment?

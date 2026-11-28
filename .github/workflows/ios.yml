@@ -1,5 +1,7 @@
 name: iOS
 
+# TestFlight build trigger: 2026-11-28 1.1 verification (build number is commit
+# count; marketing version comes from the Xcode project and is guarded against drift).
 # One pipeline for pull requests and main. A pull request runs the pre-merge
 # gate (host-tests, app-build, validate). A push to main runs the same test job
 # plus the signed archive and TestFlight upload. Keeping both in one file is

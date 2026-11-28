@@ -268,15 +268,26 @@ jobs:
 
       - name: Compute Marketing Version
         env:
-          # Public version string shown on the App Store and in About. Set the
-          # repository variable MARKETING_VERSION to change it without a code
-          # change; the default is the first public release.
+          # Public version string shown on the App Store and in About.
+          # MARKETING_VERSION in the Xcode project is the source of truth; the
+          # repository variable may override it, but a mismatch fails instead
+          # of silently uploading under a version TestFlight is not showing.
           CONFIGURED_MARKETING_VERSION: ${{ vars.MARKETING_VERSION }}
         run: |
           set -eo pipefail
-          MKT_VERSION="${CONFIGURED_MARKETING_VERSION:-1.0}"
+          project_version="$(grep -m1 -E 'MARKETING_VERSION = ' Cadence/Cadence.xcodeproj/project.pbxproj \
+            | sed -E 's/.*MARKETING_VERSION = ([^;]+);/\1/' | tr -d '[:space:]')"
+          MKT_VERSION="${CONFIGURED_MARKETING_VERSION:-$project_version}"
+          if [ -z "$MKT_VERSION" ]; then
+            echo "::error title=Missing marketing version::Set MARKETING_VERSION in the Xcode project or the repository variable."
+            exit 1
+          fi
+          if [ -n "$project_version" ] && [ "$MKT_VERSION" != "$project_version" ]; then
+            echo "::error title=Marketing version mismatch::Workflow would upload '$MKT_VERSION' but the Xcode project says '$project_version'. Align them before uploading."
+            exit 1
+          fi
           echo "MKT_VERSION=$MKT_VERSION" >> "$GITHUB_ENV"
-          echo "Marketing version: $MKT_VERSION (build $BUILD_NUMBER)"
+          echo "Marketing version: $MKT_VERSION (build $BUILD_NUMBER, project $project_version)"
 
       - name: Archive
         id: archive

@@ -10,15 +10,21 @@ struct CompactExerciseRow: View {
     let exerciseInfo: Exercise?
     let onSwap: (() -> Void)?
     let onExclude: (() -> Void)?
+    let onInfo: (() -> Void)?
+    let onRemove: (() -> Void)?
 
     init(exercise: EditableExercise, unit: MeasurementUnitPreference,
          exerciseInfo: Exercise? = nil, onSwap: (() -> Void)? = nil,
-         onExclude: (() -> Void)? = nil) {
+         onExclude: (() -> Void)? = nil,
+         onInfo: (() -> Void)? = nil,
+         onRemove: (() -> Void)? = nil) {
         self.exercise = exercise
         self.unit = unit
         self.exerciseInfo = exerciseInfo
         self.onSwap = onSwap
         self.onExclude = onExclude
+        self.onInfo = onInfo
+        self.onRemove = onRemove
     }
 
     var body: some View {
@@ -26,20 +32,15 @@ struct CompactExerciseRow: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(exercise.name.localizedExerciseName).font(.headline)
                 Spacer(minLength: 4)
-                Group {
-                    NavigationLink {
-                        SuggestedExerciseInfoView(name: exercise.name, initial: exerciseInfo)
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .font(.headline)
-                            .foregroundStyle(.tint)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier("editor.exerciseInfo.\(exercise.name)")
-                    .accessibilityLabel("\(exercise.name) details")
-                }
-                if onSwap != nil || (onExclude != nil && exerciseInfo != nil) {
+                if onSwap != nil || onInfo != nil || onRemove != nil
+                    || (onExclude != nil && exerciseInfo != nil) {
                     Menu {
+                        if let onInfo {
+                            Button(action: onInfo) {
+                                Label("Exercise details", systemImage: "info.circle")
+                            }
+                            .accessibilityIdentifier("editor.exerciseInfo.\(exercise.name)")
+                        }
                         if let onSwap {
                             Button(action: onSwap) {
                                 Label("Swap Exercise", systemImage: "arrow.triangle.2.circlepath")
@@ -53,6 +54,12 @@ struct CompactExerciseRow: View {
                                 Label("Don't Suggest This Exercise", systemImage: "hand.raised")
                             }
                             .accessibilityIdentifier("editor.excludeExercise.\(exercise.name)")
+                        }
+                        if let onRemove {
+                            Button(role: .destructive, action: onRemove) {
+                                Label("Remove", systemImage: "trash")
+                            }
+                            .accessibilityIdentifier("editor.removeExercise.\(exercise.name)")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")

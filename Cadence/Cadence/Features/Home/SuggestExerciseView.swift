@@ -144,6 +144,7 @@ struct SuggestExerciseView: View {
                         onAdd(exercise)
                         dismiss()
                     }
+                    .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("suggestExercise.add")
                 }
                 if let onFindExercise {
@@ -152,13 +153,15 @@ struct SuggestExerciseView: View {
                         dismiss()
                         onFindExercise()
                     }
+                    .frame(maxWidth: .infinity)
                     .accessibilityIdentifier("suggestExercise.findExercise")
                 }
-                CadenceActionButton(title: String(localized: "Suggest another"), systemImage: "arrow.clockwise",
+                CadenceActionButton(title: String(localized: "Suggest Another"), systemImage: "arrow.clockwise",
                                     emphasis: .secondary) {
                     excludedCandidateIDs.insert(exercise.candidateID)
                     Task { await calculate() }
                 }
+                .frame(maxWidth: .infinity)
                 .accessibilityIdentifier("suggestExercise.another")
                 if let info = exerciseForName(exercise.name) {
                     Button(role: .destructive) { exclusionExercise = info } label: {

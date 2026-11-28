@@ -11,12 +11,13 @@ import CadenceWorkoutFeatures
 struct WatchStrengthPreview: View {
     let launch: WatchLiftLaunch
     var citationIDs: [String] = []
+    @Environment(AppSettings.self) var settings
     @Environment(WatchWorkoutManager.self) private var manager
     @AppStorage(WatchStrengthPreviewDefaults.repPatternKey) private var lastRepPattern = "8-8-8"
     @AppStorage(WatchStrengthPreviewDefaults.partnersKey) private var lastPartners = ""
     @AppStorage(WatchStrengthPreviewDefaults.restSecondsKey) private var lastRestSeconds = 60
     @AppStorage(WatchStrengthPreviewDefaults.partnersChosenKey) private var partnersChosen = false
-    @State private var setup: WatchStrengthPreviewSetup
+    @State var setup: WatchStrengthPreviewSetup
     @State private var exerciseNames: [String]
     @State private var addedPrescriptions: [String: PlannedExercisePrescription] = [:]
     @State private var appliedDefaults = false
@@ -84,7 +85,10 @@ struct WatchStrengthPreview: View {
                 }
                 ForEach(exerciseNames, id: \.self) { name in
                     HStack {
-                        Text(name.localizedExerciseName).font(.footnote)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(name.localizedExerciseName).font(.footnote)
+                            setLines(for: name)
+                        }
                         Spacer()
                         NavigationLink {
                             WatchSuggestedExerciseInfoView(name: name)

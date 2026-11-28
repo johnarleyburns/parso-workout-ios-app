@@ -11,76 +11,19 @@ Use this checklist for the first public App Store v1 submission.
   its health-bearing record types) in CloudKit Console before public
   submission so no previously mirrored health data remains in iCloud.
 
-### Temporary 1184 recovery exception
+### 1184 recovery build (removed)
 
-Build 1186 is a one-off data-recovery build for users whose pre-1184 history was
-left only in CloudKit. It is marked by the repo-root file
-`CLOUDKIT_RECOVERY_BUILD`, which the release-safety script and
-`AppStoreSubmissionReadinessTests` use to allow:
+Build 1186–1194 carried a temporary read-only iCloud import to recover history
+lost in the 1184 update. It has been removed: no `CLOUDKIT_RECOVERY_BUILD`
+marker, no `CloudKitRecovery`, no `StoreAudit`, and no iCloud entitlement. The
+recovery path and its outcome are recorded in
+`docs/app-store/incident-1184-recovery.md`.
 
-- `Cadence.entitlements`, `Cadence.Debug.entitlements`, and
-  `Cadence.Release.entitlements` to grant `iCloud.guru.parso.cladiron.sync`;
-- `Cadence/Cadence/Services/CloudKitRecovery.swift` (read-only private-database
-  import into a separate scratch store);
-- the **Recover from iCloud** section in Backup & Restore.
+Before submission, confirm on a clean checkout:
 
-The live application store stays `cloudKitDatabase: .none`; only the scratch
-store reads iCloud, and it never saves. This build must not be submitted to the
-App Store. Before submission, revert it in one PR:
-
-- delete `CLOUDKIT_RECOVERY_BUILD` and
-  `Cadence/Cadence/Services/CloudKitRecovery.swift`;
-- remove the iCloud keys from all three entitlement files;
-- remove the **Recover from iCloud** section and restore the local-only footer
-  copy in `BackupRestoreCenterView.swift`;
-- run `scripts/check-release-safety.sh` and the
-  `AppStoreSubmissionReadinessTests` suite with the marker absent.
-
-- Confirm app display name is `Cladiron`.
-- Confirm the archive embeds the `Cadence Watch App` and both binaries pass
-  App Store validation.
-- Confirm public copy matches the shipped Watch app (phone-free strength with
-  partners, HIIT/boxing rounds, cardio suite, live wrist HR, Health save +
-  phone sync).
-- Confirm live heart-rate copy references Bluetooth chest straps (iPhone) and
-  wrist heart rate (Watch).
-- Confirm no copy implies generative AI, cloud AI, medical advice, diagnosis,
-  treatment, guaranteed results, cloud sync, social features, or nutrition
-  coaching. The submission build is local-only; use on-device/export language.
-- Confirm `PrivacyInfo.xcprivacy` remains Data Not Collected and declares the
-  required reasons actually used (UserDefaults, FileTimestamp, DiskSpace on the
-  iPhone; UserDefaults + SystemBootTime on the Watch).
-- Confirm `NSLocationAlwaysAndWhenInUseUsageDescription` is present and the
-  outdoor-workout flow requests Always only after the user starts a workout.
-- Confirm `remote-notification` is absent from `UIBackgroundModes`.
-- Confirm contribution copy says "support" or "contribute", never "donation".
-- Confirm all planning, coaching, logging, export, and execution surfaces remain
-  available without a purchase.
-- Confirm third-party content attribution and content-rights answers: exercise
-  data/images from free-exercise-db (CC0) and Wikimedia assets (CC BY-SA) are
-  attributed in About; no unlicensed third-party media is shipped.
-- Confirm the single optional $9.99 contribution loads and unlocks nothing.
-- Confirm product-load failure leaves the free app fully usable.
-
-## Verification
-
-- Run `swift test --package-path CadenceCore`.
-- Run a Release build/archive for the `Cadence` iOS scheme.
-- On a real device, verify HealthKit permission priming and authorization.
-- On a real device, verify Apple Health workout import.
-- On a real device, verify saving a strength workout summary to Health.
-- On a real device with hardware available, verify Bluetooth chest-strap pairing
-  and live heart-rate capture.
-- Verify outdoor GPS workout recording and Health save.
-- On a real Apple Watch: verify a phone-free strength session, live wrist HR,
-  Health save (rings credit), and auto-ingest back to the phone.
-- Verify the on-device store survives relaunch and that JSON export/import
-  restores a fresh install.
-- Verify JSON export/import round-trip with non-empty strength, cardio,
-  assessment, and preference data.
-- Verify StoreKit local products using `Cadence.storekit`.
-- Verify sandbox StoreKit products with the local StoreKit config disabled.
-- Verify the app behaves correctly when StoreKit products are unavailable.
+- `git ls-files | grep CLOUDKIT_RECOVERY_BUILD` returns nothing;
+- no entitlement file contains `com.apple.developer.icloud`;
+- `scripts/check-release-safety.sh` passes without the marker.
 
 ## Identifiers, provisioning, and certificates after removing iCloud
 

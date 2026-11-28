@@ -267,10 +267,16 @@ jobs:
           cd Cadence && xcrun agvtool new-version -all "$BUILD"
 
       - name: Compute Marketing Version
+        env:
+          # Public version string shown on the App Store and in About. Set the
+          # repository variable MARKETING_VERSION to change it without a code
+          # change; the default is the first public release.
+          CONFIGURED_MARKETING_VERSION: ${{ vars.MARKETING_VERSION }}
         run: |
           set -eo pipefail
-          echo "MKT_VERSION=1.1.$BUILD_NUMBER" >> "$GITHUB_ENV"
-          echo "Marketing version: 1.1.$BUILD_NUMBER (build $BUILD_NUMBER)"
+          MKT_VERSION="${CONFIGURED_MARKETING_VERSION:-1.0}"
+          echo "MKT_VERSION=$MKT_VERSION" >> "$GITHUB_ENV"
+          echo "Marketing version: $MKT_VERSION (build $BUILD_NUMBER)"
 
       - name: Archive
         id: archive

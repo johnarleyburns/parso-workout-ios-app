@@ -71,7 +71,7 @@ public enum HomeWorkoutStartChoice: Hashable, Identifiable, Sendable {
         case .strength(.suggested): "Lift"
         case .cardio(.other): "Other"
         case .cardio(let type): type.displayName
-        case .suggestedCardio: "Cardio"
+        case .suggestedCardio: "Cardio for You"
         }
     }
 

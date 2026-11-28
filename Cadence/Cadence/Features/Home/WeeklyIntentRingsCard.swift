@@ -8,9 +8,29 @@ import CadencePhoneFeatures
 struct WeeklyIntentRingsCard: View {
     let display: WeeklyIntentDisplay
     @Binding var tabSelection: RootTabView.Tab
+    /// Compact: just the two rings, sized for the This Week band. The labelled
+    /// rows live beside it instead of under it.
+    var compact: Bool = false
     @ScaledMetric(relativeTo: .title) private var ringDiameter: CGFloat = 148
 
+    private var diameter: CGFloat {
+        compact ? CGFloat(ThisWeekCompactPresentation.ringDiameter) : ringDiameter
+    }
+
     var body: some View {
+        if compact {
+            ZStack {
+                ring(display.strengthRing, cardio: false, diameter: diameter, lineWidth: max(6, diameter * 0.12))
+                ring(display.cardioRing, cardio: true, diameter: diameter * 0.62, lineWidth: max(6, diameter * 0.12))
+            }
+            .frame(width: diameter, height: diameter)
+            .accessibilityHidden(true)
+        } else {
+            fullBody
+        }
+    }
+
+    private var fullBody: some View {
         // The card owns the Today page's free vertical space: the gauge is
         // centred in the area above the legends, and the Strength/Cardio
         // labels stay pinned to the card's bottom edge.

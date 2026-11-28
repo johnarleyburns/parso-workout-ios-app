@@ -193,10 +193,12 @@ struct PhoneFieldTestLayoutGuardTests {
 
     @Test func addSetEditorIsFullHeightAndFocused() throws {
         let editor = try source("Cadence/Cadence/Features/Train/InlineSetEditorView.swift")
+        let panels = try source("Cadence/Cadence/Features/Train/InlineSetEditorView+Panels.swift")
+        let combined = editor + panels
         #expect(editor.contains(".custom(SetEditorSheetDetent.self)"))
         let shared = try source("Cadence/Cadence/Features/Train/SessionViewShared.swift")
         #expect(shared.contains("context.maxDetentValue - 72"))
-        #expect(editor.contains("historyLastTimeText"))
+        #expect(combined.contains("historyLastTimeText"))
         #expect(!editor.contains("Who did this set?"))
         #expect(!editor.contains("How hard did the set feel?"))
         #expect(!editor.contains("setEditor.weightSource"))
@@ -209,14 +211,19 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(editor.contains("setEditor.setGauge"))
         #expect(!editor.contains("Text(config.setNumberText)"))
 
-        // History is collapsed behind a right-aligned toggle.
-        #expect(editor.contains("Show History"))
-        #expect(editor.contains("Hide History"))
-        #expect(editor.contains("setEditor.history.toggle"))
+        // History, partner entry and effort live in the header overflow menu
+        // and open as sheets; the body carries only weight, reps and Log Set.
+        #expect(editor.contains("setEditor.menu"))
+        #expect(editor.contains("setEditor.menu.history"))
+        #expect(editor.contains("setEditor.menu.partner"))
+        #expect(editor.contains("setEditor.menu.effort"))
+        #expect(editor.contains("setProgressRing"))
+        #expect(combined.contains("Show History"))
+        #expect(combined.contains("setEditor.history.toggle"))
 
-        // The separate + Add Partner row is gone; the Change menu owns it.
+        // The separate + Add Partner row is gone; the Partner sheet owns it.
         #expect(!editor.contains("＋ Add Partner"))
-        #expect(editor.contains("Add Partner…"))
+        #expect(combined.contains("Add Partner…"))
 
         // Weight steppers sit beside the value; plate buttons live on the title
         // row and the value itself is smaller.
@@ -236,9 +243,9 @@ struct PhoneFieldTestLayoutGuardTests {
         #expect(editor.contains("weightStepButton(\"+\", label: \"Increase reps\""))
 
         // Effort is one number with +/- and no chooser grid or helper prose.
-        #expect(editor.contains("setEditor.effort.minus"))
-        #expect(editor.contains("setEditor.effort.plus"))
-        #expect(editor.contains("setEditor.effort.value"))
+        #expect(combined.contains("setEditor.effort.minus"))
+        #expect(combined.contains("setEditor.effort.plus"))
+        #expect(combined.contains("setEditor.effort.value"))
         #expect(!editor.contains("LazyVGrid"))
 
         #expect(ExpandedSetDraftModel.increments(for: .pounds).contains(5))

@@ -47,12 +47,6 @@ extension SessionView {
                     plannedCard(name)
                 }
             }
-            if isActiveSession {
-                LiveWorkoutVolumeSummary(state: liveVolumeState,
-                                         expanded: $liveVolumeExpanded,
-                                         performers: liveVolumePerformers,
-                                         performerStates: liveVolumePerformerStates)
-            }
             VStack(alignment: .leading, spacing: CGFloat(LayoutMetrics.sectionSpacing)) {
                 suggestExerciseButton
 
@@ -123,6 +117,25 @@ extension SessionView {
             ExercisePickerView(onPick: handleExercisePickerSelection)
         }
         .sheet(item: $suggestExerciseRequest, content: suggestedExerciseSheet)
+        .sheet(isPresented: $volumeSummaryPresented) {
+            NavigationStack {
+                ScrollView {
+                    LiveWorkoutVolumeSummary(state: liveVolumeState,
+                                             expanded: .constant(true),
+                                             performers: liveVolumePerformers,
+                                             performerStates: liveVolumePerformerStates)
+                        .padding(CGFloat(LayoutMetrics.pagePadding))
+                }
+                .navigationTitle("Volume Summary")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { volumeSummaryPresented = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium, .large])
+        }
         .sheet(item: $detailExercise) { exercise in
             NavigationStack {
                 ExerciseDetailView(exercise: exercise)

@@ -27,6 +27,11 @@ extension SessionView {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
+                Button { volumeSummaryPresented = true } label: {
+                    Label("Volume Summary", systemImage: "chart.bar.xaxis")
+                }
+                .accessibilityIdentifier("session.volumeSummary")
+                .disabled(cache.state.contexts.isEmpty)
                 if let plan {
                     NavigationLink {
                         RoutineDetailView(plan: plan, onEditorStart: { _ in })

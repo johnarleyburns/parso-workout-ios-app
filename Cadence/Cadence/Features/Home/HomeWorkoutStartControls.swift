@@ -22,7 +22,7 @@ struct HomeWorkoutStartControls: View {
     private var recentCardio: [WorkoutType] {
         let logged = cardioWorkouts
             .filter { $0.deletedAt == nil }
-            .compactMap { WorkoutType(cardioType: $0.type) }
+            .compactMap { WorkoutType(cardioType: $0.typeValue) }
             .filter { $0 != .other }
         return HomeRecentCardioChoices.recent(logged)
     }

@@ -70653,7 +70653,7 @@
       },
       "comment" : "UI text shown in: Weights Start (Cadence/Cadence/Features/Home/WeightsStartView.swift)"
     },
-    "Suggest another" : {
+    "Suggest Another" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
@@ -70664,7 +70664,7 @@
         "en-GB" : {
           "stringUnit" : {
             "state" : "needs_review",
-            "value" : "Suggest another"
+            "value" : "Suggest Another"
           }
         },
         "es" : {
